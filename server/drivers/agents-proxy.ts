@@ -14,23 +14,23 @@
 // Speaks raw JSON-RPC 2.0 over stdio (no MCP SDK — house style, matches
 // computer-proxy / permission-proxy). All state comes from env, injected by
 // the harness when it builds the integration:
-//   OMB_HARNESS_URL  base URL of the harness (http://127.0.0.1:8799)
-//   OMB_BOT_ID       the calling bot's id (excluded from list_bots; sender)
-//   OMB_COMMS_TOKEN  shared secret for the localhost-only internal endpoints
-//   OMB_TURN_DEPTH   this turn's comms depth (the harness refuses recursion)
+//   OC_HARNESS_URL  base URL of the harness (http://127.0.0.1:8799)
+//   OC_BOT_ID       the calling bot's id (excluded from list_bots; sender)
+//   OC_COMMS_TOKEN  shared secret for the localhost-only internal endpoints
+//   OC_TURN_DEPTH   this turn's comms depth (the harness refuses recursion)
 import readline from "node:readline";
 
-const HARNESS = process.env.OMB_HARNESS_URL ?? "http://127.0.0.1:8799";
-const BOT_ID = process.env.OMB_BOT_ID ?? "";
-const THREAD_ID = process.env.OMB_THREAD_ID ?? "";
-const TOKEN = process.env.OMB_COMMS_TOKEN ?? "";
-const DEPTH = Number(process.env.OMB_TURN_DEPTH ?? "0") || 0;
+const HARNESS = process.env.OC_HARNESS_URL ?? "http://127.0.0.1:8799";
+const BOT_ID = process.env.OC_BOT_ID ?? "";
+const THREAD_ID = process.env.OC_THREAD_ID ?? "";
+const TOKEN = process.env.OC_COMMS_TOKEN ?? "";
+const DEPTH = Number(process.env.OC_TURN_DEPTH ?? "0") || 0;
 
 const TOOLS = [
   {
     name: "list_bots",
     description:
-      "List the other bots (agents) in this OpenMausBot workspace you can message, with their model and whether they're busy. Call this before ask_bot to discover who's available.",
+      "List the other bots (agents) in this OpenCrew workspace you can message, with their model and whether they're busy. Call this before ask_bot to discover who's available.",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -135,7 +135,7 @@ async function handle(msg: Json) {
       ok(id, {
         protocolVersion: (params.protocolVersion as string) ?? "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "opengrokbot-agents", version: "0.1.0" },
+        serverInfo: { name: "opencrew-agents", version: "0.1.0" },
       });
       return;
     case "notifications/initialized":

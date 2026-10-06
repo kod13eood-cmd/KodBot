@@ -1,6 +1,11 @@
 # OpenCode Go
 
-OpenCode Go is an optional OpenMausBot engine. OpenMausBot runs the maintained
+> Superseded by the unified **OpenCode** engine — see `docs/opencode.md`. That
+> engine merges the Go and Zen catalogs (including free models) behind one
+> picker entry. The Go-only engine documented here is kept for backwards
+> compatibility and existing configs.
+
+OpenCode Go is an optional OpenCrew engine. OpenCrew runs the maintained
 OpenCode CLI through its ACP stdio interface, so sessions, streaming, coding
 tools, permission requests, MCP integrations, resume, and cancellation use the
 same runtime as the other ACP engines.
@@ -11,11 +16,11 @@ same runtime as the other ACP engines.
    [OpenCode installation guide](https://opencode.ai/docs/).
 2. Create or obtain an OpenCode Go API key according to the live
    [OpenCode Go documentation](https://opencode.ai/docs/go/).
-3. Open OpenMausBot Settings → Connections and save the key under **OpenCode
+3. Open OpenCrew Settings → Connections and save the key under **OpenCode
    Go API key**.
 
-The key is stored locally as write-only configuration. OpenMausBot reports only
-whether it is configured, never the value. A key saved in OpenMausBot is
+The key is stored locally as write-only configuration. OpenCrew reports only
+whether it is configured, never the value. A key saved in OpenCrew is
 injected as `OPENCODE_API_KEY` only into the OpenCode child process; it is not
 sent to the renderer, logs, analytics, snapshots, error messages, or command
 arguments.
@@ -23,7 +28,7 @@ arguments.
 OpenCode Go remains unavailable until both the `opencode` executable and the
 credential are present. It is never selected as a runnable default while either
 requirement is missing. Users may instead manage OpenCode's own login flow with
-`opencode auth login`; OpenMausBot does not edit OpenCode auth/config files.
+`opencode auth login`; OpenCrew does not edit OpenCode auth/config files.
 
 ## Models
 

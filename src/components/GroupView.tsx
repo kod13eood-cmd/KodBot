@@ -14,7 +14,7 @@ import {
   type GroupDefaultResponder,
   type Message,
 } from "@/state/store";
-import { MausAvatar } from "./Avatar";
+import { CrewAvatar } from "./Avatar";
 import { normalizeState } from "@/lib/mascot";
 import { effectiveDefaultResponder, groupResponseHint } from "@/lib/group-routing";
 import { ChatMarkdown } from "./ChatMarkdown";
@@ -47,11 +47,11 @@ function dayLabel(at: number): string {
   return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
 }
 
-/** 16px maus + name, shown once per sender cluster. */
+/** 16px crew + name, shown once per sender cluster. */
 function ClusterLabel({ bot, name, color }: { bot?: Bot; name: string; color: string }) {
   return (
     <div className="mt-1 flex items-center gap-1.5 pl-0.5">
-      <MausAvatar
+      <CrewAvatar
         color={(bot?.color ?? color) as Bot["color"]}
         state={normalizeState(bot?.mascotExpression) ?? "happy"}
         size={16}
@@ -448,7 +448,7 @@ export function GroupView({ group }: { group: Group }) {
   return (
     <main className="relative flex h-full min-w-0 flex-1 flex-col bg-app">
       <GroupCallOverlay group={group} members={members} />
-      {/* Header: static member mauses; a ring + dot marks the working bot. */}
+      {/* Header: static member crews; a ring + dot marks the working bot. */}
       <div
         className={cn(
           "flex items-center justify-between px-5 py-3",
@@ -472,7 +472,7 @@ export function GroupView({ group }: { group: Group }) {
                 group.busyBotId === b.id && "ring-2 ring-accent/50 ring-offset-1 ring-offset-app",
               )}
             >
-              <MausAvatar
+              <CrewAvatar
                 color={b.color}
                 state={normalizeState(b.mascotExpression) ?? "happy"}
                 size={24}
@@ -568,7 +568,7 @@ export function GroupView({ group }: { group: Group }) {
             <div className="flex flex-1 flex-col items-center justify-center gap-3 py-24 text-center">
               <div className="flex -space-x-2">
                 {members.slice(0, 3).map((b) => (
-                  <MausAvatar
+                  <CrewAvatar
                     key={b.id}
                     color={b.color}
                     state="happy"

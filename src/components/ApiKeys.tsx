@@ -1,5 +1,5 @@
 // Paste-a-key rows for PUT /api/config. The server persists to
-// ~/.openmausbot/config.json and hot-reloads the provider fleet; secrets
+// ~/.opencrew/config.json and hot-reloads the provider fleet; secrets
 // are write-only — GET /api/config returns configured flags, never values.
 import { useEffect, useId, useRef, useState } from "react";
 import { Check, CircleHelp, ExternalLink, Loader2, TriangleAlert } from "lucide-react";
@@ -50,12 +50,15 @@ const CREDENTIALS: Record<
     warning: "Box is a paid service after its trial. Usage may incur charges.",
   },
   opencodeGo: {
-    label: "OpenCode Go API key",
-    placeholder: "Paste your OpenCode Go API key",
-    description: "Run OpenCode Go models through the maintained OpenCode CLI and ACP.",
-    href: "https://opencode.ai/docs/go/",
-    linkLabel: "Open OpenCode Go setup guide",
+    label: "OpenCode API key",
+    placeholder: "Paste your OpenCode API key",
+    description:
+      "Runs OpenCode models through the maintained OpenCode CLI and ACP. One key covers OpenCode Go and OpenCode Zen, including the free models.",
+    href: "https://opencode.ai/docs/zen/",
+    linkLabel: "Open OpenCode plan & key guide",
     optional: true,
+    warning:
+      "Free models still require an OpenCode account. Some free/stealth models may use your prompts to improve the model — check the live privacy terms.",
   },
 };
 

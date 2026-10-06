@@ -4,7 +4,7 @@ import { ArrowUp, Clock, Mic, Square, Users, X } from "lucide-react";
 import { useStore, visibleMessages, type Bot, type Group } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { useComposerDraft } from "@/lib/drafts";
-import { MausAvatar } from "./Avatar";
+import { CrewAvatar } from "./Avatar";
 import { ComposerAttachments } from "./ComposerAttachments";
 import {
   composeMessage,
@@ -247,7 +247,7 @@ export function Composer({
                 )}
               >
                 {peer.bot ? (
-                  <MausAvatar
+                  <CrewAvatar
                     color={peer.bot.color}
                     state={normalizeState(peer.bot.mascotExpression) ?? "happy"}
                     size={24}

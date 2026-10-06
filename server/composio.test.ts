@@ -41,7 +41,7 @@ beforeAll(async () => {
       return res.end(JSON.stringify({
         session_id: "trs_test",
         mcp: { type: "http", url: "https://app.composio.dev/tool_router/v3/trs_test/mcp" },
-        config: { user_id: "openmausbot_existing" },
+        config: { user_id: "opencrew_existing" },
       }));
     }
     if (req.method === "GET" && url.pathname.endsWith("/toolkits")) {
@@ -78,11 +78,11 @@ beforeAll(async () => {
   });
   await new Promise<void>((resolve) => api.listen(0, "127.0.0.1", resolve));
   base = `http://127.0.0.1:${(api.address() as { port: number }).port}/api/v3.1`;
-  process.env.OMB_COMPOSIO_API = base;
+  process.env.OC_COMPOSIO_API = base;
 });
 
 afterAll(async () => {
-  delete process.env.OMB_COMPOSIO_API;
+  delete process.env.OC_COMPOSIO_API;
   await new Promise<void>((resolve) => api.close(() => resolve()));
 });
 
@@ -93,14 +93,14 @@ describe.sequential("Composio Sessions", () => {
   });
 
   it("creates one stable per-installation session and reuses it", async () => {
-    const created = await prepareProjectSession("ak_test", { userId: "openmausbot_existing" });
+    const created = await prepareProjectSession("ak_test", { userId: "opencrew_existing" });
     expect(created).toEqual({
       apiKey: "ak_test",
-      userId: "openmausbot_existing",
+      userId: "opencrew_existing",
       sessionId: "trs_test",
     });
     expect(calls.filter((call) => call.method === "POST" && call.path.endsWith("/session")).at(-1)?.body).toEqual({
-      user_id: "openmausbot_existing",
+      user_id: "opencrew_existing",
       manage_connections: {
         enable: true,
         enable_wait_for_connections: true,
@@ -111,14 +111,14 @@ describe.sequential("Composio Sessions", () => {
     const reused = await prepareProjectSession("ak_test", created);
     expect(reused).toEqual({
       apiKey: "ak_test",
-      userId: "openmausbot_existing",
+      userId: "opencrew_existing",
       sessionId: "trs_test",
     });
   });
 
   it("mounts the Session MCP endpoint with the project key header", async () => {
     const cfg: AppConfig = {
-      composio: { apiKey: "ak_test", userId: "openmausbot_existing", sessionId: "trs_test" },
+      composio: { apiKey: "ak_test", userId: "opencrew_existing", sessionId: "trs_test" },
     };
     const integration = await mcpIntegration(cfg, {
       harnessUrl: "http://127.0.0.1:8799",
@@ -130,19 +130,19 @@ describe.sequential("Composio Sessions", () => {
       command: process.execPath,
       args: [expect.stringContaining("connector-proxy")],
       env: {
-        OMB_CONNECTOR_UPSTREAM_URL: "http://127.0.0.1:8799/api/internal/connectors/mcp",
-        OMB_CONNECTOR_UPSTREAM_HEADERS: JSON.stringify({ authorization: "Bearer secret" }),
-        OMB_HARNESS_URL: "http://127.0.0.1:8799",
-        OMB_COMMS_TOKEN: "secret",
-        OMB_BOT_ID: "bot-1",
-        OMB_THREAD_ID: "thread-1",
+        OC_CONNECTOR_UPSTREAM_URL: "http://127.0.0.1:8799/api/internal/connectors/mcp",
+        OC_CONNECTOR_UPSTREAM_HEADERS: JSON.stringify({ authorization: "Bearer secret" }),
+        OC_HARNESS_URL: "http://127.0.0.1:8799",
+        OC_COMMS_TOKEN: "secret",
+        OC_BOT_ID: "bot-1",
+        OC_THREAD_ID: "thread-1",
       },
     });
   });
 
   it("reports connection state, creates auth links and revokes disconnects", async () => {
     const cfg: AppConfig = {
-      composio: { apiKey: "ak_test", userId: "openmausbot_existing", sessionId: "trs_test" },
+      composio: { apiKey: "ak_test", userId: "opencrew_existing", sessionId: "trs_test" },
     };
     await expect(connectionStatus(cfg, ["github", "gmail", "slack", "notion", "linear"])).resolves.toEqual({
       github: { connected: true, pending: false, status: "ACTIVE" },
@@ -164,7 +164,7 @@ describe.sequential("Composio Sessions", () => {
 
   it("falls back to session toolkit state when connected-account items is malformed", async () => {
     const cfg: AppConfig = {
-      composio: { apiKey: "ak_test", userId: "openmausbot_existing", sessionId: "trs_test" },
+      composio: { apiKey: "ak_test", userId: "opencrew_existing", sessionId: "trs_test" },
     };
     malformedConnectedAccounts = true;
     try {

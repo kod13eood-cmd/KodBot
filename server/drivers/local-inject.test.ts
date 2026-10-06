@@ -295,7 +295,7 @@ describe("ensureDroidInjectModel", () => {
     writeFileSync(join(home, ".factory", "settings.json"), JSON.stringify({ hooks: { Stop: [] } }));
     const first = ensureDroidInjectModel("omlx::MiniMax-M3-4bit", { HOME: home });
     const again = ensureDroidInjectModel("omlx::MiniMax-M3-4bit", { HOME: home });
-    expect(first).toBe("custom:openmausbot-omlx-MiniMax-M3-4bit");
+    expect(first).toBe("custom:opencrew-omlx-MiniMax-M3-4bit");
     expect(again).toBe(first);
     const settings = JSON.parse(readFileSync(join(home, ".factory", "settings.json"), "utf8")) as {
       hooks: unknown;
@@ -325,7 +325,7 @@ describe("ensureDroidInjectModel", () => {
     const settings = JSON.parse(readFileSync(join(home, ".factory", "settings.json"), "utf8")) as {
       customModels: Array<{ id?: string; model: string }>;
     };
-    expect(id).toBe("custom:openmausbot-omlx-MiniMax-M3-4bit");
+    expect(id).toBe("custom:opencrew-omlx-MiniMax-M3-4bit");
     expect(settings.customModels).toHaveLength(1);
     expect(settings.customModels[0]?.id).toBe(id);
   });

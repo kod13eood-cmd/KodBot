@@ -303,7 +303,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
   };
 
   const openVmSettings = () => {
-    window.sessionStorage.setItem("openmausbot.settings.section", "computer");
+    window.sessionStorage.setItem("opencrew.settings.section", "computer");
     dispatch({ type: "toggleAppSettings", open: true });
   };
 
@@ -573,7 +573,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
         <RoutineEditor
           bots={[bot]}
           lockedBotId={bot.id}
-          defaultRunOn={cloudRoutineReady ? "cloud" : "maus"}
+          defaultRunOn={cloudRoutineReady ? "cloud" : "crew"}
           onClose={() => setCreatingRoutine(false)}
         />
       )}

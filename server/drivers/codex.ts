@@ -47,7 +47,7 @@ function decodeConfig(raw: unknown): CodexConfig {
 
 const QUESTION_TIMEOUT_NOTE = "No answer was given — use your best judgment.";
 const DENY_TIMEOUT_NOTE =
-  "OpenMausBot: nobody answered this permission request in time. Skip this action and finish what you can without it.";
+  "OpenCrew: nobody answered this permission request in time. Skip this action and finish what you can without it.";
 
 export const CodexDriver: ProviderDriver<CodexConfig> = {
   driverKind: DRIVER_KIND,
@@ -120,7 +120,7 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
       if (turn.integrations?.composio) {
         const bridge = turn.integrations.composio;
         Object.assign(env, bridge.env);
-        const prefix = "mcp_servers.openmausbot_connectors";
+        const prefix = "mcp_servers.opencrew_connectors";
         appServerArgs.push(
           "-c", `${prefix}.command=${JSON.stringify(bridge.command)}`,
           "-c", `${prefix}.args=${JSON.stringify(bridge.args)}`,
@@ -180,7 +180,7 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
       const settle = (ok: boolean, stopReason: string | null) => {
         if (state.settled) return;
         state.settled = true;
-        for (const finish of [...asks.values()]) finish("deny", "OpenMausBot: the turn ended", "system");
+        for (const finish of [...asks.values()]) finish("deny", "OpenCrew: the turn ended", "system");
         for (const p of rpcPending.values()) p.reject(new Error("turn settled"));
         rpcPending.clear();
         active.delete(threadId);
@@ -399,7 +399,7 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
       // handshake + kickoff; any refusal surfaces as failure, not a hang
       (async () => {
         try {
-          await request("initialize", { clientInfo: { name: "openmausbot", version: "1" } });
+          await request("initialize", { clientInfo: { name: "opencrew", version: "1" } });
           send({ jsonrpc: "2.0", method: "initialized", params: {} });
           const cursor = typeof turn.resumeCursor === "string" ? turn.resumeCursor : null;
           let codexThreadId: string | null = null;

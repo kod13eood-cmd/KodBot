@@ -31,7 +31,7 @@ const child = spawn(process.execPath, [join(staging, "server", "index.js")], {
     ...(process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {}),
     HOME: home,
     USERPROFILE: home,
-    OMB_PORT: String(port),
+    OC_PORT: String(port),
   },
   stdio: ["ignore", "pipe", "pipe"],
 });

@@ -1,4 +1,4 @@
-# OpenMausBot connected-apps broker
+# OpenCrew connected-apps broker
 
 This Worker keeps the shared Composio project key out of desktop builds. Each
 installation receives a random bearer token stored only as a SHA-256 hash in
@@ -17,7 +17,7 @@ Deployment for this repository:
 
 Forks should create their own D1 database and rate-limit namespaces, replace
 the IDs in `wrangler.jsonc`, deploy under their own Worker name, and set
-`OMB_COMPOSIO_BROKER_URL` in their packaged build. Running only the local
+`OC_COMPOSIO_BROKER_URL` in their packaged build. Running only the local
 server with a Composio project key remains the no-Cloudflare self-host path.
 
 Set `REGISTRATION_MODE` to `closed` to stop issuing new installation tokens

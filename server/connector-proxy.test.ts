@@ -55,10 +55,10 @@ describe("connector MCP bridge", () => {
       });
     });
     const lines = start({
-      OMB_HARNESS_URL: harness,
-      OMB_COMMS_TOKEN: "bridge-secret",
-      OMB_BOT_ID: "bot-1",
-      OMB_THREAD_ID: "thread-1",
+      OC_HARNESS_URL: harness,
+      OC_COMMS_TOKEN: "bridge-secret",
+      OC_BOT_ID: "bot-1",
+      OC_THREAD_ID: "thread-1",
     });
     child!.stdin.write(`${JSON.stringify({
       jsonrpc: "2.0",
@@ -82,8 +82,8 @@ describe("connector MCP bridge", () => {
       response.end(JSON.stringify({ jsonrpc: "2.0", id: 2, result: { protocolVersion: "2025-06-18" } }));
     });
     const lines = start({
-      OMB_CONNECTOR_UPSTREAM_URL: upstream,
-      OMB_CONNECTOR_UPSTREAM_HEADERS: JSON.stringify({ authorization: "Bearer upstream-secret" }),
+      OC_CONNECTOR_UPSTREAM_URL: upstream,
+      OC_CONNECTOR_UPSTREAM_HEADERS: JSON.stringify({ authorization: "Bearer upstream-secret" }),
     });
     child!.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 2, method: "initialize", params: {} })}\n`);
     const reply = await nextJson(lines);

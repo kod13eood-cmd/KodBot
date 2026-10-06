@@ -1,8 +1,8 @@
 // Bot avatar — the Blob Studio "Cursor" mascot (CursorAvatar.tsx), wrapped
-// in the app's historical MausAvatar API so no call site changes: per-bot
+// in the app's historical CrewAvatar API so no call site changes: per-bot
 // color becomes a body gradient, the app's one-shot motion beats borrow the
 // face/state for a moment, and the eyes follow the pointer. The previous
-// hand-built Maus body + face engine (maus-engine/face/driver) is gone;
+// hand-built Crew body + face engine (crew-engine/face/driver) is gone;
 // CursorAvatar owns morphing, blinking, drift, body motion and effects.
 import {
   forwardRef,
@@ -13,7 +13,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { MAUS_COLORS, type MausColor, type MausMotion, type MausState } from "@/lib/mascot";
+import { CREW_COLORS, type CrewColor, type CrewMotion, type CrewState } from "@/lib/mascot";
 import {
   CursorAvatar,
   DEFAULT_SILHOUETTE,
@@ -33,7 +33,7 @@ const GRADIENT_SILHOUETTE: CursorSilhouette = {
 };
 
 /**
- * Legacy face-placement knobs from the Maus body era. The cursor mascot
+ * Legacy face-placement knobs from the Crew body era. The cursor mascot
  * places its own face; these remain only so the preview harness's sliders
  * keep compiling — the matching props are accepted and ignored.
  */
@@ -55,7 +55,7 @@ const POINTER_GAZE = { forward: 1, authored: 0.25 };
  */
 interface MotionFaces
   extends Partial<
-    Record<Exclude<MausMotion, "none">, { state?: MausState; blink?: boolean; spin?: number }>
+    Record<Exclude<CrewMotion, "none">, { state?: CrewState; blink?: boolean; spin?: number }>
   > {}
 
 const MOTION_FACE: MotionFaces = {
@@ -95,22 +95,22 @@ function mix(hex: string, toward: string, t: number): string {
  * shadow), with the same light/dark spread as the pack's default green
  * ["#9FE6B5", "#3FAE6E", "#1C7A4C"].
  */
-const gradientFor = (color: MausColor): [string, string, string] => {
-  const fill = MAUS_COLORS[color] ?? MAUS_COLORS.green;
+const gradientFor = (color: CrewColor): [string, string, string] => {
+  const fill = CREW_COLORS[color] ?? CREW_COLORS.green;
   return [mix(fill, "#ffffff", 0.55), fill, mix(fill, "#000000", 0.42)];
 };
 
-export type MausAvatarHandle = CursorAvatarHandle;
+export type CrewAvatarHandle = CursorAvatarHandle;
 
-export type MausAvatarProps = {
-  color: MausColor;
+export type CrewAvatarProps = {
+  color: CrewColor;
   /** Named behaviour — drives the expression pool, its cadence and blinking. */
-  state?: MausState;
+  state?: CrewState;
   /** Pin one of the 25 faces and stop the state's own drift. */
   expression?: number;
   size?: number;
   label?: string;
-  motion?: MausMotion;
+  motion?: CrewMotion;
   motionKey?: number;
   /** Head turn in degrees. */
   turn?: number;
@@ -128,14 +128,14 @@ export type MausAvatarProps = {
   trackPointer?: boolean;
   /** Run the animation. Off renders the state's resting face. */
   animated?: boolean;
-  /** Legacy Maus face-placement knobs — accepted, ignored. */
+  /** Legacy Crew face-placement knobs — accepted, ignored. */
   eyeSpacing?: number;
   faceX?: number;
   faceY?: number;
   faceScale?: number;
 };
 
-function MausAvatarComponent(
+function CrewAvatarComponent(
   {
     color,
     state = "idle",
@@ -153,8 +153,8 @@ function MausAvatarComponent(
     forward = true,
     trackPointer = true,
     animated = true,
-  }: MausAvatarProps,
-  ref: React.Ref<MausAvatarHandle>,
+  }: CrewAvatarProps,
+  ref: React.Ref<CrewAvatarHandle>,
 ) {
   const inner = useRef<CursorAvatarHandle>(null);
   useImperativeHandle(ref, () => ({
@@ -164,7 +164,7 @@ function MausAvatarComponent(
   }));
 
   // A one-shot motion borrows the state for a moment, then hands it back.
-  const [motionState, setMotionState] = useState<MausState | null>(null);
+  const [motionState, setMotionState] = useState<CrewState | null>(null);
   useEffect(() => {
     if (motion === "none" || !animated) return;
     const beat = MOTION_FACE[motion];
@@ -217,7 +217,7 @@ function MausAvatarComponent(
   );
 }
 
-export const MausAvatar = memo(forwardRef(MausAvatarComponent));
+export const CrewAvatar = memo(forwardRef(CrewAvatarComponent));
 
 export function InitialsAvatar({
   initials,

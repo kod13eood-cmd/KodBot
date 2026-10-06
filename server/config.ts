@@ -1,4 +1,4 @@
-// Config + data dirs. One file, ~/.openmausbot/config.json, env fallbacks:
+// Config + data dirs. One file, ~/.opencrew/config.json, env fallbacks:
 //   { "xai": {"key":"xai-…"}, "composio": {"apiKey":"ak_…"}, "box": {"token":"…"},
 //     "instances": { "<instanceId>": {"driver":"grok", …} } }
 import { readFileSync, mkdirSync, existsSync, renameSync } from "node:fs";
@@ -62,20 +62,24 @@ export function parseConfigPatch(value: JsonValue): ConfigPatch {
   return parsed.data;
 }
 
-// OMB_DATA_DIR isolates test/soak rigs from the user's real fleet.
-export const DATA_DIR = process.env.OMB_DATA_DIR ?? join(homedir(), ".openmausbot");
-const LEGACY_DATA_DIR = join(homedir(), ".opengrokbot");
+// OC_DATA_DIR isolates test/soak rigs from the user's real fleet.
+export const DATA_DIR = process.env.OC_DATA_DIR ?? join(homedir(), ".opencrew");
+// Older installs used these dirs; migrate the first that exists (most recent first).
+const LEGACY_DATA_DIRS = [join(homedir(), ".openmausbot"), join(homedir(), ".opengrokbot")];
 export const EVENTS_DIR = join(DATA_DIR, "events");
 export const NATIVE_DIR = join(DATA_DIR, "native");
 
 export function ensureDirs() {
-  // one-time migration from the pre-rename data dir — bots, transcripts,
+  // one-time migration from a pre-rename data dir — bots, transcripts,
   // config and keys all carry over
-  if (!existsSync(DATA_DIR) && existsSync(LEGACY_DATA_DIR)) {
-    try {
-      renameSync(LEGACY_DATA_DIR, DATA_DIR);
-    } catch {
-      /* cross-device or busy — fall through to a fresh dir */
+  if (!existsSync(DATA_DIR)) {
+    const legacy = LEGACY_DATA_DIRS.find((dir) => existsSync(dir));
+    if (legacy) {
+      try {
+        renameSync(legacy, DATA_DIR);
+      } catch {
+        /* cross-device or busy — fall through to a fresh dir */
+      }
     }
   }
   for (const dir of [DATA_DIR, EVENTS_DIR, NATIVE_DIR]) mkdirSync(dir, { recursive: true });
@@ -93,11 +97,11 @@ export function loadConfig(): AppConfig {
   if (process.env.COMPOSIO_API_KEY !== undefined) cfg.composio.apiKey = process.env.COMPOSIO_API_KEY;
   cfg.box = { token: process.env.BOX_TOKEN, ...cfg.box };
   cfg.opencodeGo = { apiKey: process.env.OPENCODE_API_KEY, ...cfg.opencodeGo };
-  cfg.tts = { key: process.env.OMB_TTS_KEY, ...cfg.tts };
+  cfg.tts = { key: process.env.OC_TTS_KEY, ...cfg.tts };
   return cfg;
 }
 
-/** Merge a partial config into ~/.openmausbot/config.json (secrets never
+/** Merge a partial config into ~/.opencrew/config.json (secrets never
  * echoed back — callers report configured-or-not booleans only). */
 export function saveConfig(patch: Partial<AppConfig>): void {
   const p = join(DATA_DIR, "config.json");
@@ -215,7 +219,7 @@ export function instanceConfigs(cfg: AppConfig): InstanceConfigMap {
     claude: { driver: "claudeAgent" },
     codex: { driver: "codex" },
     antigravity: { driver: "antigravityAgent" },
-    opencodeGo: { driver: "opencodeGo" },
+    opencode: { driver: "opencode" },
     computer: { driver: "boxAgent" },
     qwen: { driver: "qwenAgent" },
     hermes: { driver: "hermesAgent" },
@@ -240,7 +244,7 @@ export function instanceConfigs(cfg: AppConfig): InstanceConfigMap {
     const environment = { ...entry.environment };
     if (cfg.xai?.key) environment.XAI_API_KEY = cfg.xai.key;
     if (cfg.box?.token) environment.BOX_TOKEN = cfg.box.token;
-    if (entry.driver === "opencodeGo" && cfg.opencodeGo?.apiKey) {
+    if ((entry.driver === "opencode" || entry.driver === "opencodeGo") && cfg.opencodeGo?.apiKey) {
       environment.OPENCODE_API_KEY = cfg.opencodeGo.apiKey;
     }
     entry.environment = environment;

@@ -5,9 +5,9 @@ import { requestNotificationPermission, showNotification, type NotifyFrame } fro
 const frame: NotifyFrame = {
   kind: "done",
   botId: "bot-1",
-  botName: "Maus",
+  botName: "Crew",
   threadId: "thread-1",
-  title: "Maus finished",
+  title: "Crew finished",
   body: "All done",
 };
 

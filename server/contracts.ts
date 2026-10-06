@@ -152,7 +152,7 @@ export interface SendTurnInput {
      * bridge harness-controlled lets it turn connection requests into trusted
      * chat cards consistently across provider CLIs. */
     composio?: { command: string; args: string[]; env: Record<string, string> };
-    /** Cloud computer, reached through OpenMausBot's REST-to-MCP adapter. */
+    /** Cloud computer, reached through OpenCrew's REST-to-MCP adapter. */
     computer?: { kind?: "box"; boxId: string; token: string };
     /** Direct stdio connection to a Cua Driver MCP server (host or sandbox). */
     localComputer?: { command: string; args: string[]; env: Record<string, string> };
@@ -249,7 +249,18 @@ export interface EngineInstall {
 // a rejection to an unavailable shadow snapshot.
 export interface ModelCatalog {
   default: string;
-  options: Array<{ id: string; label: string; custom?: boolean; loaded?: boolean }>;
+  options: Array<{
+    id: string;
+    label: string;
+    /** Dynamically added option (local-inject / user-defined), not official. */
+    custom?: boolean;
+    /** Pinned because the host already has it in memory. */
+    loaded?: boolean;
+    /** Free / stealth model — surfaced with a badge; still needs a key. */
+    free?: boolean;
+    /** Optional provider grouping for merged catalogs (e.g. "Zen" | "Go"). */
+    group?: string;
+  }>;
 }
 
 export interface DriverCreateInput<Config> {

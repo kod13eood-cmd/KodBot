@@ -222,7 +222,7 @@ struct ChatRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            MausAvatar(color: chat.color, size: 52)
+            CrewAvatar(color: chat.color, size: 52)
 
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 8) {
@@ -263,7 +263,7 @@ struct ChatRow: View {
                         ProgressView().controlSize(.mini)
                     } else if chat.unread {
                         Circle()
-                            .fill(MausPalette.color(chat.color))
+                            .fill(CrewPalette.color(chat.color))
                             .frame(width: 9, height: 9)
                             .padding(.top, 5)
                     }
@@ -283,7 +283,7 @@ struct WaitingRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            MausAvatar(color: chat.color, size: 38)
+            CrewAvatar(color: chat.color, size: 38)
 
             VStack(alignment: .leading, spacing: 3) {
                 Label("\(chat.name) is waiting on you", systemImage: "hand.raised.fill")

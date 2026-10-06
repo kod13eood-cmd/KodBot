@@ -1,6 +1,6 @@
-appId: com.openmausbot.app
-productName: OpenMausBot
-artifactName: OpenMausBot-${version}-${arch}.${ext}
+appId: com.opencrew.app
+productName: OpenCrew
+artifactName: OpenCrew-${version}-${arch}.${ext}
 
 # In-app auto-update reads latest-mac.yml + the .zip (macOS) or latest.yml +
 # the NSIS .exe (Windows) from this PUBLIC releases repo (separate from the
@@ -12,7 +12,7 @@ artifactName: OpenMausBot-${version}-${arch}.${ext}
 publish:
   - provider: github
     owner: milind-soni
-    repo: openmausbot-releases
+    repo: opencrew-releases
 
 directories:
   buildResources: build
@@ -29,7 +29,7 @@ files:
   - "!electron/resources/speech-helper"
   - "!electron/resources/speech-helper.swift"
   - "!electron/resources/speech-helper-Info.plist"
-  - "!electron/resources/OpenMausBot Speech.app/**"
+  - "!electron/resources/OpenCrew Speech.app/**"
   - "!**/node_modules/**"
   - package.json
 
@@ -59,8 +59,8 @@ mac:
   entitlementsInherit: build/entitlements.mac.plist
   # the dictation helper is a signed background app — Windows and Linux never see it
   extraResources:
-    - from: electron/resources/OpenMausBot Speech.app
-      to: OpenMausBot Speech.app
+    - from: electron/resources/OpenCrew Speech.app
+      to: OpenCrew Speech.app
     # CUA must live outside ASAR. prepare-cua stages the signed executable and
     # a self-contained JS/native SDK bundle selected for macOS arm64.
     - from: dist-native/cua-driver
@@ -68,17 +68,17 @@ mac:
     - from: dist-native/cua-sdk
       to: cua-sdk
   extendInfo:
-    NSMicrophoneUsageDescription: OpenMausBot uses the microphone for voice dictation into the composer.
-    NSSpeechRecognitionUsageDescription: OpenMausBot transcribes your voice on-device to type messages for you.
-    NSAccessibilityUsageDescription: OpenMausBot uses Accessibility when you let a bot control this Mac.
-    NSScreenCaptureUsageDescription: OpenMausBot uses Screen Recording so bots can see this Mac before acting.
+    NSMicrophoneUsageDescription: OpenCrew uses the microphone for voice dictation into the composer.
+    NSSpeechRecognitionUsageDescription: OpenCrew transcribes your voice on-device to type messages for you.
+    NSAccessibilityUsageDescription: OpenCrew uses Accessibility when you let a bot control this Mac.
+    NSScreenCaptureUsageDescription: OpenCrew uses Screen Recording so bots can see this Mac before acting.
   # Notarization runs manually after the build (notarytool + staple),
   # mirroring the BlueyLite ship_release.sh flow.
   notarize: false
 
 dmg:
   sign: true
-  artifactName: OpenMausBot-${version}.dmg
+  artifactName: OpenCrew-${version}.dmg
 
 win:
   target:
@@ -100,11 +100,11 @@ win:
 nsis:
   oneClick: true
   perMachine: false
-  shortcutName: OpenMausBot
+  shortcutName: OpenCrew
   # Versioned, like the .dmg. The README's /latest/download/ button needs a
-  # STABLE filename, so ship a second copy named OpenMausBot-setup.exe on the
-  # release — the same trick as OpenMausBot.dmg beside OpenMausBot-${version}.dmg.
-  artifactName: OpenMausBot-${version}-setup.${ext}
+  # STABLE filename, so ship a second copy named OpenCrew-setup.exe on the
+  # release — the same trick as OpenCrew.dmg beside OpenCrew-${version}.dmg.
+  artifactName: OpenCrew-${version}-setup.${ext}
 
 linux:
   target:
@@ -116,15 +116,15 @@ linux:
   # lone 1024px PNG is not indexed by GNOME's hicolor theme on Ubuntu 24.04.
   icon: build/icon.svg
   category: Utility
-  executableName: openmausbot
+  executableName: opencrew
   synopsis: Your own team of AI bots, in a chat app
   description: A local-first chat app for running a team of AI agents.
   maintainer: Milind Soni <46266943+milind-soni@users.noreply.github.com>
-  vendor: OpenMausBot
+  vendor: OpenCrew
   syncDesktopName: true
   desktop:
     entry:
-      Name: OpenMausBot
+      Name: OpenCrew
       Comment: Your own team of AI bots, in a chat app
       Keywords: AI;Agents;Chat;Productivity;
 

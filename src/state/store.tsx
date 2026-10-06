@@ -14,14 +14,14 @@ import {
   type ReactNode,
 } from "react";
 import type { EffortLevel } from "../../server/contracts.ts";
-import type { MausColor, MausMotion } from "@/lib/mascot";
+import type { CrewColor, CrewMotion } from "@/lib/mascot";
 import type { Routine, RoutineInput, RoutineRun } from "@/lib/routines";
 import type { WebhookAttempt, WebhookIngressStatus, WebhookTrigger } from "@/lib/webhooks";
 import { currentCall } from "@/lib/call";
 import { showNotification } from "@/lib/notify";
 import { speaker } from "@/lib/tts";
 
-export type { MausColor } from "@/lib/mascot";
+export type { CrewColor } from "@/lib/mascot";
 
 export interface OptionCardData {
   title: string;
@@ -69,11 +69,11 @@ export interface Message {
    * share a parentId with the version they replace — that's a fork. */
   parentId?: string | null;
   /** rooms: which member said this (sender attribution). */
-  from?: { botId: string; name: string; color: MausColor };
+  from?: { botId: string; name: string; color: CrewColor };
   /** emoji reactions; by = "user" or a member botId. */
   reactions?: Array<{ emoji: string; by: string }>;
   /** comm chips: "Messaged @X" linking to the bot⇄bot channel. */
-  comm?: { groupId: string; withBotId: string; withName: string; withColor: MausColor };
+  comm?: { groupId: string; withBotId: string; withName: string; withColor: CrewColor };
   /** sent while the bot was mid-turn; auto-sends when the turn settles.
    * Rendered only while the bot is busy, so a flag stranded by a server
    * restart never shows a promise nothing will keep. */
@@ -144,7 +144,7 @@ export interface Bot {
   title: string;
   description: string;
   notifications: boolean;
-  color: MausColor;
+  color: CrewColor;
   mascotExpression?: string | null;
   unread: boolean;
   busy?: boolean;
@@ -242,7 +242,10 @@ export interface InstanceInfo {
     /** a reported cost on a subscription is notional; the UI says so */
     billing?: "metered" | "subscription";
   };
-  models: { default: string; options: Array<{ id: string; label: string; custom?: boolean; loaded?: boolean }> };
+  models: {
+    default: string;
+    options: Array<{ id: string; label: string; custom?: boolean; loaded?: boolean; free?: boolean; group?: string }>;
+  };
   capabilities?: {
     computerMcp?: boolean;
     agentsMcp?: boolean;
@@ -302,7 +305,7 @@ export interface AppState {
   mascotMotion: {
     botId: string;
     nonce: number;
-    kind: Exclude<MausMotion, "none">;
+    kind: Exclude<CrewMotion, "none">;
   } | null;
 }
 
@@ -416,7 +419,7 @@ function updateBot(state: AppState, botId: string, fn: (b: Bot) => Bot): AppStat
 function withMascotMotion(
   state: AppState,
   botId: string,
-  kind: Exclude<MausMotion, "none">,
+  kind: Exclude<CrewMotion, "none">,
 ): AppState {
   return {
     ...state,

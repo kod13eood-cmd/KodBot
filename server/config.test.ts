@@ -101,18 +101,25 @@ describe("Instance CLI override", () => {
   });
 });
 
-describe("OpenCode Go configuration", () => {
-  it("injects the key only into OpenCode Go instances", () => {
+describe("OpenCode configuration", () => {
+  it("injects the key into both the unified and Go-only OpenCode instances", () => {
     const cfg: AppConfig = {
       opencodeGo: { apiKey: "secret-value" },
       instances: {
-        opencode: { driver: "opencodeGo" },
+        opencode: { driver: "opencode" },
+        opencodeGo: { driver: "opencodeGo" },
         grok: { driver: "grokAgent" },
       },
     };
 
     const instances = instanceConfigs(cfg);
     expect(instances.opencode.environment).toEqual({ OPENCODE_API_KEY: "secret-value" });
+    expect(instances.opencodeGo.environment).toEqual({ OPENCODE_API_KEY: "secret-value" });
     expect(instances.grok.environment).toEqual({});
+  });
+
+  it("ships the unified OpenCode engine in the default fleet", () => {
+    const map = instanceConfigs({});
+    expect(map.opencode).toEqual({ driver: "opencode", environment: {} });
   });
 });

@@ -12,7 +12,7 @@
 //
 // Everything is disposable. A harness is started against a temporary HOME
 // with a fabricated profile, so nothing here reads or writes your real
-// ~/.openmausbot and no real name, key or token can end up in a fixture. The
+// ~/.opencrew and no real name, key or token can end up in a fixture. The
 // pairing token is redacted on the way out regardless.
 //
 // One fixture is not captured: options-card.json needs a bot to actually ask
@@ -129,17 +129,17 @@ async function captureFrames(wanted, during) {
 async function main() {
   mkdirSync(OUT, { recursive: true });
   home = mkdtempSync(join(tmpdir(), "companion-fixtures-"));
-  mkdirSync(join(home, ".openmausbot"), { recursive: true });
-  writeFileSync(join(home, ".openmausbot", "config.json"), JSON.stringify({ profile: PROFILE }));
+  mkdirSync(join(home, ".opencrew"), { recursive: true });
+  writeFileSync(join(home, ".opencrew", "config.json"), JSON.stringify({ profile: PROFILE }));
 
   console.log(`harness on ${HARNESS_PORT}, companion on ${COMPANION_PORT}`);
   const harness = start("harness", [join(ROOT, "server", "index.ts")], {
     HOME: home,
     USERPROFILE: home,
-    OMB_PORT: String(HARNESS_PORT),
+    OC_PORT: String(HARNESS_PORT),
     // the receiver would otherwise take the port above, which is nothing
     // to do with this but makes the log noisy
-    OMB_WEBHOOK_PORT: String(base + 1),
+    OC_WEBHOOK_PORT: String(base + 1),
   });
   await waitFor(`${HARNESS}/api/health`, "harness", harness);
 
@@ -155,11 +155,11 @@ async function main() {
   const sidecar = start("companion", [join(ROOT, "companion", "src", "index.ts")], {
     HOME: home,
     USERPROFILE: home,
-    OMB_PORT: String(HARNESS_PORT),
-    OMB_WEBHOOK_PORT: String(base + 1),
-    OMB_COMPANION_PORT: String(COMPANION_PORT),
-    OMB_CONTROL_PORT: String(CONTROL_PORT),
-    OMB_COMPANION_DIR: join(home, "companion"),
+    OC_PORT: String(HARNESS_PORT),
+    OC_WEBHOOK_PORT: String(base + 1),
+    OC_COMPANION_PORT: String(COMPANION_PORT),
+    OC_CONTROL_PORT: String(CONTROL_PORT),
+    OC_COMPANION_DIR: join(home, "companion"),
   });
   await waitFor(`${CONTROL}/state`, "companion", sidecar);
 

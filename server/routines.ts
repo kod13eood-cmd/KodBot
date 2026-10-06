@@ -9,10 +9,10 @@ export type RoutineSchedule =
   | { type: "once"; at: number }
   | { type: "daily"; time: string; weekdays: number[] };
 
-/** `cloud` runs the agent itself inside the bot's Box VM. `maus` keeps
- * using the provider selected on the MAUS and only borrows its configured
+/** `cloud` runs the agent itself inside the bot's Box VM. `crew` keeps
+ * using the provider selected on the CREW and only borrows its configured
  * computer tools, if any. */
-export type RoutineRunOn = "maus" | "cloud";
+export type RoutineRunOn = "crew" | "cloud";
 
 export type RoutineRunTrigger = "schedule" | "manual" | "webhook";
 
@@ -146,8 +146,8 @@ function sanitizeInput(input: RoutineInput): Omit<Routine, "id" | "createdAt" | 
   if (!name) throw new Error("Give the routine a name");
   if (!prompt) throw new Error("Tell the bot what to do");
   if (!botId) throw new Error("Choose a bot");
-  const runOn = input.runOn ?? "maus";
-  if (runOn !== "maus" && runOn !== "cloud") throw new Error("Choose where this routine runs");
+  const runOn = input.runOn ?? "crew";
+  if (runOn !== "crew" && runOn !== "cloud") throw new Error("Choose where this routine runs");
   return {
     name,
     prompt,
@@ -175,10 +175,10 @@ export class RoutineManager {
     try {
       const disk = JSON.parse(readFileSync(this.file, "utf8")) as Partial<RoutineFile>;
       this.routines = Array.isArray(disk.routines)
-        ? disk.routines.map((routine) => ({ ...routine, runOn: routine.runOn ?? "maus" }))
+        ? disk.routines.map((routine) => ({ ...routine, runOn: routine.runOn ?? "crew" }))
         : [];
       this.runs = Array.isArray(disk.runs)
-        ? disk.runs.map((run) => ({ ...run, runOn: run.runOn ?? "maus" }))
+        ? disk.runs.map((run) => ({ ...run, runOn: run.runOn ?? "crew" }))
         : [];
     } catch {
       this.routines = [];
@@ -189,7 +189,7 @@ export class RoutineManager {
     for (const run of this.runs) {
       if (run.status === "running" || run.status === "waiting") {
         run.status = "failed";
-        run.error = "OpenMausBot restarted while this routine was running";
+        run.error = "OpenCrew restarted while this routine was running";
         run.finishedAt = this.now();
         recovered = true;
       }
@@ -301,7 +301,7 @@ export class RoutineManager {
       run.finishedAt = this.now();
       run.error = "The assigned bot was deleted";
       this.emitRun(run);
-      if (run.threadId) void this.options.interruptTurn?.(run.botId, run.threadId, run.runOn ?? "maus").catch(() => {});
+      if (run.threadId) void this.options.interruptTurn?.(run.botId, run.threadId, run.runOn ?? "crew").catch(() => {});
       changed = true;
     }
     if (changed) this.save();
@@ -331,7 +331,7 @@ export class RoutineManager {
     receivedAt: number;
   }): RoutineRun {
     if (this.options.botState(input.botId) === "missing") {
-      throw Object.assign(new Error("The assigned MAUS no longer exists"), { status: 410 });
+      throw Object.assign(new Error("The assigned CREW no longer exists"), { status: 410 });
     }
     const run: RoutineRun = {
       id: randomUUID(),
@@ -382,7 +382,7 @@ export class RoutineManager {
     run.finishedAt = this.now();
     this.save();
     this.emitRun(run);
-    if (run.threadId) await this.options.interruptTurn?.(run.botId, run.threadId, run.runOn ?? "maus").catch(() => {});
+    if (run.threadId) await this.options.interruptTurn?.(run.botId, run.threadId, run.runOn ?? "crew").catch(() => {});
     queueMicrotask(() => void this.tick());
     return { ...run };
   }
@@ -478,7 +478,7 @@ export class RoutineManager {
             run.botId,
             task.threadId,
             prompt,
-            run.runOn ?? "maus",
+            run.runOn ?? "crew",
             triggerSource,
             (message) => this.failThread(task.threadId, message),
           );
@@ -540,7 +540,7 @@ export class RoutineManager {
       prompt: routine.prompt,
       durationMinutes: routine.durationMinutes,
       botId: routine.botId,
-      runOn: routine.runOn ?? "maus",
+      runOn: routine.runOn ?? "crew",
       scheduledFor,
       status: "queued",
       manual,

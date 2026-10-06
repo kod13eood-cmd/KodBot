@@ -16,8 +16,8 @@
 // animation engine is 1,600 lines and would show up as nothing at this size.
 import SwiftUI
 
-enum MausPalette {
-    /// src/lib/mascot.ts — MAUS_COLORS
+enum CrewPalette {
+    /// src/lib/mascot.ts — CREW_COLORS
     private static let hex: [String: String] = [
         "green": "#009957",
         "blue": "#377FE6",
@@ -39,7 +39,7 @@ enum MausPalette {
 
 /// The mascot silhouette, as an SVG path. Absolute `M`, `C` and `Z` only —
 /// which is what makes the parser below twenty lines rather than a library.
-enum MausSilhouette {
+enum CrewSilhouette {
     static let path =
         """
         M0 0 C1.12815992 0.94880479 2.25705591 1.89673511 3.38671875 2.84375 C5.57657936 4.68528228
@@ -181,16 +181,16 @@ enum MausSilhouette {
 }
 
 /// A bot, at whatever size the row needs.
-struct MausAvatar: View {
+struct CrewAvatar: View {
     let color: String
     var size: CGFloat = 52
 
     var body: some View {
         Canvas { context, canvasSize in
             let rect = CGRect(origin: .zero, size: canvasSize)
-            let body = MausSilhouette.path(in: rect)
+            let body = CrewSilhouette.path(in: rect)
             context.fill(body, with: .linearGradient(
-                Gradient(stops: MausPalette.gradientStops(color)),
+                Gradient(stops: CrewPalette.gradientStops(color)),
                 startPoint: CGPoint(x: rect.maxX, y: rect.minY),
                 endPoint: CGPoint(x: rect.minX, y: rect.maxY)
             ))
@@ -231,7 +231,7 @@ struct ProfileAvatar: View {
 
     var body: some View {
         Circle()
-            .fill(MausPalette.color("green"))
+            .fill(CrewPalette.color("green"))
             .frame(width: size, height: size)
             .overlay {
                 Text(initial)
@@ -245,7 +245,7 @@ struct ProfileAvatar: View {
     }
 }
 
-extension MausPalette {
+extension CrewPalette {
     /// The gradient as raw stops, for `Canvas`, which cannot take a
     /// `LinearGradient` directly.
     static func gradientStops(_ name: String) -> [Gradient.Stop] {

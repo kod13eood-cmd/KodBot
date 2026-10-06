@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const executable = path.resolve(
-  process.env.OMB_SMOKE_EXECUTABLE ?? path.join(root, "release", "linux-unpacked", "openmausbot"),
+  process.env.OC_SMOKE_EXECUTABLE ?? path.join(root, "release", "linux-unpacked", "opencrew"),
 );
 if (!existsSync(executable)) throw new Error(`[smoke-linux-package] missing executable: ${executable}`);
 
@@ -15,10 +15,10 @@ const home = path.join(sandbox, "home");
 const xdgConfig = path.join(sandbox, "config");
 const marker = path.join(sandbox, "cua-was-executed");
 const sentinel = path.join(sandbox, "cua-driver");
-mkdirSync(path.join(home, ".openmausbot"), { recursive: true });
+mkdirSync(path.join(home, ".opencrew"), { recursive: true });
 mkdirSync(xdgConfig, { recursive: true });
 writeFileSync(
-  path.join(home, ".openmausbot", "config.json"),
+  path.join(home, ".opencrew", "config.json"),
   JSON.stringify({ instances: { ghost: { driver: "not-a-real-driver", displayName: "Ghost" } } }),
 );
 writeFileSync(sentinel, `#!/bin/sh\ntouch ${JSON.stringify(marker)}\nexit 99\n`);
@@ -34,7 +34,7 @@ const child = spawn(executable, [], {
     HOME: home,
     XDG_CONFIG_HOME: xdgConfig,
     CUA_DRIVER_PATH: sentinel,
-    OMB_SMOKE_TEST: "1",
+    OC_SMOKE_TEST: "1",
   },
   stdio: ["ignore", "pipe", "pipe"],
 });
@@ -85,10 +85,10 @@ async function stopProcess() {
 try {
   const result = await until(async () => smokeResult, "the packaged renderer smoke result");
   const { capabilities, health, location, title } = result;
-  if (health?.app !== "openmausbot" || health.static !== true) {
+  if (health?.app !== "opencrew" || health.static !== true) {
     throw new Error(`unexpected embedded health response: ${JSON.stringify(health)}`);
   }
-  if (!String(title).includes("OpenMausBot")) throw new Error(`unexpected renderer title: ${title}`);
+  if (!String(title).includes("OpenCrew")) throw new Error(`unexpected renderer title: ${title}`);
   if (capabilities.host.platform !== "linux") throw new Error("renderer did not report Linux");
   if (capabilities.dictation.available) throw new Error("dictation must be unavailable on Linux");
   if (capabilities.localComputer.available) throw new Error("local control must be unavailable on Linux");
@@ -102,6 +102,6 @@ try {
   console.log("[smoke-linux-package] OK: renderer, capabilities, embedded harness, and shutdown");
 } finally {
   await stopProcess();
-  if (process.env.OMB_KEEP_SMOKE_DIR !== "1") rmSync(sandbox, { recursive: true, force: true });
+  if (process.env.OC_KEEP_SMOKE_DIR !== "1") rmSync(sandbox, { recursive: true, force: true });
   else console.log(`[smoke-linux-package] kept ${sandbox}`);
 }

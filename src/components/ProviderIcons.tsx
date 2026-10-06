@@ -123,6 +123,7 @@ export function ProviderMark({ driverKind, size, className }: IconProps & { driv
       return <DroidMark size={size} className={className} />;
     case "antigravityAgent":
       return <AntigravityMark size={size} className={className} />;
+    case "opencode":
     case "opencodeGo":
       return <OpenCodeMark size={size} className={className} />;
     case "qwenAgent":

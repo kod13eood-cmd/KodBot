@@ -1,12 +1,12 @@
 import { ChevronDown, ChevronLeft, Crown, FolderOpen, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api, useStore, type Bot } from "@/state/store";
-import { MausAvatar } from "./Avatar";
+import { CrewAvatar } from "./Avatar";
 import {
   PICKABLE_STATES,
   stateForBot,
-  MAUS_COLORS,
-  MAUS_COLOR_NAMES,
+  CREW_COLORS,
+  CREW_COLOR_NAMES,
 } from "@/lib/mascot";
 import { ModelPicker } from "./ModelPicker";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
@@ -385,7 +385,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
 
       <div className="flex-1 overflow-y-auto px-5 pb-5">
         <div className="flex justify-center py-5">
-          <MausAvatar
+          <CrewAvatar
             color={bot.color}
             state={activeState}
             size={112}
@@ -424,7 +424,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
                     title={expression}
                     aria-label={`Use ${expression} expression`}
                   >
-                    <MausAvatar color={bot.color} state={expression} size={42} animated={false} />
+                    <CrewAvatar color={bot.color} state={expression} size={42} animated={false} />
                   </button>
                 ))}
               </div>
@@ -433,7 +433,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
                 Color
               </div>
               <div className="flex flex-wrap gap-2.5">
-                {MAUS_COLOR_NAMES.map((color) => (
+                {CREW_COLOR_NAMES.map((color) => (
                   <button
                     key={color}
                     onClick={() => patch({ color })}
@@ -441,7 +441,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
                       "size-8 rounded-full border-2 border-transparent transition-transform hover:scale-110",
                       bot.color === color && "ring-2 ring-accent-border ring-offset-2 ring-offset-card",
                     )}
-                    style={{ backgroundColor: MAUS_COLORS[color] }}
+                    style={{ backgroundColor: CREW_COLORS[color] }}
                     title={color}
                     aria-label={`Use ${color} mascot color`}
                   />

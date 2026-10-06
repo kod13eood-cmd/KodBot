@@ -136,18 +136,18 @@ describe("CodexDriver turns (fake app-server)", () => {
           command: process.execPath,
           args: ["/tmp/connector-proxy.js"],
           env: {
-            OMB_CONNECTOR_UPSTREAM_URL: "http://127.0.0.1:8799/api/internal/connectors/mcp",
-            OMB_COMMS_TOKEN: "per-boot-token",
+            OC_CONNECTOR_UPSTREAM_URL: "http://127.0.0.1:8799/api/internal/connectors/mcp",
+            OC_COMMS_TOKEN: "per-boot-token",
           },
         },
       },
     });
     await recorder.until((event) => event.type === "turn.completed");
     const seen = JSON.parse(readFileSync(dump, "utf8"));
-    expect(seen.argv.join(" ")).toContain("mcp_servers.openmausbot_connectors.command");
-    expect(seen.argv.join(" ")).toContain("OMB_COMMS_TOKEN");
+    expect(seen.argv.join(" ")).toContain("mcp_servers.opencrew_connectors.command");
+    expect(seen.argv.join(" ")).toContain("OC_COMMS_TOKEN");
     expect(seen.argv.join(" ")).not.toContain("per-boot-token");
-    expect(seen.env.OMB_COMMS_TOKEN).toBe("per-boot-token");
+    expect(seen.env.OC_COMMS_TOKEN).toBe("per-boot-token");
   });
 
   it("sends the local provider when the picker id is custom-encoded", async () => {

@@ -5,7 +5,7 @@ import { teamImportPreview } from "./team-import";
 describe("team import preview", () => {
   it.each([1, 2])("previews version %s team files", (version) => {
     const preview = teamImportPreview({
-      format: "openmaus.team",
+      format: "opencrew.team",
       version,
       team: {
         name: " Engineering ",
@@ -25,9 +25,9 @@ describe("team import preview", () => {
   });
 
   it("rejects unsupported and empty files", () => {
-    expect(() => teamImportPreview({ format: "openmaus.team", version: 3, team: {} })).toThrow("not supported");
+    expect(() => teamImportPreview({ format: "opencrew.team", version: 3, team: {} })).toThrow("not supported");
     expect(() =>
-      teamImportPreview({ format: "openmaus.team", version: 2, team: { name: "Empty", members: [] } }),
+      teamImportPreview({ format: "opencrew.team", version: 2, team: { name: "Empty", members: [] } }),
     ).toThrow("no members");
   });
 });

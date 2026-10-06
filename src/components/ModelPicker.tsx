@@ -46,6 +46,12 @@ function ModelRow({
     >
       <span className="flex min-w-0 items-center gap-2">
         <span className="truncate">{option.label}</span>
+        {option.group && (
+          <span className="shrink-0 rounded bg-inset px-1.5 py-px text-[10px] text-ink-secondary">{option.group}</span>
+        )}
+        {option.free && (
+          <span className="shrink-0 rounded bg-success/10 px-1.5 py-px text-[10px] text-success">Free</span>
+        )}
         {option.id === defaultId && (
           <span className="shrink-0 rounded bg-inset px-1.5 py-px text-[10px] text-ink-secondary">Default</span>
         )}

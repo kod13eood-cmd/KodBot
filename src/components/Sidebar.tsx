@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { api, useStore, formatTime, visibleMessages, type Bot, type Group } from "@/state/store";
 
-import { MausAvatar, InitialsAvatar } from "./Avatar";
+import { CrewAvatar, InitialsAvatar } from "./Avatar";
 import { stateForBot } from "@/lib/mascot";
 import { useUpdaterState } from "@/lib/updater";
 import { cn } from "@/lib/cn";
@@ -158,13 +158,13 @@ function groupPreview(group: Group, bots: Bot[]): string {
   return last.from ? `${last.from.name}: ${text}` : text;
 }
 
-/** Room avatar: 2–3 overlapping mauses in the same 56px slot a bot gets. */
-function StackedMauses({ members }: { members: Bot[] }) {
+/** Room avatar: 2–3 overlapping crews in the same 56px slot a bot gets. */
+function StackedCrews({ members }: { members: Bot[] }) {
   if (members.length <= 1) {
     const b = members[0];
     return (
       <div className="flex size-14 shrink-0 items-center justify-center">
-        {b ? <MausAvatar color={b.color} state="happy" size={56} /> : <Users size={24} className="text-ink-secondary" />}
+        {b ? <CrewAvatar color={b.color} state="happy" size={56} /> : <Users size={24} className="text-ink-secondary" />}
       </div>
     );
   }
@@ -174,7 +174,7 @@ function StackedMauses({ members }: { members: Bot[] }) {
     <div className="flex size-14 shrink-0 items-center justify-center">
       <div className="flex items-center -space-x-3">
         {shown.map((b) => (
-          <MausAvatar key={b.id} color={b.color} state="happy" size={30} />
+          <CrewAvatar key={b.id} color={b.color} state="happy" size={30} />
         ))}
         {extra > 0 && (
           <span className="z-10 flex size-[22px] items-center justify-center rounded-full border border-hairline/40 bg-raised text-[10px] font-medium text-ink-secondary">
@@ -205,7 +205,7 @@ function GroupListItem({ group, onMenu }: { group: Group; onMenu: (menu: { group
         selected ? "bg-raised" : "hover:bg-raised/50",
       )}
     >
-      <StackedMauses members={members} />
+      <StackedCrews members={members} />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
           <span className="truncate text-[15px] font-semibold text-ink">{group.name}</span>
@@ -326,7 +326,7 @@ function NewRoomPanel({ onClose }: { onClose: () => void }) {
               onClick={() => toggle(b.id)}
               className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-raised/50"
             >
-              <MausAvatar color={b.color} state="happy" size={28} />
+              <CrewAvatar color={b.color} state="happy" size={28} />
               <span className="min-w-0 flex-1 truncate text-[14px] text-ink">{b.name}</span>
               <span
                 className={cn(
@@ -506,7 +506,7 @@ function BotListItem({
   );
   const body = (
     <>
-      <MausAvatar
+      <CrewAvatar
         color={bot.color}
         state={stateForBot({ ...bot, messages: visible })}
         size={56}
@@ -711,7 +711,7 @@ function ArchivedBotsPanel({
           <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
             {bots.map((bot) => (
               <div key={bot.id} className="flex min-h-[82px] items-center gap-3 border-b border-hairline/35 px-1 py-3">
-                <MausAvatar color={bot.color} state="happy" size={42} />
+                <CrewAvatar color={bot.color} state="happy" size={42} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[14px] font-medium text-ink">{bot.name}</div>
                   <div className="mt-0.5 truncate text-[12.5px] text-ink-secondary">{bot.title || "Bot"}</div>

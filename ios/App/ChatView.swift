@@ -165,7 +165,7 @@ struct ChatView: View {
             }
             ToolbarItem(placement: .principal) {
                 HStack(spacing: 8) {
-                    MausAvatar(color: current.color, size: 26)
+                    CrewAvatar(color: current.color, size: 26)
                     Text(current.name)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(Color.primary)
@@ -438,7 +438,7 @@ struct TextBubble: View {
                 if let from = message.from {
                     Text(from.name)
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(MausPalette.color(from.color))
+                        .foregroundStyle(CrewPalette.color(from.color))
                 }
                 // Bots get markdown, you do not — the same split the desktop
                 // makes. Markdown you did not intend is worse than markdown

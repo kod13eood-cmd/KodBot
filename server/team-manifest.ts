@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 import { schemaIssue, type JsonValue } from "./schema.ts";
-import type { MausColor } from "./store.ts";
+import type { CrewColor } from "./store.ts";
 
-export const TEAM_MANIFEST_FORMAT = "openmaus.team" as const;
+export const TEAM_MANIFEST_FORMAT = "opencrew.team" as const;
+/** Pre-rename format id, still accepted when importing old team files. */
+export const LEGACY_TEAM_MANIFEST_FORMAT = "openmaus.team" as const;
 export const TEAM_MANIFEST_VERSION = 2 as const;
 export const LEGACY_TEAM_MANIFEST_VERSION = 1 as const;
 export const MAX_TEAM_MEMBERS = 200;
@@ -19,7 +21,7 @@ const COLORS = [
   "yellow",
   "teal",
   "coral",
-] as const satisfies readonly MausColor[];
+] as const satisfies readonly CrewColor[];
 
 const requiredText = (max: number) =>
   z.string({ error: "must be text" }).trim().min(1, { message: "is required" }).max(max, { message: "is too long" });
@@ -57,7 +59,7 @@ const membersSchema = z
 
 const manifestSchema = z.discriminatedUnion("version", [
   z.object({
-    format: z.literal(TEAM_MANIFEST_FORMAT, { error: "This is not an OpenMaus team file" }),
+    format: z.literal([TEAM_MANIFEST_FORMAT, LEGACY_TEAM_MANIFEST_FORMAT], { error: "This is not an OpenCrew team file" }),
     version: z.literal(LEGACY_TEAM_MANIFEST_VERSION),
     team: z.object({
       name: requiredText(100),
@@ -71,7 +73,7 @@ const manifestSchema = z.discriminatedUnion("version", [
     }),
   }),
   z.object({
-    format: z.literal(TEAM_MANIFEST_FORMAT, { error: "This is not an OpenMaus team file" }),
+    format: z.literal([TEAM_MANIFEST_FORMAT, LEGACY_TEAM_MANIFEST_FORMAT], { error: "This is not an OpenCrew team file" }),
     version: z.literal(TEAM_MANIFEST_VERSION),
     team: z.object({
       name: requiredText(100),
@@ -87,7 +89,7 @@ export interface TeamManifestMember {
   title: string;
   description: string;
   appearance: {
-    color: MausColor;
+    color: CrewColor;
     mascotExpression?: string;
   };
 }
@@ -132,7 +134,7 @@ interface ExportableBot {
   name: string;
   title: string;
   description: string;
-  color: MausColor;
+  color: CrewColor;
   mascotExpression?: string | null;
 }
 

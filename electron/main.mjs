@@ -20,7 +20,19 @@ const APP_ICON = path.join(__dirname, "resources/app-icon.png");
 
 // GNOME groups the window with its installed desktop entry only when both
 // identities match. This must run before Electron becomes ready.
-if (process.platform === "linux") app.setDesktopName("com.openmausbot.app.desktop");
+if (process.platform === "linux") app.setDesktopName("com.opencrew.app.desktop");
+
+// Migrate Electron's per-app data dir from the pre-rename name so existing
+// installs keep their window state and the secure credential store.
+try {
+  const currentUserData = app.getPath("userData");
+  const legacyUserData = path.join(path.dirname(currentUserData), "openmausbot");
+  if (!fs.existsSync(currentUserData) && fs.existsSync(legacyUserData)) {
+    fs.renameSync(legacyUserData, currentUserData);
+  }
+} catch {
+  /* best-effort: a failed migration just means a fresh per-app dir */
+}
 
 // Packaged: the harness server ships in Resources (compiled JS, zero deps)
 // and runs on Electron's own Node via utilityProcess. It serves the built
@@ -57,7 +69,7 @@ async function saveSecureCredentials(credentials) {
 }
 
 async function secureComposioConfig() {
-  const dataDir = process.env.OMB_DATA_DIR || path.join(app.getPath("home"), ".openmausbot");
+  const dataDir = process.env.OC_DATA_DIR || path.join(app.getPath("home"), ".opencrew");
   const configPath = path.join(dataDir, "config.json");
   try {
     const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
@@ -94,7 +106,7 @@ async function secureComposioConfig() {
 }
 
 function composioBrokerUrl() {
-  const configured = process.env.OMB_COMPOSIO_BROKER_URL?.trim();
+  const configured = process.env.OC_COMPOSIO_BROKER_URL?.trim();
   return configured || (app.isPackaged ? DEFAULT_COMPOSIO_BROKER_URL : "");
 }
 
@@ -142,8 +154,8 @@ async function ensureManagedComposioCredentials() {
 }
 
 // The packaged app has no terminal: everything about the server child's life
-// goes to server.log in the OS log dir (~/Library/Logs/OpenMausBot on macOS,
-// Console.app-visible; %APPDATA%\OpenMausBot\logs on Windows), which is also
+// goes to server.log in the OS log dir (~/Library/Logs/OpenCrew on macOS,
+// Console.app-visible; %APPDATA%\OpenCrew\logs on Windows), which is also
 // why stdio is piped, not inherited — under a Finder/Explorer launch the
 // parent's stdio leads nowhere and a failed boot is otherwise undiagnosable.
 const LOG_DIR = app.getPath("logs");
@@ -177,16 +189,16 @@ async function startServerOn(port) {
   const proc = utilityProcess.fork(entry, [], {
     env: {
       ...process.env,
-      OMB_STATIC_DIR: path.join(process.resourcesPath, "ui"),
-      OMB_PORT: String(port),
-      OMB_USER_DATA: app.getPath("userData"),
+      OC_STATIC_DIR: path.join(process.resourcesPath, "ui"),
+      OC_PORT: String(port),
+      OC_USER_DATA: app.getPath("userData"),
       ...(secureCredentials.composioApiKey
         ? { COMPOSIO_API_KEY: secureCredentials.composioApiKey }
         : {}),
       ...(composioBrokerUrl() && secureCredentials.composioBrokerToken
         ? {
-            OMB_COMPOSIO_BROKER_URL: composioBrokerUrl(),
-            OMB_COMPOSIO_BROKER_TOKEN: secureCredentials.composioBrokerToken,
+            OC_COMPOSIO_BROKER_URL: composioBrokerUrl(),
+            OC_COMPOSIO_BROKER_TOKEN: secureCredentials.composioBrokerToken,
           }
         : {}),
     },
@@ -210,7 +222,7 @@ async function startServerOn(port) {
       const res = await fetch(`http://127.0.0.1:${port}/api/health`);
       if (res.ok) {
         const body = await res.json().catch(() => null);
-        if (body?.app === "openmausbot" && body.pid === proc.pid && body.static) return proc;
+        if (body?.app === "opencrew" && body.pid === proc.pid && body.static) return proc;
         break; // someone else owns this port — try the next one
       }
     } catch {
@@ -244,7 +256,7 @@ async function startServerPackaged() {
 const ERROR_PAGE =
   "data:text/html;charset=utf-8," +
   encodeURIComponent(
-    `<body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#070707;color:#fcfcfc;font:15px -apple-system,system-ui"><div style="text-align:center;max-width:360px"><div style="font-size:40px">🐭</div><h2 style="font-weight:600;margin:12px 0 6px">Couldn't start the bot server</h2><p style="color:#fcfcfc99;line-height:1.5">Something else is using its ports. Quit and reopen OpenMausBot — if it keeps happening, restart your computer.</p></div></body>`,
+    `<body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#070707;color:#fcfcfc;font:15px -apple-system,system-ui"><div style="text-align:center;max-width:360px"><div style="font-size:40px">🐭</div><h2 style="font-weight:600;margin:12px 0 6px">Couldn't start the bot server</h2><p style="color:#fcfcfc99;line-height:1.5">Something else is using its ports. Quit and reopen OpenCrew — if it keeps happening, restart your computer.</p></div></body>`,
   );
 
 let cuaReady = Promise.resolve({ mode: "unavailable", reason: "not-started" });
@@ -287,7 +299,7 @@ function createWindow() {
   // Packaged CI smoke hook. It validates the real renderer/preload bridge and
   // same-origin embedded server, then follows the normal window-close path.
   // No debugging port or sandbox override is needed.
-  if (process.env.OMB_SMOKE_TEST === "1") {
+  if (process.env.OC_SMOKE_TEST === "1") {
     win.webContents.once("did-finish-load", async () => {
       try {
         const result = await win.webContents.executeJavaScript(`

@@ -175,9 +175,9 @@ type AskBehavior = "allow" | "deny" | "answer";
 type AskResolutionSource = "user" | "timeout" | "system";
 
 const DENY_TIMEOUT_NOTE =
-  "OpenMausBot: nobody answered this permission request in time. Skip this action and finish what you can without it.";
-const QUESTION_TIMEOUT_NOTE = "OpenMausBot: nobody answered in time. Use your best judgment and continue.";
-const DUPLICATE_ASK_ID_NOTE = "OpenMausBot: duplicate ask id — skipping this request.";
+  "OpenCrew: nobody answered this permission request in time. Skip this action and finish what you can without it.";
+const QUESTION_TIMEOUT_NOTE = "OpenCrew: nobody answered in time. Use your best judgment and continue.";
+const DUPLICATE_ASK_ID_NOTE = "OpenCrew: duplicate ask id — skipping this request.";
 
 /** One human-readable line for an ask — what the card subtitle shows. */
 function askSummary(ask: Ask): string {
@@ -281,8 +281,8 @@ function createPermissionBroker(opts: {
     },
     close() {
       for (const p of [...pending.values()]) {
-        if (p.ask.kind === "question") p.finish("answer", "OpenMausBot: the turn is ending — wrap up.", "system");
-        else p.finish("deny", "OpenMausBot: the turn ended", "system");
+        if (p.ask.kind === "question") p.finish("answer", "OpenCrew: the turn is ending — wrap up.", "system");
+        else p.finish("deny", "OpenCrew: the turn ended", "system");
       }
       try {
         server.close();

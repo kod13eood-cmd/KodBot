@@ -11,7 +11,7 @@ dist-server
 .DS_Store
 *.tsbuildinfo
 electron/resources/speech-helper
-electron/resources/OpenMausBot Speech.app
+electron/resources/OpenCrew Speech.app
 release
 .omb-scratch
 .wrangler/
