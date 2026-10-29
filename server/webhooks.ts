@@ -287,7 +287,7 @@ function serializePayload(payload: JsonValue): string {
     }
   }
   if (text.length <= MAX_EVENT_CHARS) return text;
-  return `${text.slice(0, MAX_EVENT_CHARS)}\n\n[Payload truncated by OpenCrew]`;
+  return `${text.slice(0, MAX_EVENT_CHARS)}\n\n[Payload truncated by KodBot]`;
 }
 
 function previewPayload(payload: JsonValue): string {
@@ -473,7 +473,7 @@ export class WebhookManager {
       payload,
       contentType: "application/json",
       eventName,
-      userAgent: "OpenCrew webhook tester",
+      userAgent: "KodBot webhook tester",
       deliveryId: `test-${randomUUID()}`,
     });
   }

@@ -1,6 +1,6 @@
 // Cua-backed Local VM lifecycle and health checks.
 //
-// OpenCrew owns only the sandbox boundary: image preparation, container
+// KodBot owns only the sandbox boundary: image preparation, container
 // lifecycle, resource limits, loopback viewer, and the single-bot lease in the
 // harness. Desktop automation itself is Cua Driver. Agents connect directly to
 // `cua-driver mcp` inside the container; this module never reimplements clicks,
@@ -229,7 +229,7 @@ function statusProblem(status: ContainerComputerStatus): string | null {
   if (!status.image) return `Prepare the Cua desktop image with Driver ${CUA_DRIVER_VERSION}`;
   if (status.container === "missing") return "Create the Local VM";
   if (!status.imageMatches) return "The existing Local VM uses an older desktop or Cua Driver; recreate it";
-  if (!status.managed) return "The existing container was not created by OpenCrew; recreate it";
+  if (!status.managed) return "The existing container was not created by KodBot; recreate it";
   if (status.network === "unsafe") return "The existing Local VM exposes its viewer publicly; recreate it";
   if (status.security === "unsafe") return "The existing Local VM is missing safety limits; recreate it";
   if (status.persistence === "unsafe") return "The existing Local VM is missing its durable workspace; recreate it";
@@ -348,7 +348,7 @@ export async function containerComputerStatus(
     status.image = imageLabelsMatch(image.labels);
     status.image_id = image.id;
   } catch {
-    // The prepared OpenCrew derivative has not been built yet.
+    // The prepared KodBot derivative has not been built yet.
   }
 
   try {
@@ -840,7 +840,7 @@ export function setupCommands(
   };
 }
 
-/** Cloud boxes still use OpenCrew's high-latency REST adapter. Local VMs
+/** Cloud boxes still use KodBot's high-latency REST adapter. Local VMs
  * bypass it and mount Cua Driver's official MCP server through
  * containerComputerMcp(). */
 export function computerProxyEnv(

@@ -77,7 +77,7 @@ const support = (fetcher: typeof fetch): AcpSupport => ({
   models: STATIC_MODELS,
   defaultCli: "opencode",
   nativeSource: "opencode-go.acp",
-  loginNote: "OpenCode Go is not configured — add an OPENCODE_API_KEY in OpenCrew settings",
+  loginNote: "OpenCode Go is not configured — add an OPENCODE_API_KEY in KodBot settings",
   install: {
     command: {
       darwin: "npm install -g opencode-ai",

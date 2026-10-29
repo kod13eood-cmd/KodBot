@@ -1,13 +1,13 @@
 # XcodeGen spec. The .xcodeproj is generated, not committed — a project
 # file is a merge-conflict machine and nothing in it is worth reviewing.
 #
-#   brew install xcodegen && cd ios && xcodegen generate && open OpenCrewCompanion.xcodeproj
+#   brew install xcodegen && cd ios && xcodegen generate && open KodBotCompanion.xcodeproj
 #
 # XcodeGen is a development tool, not a dependency of the app: the app
 # itself has none. If you'd rather not install it, make an iOS App target
 # in Xcode by hand, add the App/ folder, and add the local CompanionCore
 # package — the Info.plist keys below are the part that is easy to miss.
-name: OpenCrewCompanion
+name: KodBotCompanion
 options:
   bundleIdPrefix: com.opencrew
   deploymentTarget:
@@ -19,7 +19,7 @@ packages:
     path: .
 
 targets:
-  OpenCrewCompanion:
+  KodBotCompanion:
     type: application
     platform: iOS
     sources:
@@ -44,7 +44,7 @@ targets:
         # What appears under the icon. Distinct from the desktop app on
         # purpose: someone may well have both, and two identical labels on
         # one person's devices is a small cruelty.
-        CFBundleDisplayName: OpenCrewMobile
+        CFBundleDisplayName: KodBot
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
@@ -70,10 +70,10 @@ targets:
         # It looks exactly like "no computers on this network", which is a
         # confusing hour if you don't know to look here.
         NSLocalNetworkUsageDescription: >-
-          OpenCrew finds your computer on this network so your bots can
+          KodBot finds your computer on this network so your bots can
           reach you here.
         NSCameraUsageDescription: >-
-          OpenCrew uses the camera only to scan a pairing QR code shown on
+          KodBot uses the camera only to scan a pairing QR code shown on
           your computer.
         NSBonjourServices:
           - _opencrew._tcp

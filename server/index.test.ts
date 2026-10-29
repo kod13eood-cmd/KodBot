@@ -54,7 +54,7 @@ beforeAll(async () => {
   // a fleet of exactly one unknown driver: no CLI probes, no network
   mkdirSync(join(home, ".opencrew"), { recursive: true });
   mkdirSync(join(staticDir, "assets"), { recursive: true });
-  writeFileSync(join(staticDir, "index.html"), "<!doctype html><title>Packaged OpenCrew</title>");
+  writeFileSync(join(staticDir, "index.html"), "<!doctype html><title>Packaged KodBot</title>");
   writeFileSync(join(staticDir, "assets", "smoke.css"), "body { color: white; }");
   writeFileSync(
     join(home, ".opencrew", "config.json"),
@@ -175,7 +175,7 @@ describe("harness HTTP API", () => {
     const root = await fetch(`${BASE}/`);
     expect(root.status).toBe(200);
     expect(root.headers.get("content-type")).toBe("text/html");
-    expect(await root.text()).toContain("Packaged OpenCrew");
+    expect(await root.text()).toContain("Packaged KodBot");
 
     const asset = await fetch(`${BASE}/assets/smoke.css`);
     expect(asset.status).toBe(200);
@@ -185,7 +185,7 @@ describe("harness HTTP API", () => {
     const spa = await fetch(`${BASE}/settings/desktop`);
     expect(spa.status).toBe(200);
     expect(spa.headers.get("content-type")).toBe("text/html");
-    expect(await spa.text()).toContain("Packaged OpenCrew");
+    expect(await spa.text()).toContain("Packaged KodBot");
 
     const unknownApi = await api("GET", "/api/not-a-real-route");
     expect(unknownApi.status).toBe(404);
@@ -358,7 +358,7 @@ describe("harness HTTP API", () => {
     expect(exported.body.team).not.toHaveProperty("room");
     expect(JSON.stringify(exported.body)).not.toMatch(/Archived|autoApprove|alwaysAllow|modelSelection|threadId/);
     expect((await api("GET", "/api/bots")).body.groups).toHaveLength(roomsBefore);
-    expect((await api("POST", "/api/teams/export", {})).body.team.name).toBe("My OpenCrew Team");
+    expect((await api("POST", "/api/teams/export", {})).body.team.name).toBe("My KodBot Team");
 
     const stream = await openSse(`${BASE}/api/events`);
     try {
@@ -494,6 +494,27 @@ describe("harness HTTP API", () => {
     const after = (await api("GET", "/api/bots")).body.bots.find((b: { id: string }) => b.id === bot.id);
     expect(after.modelSelection).toEqual(selection);
     expect(after.modelSelection.effort).toBeUndefined();
+  });
+
+  it("exposes a narrow model-only endpoint and refuses execution-policy fields", async () => {
+    const bot = (await api("POST", "/api/bots")).body.bot;
+    const broad = await api("PATCH", `/api/bots/${bot.id}/model`, {
+      instanceId: "ghost",
+      model: "ghost-1",
+      autoApprove: true,
+    });
+    expect(broad.status).toBe(400);
+
+    const unavailable = await api("PATCH", `/api/bots/${bot.id}/model`, {
+      instanceId: "ghost",
+      model: "ghost-1",
+    });
+    expect(unavailable.status).toBe(409);
+
+    expect((await api("PATCH", "/api/bots/missing/model", {
+      instanceId: "ghost",
+      model: "ghost-1",
+    })).status).toBe(404);
   });
 
   it("persists an answered onboarding card", async () => {

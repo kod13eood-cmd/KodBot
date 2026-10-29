@@ -189,7 +189,7 @@ export class RoutineManager {
     for (const run of this.runs) {
       if (run.status === "running" || run.status === "waiting") {
         run.status = "failed";
-        run.error = "OpenCrew restarted while this routine was running";
+        run.error = "KodBot restarted while this routine was running";
         run.finishedAt = this.now();
         recovered = true;
       }

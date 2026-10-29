@@ -54,7 +54,7 @@ struct PairingView: View {
             .fullScreenCover(isPresented: $showingScanner) {
                 PairingScannerSheet { payload in
                     guard let url = URL(string: payload), let invite = PairingInvite.parse(url) else {
-                        return "That isn't an OpenCrew pairing QR code."
+                        return "That isn't a KodBot pairing QR code."
                     }
                     accept(invite)
                     return nil
@@ -71,7 +71,7 @@ struct PairingView: View {
 
     private var setupSection: some View {
         Section("On your computer") {
-            Label("Open OpenCrew → Settings → Companion", systemImage: "1.circle.fill")
+            Label("Open KodBot → Settings → Companion", systemImage: "1.circle.fill")
             Label("Choose Set up a phone", systemImage: "2.circle.fill")
             Button {
                 failure = nil

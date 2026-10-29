@@ -1,6 +1,6 @@
 # OpenCode
 
-OpenCode is an OpenCrew engine. OpenCrew runs the maintained OpenCode
+OpenCode is a KodBot engine. KodBot runs the maintained OpenCode
 CLI through its ACP stdio interface, so sessions, streaming, coding tools,
 permission requests, MCP integrations, resume, and cancellation use the same
 runtime as the other ACP engines.
@@ -20,11 +20,11 @@ models** — so one credential and one bot can reach every plan.
 2. Create or obtain an OpenCode API key from the
    [OpenCode console](https://opencode.ai/auth). One key covers OpenCode Go,
    Go Plus, and Zen — including the free models.
-3. Open OpenCrew Settings → Connections and save the key under **OpenCode
+3. Open KodBot Settings → Connections and save the key under **OpenCode
    API key**.
 
-The key is stored locally as write-only configuration. OpenCrew reports only
-whether it is configured, never the value. A key saved in OpenCrew is
+The key is stored locally as write-only configuration. KodBot reports only
+whether it is configured, never the value. A key saved in KodBot is
 injected as `OPENCODE_API_KEY` only into the OpenCode child process; it is not
 sent to the renderer, logs, analytics, snapshots, error messages, or command
 arguments.
@@ -32,7 +32,7 @@ arguments.
 OpenCode remains unavailable until both the `opencode` executable and the
 credential are present. It is never selected as a runnable default while either
 requirement is missing. Users may instead manage OpenCode's own login flow with
-`opencode auth login`; OpenCrew does not edit OpenCode auth/config files.
+`opencode auth login`; KodBot does not edit OpenCode auth/config files.
 
 ## Models
 
@@ -53,7 +53,7 @@ small pinned fallback. The catalogs are mutable; current names, pricing, limits,
 and retention terms remain defined by the live OpenCode documentation.
 
 Before every prompt, ACP receives `session/set_config_option` with
-`configId: "model"` and the exact provider-qualified model ID. OpenCrew
+`configId: "model"` and the exact provider-qualified model ID. KodBot
 fails the turn rather than silently running a different model.
 
 ### Free models
@@ -67,7 +67,7 @@ when its id ends in `-free` or is otherwise listed as known-free.
 
 See the live OpenCode privacy notes for per-model retention and training
 policies. Free and stealth ("contributor") models vary: some collect data during
-their free period. OpenCrew links to the live documentation rather than
+their free period. KodBot links to the live documentation rather than
 duplicating mutable commercial or retention details.
 
 ## Testing

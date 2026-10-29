@@ -22,13 +22,22 @@ const APP_ICON = path.join(__dirname, "resources/app-icon.png");
 // identities match. This must run before Electron becomes ready.
 if (process.platform === "linux") app.setDesktopName("com.opencrew.app.desktop");
 
-// Migrate Electron's per-app data dir from the pre-rename name so existing
+// Display name for menus and the per-app data dir. The bundle/app id stays
+// stable (com.opencrew.app) so existing installs keep updating; the legacy
+// opencrew/openmausbot data dirs are migrated below.
+app.setName("KodBot");
+
+// Migrate Electron's per-app data dir from the pre-rename names so existing
 // installs keep their window state and the secure credential store.
 try {
   const currentUserData = app.getPath("userData");
-  const legacyUserData = path.join(path.dirname(currentUserData), "openmausbot");
-  if (!fs.existsSync(currentUserData) && fs.existsSync(legacyUserData)) {
-    fs.renameSync(legacyUserData, currentUserData);
+  const parent = path.dirname(currentUserData);
+  for (const legacyName of ["opencrew", "OpenCrew", "openmausbot"]) {
+    const legacyUserData = path.join(parent, legacyName);
+    if (!fs.existsSync(currentUserData) && fs.existsSync(legacyUserData)) {
+      fs.renameSync(legacyUserData, currentUserData);
+      break;
+    }
   }
 } catch {
   /* best-effort: a failed migration just means a fresh per-app dir */
@@ -154,8 +163,8 @@ async function ensureManagedComposioCredentials() {
 }
 
 // The packaged app has no terminal: everything about the server child's life
-// goes to server.log in the OS log dir (~/Library/Logs/OpenCrew on macOS,
-// Console.app-visible; %APPDATA%\OpenCrew\logs on Windows), which is also
+// goes to server.log in the OS log dir (~/Library/Logs/KodBot on macOS,
+// Console.app-visible; %APPDATA%\KodBot\logs on Windows), which is also
 // why stdio is piped, not inherited — under a Finder/Explorer launch the
 // parent's stdio leads nowhere and a failed boot is otherwise undiagnosable.
 const LOG_DIR = app.getPath("logs");
@@ -256,7 +265,7 @@ async function startServerPackaged() {
 const ERROR_PAGE =
   "data:text/html;charset=utf-8," +
   encodeURIComponent(
-    `<body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#070707;color:#fcfcfc;font:15px -apple-system,system-ui"><div style="text-align:center;max-width:360px"><div style="font-size:40px">🐭</div><h2 style="font-weight:600;margin:12px 0 6px">Couldn't start the bot server</h2><p style="color:#fcfcfc99;line-height:1.5">Something else is using its ports. Quit and reopen OpenCrew — if it keeps happening, restart your computer.</p></div></body>`,
+    `<body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#070707;color:#fcfcfc;font:15px -apple-system,system-ui"><div style="text-align:center;max-width:360px"><div style="font-size:40px">🐭</div><h2 style="font-weight:600;margin:12px 0 6px">Couldn't start the bot server</h2><p style="color:#fcfcfc99;line-height:1.5">Something else is using its ports. Quit and reopen KodBot — if it keeps happening, restart your computer.</p></div></body>`,
   );
 
 let cuaReady = Promise.resolve({ mode: "unavailable", reason: "not-started" });

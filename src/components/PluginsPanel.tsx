@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Loader2, RefreshCw, Search, X } from "lucide-react";
 import { api, useStore } from "@/state/store";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n";
 
 interface ToolkitCard {
   slug: string;
@@ -60,6 +61,7 @@ function ServiceIcon({ card }: { card: ToolkitCard }) {
 
 export function PluginsPanel() {
   const { dispatch } = useStore();
+  const { t } = useI18n();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [cards, setCards] = useState<ToolkitCard[] | null>(null);
   const [source, setSource] = useState<"api" | "curated">("curated");
@@ -180,7 +182,7 @@ export function PluginsPanel() {
     // asynchronous open, the visible Continue button retries from a direct
     // user gesture using the URL retained in pendingUrls.
     const opened = window.open("", "_blank");
-    if (!opened) throw new Error("Your browser blocked the connection page. Click Continue to open it.");
+    if (!opened) throw new Error(t("Your browser blocked the connection page. Click Continue to open it."));
     // Open a same-origin blank page first so the OAuth origin never receives
     // an opener reference, while a real null remains a reliable blocked signal.
     opened.opener = null;
@@ -250,20 +252,20 @@ export function PluginsPanel() {
       >
         <header className="flex items-start justify-between gap-4 px-6 pb-3 pt-6 sm:px-8 sm:pt-7">
           <div>
-            <h2 id="connected-apps-title" className="text-[22px] font-semibold tracking-[-0.01em] text-ink">Connected apps</h2>
-            <p className="mt-1 text-[13px] text-ink-secondary">Connect the apps your bots can use.</p>
+            <h2 id="connected-apps-title" className="text-[22px] font-semibold tracking-[-0.01em] text-ink">{t("Connected apps")}</h2>
+            <p className="mt-1 text-[13px] text-ink-secondary">{t("Connect the apps your bots can use.")}</p>
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={() => refreshStatus(matching.map((c) => c.slug).slice(0, 40))}
               className="rounded-lg p-2 text-ink-secondary hover:bg-raised hover:text-ink"
-              title="Refresh connection status"
+              title={t("Refresh connection status")}
             >
               <RefreshCw size={17} className={cn(refreshing && "animate-spin")} />
             </button>
             <button
               onClick={close}
-              aria-label="Close connected apps"
+              aria-label={t("Close connected apps")}
               className="rounded-lg p-2 text-ink-secondary hover:bg-raised hover:text-ink"
             >
               <X size={21} />
@@ -272,7 +274,7 @@ export function PluginsPanel() {
         </header>
 
         <div className="flex flex-col gap-3 px-6 pb-4 pt-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-          <div className="flex w-fit rounded-xl bg-raised/70 p-1" role="tablist" aria-label="Connected apps view">
+          <div className="flex w-fit rounded-xl bg-raised/70 p-1" role="tablist" aria-label={t("Connected apps view")}>
             <button
               role="tab"
               aria-selected={tab === "marketplace"}
@@ -282,7 +284,7 @@ export function PluginsPanel() {
                 tab === "marketplace" ? "bg-card text-ink shadow-sm" : "text-ink-secondary hover:text-ink",
               )}
             >
-              Marketplace
+              {t("Marketplace")}
             </button>
             <button
               role="tab"
@@ -293,7 +295,7 @@ export function PluginsPanel() {
                 tab === "connected" ? "bg-card text-ink shadow-sm" : "text-ink-secondary hover:text-ink",
               )}
             >
-              Connected{connectedCount > 0 ? ` ${connectedCount}` : ""}
+              {t("Connected tab")}{connectedCount > 0 ? ` ${connectedCount}` : ""}
             </button>
           </div>
           <label className="flex h-11 w-full items-center gap-2.5 rounded-xl bg-raised/70 px-3.5 sm:w-[320px]">
@@ -301,8 +303,8 @@ export function PluginsPanel() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search apps"
-              aria-label="Search apps"
+              placeholder={t("Search apps")}
+              aria-label={t("Search apps")}
               className="min-w-0 flex-1 bg-transparent text-[14px] text-ink placeholder:text-ink-secondary focus:outline-none"
             />
           </label>
@@ -310,31 +312,31 @@ export function PluginsPanel() {
 
         {!configured && (
           <div className="mx-6 mb-1 rounded-xl bg-warning/10 px-4 py-3 text-[13px] text-warning sm:mx-8">
-            Connected apps are temporarily unavailable. You can retry after restarting, or configure your own connection service.{" "}
+            {t("Connected apps are temporarily unavailable. You can retry after restarting, or configure your own connection service.")}{" "}
             <button
               className="font-medium underline underline-offset-2"
               onClick={() => {
                 close();
-                dispatch({ type: "toggleAppSettings", open: true });
+                dispatch({ type: "toggleAppSettings", open: true, section: "connections" });
               }}
             >
-              Open settings
+              {t("Open settings")}
             </button>
           </div>
         )}
         {configured && source === "curated" && mode === "self-hosted" && (
           <div className="mx-6 mb-1 text-[12px] text-ink-secondary sm:mx-8">
-            Showing featured apps.{" "}
+            {t("Showing featured apps.")}{" "}
             <button
               className="underline underline-offset-2 hover:text-ink"
               onClick={() => {
                 close();
-                dispatch({ type: "toggleAppSettings", open: true });
+                dispatch({ type: "toggleAppSettings", open: true, section: "connections" });
               }}
             >
-              Update your Composio key
+              {t("Update your Composio key")}
             </button>{" "}
-            for the full catalog.
+            {t("for the full catalog.")}
           </div>
         )}
         {error && <div role="alert" className="mx-6 mt-2 rounded-lg bg-danger/10 px-3 py-2 text-[12px] text-danger sm:mx-8">{error}</div>}
@@ -342,12 +344,12 @@ export function PluginsPanel() {
         <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-7 pt-5 sm:px-8">
           {cards === null ? (
             <div className="flex items-center justify-center gap-2 py-24 text-[13px] text-ink-secondary">
-              <Loader2 size={14} className="animate-spin" /> Loading catalog…
+              <Loader2 size={14} className="animate-spin" /> {t("Loading catalog…")}
             </div>
           ) : (
             <div>
               <div className="mb-3 text-[12px] font-medium text-ink-secondary">
-                {tab === "connected" ? "Your connections" : search ? "Search results" : "Available apps"}
+                {tab === "connected" ? t("Your connections") : search ? t("Search results") : t("Available apps")}
               </div>
               <div className="grid grid-cols-1 gap-x-10 md:grid-cols-2">
               {visible.map((card) => {
@@ -365,7 +367,7 @@ export function PluginsPanel() {
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[14px] font-medium text-ink">{card.label}</div>
                     <div className="mt-0.5 truncate text-[12.5px] text-ink-secondary">
-                      {pending ? "Finish setup in your browser" : failed ? "Authorization expired — try again" : card.blurb}
+                      {pending ? t("Finish setup in your browser") : failed ? t("Authorization expired — try again") : card.blurb}
                     </div>
                   </div>
                   <button
@@ -383,18 +385,18 @@ export function PluginsPanel() {
                         ? "bg-transparent text-success hover:bg-danger/10 hover:text-danger"
                         : "bg-raised text-ink hover:bg-raised-hover",
                     )}
-                    title={connected ? `Disconnect ${card.label}` : undefined}
+                    title={connected ? t("Disconnect {name}", { name: card.label }) : undefined}
                   >
                     {busy ? (
                       <Loader2 size={13} className="mx-auto animate-spin" />
                     ) : connected ? (
-                      <><Check size={14} /> Connected</>
+                      <><Check size={14} /> {t("Connected")}</>
                     ) : pending ? (
-                      "Continue"
+                      t("Continue")
                     ) : failed ? (
-                      "Retry"
+                      t("Retry")
                     ) : (
-                      "Connect"
+                      t("Connect")
                     )}
                   </button>
                 </div>
@@ -406,10 +408,10 @@ export function PluginsPanel() {
           {cards !== null && visible.length === 0 && (
             <div className="flex min-h-56 flex-col items-center justify-center text-center">
               <div className="text-[14px] font-medium text-ink">
-                {tab === "connected" ? "No connected apps yet" : "No apps found"}
+                {tab === "connected" ? t("No connected apps yet") : t("No apps found")}
               </div>
               <div className="mt-1 text-[12.5px] text-ink-secondary">
-                {tab === "connected" ? "Connect an app from Marketplace and it will appear here." : "Try a different search."}
+                {tab === "connected" ? t("Connect an app from Marketplace and it will appear here.") : t("Try a different search.")}
               </div>
             </div>
           )}

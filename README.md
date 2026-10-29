@@ -1,8 +1,8 @@
-> ⚠️ **No affiliation with any cryptocurrency.** OpenCrew has no token. Any coin using the OpenCrew, Crew, or SupaCrew name is not created, endorsed, or affiliated with this project or its maintainer. I have received no tokens, payment, or allocation from anyone, and I will not be endorsing any token.
+> ⚠️ **No affiliation with any cryptocurrency.** KodBot has no token. Any coin using the KodBot, Crew, or SupaCrew name is not created, endorsed, or affiliated with this project or its maintainer. I have received no tokens, payment, or allocation from anyone, and I will not be endorsing any token.
 
 <div align="center">
 
-# OpenCrew
+# KodBot
 
 **Your own team of AI bots, in a chat app.**
 
@@ -33,7 +33,7 @@ Talk to them like contacts. Watch them work. Approve what matters.
 <br>
 <br>
 
-<img src="docs/screenshots/hero.png" alt="OpenCrew — a Telegram-style chat app where every chat is a real AI agent" width="900">
+<img src="docs/screenshots/hero.png" alt="KodBot — a Telegram-style chat app where every chat is a real AI agent" width="900">
 
 </div>
 
@@ -41,7 +41,7 @@ Talk to them like contacts. Watch them work. Approve what matters.
 
 ## Why
 
-One assistant in one box is the wrong shape for agents. OpenCrew is an open-source take on **Grok Bot** —
+One assistant in one box is the wrong shape for agents. KodBot is an open-source take on **Grok Bot** —
 it keeps the idea (AI as a *messaging app*: a roster of bots you chat with, each with its own personality,
 memory of its thread, model, computer, and apps) and rebuilds it open, local-first, and on the agents you
 already have:
@@ -229,7 +229,7 @@ in the sidebar footer) when you want to enable its integration:
 
 | Credential | What it enables | Where to get it |
 |---|---|---|
-| Composio project key (`ak_…`) | Connect Gmail, GitHub, Slack, Notion, and other apps to your bots | [OpenCrew Composio setup](docs/composio.md) |
+| Composio project key (`ak_…`) | Connect Gmail, GitHub, Slack, Notion, and other apps to your bots | [KodBot Composio setup](docs/composio.md) |
 | Box API key | Give bots an isolated remote Linux computer with a desktop and terminal | [Box API key guide](https://docs.ascii.dev/box/api-keys) |
 | ElevenLabs key | Read replies aloud, and call your bots | [ElevenLabs API keys](https://elevenlabs.io/app/settings/api-keys) |
 
@@ -251,12 +251,12 @@ Routines can run once or on selected weekdays, using either a CREW's configured 
 Cloud VM runner. Webhook triggers are independent from schedules but reuse the same queued task executor
 and calendar receipts.
 
-OpenCrew starts a webhook-only receiver on `127.0.0.1:8800` by default (or one port above `OC_PORT`).
+KodBot starts a webhook-only receiver on `127.0.0.1:8800` by default (or one port above `OC_PORT`).
 Set `OC_WEBHOOK_PORT` to choose another port. A webhook secret is shown once when the trigger is created
 or rotated. Bearer authentication is recommended so the secret stays out of request URLs and most access
 logs; a single capability URL remains available for senders that cannot configure headers. The receiver
 exposes only `/health` and secret `/hooks/...` endpoints; it never exposes the app's broader API.
-OpenCrew must remain running to accept a delivery. For public internet delivery, proxy only this
+KodBot must remain running to accept a delivery. For public internet delivery, proxy only this
 dedicated receiver through a hosted relay or a tool such as Tailscale Funnel.
 
 ## Status
@@ -273,11 +273,18 @@ small; adding a provider is one file in [`server/drivers/`](server/drivers/) plu
 
 ## License
 
-[MIT](LICENSE) © 2026 Milind Soni and contributors.
+KodBot is [MIT](LICENSE) © 2026 Milind Soni and KodBot contributors.
 
-OpenCrew is a fork of [OpenMausBot](https://github.com/milind-soni/OpenMausBot)
-(MIT © Milind Soni and contributors) with an OpenCode (Go/Zen) engine.
+KodBot uses the MIT-licensed [OpenCode](https://github.com/anomalyco/opencode)
+CLI as one of its local agent engines. OpenCode is an external runtime, not a
+vendored source dependency. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+for upstream notices.
 
-OpenCrew is an independent, open-source project inspired by Grok Bot. It is
+KodBot began as a fork of [OpenMausBot](https://github.com/milind-soni/OpenMausBot);
+portions of the codebase originate there. OpenMausBot is distributed under the
+Apache License 2.0, and a copy is included in
+[LICENSES/Apache-2.0.txt](LICENSES/Apache-2.0.txt).
+
+KodBot is an independent, open-source project inspired by Grok Bot. It is
 not affiliated with, endorsed by, or associated with xAI; "Grok" is a trademark
 of its respective owner.

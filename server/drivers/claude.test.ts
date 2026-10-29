@@ -474,7 +474,7 @@ describe("ClaudeDriver turns (fake CLI)", () => {
     expect(await nextAnswer()).toMatchObject({
       id: "dup-1",
       behavior: "deny",
-      message: "OpenCrew: duplicate ask id — skipping this request.",
+      message: "KodBot: duplicate ask id — skipping this request.",
     });
     expect(recorder.events.filter((e) => e.type === "request.opened" && e.requestId === "dup-1")).toHaveLength(1);
 
@@ -506,7 +506,7 @@ describe("ClaudeDriver turns (fake CLI)", () => {
     expect(await conn2Answer).toMatchObject({
       id: "dup-2",
       behavior: "deny",
-      message: "OpenCrew: duplicate ask id — skipping this request.",
+      message: "KodBot: duplicate ask id — skipping this request.",
     });
     expect(recorder.events.filter((e) => e.type === "request.opened" && e.requestId === "dup-2")).toHaveLength(1);
 
@@ -564,7 +564,7 @@ describe("ClaudeDriver turns (fake CLI)", () => {
     expect(await nextAnswer()).toMatchObject({
       id: "dup-4",
       behavior: "deny",
-      message: "OpenCrew: duplicate ask id — skipping this request.",
+      message: "KodBot: duplicate ask id — skipping this request.",
     });
     expect(recorder.events.filter((e) => e.type === "request.opened" && e.requestId === "dup-4")).toHaveLength(1);
 

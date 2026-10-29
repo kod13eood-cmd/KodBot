@@ -1,12 +1,12 @@
-# OpenCrewMobile privacy
+# KodBot privacy
 
-OpenCrewMobile is a companion for an OpenCrew service chosen and operated by the user.
+KodBot is a companion for a KodBot service chosen and operated by the user.
 
 ## Data handling
 
 - The app stores the selected computer address in iOS preferences and its pairing token in the iOS Keychain.
 - Messages, approvals, transcript searches, exports, and screen images travel directly between the phone and that computer.
-- OpenCrew stores transcripts on that computer. The app does not send the developer a cloud copy.
+- KodBot stores transcripts on that computer. The app does not send the developer a cloud copy.
 - The app contains no advertising, analytics, tracking, or third-party SDKs.
 - The app does not sell personal information.
 
@@ -16,7 +16,7 @@ If optional hosted services are introduced later, this policy and the App Store 
 
 ## Control and deletion
 
-Unpairing removes the connection and pairing token from the phone. Revoking the phone in OpenCrew's Companion settings prevents that credential from reaching the computer. Transcript deletion is controlled by the OpenCrew installation that stores it.
+Unpairing removes the connection and pairing token from the phone. Revoking the phone in KodBot's Companion settings prevents that credential from reaching the computer. Transcript deletion is controlled by the KodBot installation that stores it.
 
 ## Support
 

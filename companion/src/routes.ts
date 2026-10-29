@@ -44,7 +44,7 @@ export function isCloudDesktopJoin(method: string, path: string): boolean {
   return method === CLOUD_DESKTOP_JOIN_ROUTE.method && CLOUD_DESKTOP_JOIN_ROUTE.path.test(path);
 }
 
-/** Every request the iOS app makes, and nothing else.
+/** Every request a native companion app makes, and nothing else.
  *
  * Ids are `[\w-]+`, matching the harness's own route patterns. The paths
  * arrive undecoded and are anchored at both ends, so an encoded traversal
@@ -61,6 +61,9 @@ const ALLOWED: ReadonlyArray<{ method: string; path: RegExp }> = [
   { method: "GET", path: /^\/api\/bots$/ },
   { method: "POST", path: /^\/api\/bots$/ },
   { method: "POST", path: /^\/api\/bots\/[\w-]+\/messages$/ },
+  // A narrow model picker write. The general bot PATCH can also change
+  // permissions, workspaces, computers, and integrations, so it stays closed.
+  { method: "PATCH", path: /^\/api\/bots\/[\w-]+\/model$/ },
   { method: "POST", path: /^\/api\/bots\/[\w-]+\/interrupt$/ },
   { method: "POST", path: /^\/api\/bots\/[\w-]+\/read$/ },
   { method: "POST", path: /^\/api\/bots\/[\w-]+\/always-allow$/ },
@@ -130,7 +133,7 @@ export function denyReason({ path, method, authenticated }: RouteRequest): Denia
   if (method === "GET" && path === "/api/health") return null;
 
   if (!authenticated) {
-    return { status: 401, error: "pair this device from the OpenCrew companion on your computer" };
+    return { status: 401, error: "pair this device from the KodBot companion on your computer" };
   }
 
   if (ALLOWED.some((route) => route.method === method && route.path.test(path))) return null;

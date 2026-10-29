@@ -1,4 +1,4 @@
-# OpenCrew harness implementation plan
+# KodBot harness implementation plan
 
 - Status: proposed
 - Last repo review: 2026-08-17
@@ -10,13 +10,13 @@ Seventeen changes to `server/` and `src/`, ordered into three rounds, plus a
 deferred list. No external agent harness is adopted as a dependency.
 
 This plan replaces an earlier draft that was built by reading other harnesses
-(pi, agent-orchestrator, deepseek-harness) and asking what OpenCrew lacked by
+(pi, agent-orchestrator, deepseek-harness) and asking what KodBot lacked by
 comparison. That produced a good map of what is *possible* and a poor map of what
 is actually *missing*. The items below come from reading this repository. Their
 designs still borrow from those projects where the design work is genuinely good,
 and the verified facts are retained in [Upstream references](#upstream-references).
 
-**The reframe that reorders everything.** OpenCrew is itself a harness. The
+**The reframe that reorders everything.** KodBot is itself a harness. The
 agent CLIs' own session files are an *optimization* — a per-engine cache that
 happens to hold context for one engine on one machine. The canonical, durable,
 cross-engine record is `server/store.ts`. Every path where that record has to

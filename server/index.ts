@@ -1,4 +1,4 @@
-// OpenCrew server — the harness host. Clients hold no transports
+// KodBot server — the harness host. Clients hold no transports
 // (upstream rule): the React app dispatches typed commands over HTTP and
 // folds one SSE event stream; every provider process runs here.
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
@@ -36,7 +36,7 @@ import {
 import { augmentedPath, findCliCandidates, resetPathCache } from "./env-path.ts";
 import { describeSpawnFailure, execCli } from "./procs.ts";
 import { buildNotification, type Notification } from "./notify.ts";
-import { isEffortLevel, type RequestOutcome, type RuntimeEvent } from "./contracts.ts";
+import { isEffortLevel, type ModelSelection, type RequestOutcome, type RuntimeEvent } from "./contracts.ts";
 
 import { BUILT_IN_DRIVERS } from "./drivers/builtIn.ts";
 import { getOrCreateChannel, mirrorActivity, mirrorExchange, mirrorReply, type CommsBus } from "./comms-visibility.ts";
@@ -1177,7 +1177,7 @@ async function startTurn(
   });
 
   const persona = [
-    `You are ${bot.name}, a personal bot in OpenCrew.`,
+    `You are ${bot.name}, a personal bot in KodBot.`,
     bot.title && `Role: ${bot.title}.`,
     bot.description && `About: ${bot.description}`,
   ]
@@ -1259,7 +1259,7 @@ async function startTurn(
           throw new Error("this model engine cannot control this computer — choose Claude or an ACP engine, or select another destination");
         }
         const cua = readCuaConnection();
-        if (!cua) throw new Error("CUA Driver is not ready for this computer — check permissions and restart OpenCrew");
+        if (!cua) throw new Error("CUA Driver is not ready for this computer — check permissions and restart KodBot");
         integrations.localComputer = cua;
         computerKind = "local";
       }
@@ -1458,10 +1458,10 @@ let webhookIngress: WebhookIngress | null = null;
 let webhookIngressError: string | null = null;
 try {
   webhookIngress = await listenWebhookIngress(webhooks, { port: WEBHOOK_PORT });
-  console.log(`opencrew webhook receiver on ${webhookIngress.baseUrl}`);
+  console.log(`KodBot webhook receiver on ${webhookIngress.baseUrl}`);
 } catch (error) {
   webhookIngressError = error instanceof Error ? error.message : String(error);
-  console.error(`opencrew webhook receiver unavailable: ${webhookIngressError}`);
+  console.error(`KodBot webhook receiver unavailable: ${webhookIngressError}`);
 }
 
 const webhookIngressStatus = () => ({
@@ -1583,7 +1583,7 @@ async function runGroupMemberTurn(
     .map((b) => `@${b.name}${b.title ? ` (${b.title})` : ""}`)
     .join(", ");
   const system = [
-    `You are ${bot.name}, a bot in the room "${group.name}" in OpenCrew.`,
+    `You are ${bot.name}, a bot in the room "${group.name}" in KodBot.`,
     bot.title && `Role: ${bot.title}.`,
     bot.description && `About: ${bot.description}`,
     `Room members: ${roster}, and ${userName} (the human).`,
@@ -1764,7 +1764,7 @@ function dispatchConnectorResume(entry: { botId: string; threadId: string; resum
   const owner = connectorThread(entry.botId, entry.threadId);
   if (!owner) return;
   const names = entry.labels.join(", ");
-  const prompt = `OpenCrew connection update: the user securely connected ${names}. Continue the task that paused for this connection. Do not ask them to connect it again.`;
+  const prompt = `KodBot connection update: the user securely connected ${names}. Continue the task that paused for this connection. Do not ask them to connect it again.`;
   if (owner.bot.busy) {
     pendingConnectorResumes.set(`${entry.threadId}:${entry.resumeKey}`, entry);
     return;
@@ -2139,7 +2139,7 @@ const server = createServer(async (req, res) => {
         }
         const channel = getOrCreateChannel(store, currentFrom, currentTarget);
         mirrorExchange(commsBus, currentFrom, currentTarget, message, channel, fromThreadId);
-        const prefixed = `[Message from @${currentFrom.name}, another bot in this OpenCrew workspace. Reply to them.]\n\n${message}`;
+        const prefixed = `[Message from @${currentFrom.name}, another bot in this KodBot workspace. Reply to them.]\n\n${message}`;
         const reply = await askBotAndWait(toBotId, prefixed, depth, fromBotId);
         mirrorReply(commsBus, currentTarget, reply, channel);
         return json(res, 200, { botName: currentTarget.name, text: reply });
@@ -2291,7 +2291,7 @@ const server = createServer(async (req, res) => {
     // ── independent webhook triggers ────────────────────────────────────
     // Management stays on the app-only server. Actual deliveries land on a
     // second, webhook-only loopback listener so Funnel or a future hosted
-    // relay never has to expose the rest of OpenCrew's control surface.
+    // relay never has to expose the rest of KodBot's control surface.
     if (path === "/api/webhooks" && method === "GET") {
       return json(res, 200, { webhooks: webhooks.list(), attempts: webhooks.listAttempts(), ingress: webhookIngressStatus() });
     }
@@ -2535,7 +2535,7 @@ const server = createServer(async (req, res) => {
           ? body.name.trim()
           : profileName
             ? `${profileName}'s Team`
-            : "My OpenCrew Team";
+            : "My KodBot Team";
       const memberIds = store.bots.filter((bot) => !bot.hidden).map((bot) => bot.id);
       if (memberIds.length === 0) return json(res, 400, { error: "Create a bot before exporting your team" });
       try {
@@ -2762,6 +2762,58 @@ const server = createServer(async (req, res) => {
       const updated = store.patchBot(bot.id, {
         alwaysAllow: [...new Set([...(bot.alwaysAllow ?? []), allowKey])].slice(0, 200),
       })!;
+      const visible = wireBot(updated);
+      broadcast({ kind: "bot", bot: visible });
+      return json(res, 200, { bot: visible });
+    }
+    // The companion gets a dedicated model-only write. The general bot PATCH
+    // also carries execution policy, workspace, computer, and integration
+    // settings, so it must not be exposed to a paired phone.
+    m = path.match(/^\/api\/bots\/([\w-]+)\/model$/);
+    if (m && method === "PATCH") {
+      const parsed = z.object({
+        instanceId: z.string().trim().min(1).max(128),
+        model: z.string().trim().min(1).max(512),
+        effort: z.string().optional(),
+      }).strict().safeParse(await readBody(req));
+      if (!parsed.success) {
+        return json(res, 400, { error: "instanceId and model are required; effort is optional" });
+      }
+
+      const bot = store.bot(m[1]);
+      if (!bot) return json(res, 404, { error: "no such bot" });
+      if (bot.busy) return json(res, 409, { error: "the bot is busy — stop it before changing its model" });
+
+      const instance = registry.get(parsed.data.instanceId);
+      if (!instance || !instance.enabled) {
+        return json(res, 409, { error: `provider instance "${parsed.data.instanceId}" is unavailable` });
+      }
+      if (!instance.models.options.some((option) => option.id === parsed.data.model)) {
+        return json(res, 400, { error: `model "${parsed.data.model}" is not offered by that provider` });
+      }
+      if (parsed.data.effort !== undefined) {
+        if (!isEffortLevel(parsed.data.effort)) {
+          return json(res, 400, { error: `effort "${parsed.data.effort}" is not recognized` });
+        }
+        const allowed = instance.adapter.capabilities.effortLevels ?? [];
+        if (!allowed.includes(parsed.data.effort)) {
+          return json(res, 400, { error: `effort "${parsed.data.effort}" is not offered by that provider` });
+        }
+      }
+
+      const selection: ModelSelection = {
+        instanceId: parsed.data.instanceId,
+        model: parsed.data.model,
+      };
+      const previousEffort = bot.modelSelection.effort;
+      const effort = parsed.data.effort ??
+        (bot.modelSelection.instanceId === selection.instanceId ? previousEffort : undefined);
+      if (effort && isEffortLevel(effort) && (instance.adapter.capabilities.effortLevels ?? []).includes(effort)) {
+        selection.effort = effort;
+      }
+
+      const updated = store.patchBot(bot.id, { modelSelection: selection });
+      if (!updated) return json(res, 404, { error: "no such bot" });
       const visible = wireBot(updated);
       broadcast({ kind: "bot", bot: visible });
       return json(res, 200, { bot: visible });
@@ -3494,7 +3546,7 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`opencrew server on http://${HOST}:${PORT}`);
+  console.log(`KodBot server on http://${HOST}:${PORT}`);
 });
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {

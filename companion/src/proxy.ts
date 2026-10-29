@@ -154,7 +154,7 @@ export function createProxyHandler(options: ProxyOptions) {
     // The computer owner enables this capability per device, off by default.
     if (isCloudDesktopJoin(method, path) && !device?.cloudDesktopAccess) {
       return sendJson(res, 403, {
-        error: "cloud desktop access is off for this phone — enable it in OpenCrew → Settings → Companion",
+        error: "cloud desktop access is off for this phone — enable it in KodBot → Settings → Companion",
       });
     }
 
@@ -275,7 +275,7 @@ export function createProxyHandler(options: ProxyOptions) {
           if (size > MAX_JSON_BODY_BYTES) {
             harness.destroy();
             if (res.headersSent) res.destroy();
-            else sendJson(res, 502, { error: "the response from OpenCrew was too large" });
+            else sendJson(res, 502, { error: "the response from KodBot was too large" });
             return;
           }
           chunks.push(chunk);
@@ -372,8 +372,8 @@ export function createProxyHandler(options: ProxyOptions) {
         res,
         timedOut ? 504 : 502,
         timedOut
-          ? { error: "OpenCrew did not respond" }
-          : { error: "OpenCrew is not running on this computer" },
+          ? { error: "KodBot did not respond" }
+          : { error: "KodBot is not running on this computer" },
       );
     });
     req.pipe(upstream);

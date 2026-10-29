@@ -5,7 +5,7 @@ description: Build, verify, and publish the Windows desktop build (NSIS installe
 
 # Windows release
 
-Ships `OpenCrew-<version>-setup.exe` and its update feed to
+Ships `KodBot-<version>-setup.exe` and its update feed to
 [milind-soni/openmausbot-releases](https://github.com/milind-soni/openmausbot-releases).
 
 **Scope: Windows only.** The macOS build is a separate flow (dmg + notarytool +
@@ -41,10 +41,10 @@ Output in `release/`:
 
 | File | Purpose |
 |---|---|
-| `OpenCrew-<version>-setup.exe` | the installer |
+| `KodBot-<version>-setup.exe` | the installer |
 | `latest.yml` | **the update feed** — see step 4 |
-| `OpenCrew-<version>-setup.exe.blockmap` | differential updates |
-| `OpenCrew-<version>-x64.zip` | portable, not used by the updater |
+| `KodBot-<version>-setup.exe.blockmap` | differential updates |
+| `KodBot-<version>-x64.zip` | portable, not used by the updater |
 
 ## 3. Verify before uploading
 
@@ -67,7 +67,7 @@ Then smoke-test the installer itself. Run it, and confirm:
 
 1. It installs per-user with no UAC prompt and launches.
 2. The chat window renders (not the error page). Server logs land in
-   `%APPDATA%\OpenCrew\logs\server.log`.
+   `%APPDATA%\KodBot\logs\server.log`.
 3. The model picker lists at least one provider — this exercises the `.cmd`-shim
    resolution in `server/procs.ts`, which only ever runs for real on Windows.
 4. No update popup appears on launch. Background check failures are silent by
@@ -79,21 +79,21 @@ Upload to the **same tag** as the macOS release for that version, so one release
 carries both platforms.
 
 ```powershell
-Copy-Item release/OpenCrew-<version>-setup.exe release/OpenCrew-setup.exe
+Copy-Item release/KodBot-<version>-setup.exe release/KodBot-setup.exe
 gh release upload v<version> --repo milind-soni/openmausbot-releases `
-  release/OpenCrew-<version>-setup.exe `
-  release/OpenCrew-setup.exe `
-  release/OpenCrew-<version>-setup.exe.blockmap `
+  release/KodBot-<version>-setup.exe `
+  release/KodBot-setup.exe `
+  release/KodBot-<version>-setup.exe.blockmap `
   release/latest.yml
 ```
 
 Both names are required, for different consumers:
 
-- **`OpenCrew-<version>-setup.exe`** is what `latest.yml` references by name and
+- **`KodBot-<version>-setup.exe`** is what `latest.yml` references by name and
   sha512. The auto-updater downloads exactly this.
-- **`OpenCrew-setup.exe`** is a byte-identical copy that gives the README's
-  `/releases/latest/download/OpenCrew-setup.exe` button a stable URL. This
-  mirrors `OpenCrew.dmg` sitting beside `OpenCrew-<version>.dmg`.
+- **`KodBot-setup.exe`** is a byte-identical copy that gives the README's
+  `/releases/latest/download/KodBot-setup.exe` button a stable URL. This
+  mirrors `KodBot.dmg` sitting beside `KodBot-<version>.dmg`.
 
 ### latest.yml is not optional
 

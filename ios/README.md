@@ -1,4 +1,4 @@
-# OpenCrew companion (iOS)
+# KodBot companion (iOS)
 
 Your bots keep running on the laptop. This is the phone you watch them from,
 answer their approvals on, and send them the next thing.
@@ -77,7 +77,7 @@ The app needs Xcode. The `.xcodeproj` is generated rather than committed:
 
 ```sh
 brew install xcodegen
-cd ios && xcodegen generate && open OpenCrewCompanion.xcodeproj
+cd ios && xcodegen generate && open KodBotCompanion.xcodeproj
 ```
 
 **Re-run `xcodegen generate` after pulling any change that adds a file to
@@ -181,5 +181,5 @@ no APNs delivery after the app is terminated, no voice/call mode, and no hosted 
 Task management, SQLite transcript search,
 transcript sharing, reactions, and edit/version controls use narrow companion
 routes and the computer remains the source of truth. Tailscale is supported
-through manual MagicDNS entry; it is not a dependency and OpenCrew does not
+through manual MagicDNS entry; it is not a dependency and KodBot does not
 operate a cloud copy of local data.

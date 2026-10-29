@@ -29,8 +29,8 @@ describe("credentials", () => {
 });
 
 describe("what the app may do", () => {
-  // Every request in ios/Sources/CompanionCore/Client.swift. If one of these
-  // fails, a screen on the phone is broken.
+  // Every request the native mobile clients make. If one of these fails, a
+  // screen on the phone is broken.
   const calls: Array<[string, string]> = [
     ["GET", "/api/health"],
     ["GET", "/api/config"],
@@ -39,6 +39,7 @@ describe("what the app may do", () => {
     ["GET", "/api/bots"],
     ["POST", "/api/bots"],
     ["POST", "/api/bots/bot_123/messages"],
+    ["PATCH", "/api/bots/bot_123/model"],
     ["POST", "/api/bots/bot_123/interrupt"],
     ["POST", "/api/bots/bot_123/read"],
     ["POST", "/api/bots/bot_123/always-allow"],
@@ -109,9 +110,11 @@ describe("what it may not", () => {
   it("allows a path only for the methods it was allowed for", () => {
     expect(allowed("GET", "/api/bots")).toBe(true);
     expect(allowed("DELETE", "/api/bots/bot_123")).toBe(false);
+    expect(allowed("PATCH", "/api/bots/bot_123/model")).toBe(true);
     expect(allowed("POST", "/api/threads/th_1/messages")).toBe(false);
     expect(allowed("GET", "/api/groups/room-1")).toBe(false);
     expect(allowed("PATCH", "/api/bots/bot_123")).toBe(false);
+    expect(allowed("PATCH", "/api/bots/bot_123/model/autoApprove")).toBe(false);
     expect(allowed("PATCH", "/api/groups/room-1")).toBe(false);
   });
 

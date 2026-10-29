@@ -287,7 +287,7 @@ public struct CompanionClient: Sendable {
 
     /// Turn a non-2xx into an `APIError` carrying the harness's own message.
     /// Those messages are written for people ("pair this device in
-    /// OpenCrew → Settings → Companion"), so passing them through beats
+    /// KodBot → Settings → Companion"), so passing them through beats
     /// inventing a worse one here.
     static func check(_ response: URLResponse, _ data: Data) throws {
         guard let http = response as? HTTPURLResponse else { return }

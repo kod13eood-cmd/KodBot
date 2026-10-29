@@ -90,9 +90,9 @@ export function CallTargetButton({
   const reason = !capabilitiesReady
     ? "Checking whether this device can make calls."
     : !capabilities.dictation.available
-      ? "Calls require OpenCrew for macOS because speech recognition runs on-device."
+      ? "Calls require KodBot for macOS because speech recognition runs on-device."
       : !window.ogb?.speechStart
-        ? "The speech service is unavailable in this app build. Restart or update OpenCrew."
+        ? "The speech service is unavailable in this app build. Restart or update KodBot."
         : !configured
           ? "Add an ElevenLabs API key so the bot can speak during calls."
           : !voiceReady

@@ -3,7 +3,7 @@
 <plist version="1.0">
   <dict>
     <key>CFBundleDisplayName</key>
-    <string>OpenCrew</string>
+    <string>KodBot</string>
     <key>CFBundleExecutable</key>
     <string>speech-helper</string>
     <key>CFBundleIdentifier</key>
@@ -11,14 +11,14 @@
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>OpenCrew Speech</string>
+    <string>KodBot Speech</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>LSBackgroundOnly</key>
     <true/>
     <key>NSMicrophoneUsageDescription</key>
-    <string>OpenCrew listens while you dictate messages or talk to a bot.</string>
+    <string>KodBot listens while you dictate messages or talk to a bot.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>OpenCrew converts your speech into text during dictation and calls.</string>
+    <string>KodBot converts your speech into text during dictation and calls.</string>
   </dict>
 </plist>

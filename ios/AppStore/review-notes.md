@@ -1,10 +1,10 @@
 # App Review notes
 
-OpenCrewMobile is a companion for the OpenCrew desktop application and does not use a developer-hosted login.
+KodBot is a companion for the KodBot desktop application and does not use a developer-hosted login.
 
 To review the app:
 
-1. Install and start OpenCrew on a Mac, Windows, or Linux computer.
+1. Install and start KodBot on a Mac, Windows, or Linux computer.
 2. Open **Settings → Companion**, enable the companion, and choose **Start pairing**.
 3. On the iPhone, choose **Scan QR Code**, scan the code shown by the desktop,
    review the computer and address, and confirm pairing.

@@ -14,6 +14,7 @@ import { Card } from "./SettingsPrimitives";
 import { UsageSection } from "./UsageSection";
 import { VoiceSettings } from "./VoiceSettings";
 import { cn } from "@/lib/cn";
+import { LOCALE_OPTIONS, useI18n } from "@/lib/i18n";
 
 const SECTIONS: Array<{ id: AppSettingsSection; label: string; icon: typeof User }> = [
   { id: "general", label: "General", icon: User },
@@ -28,6 +29,7 @@ const SECTIONS: Array<{ id: AppSettingsSection; label: string; icon: typeof User
 /** Name + email, persisted to /api/config {profile} on blur. */
 function ProfileFields() {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const [name, setName] = useState(state.config?.profile?.name ?? "");
   const [email, setEmail] = useState(state.config?.profile?.email ?? "");
   useEffect(() => {
@@ -50,7 +52,7 @@ function ProfileFields() {
     "w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[14px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none";
   return (
     <div className="flex flex-col gap-3">
-      <input value={name} onChange={(e) => setName(e.target.value)} onBlur={save} placeholder="Your name" className={inputClass} />
+      <input value={name} onChange={(e) => setName(e.target.value)} onBlur={save} placeholder={t("Your name")} className={inputClass} />
       <input
         type="email"
         value={email}
@@ -65,22 +67,23 @@ function ProfileFields() {
 
 function UpdatesRow() {
   const s = useUpdaterState();
+  const { t } = useI18n();
   if (!window.ogb?.updater) return null;
   const updater = window.ogb.updater;
   const label =
     s?.status === "checking"
-      ? "Checking…"
+      ? t("Checking…")
       : s?.status === "available"
-        ? `${s.version} available`
+        ? t("{version} available", { version: s.version ?? "" })
         : s?.status === "downloading"
-          ? `Downloading ${Math.round(s.percent ?? 0)}%`
+          ? t("Downloading {percent}%", { percent: Math.round(s.percent ?? 0) })
           : s?.status === "downloaded"
-            ? `${s.version} ready — restart to apply`
+            ? t("{version} ready — restart to apply", { version: s.version ?? "" })
             : s?.status === "error"
-              ? `Check failed: ${s.message ?? "unknown error"}`
-              : "You're on the latest version we know of.";
+              ? t("Check failed: {message}", { message: s.message ?? t("unknown error") })
+              : t("You're on the latest version we know of.");
   return (
-    <Card title="Updates" subtitle={label}>
+    <Card title={t("Updates")} subtitle={label}>
       <button
         onClick={() => {
           if (s?.status === "available") return void updater.download();
@@ -91,17 +94,47 @@ function UpdatesRow() {
         className="rounded-lg border border-hairline/40 px-3 py-1.5 text-[13px] text-ink hover:bg-raised disabled:opacity-40"
       >
         {s?.status === "available"
-          ? "Download"
+          ? t("Download")
           : s?.status === "downloaded"
-            ? "Restart and install"
-            : "Check for updates"}
+            ? t("Restart and install")
+            : t("Check for updates")}
       </button>
+    </Card>
+  );
+}
+
+function LanguageCard() {
+  const { locale, setLocale, t } = useI18n();
+  return (
+    <Card title={t("Language")} subtitle={t("Choose the language for the app. Changes apply immediately.")}>
+      <div className="grid grid-cols-2 gap-2">
+        {LOCALE_OPTIONS.map((option) => (
+          <button
+            key={option.id}
+            onClick={() => setLocale(option.id)}
+            aria-pressed={locale === option.id}
+            className={cn(
+              "rounded-lg border px-3 py-2 text-left text-[14px] transition-colors",
+              locale === option.id
+                ? "border-accent/50 bg-accent/10 text-ink"
+                : "border-hairline/40 text-ink-secondary hover:bg-raised/60 hover:text-ink",
+            )}
+          >
+            <span className="flex items-center justify-between gap-2">
+              {option.label}
+              {locale === option.id && <span className="text-accent">✓</span>}
+            </span>
+          </button>
+        ))}
+      </div>
+      <div className="mt-2 text-[12px] text-ink-secondary">{t("More languages can be added later.")}</div>
     </Card>
   );
 }
 
 export function SettingsModal() {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const section = state.appSettingsSection;
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -164,7 +197,7 @@ export function SettingsModal() {
         {/* section nav */}
         <nav className="flex w-[190px] shrink-0 flex-col gap-0.5 border-r border-hairline/40 p-3">
           <div id="app-settings-title" className="px-2 pb-2 pt-1 text-[15px] font-semibold text-ink">
-            Settings
+            {t("Settings")}
           </div>
           {SECTIONS.map(({ id, label, icon: Icon }) => (
             <button
@@ -177,7 +210,7 @@ export function SettingsModal() {
               )}
             >
               <Icon size={15} />
-              {label}
+              {t(label)}
             </button>
           ))}
         </nav>
@@ -185,11 +218,11 @@ export function SettingsModal() {
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center justify-between px-5 py-3">
             <span className="text-[15px] font-semibold text-ink">
-              {SECTIONS.find((s) => s.id === section)?.label}
+              {t(SECTIONS.find((s) => s.id === section)?.label ?? "")}
             </span>
             <button
               onClick={() => dispatch({ type: "toggleAppSettings", open: false })}
-              aria-label="Close settings"
+              aria-label={t("Close settings")}
               className="rounded-md p-1 text-ink-secondary hover:bg-raised hover:text-ink"
             >
               <X size={18} />
@@ -199,28 +232,29 @@ export function SettingsModal() {
           <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 pb-5">
             {section === "general" && (
               <>
-                <Card title="Profile" subtitle="Shown in the sidebar. Saved as you go.">
+                <Card title={t("Profile")} subtitle={t("Shown in the sidebar. Saved as you go.")}>
                   <ProfileFields />
                 </Card>
+                <LanguageCard />
                 <UpdatesRow />
               </>
             )}
 
             {section === "connections" && (
               <Card
-                title="Connections"
-                subtitle="Connected apps work automatically in the installed app. Other optional service keys stay on this computer."
+                title={t("Connections")}
+                subtitle={t("Connections subtitle")}
               >
                 <div className="flex flex-col gap-4">
                   {state.config?.composio.mode === "managed" ? (
                     <div className="rounded-lg border border-success/25 bg-success/10 px-3 py-2 text-[13px] text-success">
-                      Connected apps service is ready
+                      {t("Connected apps service is ready")}
                     </div>
                   ) : null}
                   <ApiKeyRow section="box" />
                   <ApiKeyRow section="opencodeGo" />
                   <details className="rounded-lg border border-hairline/40 bg-inset px-3 py-2">
-                    <summary className="cursor-pointer text-[13px] text-ink-secondary">Self-host connected apps</summary>
+                    <summary className="cursor-pointer text-[13px] text-ink-secondary">{t("Self-host connected apps")}</summary>
                     <div className="mt-3">
                       <ApiKeyRow section="composio" />
                     </div>
@@ -230,7 +264,7 @@ export function SettingsModal() {
             )}
 
             {section === "engines" && (
-              <Card title="Engine CLIs" subtitle="Which binary each engine runs. Saved as you go.">
+              <Card title={t("Engine CLIs")} subtitle={t("Which binary each engine runs. Saved as you go.")}>
                 <EnginesSettings />
               </Card>
             )}

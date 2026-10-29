@@ -16,6 +16,7 @@ import { normalizeState } from "@/lib/mascot";
 import { groupComposerHint } from "@/lib/group-routing";
 import { PendingApprovalActions, PendingApprovalPanel, pendingApprovals } from "./PendingApproval";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
+import { useI18n } from "@/lib/i18n";
 
 /** The active @mention query at the caret: the text between an `@` that
  * starts a word and the caret. null = no mention being typed. */
@@ -43,6 +44,7 @@ export function Composer({
   onEditLast?: () => void;
 }) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const { capabilities } = useDesktopCapabilities();
   // Unified target: a 1:1 bot thread or a room. In a room the @ picker
   // offers members plus @everyone; explicit mentions override the room's
@@ -59,8 +61,8 @@ export function Composer({
       members?.find((b) => b.id === group.busyBotId)
     : bot;
   const busyName = group
-    ? (members?.find((b) => b.id === group.busyBotId)?.name ?? "A bot")
-    : (bot?.name ?? "The bot");
+    ? (members?.find((b) => b.id === group.busyBotId)?.name ?? t("A bot"))
+    : (bot?.name ?? t("The bot"));
   // Per-thread draft: switching bots unmounts this component, so both the
   // text and its attachment chips have to outlive it (see lib/drafts).
   const [text, setText, attachments, setAttachments] = useComposerDraft(
@@ -136,19 +138,19 @@ export function Composer({
   // a chip on its own is a message: the send control has to appear for it
   const hasContent = Boolean(text.trim()) || attachments.length > 0;
   const send = () => {
-    const t = composeMessage(text, attachments);
-    if (!t) return;
+    const composed = composeMessage(text, attachments);
+    if (!composed) return;
     if (busy && group) {
-      setQueued(t);
+      setQueued(composed);
       setText("");
       setAttachments([]);
       return;
     }
     if (group) {
-      dispatch({ type: "sendGroup", groupId: group.id, text: t });
+      dispatch({ type: "sendGroup", groupId: group.id, text: composed });
       track("message_sent", { room: true });
     } else if (bot) {
-      dispatch({ type: "send", botId: bot.id, text: t });
+      dispatch({ type: "send", botId: bot.id, text: composed });
       track("message_sent", { driver: bot.modelSelection?.instanceId, queued: busy });
     }
     setText("");
@@ -181,10 +183,10 @@ export function Composer({
     const offEnd = bridge.onSpeechEnd(({ code }) => {
       setRecording(false);
       if (code === 2) {
-        setSpeechError("Dictation is only available on macOS for now.");
+        setSpeechError(t("Dictation is only available on macOS for now."));
       } else if (code === 1) {
         setSpeechError(
-          "Dictation needs Microphone + Speech Recognition access — System Settings → Privacy & Security.",
+          t("Dictation needs Microphone + Speech Recognition access — System Settings → Privacy & Security."),
         );
       }
     });
@@ -194,11 +196,11 @@ export function Composer({
       offEnd();
       void bridge.speechStop();
     };
-  }, [recording]);
+  }, [recording, t]);
 
   const toggleMic = () => {
     if (!capabilities.dictation.available || !window.ogb) {
-      setSpeechError("Dictation isn't available in this build.");
+      setSpeechError(t("Dictation isn't available in this build."));
       return;
     }
     baseText.current = text.trim();
@@ -217,11 +219,11 @@ export function Composer({
           <div className="mb-2 flex items-center gap-2 rounded-lg border border-hairline/40 bg-panel px-3 py-2 text-[12.5px] text-ink-secondary">
             <Clock size={13} className="shrink-0" />
             <span className="min-w-0 flex-1 truncate">
-              Queued — sends when {busyName} finishes: “{queued}”
+              {t("Queued — sends when {name} finishes: “{text}”", { name: busyName, text: queued })}
             </span>
             <button
               onClick={() => setQueued(null)}
-              aria-label="Discard queued message"
+              aria-label={t("Discard queued message")}
               className="rounded p-0.5 hover:bg-raised hover:text-ink"
             >
               <X size={13} />
@@ -231,7 +233,7 @@ export function Composer({
         {pickerOpen && (
           <div
             role="listbox"
-            aria-label="Tag a bot"
+            aria-label={t("Tag a bot")}
             className="absolute bottom-full left-2 z-20 mb-2 w-72 overflow-hidden rounded-xl border border-hairline/40 bg-raised shadow-lg"
           >
             {candidates.map((peer, i) => (
@@ -346,18 +348,21 @@ export function Composer({
           disabled={Boolean(approval)}
           placeholder={
             approval
-              ? "Answer the approval above to continue"
+              ? t("Answer the approval above to continue")
               : recording
-              ? "Listening…"
+              ? t("Listening…")
               : busy
                 ? group
-                  ? `${busyName} is working — Enter queues your message`
-                  : `${busyName} is working — sends when this turn finishes`
+                  ? t("{name} is working — Enter queues your message", { name: busyName })
+                  : t("{name} is working — sends when this turn finishes", { name: busyName })
                 : group
-                  ? `Message ${group.name} — ${groupComposerHint(group, members ?? [])}`
-                  : `Message ${bot?.name ?? ""}`
+                  ? t("Message {name} — {hint}", {
+                      name: group.name,
+                      hint: groupComposerHint(group, members ?? []),
+                    })
+                  : t("Message {name}", { name: bot?.name ?? "" })
           }
-          aria-label={`Message ${group ? group.name : (bot?.name ?? "")}`}
+          aria-label={t("Message {name}", { name: group ? group.name : (bot?.name ?? "") })}
           className="max-h-40 w-full resize-none self-center bg-transparent py-1 text-[15px] leading-6 text-ink placeholder:text-ink-secondary focus:outline-none"
         />
         {busy && (
@@ -366,9 +371,9 @@ export function Composer({
               if (group) dispatch({ type: "interruptGroup", groupId: group.id });
               else if (bot) dispatch({ type: "interrupt", botId: bot.id });
             }}
-            aria-label="Stop this turn"
+            aria-label={t("Stop this turn")}
             className="flex size-8 shrink-0 items-center justify-center rounded-full text-ink-secondary hover:bg-raised hover:text-ink"
-            title="Stop"
+            title={t("Stop")}
           >
             <Square size={14} className="fill-current" />
           </button>
@@ -376,14 +381,14 @@ export function Composer({
         {!busy && !hasContent && capabilities.dictation.available && (
           <button
             onClick={toggleMic}
-            aria-label={recording ? "Stop dictation" : "Start dictation"}
+            aria-label={recording ? t("Stop dictation") : t("Start dictation")}
             className={cn(
               "flex size-8 shrink-0 items-center justify-center rounded-full",
               recording
                 ? "animate-pulse bg-danger/20 text-danger"
                 : "text-ink-secondary hover:bg-raised hover:text-ink",
             )}
-            title={recording ? "Stop dictation (Esc)" : "Dictate"}
+            title={recording ? t("Stop dictation (Esc)") : t("Dictate")}
           >
             <Mic size={18} />
           </button>
@@ -391,8 +396,8 @@ export function Composer({
         {hasContent && (
           <button
             onClick={send}
-            aria-label={busy ? "Queue message" : "Send message"}
-            title={busy ? "Sends when the current turn finishes" : "Send"}
+            aria-label={busy ? t("Queue message") : t("Send message")}
+            title={busy ? t("Sends when the current turn finishes") : t("Send")}
             className={cn(
               "flex size-8 shrink-0 items-center justify-center rounded-full text-white",
               busy ? "bg-raised text-ink-secondary hover:bg-raised-hover" : "bg-accent hover:brightness-110",

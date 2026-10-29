@@ -13,7 +13,7 @@ function downloadManifest(manifest: ExportedTeam): { name: string; members: numb
       .trim()
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "") || "opencrew-team";
+      .replace(/^-|-$/g, "") || "kodbot-team";
   const blob = new Blob([`${JSON.stringify(manifest, null, 2)}\n`], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

@@ -1,4 +1,4 @@
-# OpenCrew connected-apps broker
+# KodBot connected-apps broker
 
 This Worker keeps the shared Composio project key out of desktop builds. Each
 installation receives a random bearer token stored only as a SHA-256 hash in

@@ -67,7 +67,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: opencrew-ubuntu-x64
+          name: kodbot-ubuntu-x64
           path: |
             release/*.deb
             release/*.AppImage
@@ -90,8 +90,8 @@ jobs:
         run: |
           cd ios
           xcodebuild \
-            -project OpenCrewCompanion.xcodeproj \
-            -scheme OpenCrewCompanion \
+            -project KodBotCompanion.xcodeproj \
+            -scheme KodBotCompanion \
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \

@@ -8,11 +8,13 @@ import { Check, Loader2, Volume2 } from "lucide-react";
 import { api, useStore, type ConfigStatus } from "@/state/store";
 import { speaker } from "@/lib/tts";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n";
 
 const SAMPLE = "Morning. Overnight the tests went green, and I left two notes for you in the thread.";
 
 export function VoiceSettings() {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const tts = state.config?.tts;
 
   const [key, setKey] = useState("");
@@ -59,17 +61,16 @@ export function VoiceSettings() {
 
   return (
     <div className="rounded-xl bg-card p-4">
-      <div className="text-[15px] font-medium text-ink">Voice</div>
+      <div className="text-[15px] font-medium text-ink">{t("Voice")}</div>
       <div className="mt-0.5 text-[13px] text-ink-secondary">
-        Read replies aloud and talk to your bots, using your own ElevenLabs account. Billed per character by
-        ElevenLabs.
+        {t("Read replies aloud and talk to your bots, using your own ElevenLabs account. Billed per character by ElevenLabs.")}
       </div>
 
       <div className="mt-4">
         <div className="mb-1.5 flex items-center gap-2 text-[13px] text-ink-secondary">
           <span className={cn("size-1.5 rounded-full", configured ? "bg-success" : "bg-raised-hover")} />
-          <span>ElevenLabs key</span>
-          {configured && <span className="text-[11px] text-success">Connected</span>}
+          <span>{t("ElevenLabs key")}</span>
+          {configured && <span className="text-[11px] text-success">{t("Connected")}</span>}
         </div>
         <div className="flex gap-2">
           <input
@@ -77,8 +78,8 @@ export function VoiceSettings() {
             value={key}
             onChange={(e) => setKey(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && key.trim() && void save({ key: key.trim() })}
-            placeholder={configured ? "••••••••  (paste to replace)" : "Paste your ElevenLabs API key"}
-            aria-label="ElevenLabs key"
+            placeholder={configured ? t("••••••••  (paste to replace)") : t("Paste your ElevenLabs API key")}
+            aria-label={t("ElevenLabs key")}
             autoComplete="off"
             className="w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none"
           />
@@ -87,7 +88,7 @@ export function VoiceSettings() {
             disabled={saving || !key.trim()}
             className="flex w-[72px] shrink-0 items-center justify-center gap-1.5 rounded-lg bg-raised py-2 text-[13px] text-ink hover:bg-raised-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {saving ? <Loader2 size={13} className="animate-spin" /> : <><Check size={13} />Save</>}
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <><Check size={13} />{t("Save")}</>}
           </button>
         </div>
         {!configured && (
@@ -97,22 +98,22 @@ export function VoiceSettings() {
             rel="noopener noreferrer"
             className="mt-1.5 inline-block text-[12px] font-medium text-accent hover:underline"
           >
-            Get a key from ElevenLabs
+            {t("Get a key from ElevenLabs")}
           </a>
         )}
       </div>
 
       {configured && (
         <div className="mt-4">
-          <div className="mb-1.5 text-[13px] text-ink-secondary">Voice</div>
+          <div className="mb-1.5 text-[13px] text-ink-secondary">{t("Voice")}</div>
           <div className="flex gap-2">
             <select
               value={tts.voice}
               onChange={(e) => void save({ voice: e.target.value })}
-              aria-label="Voice"
+              aria-label={t("Voice")}
               className="w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] text-ink focus:border-hairline focus:outline-none"
             >
-              <option value="">{loadingVoices ? "Loading voices…" : "Pick a voice"}</option>
+              <option value="">{loadingVoices ? t("Loading voices…") : t("Pick a voice")}</option>
               {voices.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.label}
@@ -123,11 +124,11 @@ export function VoiceSettings() {
             <button
               onClick={() => void speaker.speak(SAMPLE)}
               disabled={!tts.ready}
-              title={tts.ready ? "Hear this voice" : "Pick a voice first"}
-              aria-label="Hear this voice"
+              title={tts.ready ? t("Hear this voice") : t("Pick a voice first")}
+              aria-label={t("Hear this voice")}
               className="flex w-[72px] shrink-0 items-center justify-center gap-1.5 rounded-lg bg-raised py-2 text-[13px] text-ink hover:bg-raised-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Volume2 size={14} /> Try
+              <Volume2 size={14} /> {t("Try")}
             </button>
           </div>
         </div>

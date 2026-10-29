@@ -6,6 +6,7 @@ import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { EngineSetup } from "./EngineSetup";
 import { ProviderMark } from "./ProviderIcons";
 import type { InstanceInfo } from "@/state/store";
+import { useI18n } from "@/lib/i18n";
 
 // Three-step first-run onboarding: who you are (email), what's installed
 // (live engine checks from the harness), what the app may use (TCC).
@@ -107,6 +108,7 @@ function SetupRow(entry: EngineEntry) {
 
 export function Onboarding({ onDone }: { onDone: () => void }) {
   const { capabilities } = useDesktopCapabilities();
+  const { t } = useI18n();
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -175,8 +177,8 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       label: instance.displayName,
       readyNote:
         instance.access === "custom"
-          ? "Installed — ready for a local model."
-          : "Installed — ready to power bots.",
+          ? t("Installed — ready for a local model.")
+          : t("Installed — ready to power bots."),
     }));
   const readyEngines = engines.filter((e) => engineReady(e.instance));
   const setupEngines = engines.filter((e) => !engineReady(e.instance));
@@ -193,17 +195,16 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
         {step === 0 && (
           <div className="flex flex-col items-center">
             <CrewAvatar color="green" state="happy" size={72} />
-            <h1 className="mt-4 text-[20px] font-semibold text-ink">Welcome to OpenCrew</h1>
+            <h1 className="mt-4 text-[20px] font-semibold text-ink">{t("Welcome to KodBot")}</h1>
             <p className="mt-1.5 text-center text-[14px] leading-relaxed text-ink-secondary">
-              Bots that do real work on their own computer. Tell us who you are
-              and we&rsquo;ll let you know when big things ship.
+              {t("Bots that do real work on their own computer. Tell us who you are and we’ll let you know when big things ship.")}
             </p>
             <input
               autoFocus
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
+              placeholder={t("Your name")}
               className="mt-5 w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2.5 text-[15px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none"
             />
             <input
@@ -219,7 +220,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
               disabled={!valid}
               className="mt-3 w-full rounded-lg bg-accent py-2.5 text-[15px] font-medium text-white disabled:opacity-40"
             >
-              Continue
+              {t("Continue")}
             </button>
             <button
               onClick={() => {
@@ -228,27 +229,27 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
               }}
               className="mt-3 text-[12px] text-ink-secondary hover:text-ink"
             >
-              Maybe later
+              {t("Maybe later")}
             </button>
           </div>
         )}
 
         {step === 1 && (
           <div className="flex min-h-0 flex-col">
-            <h1 className="text-[18px] font-semibold text-ink">Your engines</h1>
+            <h1 className="text-[18px] font-semibold text-ink">{t("Your engines")}</h1>
             <p className="mt-1 text-[13.5px] text-ink-secondary">
-              Bots run on AI tools installed on this computer — here&rsquo;s what we found.
+              {t("Bots run on AI tools installed on this computer — here’s what we found.")}
             </p>
             <div className="mt-4 flex min-h-0 flex-col gap-2.5 overflow-y-auto pr-1 [scrollbar-width:thin]">
               {!instances ? (
                 <div className="flex items-center gap-2 py-6 text-ink-secondary">
-                  <Loader2 size={16} className="animate-spin" /> Checking…
+                  <Loader2 size={16} className="animate-spin" /> {t("Checking…")}
                 </div>
               ) : (
                 <>
                   {readyEngines.length > 0 && (
                     <>
-                      <div className="text-[11.5px] font-medium uppercase tracking-wide text-ink-secondary">Ready</div>
+                      <div className="text-[11.5px] font-medium uppercase tracking-wide text-ink-secondary">{t("Ready engines")}</div>
                       <div className="grid grid-cols-2 gap-2.5">
                         {readyEngines.map((e) => (
                           <ReadyTile key={e.label} {...e} />
@@ -259,7 +260,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                   {setupEngines.length > 0 && (
                     <>
                       <div className={`text-[11.5px] font-medium uppercase tracking-wide text-ink-secondary ${readyEngines.length ? "mt-2" : ""}`}>
-                        Needs setup
+                        {t("Needs setup")}
                       </div>
                       {setupEngines.map((e) => (
                         <SetupRow key={e.label} {...e} />
@@ -273,25 +274,25 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
               onClick={() => (capabilities.dictation.available ? setStep(2) : finish())}
               className="mt-5 w-full shrink-0 rounded-lg bg-accent py-2.5 text-[15px] font-medium text-white"
             >
-              Continue
+              {t("Continue")}
             </button>
           </div>
         )}
 
         {step === 2 && (
           <div className="flex flex-col">
-            <h1 className="text-[18px] font-semibold text-ink">Permissions</h1>
+            <h1 className="text-[18px] font-semibold text-ink">{t("Permissions")}</h1>
             <p className="mt-1 text-[13.5px] text-ink-secondary">
-              Optional, and only ever used when you ask for the feature.
+              {t("Optional, and only ever used when you ask for the feature.")}
             </p>
             <div className="mt-4 flex flex-col gap-2.5">
               <div className="flex items-center justify-between gap-3 rounded-xl bg-card p-3.5">
                 <div className="flex items-start gap-3">
                   <Mic size={18} className="mt-0.5 shrink-0 text-ink-secondary" />
                   <div>
-                    <div className="text-[14px] font-medium text-ink">Microphone & speech</div>
+                    <div className="text-[14px] font-medium text-ink">{t("Microphone & speech")}</div>
                     <div className="mt-0.5 text-[12.5px] text-ink-secondary">
-                      Voice dictation into the composer, transcribed on-device.
+                      {t("Voice dictation into the composer, transcribed on-device.")}
                     </div>
                   </div>
                 </div>
@@ -302,7 +303,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                     onClick={() => window.ogb?.permOpenSettings?.("mic")}
                     className="shrink-0 rounded-lg bg-raised px-3 py-1.5 text-[13px] text-ink hover:bg-raised-hover"
                   >
-                    Open Settings
+                    {t("Open Settings")}
                   </button>
                 ) : (
                   <button
@@ -311,7 +312,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                     }
                     className="shrink-0 rounded-lg bg-raised px-3 py-1.5 text-[13px] text-ink hover:bg-raised-hover"
                   >
-                    Enable
+                    {t("Enable")}
                   </button>
                 )}
               </div>
@@ -322,10 +323,10 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                   which is the moment the user has context for the dialog. */}
             </div>
             <button onClick={finish} className="mt-5 w-full rounded-lg bg-accent py-2.5 text-[15px] font-medium text-white">
-              Start using OpenCrew
+              {t("Start using KodBot")}
             </button>
             <button onClick={finish} className="mt-3 text-[12px] text-ink-secondary hover:text-ink">
-              Skip for now
+              {t("Skip for now")}
             </button>
           </div>
         )}

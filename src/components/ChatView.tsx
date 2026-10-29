@@ -50,6 +50,7 @@ import { cn } from "@/lib/cn";
 import { useFocusMessage } from "@/lib/focus-message";
 import { webhookMessageView } from "@/lib/webhook-message";
 import { BOTTOM_FOLLOW_THRESHOLD, shouldResumeBottomFollow } from "@/lib/bottom-follow";
+import { useI18n } from "@/lib/i18n";
 import {
   TRANSCRIPT_WINDOW_SIZE,
   expandWindowStart,
@@ -64,26 +65,32 @@ const USER_COLLAPSE_CHARS = 600;
 const USER_COLLAPSE_LINES = 8;
 
 /** "Today" / "Yesterday" / "Mon, Aug 11" — real dates, not a hardcoded label. */
-function dayLabel(at: number): string {
+function dayLabel(
+  at: number,
+  t: (source: string) => string,
+  locale: "en" | "bg",
+): string {
   const d = new Date(at);
   const now = new Date();
   const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000);
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  if (diffDays === 0) return t("Today");
+  if (diffDays === 1) return t("Yesterday");
+  return d.toLocaleDateString(locale === "bg" ? "bg-BG" : [], { weekday: "short", month: "short", day: "numeric" });
 }
 
 function DaySeparator({ at }: { at: number }) {
+  const { t, locale } = useI18n();
   return (
     <div className="py-3 text-center text-[13px] text-ink-secondary">
-      {dayLabel(at)} {formatTime(at)}
+      {dayLabel(at, t, locale)} {formatTime(at)}
     </div>
   );
 }
 
 /** Hover/focus-revealed copy control shared by user + bot bubbles. */
 function CopyButton({ text, className }: { text: string; className?: string }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -92,8 +99,8 @@ function CopyButton({ text, className }: { text: string; className?: string }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 1200);
       }}
-      aria-label="Copy message"
-      title="Copy message"
+      aria-label={t("Copy message")}
+      title={t("Copy message")}
       className={cn(
         "rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100",
         className,
@@ -107,6 +114,7 @@ function CopyButton({ text, className }: { text: string; className?: string }) {
 /** Live extended thinking: shimmer label + collapsible reasoning text.
  * Ephemeral — rendered only while the turn runs, dropped when it settles. */
 function ThinkingStrip({ text, active }: { text: string; active: boolean }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const tailRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -122,7 +130,7 @@ function ThinkingStrip({ text, active }: { text: string; active: boolean }) {
         >
           <Brain size={13} className="text-ink-secondary" />
           <span className={cn(active ? "thinking-shimmer animate-shimmer" : "text-ink-secondary")}>
-            {active ? "Thinking…" : "Thought process"}
+            {active ? t("Thinking…") : t("Thought process")}
           </span>
           <ChevronDown size={12} className={cn("text-ink-secondary transition-transform", open && "rotate-180")} />
         </button>
@@ -161,6 +169,7 @@ function ErrorRow({
   onRetry?: () => void;
   setupInstance?: InstanceInfo;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex justify-start">
       <div className="max-w-[70%] rounded-xl border border-danger/30 bg-danger/10 px-3.5 py-2.5 text-[13.5px] text-danger">
@@ -177,7 +186,7 @@ function ErrorRow({
               onClick={onRetry}
               className="mt-1.5 flex items-center gap-1.5 rounded-full border border-danger/30 px-2.5 py-1 text-[12.5px] hover:bg-danger/15"
             >
-              <RefreshCw size={12} /> Retry
+              <RefreshCw size={12} /> {t("Retry")}
             </button>
           )
         )}
@@ -216,6 +225,7 @@ function BubbleEditor({
   onCancel: () => void;
   onSubmit: (text: string) => void;
 }) {
+  const { t } = useI18n();
   const [draft, setDraft] = useState(initial);
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -249,14 +259,14 @@ function BubbleEditor({
           onClick={onCancel}
           className="rounded-full px-3 py-1 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink"
         >
-          Cancel
+          {t("Cancel")}
         </button>
         <button
           onClick={submit}
           disabled={!draft.trim()}
           className="rounded-full bg-accent px-3 py-1 text-[13px] font-medium text-white disabled:opacity-40"
         >
-          Send
+          {t("Send")}
         </button>
       </div>
     </div>
@@ -283,6 +293,7 @@ function Bubble({
   onRegenerate?: () => void;
 }) {
   const { dispatch } = useStore();
+  const { t } = useI18n();
   const user = message.role === "user";
   const [expanded, setExpanded] = useState(false);
   const text = message.text ?? "";
@@ -314,9 +325,9 @@ function Bubble({
         {user && message.kind === "text" && !webhookView && !bot.busy && (
           <button
             onClick={onStartEdit}
-            aria-label="Edit message"
+            aria-label={t("Edit message")}
             className="rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
-            title="Edit message"
+            title={t("Edit message")}
           >
             <Pencil size={14} />
           </button>
@@ -338,12 +349,12 @@ function Bubble({
             <div className="min-w-[300px] max-w-[520px]">
               <div className="flex items-center gap-2 border-b border-accent/15 bg-accent/[0.055] px-4 py-2.5 text-[11.5px] font-medium text-accent">
                 <Webhook size={13} />
-                <span>Webhook task</span>
+                <span>{t("Webhook task")}</span>
               </div>
               <div className="px-4 py-3 whitespace-pre-wrap">{webhookView.task}</div>
               {webhookView.payload && (
                 <details className="border-t border-hairline/30 bg-inset/25 px-4 py-2.5 text-[11.5px] text-ink-secondary">
-                  <summary className="cursor-pointer select-none hover:text-ink">View event payload</summary>
+                  <summary className="cursor-pointer select-none hover:text-ink">{t("View event payload")}</summary>
                   <pre className="mt-2 max-h-48 overflow-auto rounded-lg border border-hairline/25 bg-black/25 p-3 font-mono text-[10.5px] leading-relaxed whitespace-pre-wrap text-ink-secondary">{webhookView.payload}</pre>
                 </details>
               )}
@@ -357,12 +368,12 @@ function Bubble({
               </div>
               {collapsible && (
                 <button onClick={() => setExpanded(true)} className="mt-1 text-[12.5px] text-ink-secondary hover:text-ink">
-                  Show full message
+                  {t("Show full message")}
                 </button>
               )}
               {expanded && (
                 <button onClick={() => setExpanded(false)} className="mt-1 text-[12.5px] text-ink-secondary hover:text-ink">
-                  Show less
+                  {t("Show less")}
                 </button>
               )}
             </>
@@ -381,8 +392,8 @@ function Bubble({
             {isLastBotText && !bot.busy && onRegenerate && (
               <button
                 onClick={onRegenerate}
-                aria-label="Regenerate response"
-                title="Regenerate response"
+                aria-label={t("Regenerate response")}
+                title={t("Regenerate response")}
                 className="rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
               >
                 <RefreshCw size={14} />
@@ -404,7 +415,7 @@ function Bubble({
       {user && message.queued && bot.busy && (
         <div className="mt-1 flex items-center gap-1 pr-1 text-[11px] text-ink-secondary/70">
           <Clock size={11} aria-hidden="true" />
-          <span>Queued — sends when this turn finishes</span>
+          <span>{t("Queued — sends when this turn finishes")}</span>
         </div>
       )}
       <ReactionChips threadId={bot.threadId} message={message} align={user ? "right" : "left"} />
@@ -414,7 +425,7 @@ function Bubble({
             onClick={() => switchTo(versions[versionIndex - 1])}
             disabled={versionIndex <= 0 || bot.busy}
             className="rounded p-0.5 hover:bg-raised hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
-            title="Previous version"
+            title={t("Previous version")}
           >
             <ChevronLeft size={14} />
           </button>
@@ -425,7 +436,7 @@ function Bubble({
             onClick={() => switchTo(versions[versionIndex + 1])}
             disabled={versionIndex >= versions.length - 1 || bot.busy}
             className="rounded p-0.5 hover:bg-raised hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
-            title="Next version"
+            title={t("Next version")}
           >
             <ChevronRight size={14} />
           </button>
@@ -438,6 +449,7 @@ function Bubble({
 /** A tool run: spinner while live, check/cross once settled. */
 function ActivityChip({ message }: { message: Message }) {
   const { dispatch } = useStore();
+  const { t } = useI18n();
   const tool = message.tool;
   if (!tool) return null;
   // bot⇄bot comm chip: opens the channel where the exchange lives
@@ -447,7 +459,7 @@ function ActivityChip({ message }: { message: Message }) {
       <div className="flex justify-start">
         <button
           onClick={() => dispatch({ type: "select", id: comm.groupId })}
-          title={`Open the conversation with ${comm.withName}`}
+          title={t("Open the conversation with {name}", { name: comm.withName })}
           className="flex items-center gap-2 rounded-full border border-hairline/40 bg-panel px-3 py-1.5 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink"
         >
           <CrewAvatar color={comm.withColor} state="happy" size={16} />
@@ -480,11 +492,12 @@ function ActivityChip({ message }: { message: Message }) {
 }
 
 function ScreenFrame({ png, mime }: { png: string; mime?: string }) {
+  const { t } = useI18n();
   return (
     <div className="flex justify-start">
       <img
         src={`data:${mime ?? "image/png"};base64,${png}`}
-        alt="Bot's screen"
+        alt={t("Bot's screen")}
         className="max-w-[70%] rounded-2xl border border-hairline/40"
       />
     </div>
@@ -510,15 +523,20 @@ function StreamingBubble({ text }: { text: string }) {
 /** "Working for 12s" that ticks by mutating textContent on an interval —
  * no React commit per second while a turn streams (upstream trick). */
 function WorkingTimer({ since }: { since: number }) {
+  const { t } = useI18n();
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const tick = () => {
-      if (ref.current) ref.current.textContent = `Working for ${Math.max(0, Math.round((Date.now() - since) / 1000))}s`;
+      if (ref.current) {
+        ref.current.textContent = t("Working for {seconds}s", {
+          seconds: Math.max(0, Math.round((Date.now() - since) / 1000)),
+        });
+      }
     };
     tick();
     const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
-  }, [since]);
+  }, [since, t]);
   return <span ref={ref} className="text-[12.5px] text-ink-secondary" />;
 }
 
@@ -553,6 +571,7 @@ const MessagesList = memo(function MessagesList({
   onRegenerate: () => void;
 }) {
   const { dispatch } = useStore();
+  const { t } = useI18n();
   return (
     <>
       {messages.length === 0 && !bot.busy && (
@@ -565,7 +584,7 @@ const MessagesList = memo(function MessagesList({
             inputClassName="rounded bg-inset px-1.5 py-0.5 text-center text-[17px] font-semibold"
           />
           <div className="max-w-[360px] text-[14px] text-ink-secondary">
-            {bot.description || "Send a message to start the conversation."}
+            {bot.description || t("Send a message to start the conversation.")}
           </div>
         </div>
       )}
@@ -626,6 +645,7 @@ const MessagesList = memo(function MessagesList({
 
 export function ChatView({ bot }: { bot: Bot }) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const stream = useStreaming();
@@ -919,7 +939,7 @@ export function ChatView({ bot }: { bot: Bot }) {
           className="mx-auto flex max-w-[900px] flex-col gap-3 pb-4"
           role="log"
           aria-live="polite"
-          aria-label={`Conversation with ${bot.name}`}
+          aria-label={t("Conversation with {name}", { name: bot.name })}
         >
           {hiddenCount > 0 && (
             <div className="flex justify-center pt-2">
@@ -927,7 +947,7 @@ export function ChatView({ bot }: { bot: Bot }) {
                 onClick={showEarlier}
                 className="rounded-full border border-hairline/40 bg-panel px-3 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink"
               >
-                Show earlier messages ({hiddenCount} more)
+                {t("Show earlier messages ({count} more)", { count: hiddenCount })}
               </button>
             </div>
           )}
@@ -949,7 +969,7 @@ export function ChatView({ bot }: { bot: Bot }) {
                 onClick={showLater}
                 className="rounded-full border border-hairline/40 bg-panel px-3 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink"
               >
-                Show later messages ({laterCount} more)
+                {t("Show later messages ({count} more)", { count: laterCount })}
               </button>
             </div>
           )}
@@ -957,7 +977,7 @@ export function ChatView({ bot }: { bot: Bot }) {
             <div className="flex justify-start">
               <div className="flex items-center gap-2 rounded-full border border-hairline/40 bg-panel px-3 py-1.5 text-[13px] text-ink-secondary">
                 <Loader2 size={13} className="animate-spin" />
-                Setting up this bot's computer…
+                {t("Setting up this bot's computer…")}
               </div>
             </div>
           )}
@@ -985,10 +1005,10 @@ export function ChatView({ bot }: { bot: Bot }) {
       {!follow && (
         <button
           onClick={jumpToLatest}
-          aria-label="Jump to latest messages"
+          aria-label={t("Jump to latest messages")}
           className="animate-pop-in absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-hairline/40 bg-raised px-3 py-1.5 text-[12.5px] text-ink shadow-lg hover:bg-raised-hover"
         >
-          <ArrowDown size={13} /> Jump to latest
+          <ArrowDown size={13} /> {t("Jump to latest")}
         </button>
       )}
 
@@ -1038,6 +1058,7 @@ function UsageChip({ bot }: { bot: Bot }) {
  * folder a first turn would pin. Click opens bot settings to change it. */
 function WorkingFolderChip({ bot }: { bot: Bot }) {
   const { dispatch } = useStore();
+  const { t } = useI18n();
   const task = bot.tasks?.find((t) => t.threadId === bot.threadId);
   const folder = task?.cwd === undefined ? bot.cwd : (task.cwd ?? undefined);
   if (!folder) return null;
@@ -1046,7 +1067,7 @@ function WorkingFolderChip({ bot }: { bot: Bot }) {
     <button
       onClick={() => dispatch({ type: "toggleSettings", open: true })}
       className="flex max-w-[180px] items-center gap-1.5 rounded-full border border-hairline/40 bg-raised/60 px-2.5 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink"
-      title={`Working folder: ${folder}`}
+      title={t("Working folder: {folder}", { folder })}
     >
       <Folder size={12} />
       <span className="truncate font-mono">{name}</span>

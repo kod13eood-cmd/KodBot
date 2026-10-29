@@ -35,7 +35,7 @@ afterAll(async () => {
 });
 
 describe("webhook-only ingress", () => {
-  it("exposes health but nothing from the main OpenCrew API", async () => {
+  it("exposes health but nothing from the main KodBot API", async () => {
     const health = await fetch(`${ingress.baseUrl}/health`);
     expect(health.status).toBe(200);
     expect(await health.json()).toEqual({ app: "opencrew-webhooks", ready: true });

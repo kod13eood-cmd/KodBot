@@ -49,7 +49,7 @@ export function UpdateBanner() {
 
   const title =
     s.status === "available"
-      ? `OpenCrew ${s.version} is available`
+      ? `KodBot ${s.version} is available`
       : s.status === "downloading"
         ? `Downloading ${s.version ?? "update"}…`
         : s.status === "downloaded"
@@ -68,7 +68,7 @@ export function UpdateBanner() {
         : s.status === "downloaded"
           ? "Restart to finish updating."
           : installing
-            ? "OpenCrew will reopen in a moment."
+            ? "KodBot will reopen in a moment."
             : friendlyError(s.message);
 
   return (

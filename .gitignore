@@ -11,7 +11,7 @@ dist-server
 .DS_Store
 *.tsbuildinfo
 electron/resources/speech-helper
-electron/resources/OpenCrew Speech.app
+electron/resources/KodBot Speech.app
 release
 .omb-scratch
 .wrangler/
@@ -19,3 +19,9 @@ release
 .dev.vars.*
 cloudflare/composio-broker/worker-configuration.d.ts
 .claude/worktrees/
+# Android Studio / Gradle generated files
+android/.gradle/
+android/.idea/
+android/local.properties
+android/**/build/
+android/.kotlin/

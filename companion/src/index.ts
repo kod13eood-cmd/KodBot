@@ -77,7 +77,7 @@ const conflict = (name: string, port: number): string | null => {
 let cachedName = process.env.OC_COMPANION_NAME?.trim() || "";
 
 /** What this computer is called on the phone. Never empty. */
-const machineName = (): string => cachedName || "OpenCrew";
+const machineName = (): string => cachedName || "KodBot";
 
 /** Ask the harness whose computer this is, once, at startup. Every failure
  * is survivable: the name is a label, and no part of pairing depends on it. */
@@ -92,7 +92,7 @@ async function refreshMachineName(): Promise<void> {
     const owner = config.profile?.name?.trim();
     if (owner) cachedName = `${owner}'s computer`;
   } catch {
-    /* not up, or no profile — "OpenCrew" is a fine thing to be called */
+    /* not up, or no profile — "KodBot" is a fine thing to be called */
   }
 }
 

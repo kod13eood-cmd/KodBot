@@ -1,6 +1,6 @@
-# Computer use & browser use in OpenCrew
+# Computer use & browser use in KodBot
 
-Decision doc, 2026-08-12. How bots in OpenCrew get local computer use and
+Decision doc, 2026-08-12. How bots in KodBot get local computer use and
 browser use, out of the box, with no separate installs. Based on a survey of
 OSS chat-app MCP hosts, macOS control servers, browser-automation stacks, and
 the local `cua` / `axstream` code on this machine.
@@ -10,7 +10,7 @@ the local `cua` / `axstream` code on this machine.
 ```
 Electron main process
 ├── EmbeddedCuaDriverHost  ──spawns──▶  cua-driver (bundled Rust binary, Resources/)
-│     one TCC prompt, named OpenCrew          │ unix socket (private)
+│     one TCC prompt, named KodBot          │ unix socket (private)
 ├── WebContentsView pool (embedded browser, persist: partitions per bot)
 │     driven via webContents.debugger (CDP) — zero-install browser use
 └── server/ harness (drivers spawn agent CLIs with --mcp-config)
@@ -48,8 +48,8 @@ bundled `cua-driver` binary. Alternatives evaluated and rejected:
 
 1. **Spawn from the Electron main process, never from the server/gateway
    layer.** macOS TCC attributes a spawned child to its "responsible process".
-   Spawned from Electron main → the grant is OpenCrew's, users see ONE
-   prompt named OpenCrew, and the bundled driver inherits it. Spawned from
+   Spawned from Electron main → the grant is KodBot's, users see ONE
+   prompt named KodBot, and the bundled driver inherits it. Spawned from
    a Node gateway/daemon → the identity silently becomes the gateway's and
    `check_permissions` cannot detect the misattribution. The harness must ask
    Electron main for the driver socket path over IPC, not spawn the driver.
@@ -66,7 +66,7 @@ bundled `cua-driver` binary. Alternatives evaluated and rejected:
 
 ### Packaging
 
-- Ship the binary at `OpenCrew.app/Contents/Resources/cua-driver`,
+- Ship the binary at `KodBot.app/Contents/Resources/cua-driver`,
   **outside the ASAR**, executable bit preserved (electron-builder
   `extraResources`).
 - **Re-sign it with our Team ID** before signing + notarizing the app (the

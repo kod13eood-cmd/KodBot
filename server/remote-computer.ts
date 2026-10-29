@@ -1,6 +1,6 @@
 // Shared provisioning and shell contract for the cloud computer's Cua Driver.
 // The box command API is the transport boundary: the daemon stays loopback-only
-// inside the VM and OpenCrew never exposes another inbound port.
+// inside the VM and KodBot never exposes another inbound port.
 
 export const REMOTE_CUA_VERSION = "0.20.0";
 export const REMOTE_CUA_EXECUTABLE = "/opt/ogb/cua-driver";
@@ -138,7 +138,7 @@ export function remoteComputerBootstrapCommand(botName: string): string {
     'pkill -f "^/opt/ogb/venv/bin/python -m computer_server( |$)" >/dev/null 2>&1 || true',
     `[ -f /opt/ogb/cua-${REMOTE_CUA_VERSION}-ready ] || [ -f /tmp/ogb-cua-installing ] || { touch /tmp/ogb-cua-installing; nohup bash -c ${shellQuote(installer)} > /tmp/ogb-cua-install.log 2>&1 & }`,
     ensureRemoteCuaCommand(),
-    `tmux has-session -t work 2>/dev/null || tmux new-session -d -s work 'echo; echo "  ▦ ${safeName}'"'"'s computer — OpenCrew"; echo; exec bash -i'`,
+    `tmux has-session -t work 2>/dev/null || tmux new-session -d -s work 'echo; echo "  ▦ ${safeName}'"'"'s computer — KodBot"; echo; exec bash -i'`,
     "echo bootstrapped",
   ].join("\n");
 }

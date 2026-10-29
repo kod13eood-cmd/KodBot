@@ -1,6 +1,6 @@
 # iOS companion architecture
 
-The iOS app is a thin, native client for the OpenCrew instance running on
+The iOS app is a thin, native client for the KodBot instance running on
 your Mac. The Mac remains the only machine that owns agent processes,
 credentials, SQLite data, transcripts, and computers. The phone discovers or
 is told how to reach the Mac, pairs once, and then uses the same HTTP and SSE
@@ -41,7 +41,7 @@ Store release automation, and a hosted relay are not part of this version.
             │
             │ loopback only
             ▼
- OpenCrew harness :8799
+ KodBot harness :8799
    HTTP API + event stream
    agent processes and approvals
             │
@@ -105,7 +105,7 @@ and `ios/project.yml` narrowly allows insecure HTTP for `ts.net` subdomains.
 Bonjour does not cross the tailnet, so remote pairing uses manual address
 entry.
 
-Tailscale is optional. There is no OpenCrew-operated relay or cloud copy of
+Tailscale is optional. There is no KodBot-operated relay or cloud copy of
 the local data in this design.
 
 ## Pairing and device security
@@ -128,7 +128,7 @@ the local data in this design.
 
 This mirrors the direct-pairing security shape used by T3 Code: a high-entropy
 bootstrap credential, explicit confirmation of the scanned target, and a
-one-time exchange for a securely stored long-lived credential. An OpenCrew
+one-time exchange for a securely stored long-lived credential. An KodBot
 account is not required because the phone connects directly to the user's Mac;
 authentication would only become necessary for a future hosted relay.
 
@@ -213,8 +213,8 @@ pnpm check:electron
 cd ios
 swift test
 xcodegen generate
-xcodebuild -project OpenCrewCompanion.xcodeproj \
-  -scheme OpenCrewCompanion \
+xcodebuild -project KodBotCompanion.xcodeproj \
+  -scheme KodBotCompanion \
   -sdk iphonesimulator \
   -destination 'generic/platform=iOS Simulator' \
   CODE_SIGNING_ALLOWED=NO build

@@ -37,6 +37,7 @@ import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { MIN_QUERY, SearchResults } from "./SearchResults";
 import { TeamLibraryPanel, type TeamImportResult } from "./TeamLibraryPanel";
 import { RenameTitle } from "./RenameTitle";
+import { useI18n } from "@/lib/i18n";
 
 /** "Milind Soni" → "MS", "milind" → "M", "you@x.dev" → "Y", unset → "?" */
 function profileInitials(profile?: { name?: string; email?: string }): string {
@@ -58,6 +59,7 @@ function profileInitials(profile?: { name?: string; email?: string }): string {
  * click is never silent. The bottom-left popup handles the loud cases. */
 function UpdateButton() {
   const s = useUpdaterState();
+  const { t } = useI18n();
   const [checkedAt, setCheckedAt] = useState(0);
   const updater = window.ogb?.updater;
   const status = s?.status ?? "idle";
@@ -78,20 +80,20 @@ function UpdateButton() {
     pending || status === "checking" || status === "downloading" || status === "installing";
   const label =
     status === "available"
-      ? `Version ${s?.version ?? ""} available — download`
+      ? t("Version {version} available — download", { version: s?.version ?? "" })
       : status === "downloading"
         ? s?.percent == null
-          ? "Starting download…"
-          : `Downloading… ${Math.round(s.percent)}%`
+          ? t("Starting download…")
+          : t("Downloading… {percent}%", { percent: Math.round(s.percent) })
         : status === "downloaded"
-          ? `Version ${s?.version ?? ""} ready — restart to update`
+          ? t("Version {version} ready — restart to update", { version: s?.version ?? "" })
           : status === "installing"
-            ? "Restarting to update…"
+            ? t("Restarting to update…")
             : status === "checking"
-              ? "Checking for updates…"
+              ? t("Checking for updates…")
               : upToDate
-                ? "You're up to date"
-                : "Check for updates";
+                ? t("You're up to date")
+                : t("Check for updates");
 
   return (
     <button
@@ -128,16 +130,18 @@ function UpdateButton() {
   );
 }
 
-function preview(bot: Bot): string {
-  if (bot.activity === "waiting-on-you") return "Waiting for you…";
-  if (bot.busy) return "Working…";
+type Translate = (source: string, vars?: Record<string, string | number>) => string;
+
+function preview(bot: Bot, t: Translate): string {
+  if (bot.activity === "waiting-on-you") return t("Waiting for you…");
+  if (bot.busy) return t("Working…");
   // the visible branch's tail — bot.messages holds every fork, so its last
   // entry can belong to a version the user switched away from
   const last = visibleMessages(bot).at(-1);
   if (!last) return "";
   if (last.kind === "options" && last.card) return last.card.title;
   if (last.kind === "activity" && last.tool) return last.tool.name;
-  if (last.kind === "screen") return "Screen frame";
+  if (last.kind === "screen") return t("Screen frame");
   return last.text ?? "";
 }
 
@@ -147,14 +151,15 @@ interface MenuState {
   y: number;
 }
 
-function groupPreview(group: Group, bots: Bot[]): string {
+function groupPreview(group: Group, bots: Bot[], t: Translate): string {
   if (group.busyBotId) {
-    return `${bots.find((b) => b.id === group.busyBotId)?.name ?? "A bot"} is working…`;
+    const name = bots.find((b) => b.id === group.busyBotId)?.name ?? t("A bot");
+    return t("{name} is working…", { name });
   }
   const last = group.messages.at(-1);
-  if (!last) return "No messages yet";
+  if (!last) return t("No messages yet");
   const text = last.kind === "activity" && last.tool ? last.tool.name : (last.text ?? "");
-  if (last.role === "user") return `You: ${text}`;
+  if (last.role === "user") return t("You: {text}", { text });
   return last.from ? `${last.from.name}: ${text}` : text;
 }
 
@@ -188,6 +193,7 @@ function StackedCrews({ members }: { members: Bot[] }) {
 
 function GroupListItem({ group, onMenu }: { group: Group; onMenu: (menu: { groupId: string; x: number; y: number }) => void }) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const selected = state.activeView === "chat" && state.selectedId === group.id;
   const members = group.memberIds
     .map((id) => state.bots.find((b) => b.id === id))
@@ -212,7 +218,7 @@ function GroupListItem({ group, onMenu }: { group: Group; onMenu: (menu: { group
           {selected && last && <span className="shrink-0 text-xs text-ink-secondary">{formatTime(last.at)}</span>}
         </div>
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-[13px] text-ink-secondary">{groupPreview(group, state.bots)}</span>
+          <span className="truncate text-[13px] text-ink-secondary">{groupPreview(group, state.bots, t)}</span>
           {group.unread && <span className="size-2 shrink-0 rounded-full bg-accent" />}
         </div>
       </div>
@@ -228,6 +234,7 @@ function RoomContextMenu({
   onClose: () => void;
 }) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const group = state.groups.find((g) => g.id === menu.groupId);
 
   useEffect(() => {
@@ -262,7 +269,7 @@ function RoomContextMenu({
         className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-[14px] text-ink hover:bg-raised/70"
       >
         <ClipboardCopy size={16} className="text-ink-secondary" />
-        Copy conversation ID
+        {t("Copy conversation ID")}
       </button>
       <button
         onClick={() => {
@@ -272,7 +279,7 @@ function RoomContextMenu({
         className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-[14px] text-danger hover:bg-raised/70"
       >
         <Trash2 size={16} />
-        Delete Room
+        {t("Delete Room")}
       </button>
     </div>,
     document.body,
@@ -282,6 +289,7 @@ function RoomContextMenu({
 /** Pick members → Create. The room name is optional; the server defaults it. */
 function NewRoomPanel({ onClose }: { onClose: () => void }) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const bots = state.bots.filter((b) => !b.hidden);
@@ -304,7 +312,7 @@ function NewRoomPanel({ onClose }: { onClose: () => void }) {
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="w-[340px] rounded-2xl border border-hairline/50 bg-card p-4 shadow-2xl">
-        <div className="mb-3 text-[15px] font-semibold text-ink">New Room</div>
+        <div className="mb-3 text-[15px] font-semibold text-ink">{t("New Room")}</div>
         <input
           autoFocus
           value={name}
@@ -313,12 +321,12 @@ function NewRoomPanel({ onClose }: { onClose: () => void }) {
             if (e.key === "Enter") create();
             if (e.key === "Escape") onClose();
           }}
-          placeholder="Room name (optional)"
+          placeholder={t("Room name (optional)")}
           className="mb-3 w-full rounded-lg bg-raised/70 px-3 py-2 text-[14px] text-ink placeholder:text-ink-secondary focus:outline-none"
         />
         <div className="flex max-h-64 flex-col gap-0.5 overflow-y-auto">
           {bots.length === 0 && (
-            <div className="px-2 py-4 text-center text-[13px] text-ink-secondary">Create a bot first — rooms are made of bots.</div>
+            <div className="px-2 py-4 text-center text-[13px] text-ink-secondary">{t("Create a bot first — rooms are made of bots.")}</div>
           )}
           {bots.map((b) => (
             <button
@@ -344,7 +352,7 @@ function NewRoomPanel({ onClose }: { onClose: () => void }) {
           disabled={!picked.size}
           className="mt-3 w-full rounded-lg bg-accent py-2 text-[14px] font-medium text-white hover:brightness-110 disabled:opacity-40"
         >
-          Create Room{picked.size ? ` · ${picked.size} ${picked.size === 1 ? "bot" : "bots"}` : ""}
+          {picked.size ? t("Create Room · {count} bots", { count: picked.size }) : t("Create Room")}
         </button>
       </div>
     </div>
@@ -361,6 +369,7 @@ function BotContextMenu({
   onArchive: (bot: Bot) => void;
 }) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const bot = state.bots.find((b) => b.id === menu.botId);
 
   useEffect(() => {
@@ -384,9 +393,9 @@ function BotContextMenu({
   const visibleBotCount = state.bots.filter((candidate) => !candidate.hidden).length;
   const archiveBlocked = Boolean(bot.chiefOfStaff) || visibleBotCount <= 1;
   const archiveHint = bot.chiefOfStaff
-    ? "Choose another Chief of Staff first"
+    ? t("Choose another Chief of Staff first")
     : visibleBotCount <= 1
-      ? "Keep at least one active bot"
+      ? t("Keep at least one active bot")
       : undefined;
   // keep the menu on-screen near the click
   const top = Math.max(8, Math.min(menu.y, window.innerHeight - 380));
@@ -427,48 +436,48 @@ function BotContextMenu({
       {[
         item(
           bot.pinned ? <PinOff size={16} className="text-ink-secondary" /> : <Pin size={16} className="text-ink-secondary" />,
-          bot.pinned ? "Unpin" : "Pin",
+          bot.pinned ? t("Unpin") : t("Pin"),
           () => dispatch({ type: "updateBot", botId: bot.id, patch: { pinned: !bot.pinned } }),
         ),
         item(
           <Crown size={16} className={bot.chiefOfStaff ? "text-accent" : "text-ink-secondary"} />,
-          bot.chiefOfStaff ? "Remove Chief of Staff" : "Make Chief of Staff",
+          bot.chiefOfStaff ? t("Remove Chief of Staff") : t("Make Chief of Staff"),
           () => dispatch({ type: "updateBot", botId: bot.id, patch: { chiefOfStaff: !bot.chiefOfStaff } }),
           {
             disabled: !bot.chiefOfStaff && !canCoordinate,
-            hint: !bot.chiefOfStaff && !canCoordinate ? "Choose a Claude or ACP engine first" : undefined,
+            hint: !bot.chiefOfStaff && !canCoordinate ? t("Choose a Claude or ACP engine first") : undefined,
           },
         ),
-        item(<FolderPlus size={16} className="text-ink-secondary" />, "Move to new section", undefined, {
+        item(<FolderPlus size={16} className="text-ink-secondary" />, t("Move to new section"), undefined, {
           disabled: true,
-          hint: "Coming soon",
+          hint: t("Coming soon"),
         }),
-        item(<BellDot size={16} className="text-ink-secondary" />, "Mark as Unread", () =>
+        item(<BellDot size={16} className="text-ink-secondary" />, t("Mark as Unread"), () =>
           dispatch({ type: "markUnread", botId: bot.id }),
         ),
         divider("d1"),
-        item(<Pencil size={16} className="text-ink-secondary" />, "Edit Profile", () => {
+        item(<Pencil size={16} className="text-ink-secondary" />, t("Edit Profile"), () => {
           dispatch({ type: "select", id: bot.id });
           dispatch({ type: "toggleSettings", open: true });
         }),
-        item(<Copy size={16} className="text-ink-secondary" />, "Duplicate", () =>
+        item(<Copy size={16} className="text-ink-secondary" />, t("Duplicate"), () =>
           dispatch({ type: "duplicateBot", botId: bot.id }),
         ),
         divider("d2"),
-        item(<ClipboardCopy size={16} className="text-ink-secondary" />, "Copy conversation ID", () => {
+        item(<ClipboardCopy size={16} className="text-ink-secondary" />, t("Copy conversation ID"), () => {
           void navigator.clipboard?.writeText(bot.threadId);
         }),
         divider("d3"),
         item(
           <Archive size={16} className="text-ink-secondary" />,
-          "Archive",
+          t("Archive"),
           () => onArchive(bot),
           {
             disabled: archiveBlocked,
             hint: archiveHint,
           },
         ),
-        item(<Trash2 size={16} />, "Delete", () => dispatch({ type: "deleteBot", botId: bot.id }), {
+        item(<Trash2 size={16} />, t("Delete"), () => dispatch({ type: "deleteBot", botId: bot.id }), {
           danger: true,
         }),
       ]}
@@ -488,6 +497,7 @@ function BotListItem({
   archiveDisabled: boolean;
 }) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const [renaming, setRenaming] = useState(false);
   const selected = state.activeView === "chat" && state.selectedId === bot.id;
   const mascotMotion = selected && state.mascotMotion?.botId === bot.id ? state.mascotMotion : null;
@@ -535,11 +545,11 @@ function BotListItem({
           <span className="flex min-w-0 items-center gap-1.5 truncate text-[13px] text-ink-secondary">
             {bot.chiefOfStaff && (
               <span className="flex shrink-0 items-center gap-1 text-[11.5px] font-medium text-accent">
-                <Crown size={11} /> Chief of Staff
+                <Crown size={11} /> {t("Chief of Staff")}
               </span>
             )}
-            {bot.chiefOfStaff && preview(bot) && <span className="shrink-0 text-ink-secondary/60">·</span>}
-            <span className="truncate">{preview(bot)}</span>
+            {bot.chiefOfStaff && preview(bot, t) && <span className="shrink-0 text-ink-secondary/60">·</span>}
+            <span className="truncate">{preview(bot, t)}</span>
           </span>
           {bot.unread && (
             <span className="size-2 shrink-0 rounded-full bg-accent" />
@@ -584,13 +594,13 @@ function BotListItem({
         type="button"
         disabled={archiveDisabled}
         onClick={() => onArchive(bot)}
-        aria-label={`Archive ${bot.name}`}
+        aria-label={t("Archive {name}", { name: bot.name })}
         title={
           bot.chiefOfStaff
-            ? "Choose another Chief of Staff first"
+            ? t("Choose another Chief of Staff first")
             : archiveDisabled
-              ? "Keep at least one active bot"
-              : `Archive ${bot.name}`
+              ? t("Keep at least one active bot")
+              : t("Archive {name}", { name: bot.name })
         }
         className="absolute right-2 top-2.5 flex size-7 items-center justify-center rounded-lg bg-card/90 text-ink-secondary opacity-0 shadow-sm transition hover:bg-raised hover:text-ink focus:opacity-100 disabled:cursor-default disabled:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100"
       >
@@ -610,6 +620,7 @@ function ArchivedBotsPanel({
   onRestored: (message: string) => void;
 }) {
   const { dispatch } = useStore();
+  const { t } = useI18n();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [restoringAll, setRestoringAll] = useState(false);
@@ -682,8 +693,8 @@ function ArchivedBotsPanel({
       >
         <header className="flex items-start justify-between gap-4 px-6 pb-4 pt-6 sm:px-8 sm:pt-7">
           <div>
-            <h2 id="archived-bots-title" className="text-[22px] font-semibold tracking-[-0.01em] text-ink">Archived bots</h2>
-            <p className="mt-1 text-[13px] text-ink-secondary">Conversations are kept until you choose to delete a bot.</p>
+            <h2 id="archived-bots-title" className="text-[22px] font-semibold tracking-[-0.01em] text-ink">{t("Archived bots")}</h2>
+            <p className="mt-1 text-[13px] text-ink-secondary">{t("Conversations are kept until you choose to delete a bot.")}</p>
           </div>
           <div className="flex items-center gap-1">
             {bots.length > 1 && (
@@ -693,28 +704,28 @@ function ArchivedBotsPanel({
                 className="flex items-center gap-1.5 rounded-full bg-raised px-3.5 py-2 text-[12.5px] text-ink hover:bg-raised-hover disabled:opacity-40"
               >
                 {restoringAll && <Loader2 size={13} className="animate-spin" />}
-                Restore all
+                {t("Restore all")}
               </button>
             )}
             <button
               onClick={onClose}
               disabled={restoringAll || Boolean(busyId)}
               className="rounded-lg p-2 text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40"
-              aria-label="Close archived bots"
+              aria-label={t("Close archived bots")}
             >
               <X size={21} />
             </button>
           </div>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-7 pt-3 sm:px-8">
-          <div className="mb-3 text-[12px] font-medium text-ink-secondary">{bots.length} archived</div>
+          <div className="mb-3 text-[12px] font-medium text-ink-secondary">{t("{count} archived", { count: bots.length })}</div>
           <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
             {bots.map((bot) => (
               <div key={bot.id} className="flex min-h-[82px] items-center gap-3 border-b border-hairline/35 px-1 py-3">
                 <CrewAvatar color={bot.color} state="happy" size={42} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[14px] font-medium text-ink">{bot.name}</div>
-                  <div className="mt-0.5 truncate text-[12.5px] text-ink-secondary">{bot.title || "Bot"}</div>
+                  <div className="mt-0.5 truncate text-[12.5px] text-ink-secondary">{bot.title || t("Bot")}</div>
                 </div>
                 <button
                   onClick={() => void restore(bot)}
@@ -722,7 +733,7 @@ function ArchivedBotsPanel({
                   className="flex min-w-[78px] items-center justify-center gap-1.5 rounded-full bg-raised px-3.5 py-2 text-[12.5px] text-ink hover:bg-raised-hover disabled:opacity-40"
                 >
                   {busyId === bot.id && <Loader2 size={13} className="animate-spin" />}
-                  Restore
+                  {t("Restore")}
                 </button>
               </div>
             ))}
@@ -737,6 +748,7 @@ function ArchivedBotsPanel({
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const { capabilities } = useDesktopCapabilities();
   const importReturnRef = useRef<HTMLButtonElement>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
@@ -885,7 +897,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         !q ||
         b.name.toLowerCase().includes(q) ||
         (b.title ?? "").toLowerCase().includes(q) ||
-        preview(b).toLowerCase().includes(q),
+        preview(b, t).toLowerCase().includes(q),
     );
   const chiefBot = matchingBots.find((bot) => bot.chiefOfStaff);
   const visibleBots = matchingBots
@@ -935,7 +947,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             ref={importReturnRef}
             onClick={() => setPlusOpen((o) => !o)}
             className="rounded-md p-1 text-ink-secondary hover:bg-raised hover:text-ink"
-            title="New or share"
+            title={t("New or share")}
           >
             <Plus size={20} strokeWidth={2} />
           </button>
@@ -952,7 +964,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                   className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-[14px] text-ink hover:bg-raised/70"
                 >
                   <BotIcon size={16} className="text-ink-secondary" />
-                  New Bot
+                  {t("New Bot")}
                 </button>
                 <button
                   onClick={() => {
@@ -962,7 +974,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                   className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-[14px] text-ink hover:bg-raised/70"
                 >
                   <Users size={16} className="text-ink-secondary" />
-                  New Room
+                  {t("New Room")}
                 </button>
                 <button
                   onClick={() => {
@@ -973,7 +985,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                   className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-[14px] text-ink hover:bg-raised/70"
                 >
                   {exportingTeam ? <Loader2 size={16} className="animate-spin text-ink-secondary" /> : <ArrowDownToLine size={16} className="text-ink-secondary" />}
-                  {exportingTeam ? "Exporting…" : "Export all bots"}
+                  {exportingTeam ? t("Exporting…") : t("Export all bots")}
                 </button>
                 <button
                   onClick={() => {
@@ -983,7 +995,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                   className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-[14px] text-ink hover:bg-raised/70"
                 >
                   <Library size={16} className="text-ink-secondary" />
-                  Teams
+                  {t("Teams")}
                 </button>
                 {archivedBots.length > 0 && (
                   <button
@@ -994,7 +1006,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                     className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-[14px] text-ink hover:bg-raised/70"
                   >
                     <Archive size={16} className="text-ink-secondary" />
-                    <span className="flex-1">Archived bots</span>
+                    <span className="flex-1">{t("Archived bots")}</span>
                     <span className="text-[11.5px] text-ink-secondary">{archivedBots.length}</span>
                   </button>
                 )}
@@ -1012,8 +1024,8 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Escape" && setQuery("")}
-            placeholder="Search"
-            aria-label="Search bots and messages"
+            placeholder={t("Search")}
+            aria-label={t("Search bots and messages")}
             className="w-full bg-transparent text-[14px] text-ink placeholder:text-ink-secondary focus:outline-none"
           />
         </div>
@@ -1023,7 +1035,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       <div className="flex-1 overflow-y-auto px-2">
         <div className="flex flex-col gap-0.5">
           {!chiefBot && visibleBots.length === 0 && visibleGroups.length === 0 && q && q.length < MIN_QUERY && (
-            <div className="px-3 py-6 text-center text-[13px] text-ink-secondary">Nothing matches “{query}”</div>
+            <div className="px-3 py-6 text-center text-[13px] text-ink-secondary">{t("Nothing matches “{query}”", { query })}</div>
           )}
           {chiefBot && (
             <div className="mb-1.5">
@@ -1061,7 +1073,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           )}
         >
           <CalendarDays size={20} className={state.activeView === "routines" ? "text-accent" : "text-ink-secondary"} />
-          <span className="flex-1 text-[14px]">Automations</span>
+          <span className="flex-1 text-[14px]">{t("Automations")}</span>
           {state.routineRuns.some((run) => ["failed", "missed"].includes(run.status) && !run.seenAt) && (
             <span className="size-2 rounded-full bg-danger" />
           )}
@@ -1071,7 +1083,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-raised/50"
         >
           <Puzzle size={20} className="text-ink-secondary" />
-          <span className="text-[14px] text-ink">Connected apps</span>
+          <span className="text-[14px] text-ink">{t("Connected apps")}</span>
         </button>
         <div className="flex items-center">
           <button
@@ -1080,14 +1092,14 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           >
             <InitialsAvatar initials={profileInitials(state.config?.profile)} size={28} />
             <span className="truncate text-[14px] text-ink">
-              {state.config?.profile?.name?.trim() || state.config?.profile?.email?.trim() || "You"}
+              {state.config?.profile?.name?.trim() || state.config?.profile?.email?.trim() || t("You")}
             </span>
           </button>
           <UpdateButton />
           <button
             onClick={() => dispatch({ type: "toggleAppSettings" })}
             className="rounded-md p-2 text-ink-secondary hover:bg-raised hover:text-ink"
-            title="App settings"
+            title={t("App settings")}
           >
             <Settings size={18} />
           </button>

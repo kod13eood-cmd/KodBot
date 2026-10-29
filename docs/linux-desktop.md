@@ -1,11 +1,11 @@
 # Ubuntu Desktop
 
-OpenCrew has an Ubuntu 24.04 LTS x86_64 desktop beta. The Electron package embeds the harness server, so
+KodBot has an Ubuntu 24.04 LTS x86_64 desktop beta. The Electron package embeds the harness server, so
 installed builds do not require Node, pnpm, Swift, or a terminal at runtime.
 
 ## What works
 
-- The native Electron window and embedded OpenCrew server on GNOME Xorg and GNOME Wayland.
+- The native Electron window and embedded KodBot server on GNOME Xorg and GNOME Wayland.
 - Local Claude, Codex, Grok, Gemini, and other configured agent CLIs.
 - Chat, streaming turns, approvals, bot-to-bot communication, and local data storage.
 - Composio connected apps and Box cloud computers.
@@ -26,7 +26,7 @@ Requirements for building from source:
 
 ```sh
 git clone https://github.com/milind-soni/OpenMausBot.git
-cd OpenCrew
+cd KodBot
 corepack enable
 pnpm install --frozen-lockfile
 pnpm package:linux
@@ -34,8 +34,8 @@ pnpm package:linux
 
 The build creates:
 
-- `release/OpenCrew-<version>-amd64.deb`
-- `release/OpenCrew-<version>-x86_64.AppImage`
+- `release/KodBot-<version>-amd64.deb`
+- `release/KodBot-<version>-x86_64.AppImage`
 
 The AppImage uses a static runtime and does not require the legacy `libfuse2` package.
 
@@ -44,10 +44,10 @@ The AppImage uses a static runtime and does not require the legacy `libfuse2` pa
 Install the Debian package with APT so its desktop dependencies are resolved:
 
 ```sh
-sudo apt install ./release/OpenCrew-*-amd64.deb
+sudo apt install ./release/KodBot-*-amd64.deb
 ```
 
-Then open **OpenCrew** from the GNOME application launcher. To remove it:
+Then open **KodBot** from the GNOME application launcher. To remove it:
 
 ```sh
 sudo apt remove opencrew
@@ -56,8 +56,8 @@ sudo apt remove opencrew
 The portable AppImage does not install system files:
 
 ```sh
-chmod +x release/OpenCrew-*-x86_64.AppImage
-./release/OpenCrew-*-x86_64.AppImage
+chmod +x release/KodBot-*-x86_64.AppImage
+./release/KodBot-*-x86_64.AppImage
 ```
 
 Application data remains local in `~/.opencrew`. Electron browser data and window state use the normal XDG
@@ -82,7 +82,7 @@ pnpm package:linux:dir
 
 ## Agent CLI discovery
 
-Applications launched from GNOME do not inherit the same interactive shell `PATH` as a terminal. OpenCrew
+Applications launched from GNOME do not inherit the same interactive shell `PATH` as a terminal. KodBot
 keeps the inherited path and adds existing common locations such as:
 
 - `~/.local/bin`
@@ -98,14 +98,14 @@ It also probes the login shell in the background. If a CLI still is not detected
 path before launching the app from a terminal and verify it there:
 
 ```sh
-OC_EXTRA_PATH=/your/custom/bin ./release/OpenCrew-*-x86_64.AppImage
+OC_EXTRA_PATH=/your/custom/bin ./release/KodBot-*-x86_64.AppImage
 ```
 
-Restart OpenCrew after installing or signing in to a CLI.
+Restart KodBot after installing or signing in to a CLI.
 
 ## Xorg and Wayland
 
-The baseline shell, chat, cloud computers, and connected apps work in both GNOME session types. OpenCrew
+The baseline shell, chat, cloud computers, and connected apps work in both GNOME session types. KodBot
 detects Wayland before XWayland when both `WAYLAND_DISPLAY` and `DISPLAY` exist, so future capture features do
 not accidentally bypass portal-mediated behavior.
 
@@ -133,7 +133,7 @@ a substitute for manual testing on a real GNOME Xorg and Wayland desktop.
 
 ### An agent CLI is missing
 
-Run the CLI directly in a terminal, finish its sign-in flow, then restart OpenCrew. If it lives outside the
+Run the CLI directly in a terminal, finish its sign-in flow, then restart KodBot. If it lives outside the
 common directories above, use `OC_EXTRA_PATH` while testing and report the install location so it can be
 considered for automatic discovery.
 
@@ -147,8 +147,8 @@ Linux until local CUA control is implemented and validated.
 Confirm the executable bit and architecture:
 
 ```sh
-chmod +x OpenCrew-*-x86_64.AppImage
-file OpenCrew-*-x86_64.AppImage
+chmod +x KodBot-*-x86_64.AppImage
+file KodBot-*-x86_64.AppImage
 ```
 
 Run it from a terminal once to collect the startup output. Do not install `libfuse2` just for this AppImage; the

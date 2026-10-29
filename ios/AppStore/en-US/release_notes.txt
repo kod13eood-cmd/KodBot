@@ -1,6 +1,6 @@
-Welcome to OpenCrewMobile 1.0.
+Welcome to KodBot 1.0.
 
-• Pair securely with your OpenCrew computer
+• Pair securely with your KodBot computer
 • Chat with bots and rooms
 • Answer approvals and questions
 • Search, manage tasks, edit versions, react, and share transcripts

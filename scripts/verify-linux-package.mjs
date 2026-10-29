@@ -35,7 +35,7 @@ function requireExecutable(file) {
 const appImage = exactlyOne(".AppImage");
 const deb = exactlyOne(".deb");
 const unpacked = path.join(releaseDir, "linux-unpacked");
-const executable = path.join(unpacked, "opencrew");
+const executable = path.join(unpacked, "kodbot");
 const resources = path.join(unpacked, "resources");
 
 requireExecutable(appImage);
@@ -55,7 +55,7 @@ const fields = execFileSync(
   { encoding: "utf8" },
 );
 for (const expected of [
-  "Package: opencrew",
+  "Package: kodbot",
   "Architecture: amd64",
   "Maintainer: Milind Soni",
   "Section: utils",
@@ -82,15 +82,15 @@ try {
     "hicolor",
     "scalable",
     "apps",
-    "opencrew.svg",
+    "kodbot.svg",
   );
   requireFile(desktopFile);
   requireFile(scalableIcon);
   const desktop = readFileSync(desktopFile, "utf8");
   for (const expected of [
-    "Name=OpenCrew",
-    "Exec=/opt/OpenCrew/opencrew %U",
-    "Icon=opencrew",
+    "Name=KodBot",
+    "Exec=/opt/KodBot/kodbot %U",
+    "Icon=kodbot",
     "StartupWMClass=com.opencrew.app",
     "Categories=Utility;",
   ]) {

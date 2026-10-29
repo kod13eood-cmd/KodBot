@@ -559,7 +559,7 @@ describe("pairing, end to end", () => {
     const control = createControlServer({
       devices: registry,
       companionPort: port,
-      discovery: () => ({ advertising: false, name: "OpenCrew" }),
+      discovery: () => ({ advertising: false, name: "KodBot" }),
     });
     await new Promise<void>((r) => control.listen(0, "127.0.0.1", r));
     // SAFETY: address() is AddressInfo — an object with a port — for any
@@ -637,7 +637,7 @@ describe("pairing, end to end", () => {
     const control = createControlServer({
       devices: new DeviceRegistry(),
       companionPort: 8800,
-      discovery: () => ({ advertising: false, name: "OpenCrew" }),
+      discovery: () => ({ advertising: false, name: "KodBot" }),
     });
     await new Promise<void>((r) => control.listen(0, "127.0.0.1", r));
     // SAFETY: address() is AddressInfo — an object with a port — for any
@@ -668,7 +668,7 @@ describe("pairing, end to end", () => {
     const control = createControlServer({
       devices: new DeviceRegistry(),
       companionPort: 8800,
-      discovery: () => ({ advertising: false, name: "OpenCrew" }),
+      discovery: () => ({ advertising: false, name: "KodBot" }),
     });
     await new Promise<void>((r) => control.listen(0, "127.0.0.1", r));
     // SAFETY: address() is AddressInfo — an object with a port — for any
@@ -702,7 +702,7 @@ describe("pairing, end to end", () => {
     const control = createControlServer({
       devices: registry,
       companionPort: 8800,
-      discovery: () => ({ advertising: false, name: "OpenCrew" }),
+      discovery: () => ({ advertising: false, name: "KodBot" }),
     });
     await new Promise<void>((r) => control.listen(0, "127.0.0.1", r));
     // SAFETY: address() is AddressInfo — an object with a port — for any
@@ -751,7 +751,7 @@ describe("pairing, end to end", () => {
     const control = createControlServer({
       devices: registry,
       companionPort: 8800,
-      discovery: () => ({ advertising: false, name: "OpenCrew" }),
+      discovery: () => ({ advertising: false, name: "KodBot" }),
     });
     await new Promise<void>((r) => control.listen(0, "127.0.0.1", r));
     // SAFETY: address() is AddressInfo — an object with a port — for any

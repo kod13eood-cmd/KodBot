@@ -152,7 +152,7 @@ export interface SendTurnInput {
      * bridge harness-controlled lets it turn connection requests into trusted
      * chat cards consistently across provider CLIs. */
     composio?: { command: string; args: string[]; env: Record<string, string> };
-    /** Cloud computer, reached through OpenCrew's REST-to-MCP adapter. */
+    /** Cloud computer, reached through KodBot's REST-to-MCP adapter. */
     computer?: { kind?: "box"; boxId: string; token: string };
     /** Direct stdio connection to a Cua Driver MCP server (host or sandbox). */
     localComputer?: { command: string; args: string[]; env: Record<string, string> };

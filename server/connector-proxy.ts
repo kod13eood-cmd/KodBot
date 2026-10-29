@@ -2,7 +2,7 @@
 //
 // Provider CLIs only see this stdio server. Ordinary MCP traffic is relayed
 // to the configured Composio Session, but connection requests are converted
-// into first-class OpenCrew chat cards. The agent never authors an auth
+// into first-class KodBot chat cards. The agent never authors an auth
 // URL and credentials never pass through its transcript.
 //
 // stdout is the MCP transport. Never log there.
@@ -135,12 +135,12 @@ async function handle(message: Json): Promise<void> {
       await showConnectorCards(slugs);
       send(textResult(
         id,
-        `OpenCrew showed the user a secure connection card for ${slugs.join(", ")}. End this turn now. The app will continue the task automatically after the connection finishes.`,
+        `KodBot showed the user a secure connection card for ${slugs.join(", ")}. End this turn now. The app will continue the task automatically after the connection finishes.`,
       ));
       return;
     }
     if (/WAIT_FOR_CONNECTIONS$/i.test(name)) {
-      send(textResult(id, "OpenCrew is handling connection completion and will continue the task automatically."));
+      send(textResult(id, "KodBot is handling connection completion and will continue the task automatically."));
       return;
     }
   }
