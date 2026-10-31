@@ -128,6 +128,17 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
           "-c", `${prefix}.default_tools_approval_mode="auto"`,
         );
       }
+      if (turn.integrations?.jev) {
+        const jev = turn.integrations.jev;
+        Object.assign(env, jev.env);
+        const prefix = "mcp_servers.jev";
+        appServerArgs.push(
+          "-c", `${prefix}.command=${JSON.stringify(jev.command)}`,
+          "-c", `${prefix}.args=${JSON.stringify(jev.args)}`,
+          "-c", `${prefix}.env_vars=${JSON.stringify(Object.keys(jev.env))}`,
+          "-c", `${prefix}.default_tools_approval_mode="auto"`,
+        );
+      }
 
       const child = spawnCli(config.cli, appServerArgs, {
         cwd: turn.cwd ?? homedir(),
@@ -489,6 +500,7 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
         provider: DRIVER_KIND,
         capabilities: {
           sessionModelSwitch: "unsupported",
+          jevMcp: true,
           composioMcp: true,
           effortLevels: ["low", "medium", "high", "xhigh", "max"],
         },

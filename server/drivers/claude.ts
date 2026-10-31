@@ -419,6 +419,10 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
         mcpServers.agents = { ...turn.integrations.agents };
         allowed.push("mcp__agents");
       }
+      if (turn.integrations?.jev) {
+        mcpServers.jev = { ...turn.integrations.jev };
+        allowed.push("mcp__jev");
+      }
       // dweb network daemon (status / repo / opencode model access) via
       // server/drivers/dweb-proxy.ts — points at the configured dweb instance
       if (turn.integrations?.dweb) {
@@ -672,6 +676,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
         capabilities: {
           sessionModelSwitch: "in-session",
           agentsMcp: true,
+          jevMcp: true,
           computerMcp: true,
           composioMcp: true,
           effortLevels: ["low", "medium", "high", "xhigh", "max"],

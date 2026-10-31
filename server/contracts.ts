@@ -160,6 +160,9 @@ export interface SendTurnInput {
      * through the harness so this bot can message other bots. The harness
      * owns turns, permissions, and recursion limits; the proxy only forwards. */
     agents?: { command: string; args: string[]; env: Record<string, string> };
+    /** Structured decisions through the Jev proxy. The harness owns the Zen
+     * key and validation; the agent only sees the jev_decide tool. */
+    jev?: { command: string; args: string[]; env: Record<string, string> };
     /** dweb network daemon: an MCP proxy exposing dweb status, repo, and
      * opencode model access as tools. url is the dweb HTTP base. */
     dweb?: { url: string };
@@ -179,6 +182,9 @@ export interface ProviderAdapter {
      * the harness only offers agents tooling (and prompts about it) to
      * drivers that can actually hand it to the agent. */
     agentsMcp?: boolean;
+    /** True when the driver mounts turn.integrations.jev (the jev_decide
+     * structured-decision tool). */
+    jevMcp?: boolean;
     /** True when the driver mounts turn.integrations.computer (the box's
      * screenshot/click tools). Same rule as agentsMcp: a bot must never be
      * told it has a computer whose tools its driver cannot mount — it

@@ -80,6 +80,7 @@ import { listenWebhookIngress, webhookCredential, type WebhookIngress } from "./
 import { memberTurnSelection } from "./member-turn.ts";
 import { WebhookManager } from "./webhooks.ts";
 import { SPAWNED_PROXIES } from "./proxy-paths.ts";
+import { askJev, jevConfigured, jevRequest, type JevError } from "./jev.ts";
 
 const PORT = Number(process.env.OC_PORT || 8799);
 const HOST = process.env.OC_HOST || "127.0.0.1";
@@ -125,8 +126,21 @@ const MAX_COMMS_DEPTH = 1;
 // path happened to survive bundling, but it goes through the same anchor so
 // there is exactly one way proxies are located.
 const agentsProxyPath = SPAWNED_PROXIES.agents;
+const jevProxyPath = SPAWNED_PROXIES.jev;
 // in the packaged app process.execPath is Electron — run the proxy as node
 const AGENTS_NODE_FLAG = { ELECTRON_RUN_AS_NODE: "1" };
+
+function jevIntegration() {
+  return {
+    command: process.execPath,
+    args: [jevProxyPath],
+    env: {
+      ...AGENTS_NODE_FLAG,
+      OC_HARNESS_URL: `http://127.0.0.1:${PORT}`,
+      OC_COMMS_TOKEN: COMMS_TOKEN,
+    },
+  };
+}
 
 function agentsIntegration(botId: string, threadId: string, depth: number) {
   return {
@@ -1225,6 +1239,13 @@ async function startTurn(
       // tools that would fail on every call or spawn an unnecessary proxy.
       const dwebUrl = process.env.DWEB_URL?.trim();
       if (dwebUrl) integrations.dweb = { url: dwebUrl };
+      // Jev is an on-demand structured-decision tool, not a chat model. Mount
+      // it only where the engine can hand MCP tools to the agent, and only
+      // when a Zen key is actually available — an invisible tool that errors
+      // on every call would just burn turns.
+      if (instance.adapter.capabilities.jevMcp === true && jevConfigured(cfg)) {
+        integrations.jev = jevIntegration();
+      }
       const wants = opts?.runOn === "cloud" ? "cloud" : bot.computer; // cloud routine overrides the CREW default
       const mountsComputerMcp = instance.adapter.capabilities.computerMcp === true;
       const mountsCloudComputer = mountsComputerMcp || instance.driverKind === "boxAgent";
@@ -1366,6 +1387,9 @@ async function startTurn(
           // bot whose driver actually mounted the tools
           (integrations.composio
             ? " The user's connected apps (Gmail, Calendar, Slack, Notion, and the rest) are reachable through the composio tools — find the right one with COMPOSIO_SEARCH_TOOLS, read its arguments with COMPOSIO_GET_TOOL_SCHEMAS, then run it with COMPOSIO_MULTI_EXECUTE_TOOL. Reach for them before telling the user you have no access to a service."
+            : "") +
+          (integrations.jev
+            ? " When you need a structured decision about text — triage, routing, classification, urgency, sentiment, or a rubric score — call the jev_decide tool instead of guessing. Jev returns typed answers with probabilities and is for decisions, not prose; use a preset or pass your own questions."
             : "") +
           (coordinationPrompt ? ` ${coordinationPrompt}` : "") +
           (privateWorkspace ? memorySystemPrompt(bot.id) : "") +
@@ -2062,6 +2086,20 @@ const server = createServer(async (req, res) => {
     if (path.startsWith("/api/internal/")) {
       if (!authorizedComms(req.headers.authorization)) {
         return json(res, 401, { error: "unauthorized" });
+      }
+      // The jev proxy calls this with the turn text and typed questions. The
+      // Zen key and all validation stay here; the agent process only sees the
+      // tool result.
+      if (method === "POST" && path === "/api/internal/jev") {
+        try {
+          const body = await readBody(req);
+          const request = jevRequest(body);
+          return json(res, 200, await askJev(cfg, request.state, request.questions, request.model));
+        } catch (error) {
+          return json(res, (error as JevError).status ?? 400, {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
       if (method === "GET" && path === "/api/internal/agents") {
         const self = url.searchParams.get("self");

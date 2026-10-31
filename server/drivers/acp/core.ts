@@ -219,6 +219,10 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
         if (agents) {
           servers.push({ name: "agents", command: agents.command, args: agents.args, env: acpEnv(agents.env) });
         }
+        const jev = turn.integrations?.jev;
+        if (jev) {
+          servers.push({ name: "jev", command: jev.command, args: jev.args, env: acpEnv(jev.env) });
+        }
         const composio = turn.integrations?.composio;
         if (composio) {
           servers.push({
@@ -672,6 +676,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
           capabilities: {
             sessionModelSwitch: "unsupported",
             agentsMcp: true,
+            jevMcp: true,
             computerMcp: true,
             composioMcp: true,
             effortLevels: support.effortLevels,

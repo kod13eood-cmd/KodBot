@@ -32,6 +32,7 @@ const ENTRY_POINTS = [
   "permission-proxy.ts",
   "connector-proxy.ts",
   "drivers/agents-proxy.ts",
+  "drivers/jev-proxy.ts",
   "drivers/dweb-proxy.ts",
 ];
 

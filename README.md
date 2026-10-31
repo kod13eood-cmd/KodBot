@@ -136,7 +136,8 @@ Give a bot its own voice and a room stops sounding like one person.
 
 **Also in the box:** streaming replies with tool-run activity chips · native macOS dictation from the
 composer mic (on-device Apple speech recognition — desktop app) · SupaCrew cursor mascots with role-aware
-expressions · screenshots of the bot's work folded into the transcript.
+expressions · screenshots of the bot's work folded into the transcript · on-demand
+[Jev structured decisions](docs/jev.md) for triage, routing, and classification.
 
 ## How it works
 

@@ -38,6 +38,7 @@ export const SPAWNED_PROXIES = {
   permission: resolveProxy("permission-proxy"),
   containerMcp: resolveProxy("container-mcp"),
   agents: resolveProxy("drivers/agents-proxy"),
+  jev: resolveProxy("drivers/jev-proxy"),
   dweb: resolveProxy("drivers/dweb-proxy"),
   connectors: resolveProxy("connector-proxy"),
 } as const;
