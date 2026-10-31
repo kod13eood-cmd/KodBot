@@ -1,7 +1,7 @@
 // Config + data dirs. One file, ~/.kodbot/config.json, env fallbacks:
 //   { "xai": {"key":"xai-…"}, "composio": {"apiKey":"ak_…"}, "box": {"token":"…"},
 //     "instances": { "<instanceId>": {"driver":"grok", …} } }
-import { readFileSync, mkdirSync, existsSync, renameSync } from "node:fs";
+import { readFileSync, mkdirSync, existsSync, renameSync, readdirSync, cpSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
@@ -74,15 +74,34 @@ export const EVENTS_DIR = join(DATA_DIR, "events");
 export const NATIVE_DIR = join(DATA_DIR, "native");
 
 export function ensureDirs() {
-  // one-time migration from a pre-rename data dir — bots, transcripts,
-  // config and keys all carry over
-  if (!existsSync(DATA_DIR)) {
-    const legacy = LEGACY_DATA_DIRS.find((dir) => existsSync(dir));
-    if (legacy) {
+  // One-time migration from a pre-rename data dir — bots, transcripts, config
+  // and keys all carry over. The destination can already exist with only a
+  // dev-broker cache in it (scripts/dev-server.mjs writes that before the
+  // server boots); in that case copy the real legacy data in rather than
+  // treating the cache directory as a fresh install and silently losing the
+  // user's fleet.
+  const legacy = LEGACY_DATA_DIRS.find((dir) => existsSync(dir));
+  if (legacy) {
+    if (!existsSync(DATA_DIR)) {
       try {
         renameSync(legacy, DATA_DIR);
       } catch {
         /* cross-device or busy — fall through to a fresh dir */
+      }
+    } else {
+      const hasFleet =
+        existsSync(join(DATA_DIR, "bots.json")) ||
+        existsSync(join(DATA_DIR, "messages.db")) ||
+        existsSync(join(DATA_DIR, "workspaces"));
+      if (!hasFleet) {
+        try {
+          for (const entry of readdirSync(legacy)) {
+            const target = join(DATA_DIR, entry);
+            if (!existsSync(target)) cpSync(join(legacy, entry), target, { recursive: true });
+          }
+        } catch {
+          /* best-effort: a failed copy leaves the fresh cache dir usable */
+        }
       }
     }
   }
