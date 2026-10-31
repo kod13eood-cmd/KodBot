@@ -176,6 +176,19 @@ const BULGARIAN: Record<string, string> = {
   "You're on the latest version we know of.": "Използвате най-новата известна версия.",
   "Download": "Изтегли",
   "Restart and install": "Рестартирай и инсталирай",
+  "Server": "Сървър",
+  "Run the agents on this computer, or connect this window to a KodBot server that stays on 24/7.":
+    "Стартирайте агентите на този компютър или свържете този прозорец към KodBot сървър, който работи денонощно.",
+  "Could not reach {url}. Using this computer until you fix the address.":
+    "Не може да се свърже с {url}. Използва се този компютър, докато адресът не бъде поправен.",
+  "Using remote server {url}": "Използва се отдалечен сървър {url}",
+  "Using the server on this computer.": "Използва се сървърът на този компютър.",
+  "Connecting…": "Свързване…",
+  "Connect to remote server": "Свържи към отдалечен сървър",
+  "Use this computer": "Използвай този компютър",
+  "Switching…": "Превключване…",
+  "The remote machine must be reachable over your LAN or Tailscale and must be running KodBot. Keys, engines, and the companion stay on that machine. The app will restart when you switch.":
+    "Отдалечената машина трябва да е достъпна през локалната мрежа или Tailscale и да изпълнява KodBot. Ключовете, двигателите и компаньонът остават на нея. Приложението ще се рестартира при превключване.",
   "Connections subtitle":
     "Свързаните приложения работят автоматично в инсталираното приложение. Останалите ключове за услуги остават на този компютър.",
   "Connected apps service is ready": "Услугата за свързани приложения е готова",

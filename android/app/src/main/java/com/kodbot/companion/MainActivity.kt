@@ -107,6 +107,16 @@ class MainActivity : ComponentActivity() {
     private var loading by mutableStateOf(false)
     private var refreshJob: Job? = null
     private var refreshQueued = false
+    private var updateState by mutableStateOf(UpdateUiState())
+    private val appVersionName: String
+        get() = runCatching {
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "?"
+        }.getOrDefault("?")
+    private val installedVersionCode: Long
+        get() = runCatching {
+            val info = packageManager.getPackageInfo(packageName, 0)
+            if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else @Suppress("DEPRECATION") info.versionCode.toLong()
+        }.getOrDefault(0L)
 
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
     private val qrScanner = registerForActivityResult(ScanContract()) { result ->
@@ -155,6 +165,10 @@ class MainActivity : ComponentActivity() {
                     pairingInvite = pairingInvite,
                     error = actionError,
                     loading = loading,
+                    updateState = updateState,
+                    appVersion = appVersionName,
+                    onCheckForUpdates = { checkForUpdates(manual = true) },
+                    onInstallUpdate = ::installUpdate,
                     onDismissError = { actionError = null },
                     onPair = ::pair,
                     onScanQr = ::scanPairingQr,
@@ -200,6 +214,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        lifecycleScope.launch { checkForUpdates(manual = false) }
     }
 
     override fun onStart() {
@@ -222,8 +237,15 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntent(intent: Intent?) {
         PairingInvite.parse(intent?.dataString)?.let { invite ->
-            if (connection == null) pairingInvite = invite
-            else actionError = "Disconnect this phone before pairing it with another computer."
+            if (connection == null) {
+                pairingInvite = invite
+                // A token link is a finished handoff — redeem it immediately
+                // instead of making the user tap the button on a screen that
+                // already has everything it needs.
+                if (invite.credential.startsWith("omb_pair_")) pair(invite.address, invite.credential)
+            } else {
+                actionError = "Disconnect this phone before pairing it with another computer."
+            }
         }
         val threadId = intent?.getStringExtra(CompanionStreamService.EXTRA_THREAD_ID)
         if (!threadId.isNullOrBlank()) {
@@ -252,7 +274,11 @@ class MainActivity : ComponentActivity() {
         when {
             invite == null -> actionError = "That isn't a KodBot pairing QR. Scan the one shown in KodBot → Settings → Companion."
             connection != null -> actionError = "Disconnect this phone before pairing it with another computer."
-            else -> pairingInvite = invite
+            else -> {
+                actionError = null
+                pairingInvite = invite
+                if (invite.credential.startsWith("omb_pair_")) pair(invite.address, invite.credential)
+            }
         }
     }
 
@@ -487,6 +513,49 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun checkForUpdates(manual: Boolean) {
+        if (updateState.checking || updateState.downloading) return
+        updateState = updateState.copy(checking = true, error = null, message = null)
+        lifecycleScope.launch {
+            updateState = try {
+                val latest = AppUpdateChecker.latest(installedVersionCode)
+                if (latest != null) {
+                    updateState.copy(info = latest, checking = false, error = null)
+                } else {
+                    updateState.copy(
+                        info = null,
+                        checking = false,
+                        error = null,
+                        message = if (manual) "You're on the latest version (${appVersionName})." else null,
+                    )
+                }
+            } catch (error: Exception) {
+                updateState.copy(
+                    checking = false,
+                    error = if (manual) (error.message ?: "Couldn't check for updates.") else null,
+                )
+            }
+        }
+    }
+
+    private fun installUpdate() {
+        val update = updateState.info ?: return
+        if (updateState.downloading) return
+        updateState = updateState.copy(downloading = true, error = null)
+        lifecycleScope.launch {
+            try {
+                val apk = AppUpdateChecker.download(this@MainActivity, update)
+                AppUpdateChecker.install(this@MainActivity, apk)
+                updateState = updateState.copy(downloading = false, error = null)
+            } catch (error: Exception) {
+                updateState = updateState.copy(
+                    downloading = false,
+                    error = error.message ?: "Couldn't download the update.",
+                )
+            }
+        }
+    }
+
     private fun disconnect() {
         CompanionStreamService.stop(this)
         connectionStore.clear()
@@ -518,6 +587,14 @@ class MainActivity : ComponentActivity() {
 
 private val CrewGreen = Color(0xFF38D591)
 
+data class UpdateUiState(
+    val info: AppUpdate? = null,
+    val checking: Boolean = false,
+    val downloading: Boolean = false,
+    val error: String? = null,
+    val message: String? = null,
+)
+
 @Composable
 private fun KodBotScreen(
     connection: CompanionConnection?,
@@ -533,6 +610,10 @@ private fun KodBotScreen(
     pairingInvite: PairingInvite?,
     error: String?,
     loading: Boolean,
+    updateState: UpdateUiState,
+    appVersion: String,
+    onCheckForUpdates: () -> Unit,
+    onInstallUpdate: () -> Unit,
     onDismissError: () -> Unit,
     onPair: (String, String) -> Unit,
     onScanQr: () -> Unit,
@@ -599,6 +680,10 @@ private fun KodBotScreen(
                     onShowGroups = onShowGroups,
                     onSelectModel = onSelectModel,
                     onDisconnect = { confirmDisconnect = true },
+                    updateState = updateState,
+                    appVersion = appVersion,
+                    onCheckForUpdates = onCheckForUpdates,
+                    onInstallUpdate = onInstallUpdate,
                 )
             } else {
                 val activeChat = chats.firstOrNull { it.key == activeChatKey }
@@ -613,6 +698,8 @@ private fun KodBotScreen(
                         onRefresh = onRefresh,
                         onSettings = onOpenSettings,
                         onCreateBot = onCreateBot,
+                        updateState = updateState,
+                        onInstallUpdate = onInstallUpdate,
                     )
                 } else {
                     ChatScreen(
@@ -731,6 +818,8 @@ private fun FleetScreen(
     onRefresh: () -> Unit,
     onSettings: () -> Unit,
     onCreateBot: () -> Unit,
+    updateState: UpdateUiState,
+    onInstallUpdate: () -> Unit,
 ) {
     val visibleChats = chats.filter { chat ->
         (chat.kind != "group" || showGroups) && (chat.kind != "bot" || showHiddenBots || !chat.hidden)
@@ -768,6 +857,47 @@ private fun FleetScreen(
             }
             IconButton(onClick = onSettings) {
                 Icon(Icons.Filled.Settings, contentDescription = "Settings")
+            }
+        }
+        updateState.info?.let { update ->
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                colors = CardDefaults.cardColors(containerColor = CrewGreen.copy(alpha = 0.12f)),
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "KodBot ${update.versionName} is available",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = CrewGreen,
+                            )
+                            if (update.notes.isNotBlank()) {
+                                Text(
+                                    update.notes,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                        if (updateState.downloading) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        } else {
+                            Button(onClick = onInstallUpdate) { Text("Update") }
+                        }
+                    }
+                    updateState.error?.let {
+                        Text(
+                            it,
+                            modifier = Modifier.padding(top = 6.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFFF8A80),
+                        )
+                    }
+                }
             }
         }
         if (visibleChats.isEmpty()) {

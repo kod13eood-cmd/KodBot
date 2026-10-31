@@ -80,4 +80,10 @@ contextBridge.exposeInMainWorld("ogb", {
       return () => ipcRenderer.removeListener("update:state", handler);
     },
   },
+  /** Local/remote harness choice. The local main process owns this; it is
+   * deliberately not part of the harness API. */
+  server: {
+    get: () => ipcRenderer.invoke("server:get-connection"),
+    set: (value) => ipcRenderer.invoke("server:set-connection", value),
+  },
 });

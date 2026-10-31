@@ -10,7 +10,9 @@ approval flow. The phone does not receive a general shell endpoint.
 - Scan the Linux Companion QR from within the app, or pair with a manual address and
   one-time six-digit code.
 - Open the same `kodbot://pair` QR handoff used by the Linux Companion panel;
-  the debug APK registers that scheme and asks for confirmation before pairing.
+  the debug APK registers that scheme and redeems a one-time token-link
+  immediately. Legacy `opencrew://pair` links are still accepted so a
+  staggered desktop/mobile upgrade can pair.
 - Keep the authenticated event stream alive with an Android foreground service.
 - Show the same visible bots and group chats as the desktop, send prompts,
   read transcripts, and allow or deny pending tool requests. The foreground
@@ -41,6 +43,22 @@ ANDROID_HOME="$HOME/Android/Sdk" \
 The APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
 Sideload that APK once before scanning the desktop QR; the QR opens the app but
 does not install it. There is not yet a Play Store download link.
+
+## In-app updates
+
+The app checks [`latest.json`](latest.json) on launch and from
+**Settings → App updates**. To publish an update:
+
+1. Bump `versionCode` and `versionName` in `app/build.gradle.kts`.
+2. Build and attach the APK to a GitHub release as `KodBot-android.apk`.
+3. Set `versionCode`, `versionName`, `notes`, and the release date in
+   `android/latest.json`.
+
+The manifest's `apkUrl` is the stable
+`https://github.com/kod13eood-cmd/KodBot/releases/latest/download/KodBot-android.apk`,
+so the asset name must stay `KodBot-android.apk`. Android asks the user to allow
+installs from KodBot the first time; after that the download starts the system
+installer directly.
 For reliable scanning, open KodBot and tap **Scan pairing QR**. Some
 Android Camera apps display custom `kodbot://` links without dispatching them
 to the app; the registered link remains useful from apps that support custom

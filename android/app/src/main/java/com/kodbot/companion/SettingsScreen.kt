@@ -60,6 +60,10 @@ fun SettingsScreen(
     onShowGroups: (Boolean) -> Unit,
     onSelectModel: (ConversationRecord, EngineRecord, ModelOptionRecord) -> Unit,
     onDisconnect: () -> Unit,
+    updateState: UpdateUiState,
+    appVersion: String,
+    onCheckForUpdates: () -> Unit,
+    onInstallUpdate: () -> Unit,
 ) {
     var address by rememberSaveable(connection.baseUrl) { mutableStateOf(connection.baseUrl) }
     var modelBotKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -143,6 +147,38 @@ fun SettingsScreen(
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF8A80)),
                         ) {
                             Text("Disconnect this phone")
+                        }
+                    }
+                }
+
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("App updates", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        val update = updateState.info
+                        val status = when {
+                            updateState.checking -> "Checking for updates…"
+                            updateState.downloading -> "Downloading KodBot ${update?.versionName.orEmpty()}…"
+                            update != null -> "KodBot ${update.versionName} is available."
+                            updateState.message != null -> updateState.message.orEmpty()
+                            else -> "Installed version $appVersion."
+                        }
+                        Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        update?.notes?.takeIf(String::isNotBlank)?.let {
+                            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        updateState.error?.let {
+                            Text(it, style = MaterialTheme.typography.bodySmall, color = Color(0xFFFF8A80))
+                        }
+                        Button(
+                            onClick = if (update != null) onInstallUpdate else onCheckForUpdates,
+                            enabled = !updateState.checking && !updateState.downloading && !busy,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            if (updateState.checking || updateState.downloading) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            } else {
+                                Text(if (update != null) "Download and install" else "Check for updates")
+                            }
                         }
                     }
                 }

@@ -41,6 +41,65 @@ try {
   /* best-effort: a failed migration just means a fresh per-app dir */
 }
 
+// ── local vs remote harness ────────────────────────────────────────────
+// The desktop window is a client. By default it owns a local harness, but a
+// user who keeps a machine on 24/7 can point the window at that harness
+// instead. The setting lives in the desktop user-data dir, not in the remote
+// server, because it is a property of this window.
+const SERVER_CONNECTION_FILE = path.join(app.getPath("userData"), "server-connection.json");
+const HEADLESS = process.argv.includes("--headless") || process.env.OC_HEADLESS === "1";
+
+function normalizeRemoteUrl(raw) {
+  const text = String(raw ?? "").trim();
+  if (!text) throw new Error("Enter the remote server address.");
+  let url;
+  try {
+    url = new URL(text);
+  } catch {
+    throw new Error("Enter an address like http://192.168.1.50:8799.");
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("Only http and https addresses are supported.");
+  if (url.username || url.password || url.search || url.hash || (url.pathname && url.pathname !== "/")) {
+    throw new Error("Use only the server address and optional port.");
+  }
+  if (!url.hostname) throw new Error("The server address needs a host.");
+  url.pathname = "";
+  return url.toString().replace(/\/$/, "");
+}
+
+function readServerConnection() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(SERVER_CONNECTION_FILE, "utf8"));
+    if (raw?.mode === "remote") {
+      return { mode: "remote", url: normalizeRemoteUrl(raw.url) };
+    }
+  } catch {
+    /* missing or malformed: local is the safe default */
+  }
+  return { mode: "local" };
+}
+
+function writeServerConnection(connection) {
+  fs.mkdirSync(path.dirname(SERVER_CONNECTION_FILE), { recursive: true });
+  const temporary = `${SERVER_CONNECTION_FILE}.${process.pid}.tmp`;
+  fs.writeFileSync(temporary, JSON.stringify(connection, null, 2), { mode: 0o600 });
+  fs.renameSync(temporary, SERVER_CONNECTION_FILE);
+}
+
+async function probeRemote(url) {
+  try {
+    const response = await fetch(`${url}/api/health`, { signal: AbortSignal.timeout(4_000) });
+    if (!response.ok) return false;
+    const body = await response.json().catch(() => null);
+    return body?.app === "kodbot" || body?.app === "opencrew";
+  } catch {
+    return false;
+  }
+}
+
+let remoteConnection = { mode: "local" };
+let remoteMode = false;
+
 // Packaged: the harness server ships in Resources (compiled JS, zero deps)
 // and runs on Electron's own Node via utilityProcess. It serves the built
 // UI too, so the window talks to one origin and there is no dev proxy.
@@ -268,7 +327,7 @@ const ERROR_PAGE =
 
 let cuaReady = Promise.resolve({ mode: "unavailable", reason: "not-started" });
 
-function createWindow() {
+function createWindow(remoteUrl = null) {
   const isMac = process.platform === "darwin";
   const win = new BrowserWindow({
     width: 1440,
@@ -338,7 +397,9 @@ function createWindow() {
     });
   }
 
-  if (app.isPackaged) {
+  if (remoteUrl) {
+    win.loadURL(remoteUrl);
+  } else if (app.isPackaged) {
     win.loadURL(serverReady ? `http://127.0.0.1:${SERVER_PORT}` : ERROR_PAGE);
   } else {
     win.loadURL(DEV_URL);
@@ -461,8 +522,43 @@ ipcMain.handle("speech:finish", () => {
 // The renderer gets these five and nothing else: it can turn the companion
 // on and off, look at it, open or cancel a pairing window, and remove a
 // device. It cannot reach the sidecar's control port itself.
-ipcMain.handle("companion:state", () => companionState());
+ipcMain.handle("server:get-connection", () => ({
+  ...remoteConnection,
+  active: remoteMode ? "remote" : "local",
+  fallback: remoteConnection.mode === "remote" && !remoteMode,
+}));
+ipcMain.handle("server:set-connection", async (_event, value) => {
+  if (!value || (value.mode !== "local" && value.mode !== "remote")) {
+    throw new Error("Choose this computer or a remote server.");
+  }
+  if (value.mode === "remote") {
+    const url = normalizeRemoteUrl(value.url);
+    if (!(await probeRemote(url))) throw new Error(`No KodBot server answered at ${url}.`);
+    writeServerConnection({ mode: "remote", url });
+  } else {
+    writeServerConnection({ mode: "local" });
+  }
+  // Relaunch so every window, server child, and companion decision starts
+  // from the new mode rather than half-applying it to a live process.
+  setTimeout(() => {
+    app.relaunch();
+    app.exit(0);
+  }, 150);
+  return { ok: true };
+});
+ipcMain.handle("companion:state", () =>
+  remoteMode
+    ? {
+        enabled: false,
+        port: 0,
+        devices: [],
+        pairing: null,
+        error: "The companion runs on the remote server. Pair phones from that computer.",
+      }
+    : companionState(),
+);
 ipcMain.handle("companion:start", async () => {
+  if (remoteMode) throw new Error("The companion runs on the remote server.");
   const state = await startCompanion({
     resourcesPath: process.resourcesPath,
     harnessPort: SERVER_PORT,
@@ -475,27 +571,39 @@ ipcMain.handle("companion:start", async () => {
   return state;
 });
 ipcMain.handle("companion:stop", () => {
+  if (remoteMode) throw new Error("The companion runs on the remote server.");
   rememberCompanionEnabled(false);
   return stopCompanion();
 });
-ipcMain.handle("companion:pairing", (_event, open) => companionPairing(Boolean(open)));
-ipcMain.handle("companion:cloud-desktop", (_event, deviceId, allowed) =>
-  companionCloudDesktopAccess(deviceId, Boolean(allowed)),
-);
-ipcMain.handle("companion:revoke", (_event, deviceId) => companionRevoke(deviceId));
+ipcMain.handle("companion:pairing", (_event, open) => {
+  if (remoteMode) throw new Error("Pair phones from the remote server.");
+  return companionPairing(Boolean(open));
+});
+ipcMain.handle("companion:cloud-desktop", (_event, deviceId, allowed) => {
+  if (remoteMode) throw new Error("Pair phones from the remote server.");
+  return companionCloudDesktopAccess(deviceId, Boolean(allowed));
+});
+ipcMain.handle("companion:revoke", (_event, deviceId) => {
+  if (remoteMode) throw new Error("Pair phones from the remote server.");
+  return companionRevoke(deviceId);
+});
 
-ipcMain.handle("desktop:capabilities", async () =>
-  desktopCapabilities({
+ipcMain.handle("desktop:capabilities", async () => {
+  const capabilities = await desktopCapabilities({
     platform: process.platform,
     env: process.env,
     packaged: app.isPackaged,
     localConnection: await cuaReady,
-  }),
-);
+  });
+  return { ...capabilities, remoteMode };
+});
 
 ipcMain.handle("credential:set", async (_event, name, value) => {
   if (name !== "composioApiKey" || typeof value !== "string") {
     throw new Error("Unsupported credential");
+  }
+  if (remoteMode) {
+    throw new Error("Credentials are managed by the remote server. Configure them on that computer.");
   }
   if (app.isPackaged && !(await safeStorage.isAsyncEncryptionAvailable())) {
     throw new Error("The operating-system credential store is unavailable");
@@ -521,6 +629,19 @@ ipcMain.handle("credential:set", async (_event, name, value) => {
 
 app.whenReady().then(async () => {
   if (process.platform === "darwin") app.dock.setIcon(APP_ICON);
+  remoteConnection = readServerConnection();
+  if (remoteConnection.mode === "remote") {
+    remoteMode = await probeRemote(remoteConnection.url);
+    if (!remoteMode) {
+      console.error(`[remote] ${remoteConnection.url} did not answer; starting the local server instead`);
+    }
+  }
+  // A headless process is the server, not a client: never let a saved remote
+  // address turn it into a windowless client that serves nothing.
+  if (HEADLESS) {
+    remoteMode = false;
+    remoteConnection = { mode: "local" };
+  }
   if (app.isPackaged) {
     secureCredentials = await loadSecureCredentials();
     await secureComposioConfig();
@@ -553,21 +674,37 @@ app.whenReady().then(async () => {
           return { mode: "unavailable", reason: String(e) };
         })
       : Promise.resolve({ mode: "unavailable", reason: "unsupported-platform" });
-  if (app.isPackaged) serverReady = await startServerPackaged();
+  if (app.isPackaged && !remoteMode) serverReady = await startServerPackaged();
   // The companion the user left on comes back without anyone finding the
   // toggle again — one attempt, after the harness port is settled, with the
   // exact options the IPC handler uses. A failure surfaces in companionState
   // (the panel shows the error) rather than retrying; and it never delays
-  // the window.
-  if (serverReady && companionEnabledAtRest()) {
+  // the window. A remote client leaves the companion to the remote host.
+  if (!remoteMode && serverReady && companionEnabledAtRest()) {
     void startCompanion({ resourcesPath: process.resourcesPath, harnessPort: SERVER_PORT, log: slog });
   }
-  const win = createWindow();
+
+  if (HEADLESS) {
+    if (!app.isPackaged) {
+      console.error("[headless] --headless is for packaged builds; use `pnpm dev:server` in development");
+      app.quit();
+      return;
+    }
+    const host = process.env.OC_HOST || "127.0.0.1";
+    console.log(`[headless] KodBot server listening on http://${host}:${SERVER_PORT}`);
+    console.log("[headless] point the desktop app at this address from Settings → General → Server");
+    const stop = () => app.quit();
+    process.once("SIGINT", stop);
+    process.once("SIGTERM", stop);
+    return;
+  }
+
+  const win = createWindow(remoteMode ? remoteConnection.url : null);
   // in-app auto-update (packaged only) — checks GitHub releases, downloads on
   // the user's click, installs on "Restart to update"
   startUpdater(win);
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) createWindow(remoteMode ? remoteConnection.url : null);
   });
 });
 

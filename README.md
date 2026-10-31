@@ -139,6 +139,9 @@ composer mic (on-device Apple speech recognition — desktop app) · SupaCrew cu
 expressions · screenshots of the bot's work folded into the transcript · on-demand
 [Jev structured decisions](docs/jev.md) for triage, routing, and classification.
 
+The desktop window can also point at a harness running on a machine that stays
+on 24/7; see [remote-server.md](docs/remote-server.md).
+
 ## How it works
 
 Two processes. The app holds no transports of its own — it sends typed commands over HTTP and folds one SSE

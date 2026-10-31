@@ -107,7 +107,10 @@ data class PairingInvite(
     companion object {
         fun parse(raw: String?): PairingInvite? {
             val uri = raw?.let { runCatching { URI(it) }.getOrNull() } ?: return null
-            if (!uri.scheme.equals("kodbot", ignoreCase = true) || uri.host?.equals("pair", ignoreCase = true) != true) return null
+            // `kodbot` is the current link; `opencrew` is accepted so phones
+            // and desktop installs from the previous name can still pair.
+            val scheme = uri.scheme?.lowercase()
+            if ((scheme != "kodbot" && scheme != "opencrew") || uri.host?.equals("pair", ignoreCase = true) != true) return null
 
             val values = mutableMapOf<String, String>()
             for (part in uri.rawQuery.orEmpty().split('&').filter { it.isNotEmpty() }) {

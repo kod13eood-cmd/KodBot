@@ -28,6 +28,8 @@ declare global {
       support: "supported" | "limited" | "unsupported";
       reasonCode?: string;
     };
+    /** This window is pointed at a remote KodBot harness. */
+    remoteMode?: boolean;
   };
 
   interface Window {
@@ -74,8 +76,22 @@ declare global {
         install(): Promise<void>;
         onState(cb: (s: UpdaterState) => void): () => void;
       };
+      /** Local/remote harness choice, owned by the desktop main process. */
+      server?: {
+        get(): Promise<ServerConnectionState>;
+        set(value: { mode: "local" | "remote"; url?: string }): Promise<{ ok: true }>;
+      };
     };
   }
+}
+
+export interface ServerConnectionState {
+  mode: "local" | "remote";
+  url?: string;
+  /** What this window actually loaded. */
+  active: "local" | "remote";
+  /** Saved remote address was unreachable, so the window fell back to local. */
+  fallback?: boolean;
 }
 
 export interface UpdaterState {

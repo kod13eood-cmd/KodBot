@@ -15,6 +15,7 @@ import { UsageSection } from "./UsageSection";
 import { VoiceSettings } from "./VoiceSettings";
 import { cn } from "@/lib/cn";
 import { LOCALE_OPTIONS, useI18n } from "@/lib/i18n";
+import type { ServerConnectionState } from "@/types/ogb";
 
 const SECTIONS: Array<{ id: AppSettingsSection; label: string; icon: typeof User }> = [
   { id: "general", label: "General", icon: User },
@@ -99,6 +100,92 @@ function UpdatesRow() {
             ? t("Restart and install")
             : t("Check for updates")}
       </button>
+    </Card>
+  );
+}
+
+function ServerCard() {
+  const { t } = useI18n();
+  const [state, setState] = useState<ServerConnectionState | null>(null);
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState<"local" | "remote" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!window.ogb?.server) return;
+    void window.ogb.server
+      .get()
+      .then((current) => {
+        setState(current);
+        setUrl(current.url ?? "");
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  }, []);
+
+  if (!window.ogb?.server) return null;
+
+  const choose = async (mode: "local" | "remote") => {
+    const bridge = window.ogb?.server;
+    if (!bridge) return;
+    setBusy(mode);
+    setError(null);
+    try {
+      await bridge.set(mode === "remote" ? { mode, url } : { mode });
+      // The main process relaunches after acknowledging; keep the button
+      // busy so a second click cannot race the restart.
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setBusy(null);
+    }
+  };
+
+  const remote = state?.mode === "remote";
+  return (
+    <Card
+      title={t("Server")}
+      subtitle={t("Run the agents on this computer, or connect this window to a KodBot server that stays on 24/7.")}
+    >
+      <div className="flex flex-col gap-3">
+        {state?.fallback && (
+          <div className="rounded-lg border border-warning/25 bg-warning/10 px-3 py-2 text-[12.5px] text-warning">
+            {t("Could not reach {url}. Using this computer until you fix the address.", { url: state.url ?? "" })}
+          </div>
+        )}
+        <div className="rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[12.5px] text-ink-secondary">
+          {state?.active === "remote"
+            ? t("Using remote server {url}", { url: state.url ?? "" })
+            : t("Using the server on this computer.")}
+        </div>
+        <input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="http://192.168.1.50:8799"
+          spellCheck={false}
+          className="w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 font-mono text-[13px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none"
+        />
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => void choose("remote")}
+            disabled={busy !== null || !url.trim() || (remote && !state?.fallback)}
+            className="rounded-lg border border-hairline/40 px-3 py-1.5 text-[13px] text-ink hover:bg-raised disabled:opacity-40"
+          >
+            {busy === "remote" ? t("Connecting…") : t("Connect to remote server")}
+          </button>
+          <button
+            onClick={() => void choose("local")}
+            disabled={busy !== null || state?.mode === "local"}
+            className="rounded-lg border border-hairline/40 px-3 py-1.5 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40"
+          >
+            {busy === "local" ? t("Switching…") : t("Use this computer")}
+          </button>
+        </div>
+        <div className="text-[11.5px] leading-relaxed text-ink-secondary">
+          {t(
+            "The remote machine must be reachable over your LAN or Tailscale and must be running KodBot. Keys, engines, and the companion stay on that machine. The app will restart when you switch.",
+          )}
+        </div>
+        {error && <div className="text-[12.5px] text-danger">{error}</div>}
+      </div>
     </Card>
   );
 }
@@ -235,6 +322,7 @@ export function SettingsModal() {
                 <Card title={t("Profile")} subtitle={t("Shown in the sidebar. Saved as you go.")}>
                   <ProfileFields />
                 </Card>
+                <ServerCard />
                 <LanguageCard />
                 <UpdatesRow />
               </>
