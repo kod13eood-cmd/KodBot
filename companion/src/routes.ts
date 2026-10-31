@@ -60,6 +60,7 @@ const ALLOWED: ReadonlyArray<{ method: string; path: RegExp }> = [
   // the fleet, and making a bot
   { method: "GET", path: /^\/api\/bots$/ },
   { method: "POST", path: /^\/api\/bots$/ },
+  { method: "DELETE", path: /^\/api\/bots\/[\w-]+$/ },
   { method: "POST", path: /^\/api\/bots\/[\w-]+\/messages$/ },
   // A narrow model picker write. The general bot PATCH can also change
   // permissions, workspaces, computers, and integrations, so it stays closed.

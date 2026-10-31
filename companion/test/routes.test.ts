@@ -38,6 +38,7 @@ describe("what the app may do", () => {
     ["GET", "/api/instances"],
     ["GET", "/api/bots"],
     ["POST", "/api/bots"],
+    ["DELETE", "/api/bots/bot_123"],
     ["POST", "/api/bots/bot_123/messages"],
     ["PATCH", "/api/bots/bot_123/model"],
     ["POST", "/api/bots/bot_123/interrupt"],
@@ -106,10 +107,10 @@ describe("what it may not", () => {
   });
 
   // The method is part of the allowance, not decoration: reading the fleet
-  // and deleting a bot are the same path.
+  // is allowed, and deleting one bot is a deliberate narrow DELETE.
   it("allows a path only for the methods it was allowed for", () => {
     expect(allowed("GET", "/api/bots")).toBe(true);
-    expect(allowed("DELETE", "/api/bots/bot_123")).toBe(false);
+    expect(allowed("DELETE", "/api/bots/bot_123")).toBe(true);
     expect(allowed("PATCH", "/api/bots/bot_123/model")).toBe(true);
     expect(allowed("POST", "/api/threads/th_1/messages")).toBe(false);
     expect(allowed("GET", "/api/groups/room-1")).toBe(false);

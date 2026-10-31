@@ -32,9 +32,9 @@ export function UsageSection() {
         <div className="flex flex-col">
           <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-5 border-b border-hairline/40 pb-2 text-[11.5px] font-medium uppercase tracking-wide text-ink-secondary">
             <span>{t("Bot")}</span>
-            <span className="text-right">{t("Turns")}</span>
-            <span className="text-right">{t("Tokens")}</span>
-            <span className="text-right">{t("Cost")}</span>
+            <span className="w-16 text-right">{t("Turns")}</span>
+            <span className="w-20 text-right">{t("Tokens")}</span>
+            <span className="w-20 text-right">{t("Cost")}</span>
           </div>
           {rows.map(({ bot, usage }) => (
             <div key={bot.id} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-5 border-b border-hairline/20 py-2 text-[13px]">
@@ -42,18 +42,18 @@ export function UsageSection() {
                 <CrewAvatar color={bot.color} state="idle" size={22} animated={false} />
                 <span className="truncate">{bot.name}</span>
               </span>
-              <span className="text-right tabular-nums text-ink-secondary">{usage.turns}</span>
-              <span className="text-right tabular-nums text-ink" title={`${formatTokens(usage.input)} in · ${formatTokens(usage.output)} out`}>
+              <span className="w-16 text-right tabular-nums text-ink-secondary">{usage.turns}</span>
+              <span className="w-20 text-right tabular-nums text-ink" title={`${formatTokens(usage.input)} in · ${formatTokens(usage.output)} out`}>
                 {formatTokens(usage.input + usage.output)}
               </span>
-              <span className="text-right tabular-nums text-ink">{usage.costUsd === null ? <span className="text-ink-secondary">—</span> : formatUsd(usage.costUsd)}</span>
+              <span className="w-20 text-right tabular-nums text-ink">{usage.costUsd === null ? <span className="text-ink-secondary">—</span> : formatUsd(usage.costUsd)}</span>
             </div>
           ))}
           <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-5 pt-2.5 text-[13px] font-medium text-ink">
             <span>{t("All bots")}</span>
-            <span className="text-right tabular-nums">{total.turns}</span>
-            <span className="text-right tabular-nums">{formatTokens(total.input + total.output)}</span>
-            <span className="text-right tabular-nums">{total.costUsd === null ? "—" : formatUsd(total.costUsd)}</span>
+            <span className="w-16 text-right tabular-nums">{total.turns}</span>
+            <span className="w-20 text-right tabular-nums">{formatTokens(total.input + total.output)}</span>
+            <span className="w-20 text-right tabular-nums">{total.costUsd === null ? "—" : formatUsd(total.costUsd)}</span>
           </div>
           {total.costUsd !== null && (
             <div className="mt-3 text-[12px] leading-relaxed text-ink-secondary">

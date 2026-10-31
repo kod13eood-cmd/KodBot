@@ -42,6 +42,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -187,6 +188,7 @@ class MainActivity : ComponentActivity() {
                     onRespond = ::respond,
                     onInterrupt = ::interrupt,
                     onSelectModel = ::selectModel,
+                    onDeleteBot = ::deleteBot,
                     onDisconnect = ::disconnect,
                 )
             }
@@ -513,6 +515,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun deleteBot(chat: ConversationRecord) {
+        val saved = connection ?: return
+        lifecycleScope.launch {
+            loading = true
+            actionError = null
+            try {
+                CompanionApi(saved).deleteBot(chat)
+                if (activeChatKey == chat.key) activeChatKey = null
+                refreshFleet()
+            } catch (error: Exception) {
+                actionError = error.message ?: "Couldn't delete that bot."
+            } finally {
+                loading = false
+            }
+        }
+    }
+
     private fun checkForUpdates(manual: Boolean) {
         if (updateState.checking || updateState.downloading) return
         updateState = updateState.copy(checking = true, error = null, message = null)
@@ -632,9 +651,11 @@ private fun KodBotScreen(
     onRespond: (ConversationRecord, ApprovalCard, String) -> Unit,
     onInterrupt: (ConversationRecord) -> Unit,
     onSelectModel: (ConversationRecord, EngineRecord, ModelOptionRecord) -> Unit,
+    onDeleteBot: (ConversationRecord) -> Unit,
     onDisconnect: () -> Unit,
 ) {
     var confirmDisconnect by rememberSaveable { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf<ConversationRecord?>(null) }
     BackHandler(enabled = settingsOpen || activeChatKey != null) {
         if (settingsOpen) onCloseSettings() else onBackToFleet()
     }
@@ -700,6 +721,7 @@ private fun KodBotScreen(
                         onCreateBot = onCreateBot,
                         updateState = updateState,
                         onInstallUpdate = onInstallUpdate,
+                        onDeleteBot = { confirmDelete = it },
                     )
                 } else {
                     ChatScreen(
@@ -726,6 +748,25 @@ private fun KodBotScreen(
                 TextButton(onClick = { confirmDisconnect = false; onDisconnect() }) { Text("Disconnect") }
             },
             dismissButton = { TextButton(onClick = { confirmDisconnect = false }) { Text("Cancel") } },
+        )
+    }
+
+    confirmDelete?.let { bot ->
+        AlertDialog(
+            onDismissRequest = { confirmDelete = null },
+            title = { Text("Delete ${bot.name}?") },
+            text = {
+                Text("This removes the bot and its conversation from the computer. This cannot be undone.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmDelete = null
+                        onDeleteBot(bot)
+                    },
+                ) { Text("Delete", color = Color(0xFFFF8A80)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text("Cancel") } },
         )
     }
 }
@@ -820,6 +861,7 @@ private fun FleetScreen(
     onCreateBot: () -> Unit,
     updateState: UpdateUiState,
     onInstallUpdate: () -> Unit,
+    onDeleteBot: (ConversationRecord) -> Unit,
 ) {
     val visibleChats = chats.filter { chat ->
         (chat.kind != "group" || showGroups) && (chat.kind != "bot" || showHiddenBots || !chat.hidden)
@@ -978,6 +1020,19 @@ private fun FleetScreen(
                                 if (chat.unread) Spacer(Modifier.width(8.dp))
                             }
                             if (chat.unread) Surface(modifier = Modifier.size(9.dp), shape = CircleShape, color = CrewGreen) {}
+                            if (chat.kind == "bot") {
+                                IconButton(
+                                    onClick = { onDeleteBot(chat) },
+                                    modifier = Modifier.size(32.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Delete,
+                                        contentDescription = "Delete ${chat.name}",
+                                        modifier = Modifier.size(18.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
                         }
                     }
                 }

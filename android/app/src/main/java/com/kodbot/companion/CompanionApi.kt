@@ -260,6 +260,11 @@ class CompanionApi(private val connection: CompanionConnection) {
         request("POST", "/api/bots/${encodePath(botId)}/interrupt")
     }
 
+    suspend fun deleteBot(chat: ConversationRecord) = withContext(Dispatchers.IO) {
+        require(chat.kind == "bot") { "Only a bot can be deleted." }
+        request("DELETE", "/api/bots/${encodePath(chat.id)}")
+    }
+
     suspend fun selectModel(botId: String, instanceId: String, model: String) = withContext(Dispatchers.IO) {
         request(
             "PATCH",

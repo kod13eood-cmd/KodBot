@@ -20,6 +20,8 @@ approval flow. The phone does not receive a general shell endpoint.
   approval, question, completion, and routine-failure events.
 - Settings can test or repair the host address, change a bot's model from the
   host catalog, and toggle whether hidden bots or group chats are shown.
+- Delete a bot from the fleet with its trash icon; a confirmation dialog shows
+  the bot name before anything is removed.
 - Store the paired device token encrypted with an Android Keystore AES key.
 
 Pairing, chat, and notifications use the existing default-deny companion API
