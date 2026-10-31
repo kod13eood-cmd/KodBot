@@ -286,7 +286,7 @@ export function Composer({
           onAdd={addAttachments}
           onRemove={removeAttachment}
         />
-        <div className="flex items-end gap-2 rounded-3xl border border-hairline/40 bg-raised/60 py-2 pl-3 pr-2">
+        <div className="composer-frame flex items-end gap-2 rounded-3xl border border-hairline/40 bg-raised/60 py-2 pl-3 pr-2 transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/20">
         <textarea
           ref={inputRef}
           rows={1}
@@ -363,7 +363,7 @@ export function Composer({
                   : t("Message {name}", { name: bot?.name ?? "" })
           }
           aria-label={t("Message {name}", { name: group ? group.name : (bot?.name ?? "") })}
-          className="max-h-40 w-full resize-none self-center bg-transparent py-1 text-[15px] leading-6 text-ink placeholder:text-ink-secondary focus:outline-none"
+          className="composer-textarea max-h-40 w-full resize-none self-center bg-transparent px-1 py-1 text-[15px] leading-6 text-ink placeholder:text-ink-secondary focus:outline-none"
         />
         {busy && (
           <button

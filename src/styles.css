@@ -63,6 +63,14 @@ body {
   outline-offset: -2px;
 }
 
+/* The prompt paints focus on its surrounding pill instead. The global inset
+   outline sits inside the textarea's zero-width padding and clips the first
+   glyph of every line; the frame keeps the same keyboard affordance without
+   covering the text. */
+.composer-textarea:focus {
+  outline: none;
+}
+
 ::selection {
   background: color-mix(in oklab, var(--color-accent) 45%, transparent);
   color: var(--color-ink);
