@@ -353,7 +353,8 @@ class CompanionApi(private val connection: CompanionConnection) {
                     }
                 }
                 val selected = reachable
-                    ?: throw lastTransportError ?: IOException("Couldn't reach the Companion address.")
+                    ?: throw lastTransportError
+                    ?: IOException("Couldn't reach the Companion address. Check that the phone is on the same Wi-Fi or Tailscale network as the computer.")
                 // Only redeem the one-time credential once. Probing candidate
                 // hosts first avoids replaying a token if a pairing response
                 // is lost after the desktop has already consumed it.
