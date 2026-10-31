@@ -72,7 +72,7 @@ try {
     "usr",
     "share",
     "applications",
-    "com.opencrew.app.desktop",
+    "com.kodbot.app.desktop",
   );
   const scalableIcon = path.join(
     extracted,
@@ -91,7 +91,7 @@ try {
     "Name=KodBot",
     "Exec=/opt/KodBot/kodbot %U",
     "Icon=kodbot",
-    "StartupWMClass=com.opencrew.app",
+    "StartupWMClass=com.kodbot.app",
     "Categories=Utility;",
   ]) {
     if (!desktop.includes(expected)) fail(`desktop entry is missing ${JSON.stringify(expected)}`);

@@ -9,6 +9,8 @@ apply to their respective material, not to KodBot as a whole.
 KodBot uses the [OpenCode](https://github.com/anomalyco/opencode) CLI as a
 separate local agent runtime. OpenCode source code is not vendored in this
 repository; the integration code only launches and speaks to that CLI.
+KodBot is an independent project and is not affiliated with or endorsed by
+the OpenCode project.
 
 OpenCode is distributed under the MIT License:
 

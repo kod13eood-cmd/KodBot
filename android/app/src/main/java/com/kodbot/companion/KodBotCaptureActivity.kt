@@ -1,4 +1,4 @@
-package com.opencrew.companion
+package com.kodbot.companion
 
 import com.journeyapps.barcodescanner.CaptureActivity
 

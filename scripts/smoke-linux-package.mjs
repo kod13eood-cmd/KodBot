@@ -15,10 +15,10 @@ const home = path.join(sandbox, "home");
 const xdgConfig = path.join(sandbox, "config");
 const marker = path.join(sandbox, "cua-was-executed");
 const sentinel = path.join(sandbox, "cua-driver");
-mkdirSync(path.join(home, ".opencrew"), { recursive: true });
+mkdirSync(path.join(home, ".kodbot"), { recursive: true });
 mkdirSync(xdgConfig, { recursive: true });
 writeFileSync(
-  path.join(home, ".opencrew", "config.json"),
+  path.join(home, ".kodbot", "config.json"),
   JSON.stringify({ instances: { ghost: { driver: "not-a-real-driver", displayName: "Ghost" } } }),
 );
 writeFileSync(sentinel, `#!/bin/sh\ntouch ${JSON.stringify(marker)}\nexit 99\n`);
@@ -85,7 +85,7 @@ async function stopProcess() {
 try {
   const result = await until(async () => smokeResult, "the packaged renderer smoke result");
   const { capabilities, health, location, title } = result;
-  if (health?.app !== "opencrew" || health.static !== true) {
+  if (health?.app !== "kodbot" || health.static !== true) {
     throw new Error(`unexpected embedded health response: ${JSON.stringify(health)}`);
   }
   if (!String(title).includes("KodBot")) throw new Error(`unexpected renderer title: ${title}`);

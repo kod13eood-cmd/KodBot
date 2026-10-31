@@ -9,7 +9,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
 const DEFAULT_BROKER_URL = "https://openmausbot-composio.milindsoni201.workers.dev";
-const DATA_DIR = process.env.OC_DATA_DIR ?? join(homedir(), ".opencrew");
+const DATA_DIR = process.env.OC_DATA_DIR ?? join(homedir(), ".kodbot");
 const CACHE_FILE = join(DATA_DIR, "dev-composio-broker.json");
 const TOKEN_PATTERN = /^[0-9a-f]{64}$/;
 const BROKER_URL = (process.env.OC_COMPOSIO_BROKER_URL?.trim() || DEFAULT_BROKER_URL).replace(/\/$/, "");

@@ -1,4 +1,4 @@
-package com.opencrew.companion
+package com.kodbot.companion
 
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow

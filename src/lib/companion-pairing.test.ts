@@ -14,7 +14,7 @@ describe("companionPairingLink", () => {
     });
 
     const url = new URL(link!);
-    expect(url.protocol).toBe("opencrew:");
+    expect(url.protocol).toBe("kodbot:");
     expect(url.host).toBe("pair");
     expect(url.searchParams.get("address")).toBe("macbook.tail1234.ts.net:8810");
     expect(url.searchParams.get("token")).toBe(token);
@@ -40,10 +40,10 @@ describe("companionPairingLink", () => {
       port: 8810,
       code: "004209",
       token,
-      hosts: ["macbook.tail1234.ts.net", "192.168.1.42", "opencrew-abcd1234.local"],
+      hosts: ["macbook.tail1234.ts.net", "192.168.1.42", "kodbot-abcd1234.local"],
     });
     expect(new URL(link!).searchParams.get("hosts")).toBe(
-      "macbook.tail1234.ts.net,192.168.1.42,opencrew-abcd1234.local",
+      "macbook.tail1234.ts.net,192.168.1.42,kodbot-abcd1234.local",
     );
   });
 

@@ -96,9 +96,9 @@ describe("comms e2e (fake ACP fleet)", () => {
   beforeAll(async () => {
     chmodSync(FAKE_CLI, 0o755);
     home = mkdtempSync(join(tmpdir(), "omb-comms-test-"));
-    mkdirSync(join(home, ".opencrew"), { recursive: true });
+    mkdirSync(join(home, ".kodbot"), { recursive: true });
     writeFileSync(
-      join(home, ".opencrew", "config.json"),
+      join(home, ".kodbot", "config.json"),
       JSON.stringify({
         instances: {
           // the ask-peer fleet: both bots run "ask-peer" so A can ask B

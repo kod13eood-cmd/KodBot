@@ -303,7 +303,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
   };
 
   const openVmSettings = () => {
-    window.sessionStorage.setItem("opencrew.settings.section", "computer");
+    window.sessionStorage.setItem("kodbot.settings.section", "computer");
     dispatch({ type: "toggleAppSettings", open: true });
   };
 

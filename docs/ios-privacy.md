@@ -20,4 +20,4 @@ Unpairing removes the connection and pairing token from the phone. Revoking the 
 
 ## Support
 
-Questions or privacy requests can be opened at [OpenMausBot Support](https://github.com/milind-soni/OpenMausBot/issues).
+Questions or privacy requests can be opened at [KodBot Support](https://github.com/kod13eood-cmd/KodBot/issues).

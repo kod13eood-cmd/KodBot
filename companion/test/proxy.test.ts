@@ -127,9 +127,9 @@ beforeAll(async () => {
   SIDECAR = `http://127.0.0.1:${SIDECAR_PORT}`;
 
   home = mkdtempSync(join(tmpdir(), "companion-test-"));
-  mkdirSync(join(home, ".opencrew"), { recursive: true });
+  mkdirSync(join(home, ".kodbot"), { recursive: true });
   writeFileSync(
-    join(home, ".opencrew", "config.json"),
+    join(home, ".kodbot", "config.json"),
     JSON.stringify({ instances: { ghost: { driver: "not-a-real-driver", displayName: "Ghost" } } }),
   );
 
@@ -551,7 +551,7 @@ describe("pairing, end to end", () => {
         authenticate: (t) => registry.authenticate(t ?? undefined),
         redeem: (code, deviceName) => registry.redeem(code, deviceName),
         serverName: () => "Ada's computer",
-        hosts: () => ["macbook.tail1234.ts.net", "192.168.1.42", "opencrew-abcd1234.local"],
+        hosts: () => ["macbook.tail1234.ts.net", "192.168.1.42", "kodbot-abcd1234.local"],
       }),
     );
     await new Promise<void>((r) => paired.listen(0, "127.0.0.1", r));
@@ -604,7 +604,7 @@ describe("pairing, end to end", () => {
       expect(body.token).toMatch(/^omb_/);
       // The fallback list rides on the redeem response so a phone that paired
       // by typed address learns the other ways to reach this computer too.
-      expect(body.hosts).toEqual(["macbook.tail1234.ts.net", "192.168.1.42", "opencrew-abcd1234.local"]);
+      expect(body.hosts).toEqual(["macbook.tail1234.ts.net", "192.168.1.42", "kodbot-abcd1234.local"]);
 
       // and the token works on the real API, through the real proxy
       const bots = await fetch(`${base}/api/bots`, { headers: { authorization: `Bearer ${body.token}` } });

@@ -1,4 +1,4 @@
-package com.opencrew.companion
+package com.kodbot.companion
 
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
@@ -72,8 +72,8 @@ class ConnectionStore(context: Context) {
     }
 
     private companion object {
-        const val STORE = "opencrew.companion"
-        const val KEY_ALIAS = "opencrew.companion.device-token"
+        const val STORE = "kodbot.companion"
+        const val KEY_ALIAS = "kodbot.companion.device-token"
         const val KEY_BASE_URL = "baseUrl"
         const val KEY_SERVER_NAME = "serverName"
         const val KEY_TOKEN_IV = "tokenIv"

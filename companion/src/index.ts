@@ -44,7 +44,7 @@ const HARNESS_PORT = num(process.env.OC_PORT, 8799);
 const WEBHOOK_PORT = num(process.env.OC_WEBHOOK_PORT, HARNESS_PORT + 1);
 const COMPANION_PORT = num(process.env.OC_COMPANION_PORT, 8810);
 const CONTROL_PORT = num(process.env.OC_CONTROL_PORT, 8811);
-const SERVICE_TYPE = "_opencrew._tcp";
+const SERVICE_TYPE = "_kodbot._tcp";
 
 /** Ports the harness takes for itself, and what it uses each for.
  *

@@ -118,7 +118,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
 
   const saveProfile = () => {
     identifyEmail(email.trim().toLowerCase());
-    // persisted server-side (~/.opencrew/config.json) — the sidebar
+    // persisted server-side (~/.kodbot/config.json) — the sidebar
     // footer reads it back through /api/config
     void fetch("/api/config", {
       method: "PUT",

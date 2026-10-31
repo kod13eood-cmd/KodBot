@@ -3254,7 +3254,7 @@ const server = createServer(async (req, res) => {
     // child proves it is OURS by echoing its pid (a stray dev server has
     // the same API shape but a different pid)
     if (method === "GET" && path === "/api/health") {
-      return json(res, 200, { app: "opencrew", pid: process.pid, static: Boolean(STATIC_DIR) });
+      return json(res, 200, { app: "kodbot", pid: process.pid, static: Boolean(STATIC_DIR) });
     }
 
     // ── inspector: a thread's runtime events + native protocol tee ──

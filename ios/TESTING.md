@@ -30,7 +30,7 @@ Use current `main` after the companion lands. While reviewing the feature PR,
 GitHub CLI can create the correct local branch:
 
 ```sh
-git clone https://github.com/milind-soni/OpenMausBot
+git clone https://github.com/kod13eood-cmd/KodBot
 cd KodBot
 gh pr checkout 161        # omit after the PR is merged
 ```
@@ -97,7 +97,7 @@ Verify from a second terminal that the socket is real and refuses strangers:
 ```sh
 curl -s http://192.168.x.x:8810/api/bots            # expect 401 + "pair this device…"
 curl -s http://127.0.0.1:8811/state | jq            # addresses, pairing, devices, discovery
-dns-sd -B _opencrew._tcp                         # macOS: should list the service
+dns-sd -B _kodbot._tcp                         # macOS: should list the service
 ```
 
 ### If discovery says it is not advertising
@@ -272,7 +272,7 @@ usually the whole diagnosis:
 
 - **Desktop/server log:** the sidecar and harness record the stream opening and
   closing. No opening entry means the request never arrived.
-- **Xcode console**, subsystem `com.opencrew.companion`: `opening stream`,
+- **Xcode console**, subsystem `com.kodbot.companion`: `opening stream`,
   then `stream live, resumed=…`, then `hydrated N bots`. Whichever of those is
   missing is where it stopped.
 

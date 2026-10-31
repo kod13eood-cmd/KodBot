@@ -1,4 +1,4 @@
-package com.opencrew.companion
+package com.kodbot.companion
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -31,22 +31,22 @@ class CompanionProtocolTest {
     fun addressDefaultsToCompanionPortAndPreservesAnExplicitPort() {
         assertEquals("http://192.168.1.42:8810", CompanionAddress.normalize("192.168.1.42"))
         assertEquals("http://192.168.1.42:8811", CompanionAddress.normalize("192.168.1.42", 8811))
-        assertEquals("http://opencrew.tail1234.ts.net:8810", CompanionAddress.normalize("opencrew.tail1234.ts.net:8810"))
-        assertEquals("http://opencrew.local:8811", CompanionAddress.normalize("http://opencrew.local:8811/"))
+        assertEquals("http://kodbot.tail1234.ts.net:8810", CompanionAddress.normalize("kodbot.tail1234.ts.net:8810"))
+        assertEquals("http://kodbot.local:8811", CompanionAddress.normalize("http://kodbot.local:8811/"))
         assertEquals("http://[2001:db8::2]:8810", CompanionAddress.normalize("2001:db8::2"))
     }
 
     @Test
     fun addressRejectsOtherSchemesAndPaths() {
-        assertThrows(IllegalArgumentException::class.java) { CompanionAddress.normalize("https://opencrew.local") }
-        assertThrows(IllegalArgumentException::class.java) { CompanionAddress.normalize("opencrew.local/api") }
+        assertThrows(IllegalArgumentException::class.java) { CompanionAddress.normalize("https://kodbot.local") }
+        assertThrows(IllegalArgumentException::class.java) { CompanionAddress.normalize("kodbot.local/api") }
     }
 
     @Test
     fun desktopQrDeepLinkOpensAConfirmedPairingInvite() {
         val token = "omb_pair_${"a".repeat(43)}"
         val invite = PairingInvite.parse(
-            "opencrew://pair?address=linux.tail1234.ts.net%3A8810" +
+            "kodbot://pair?address=linux.tail1234.ts.net%3A8810" +
                 "&token=$token&code=004209&name=KodBot%20Linux" +
                 "&hosts=linux.tail1234.ts.net%2C192.168.1.42",
         )
@@ -60,7 +60,7 @@ class CompanionProtocolTest {
     @Test
     fun malformedOrAmbiguousPairingLinksAreRejected() {
         assertNull(PairingInvite.parse("https://example.test/pair?address=linux&code=123456"))
-        assertNull(PairingInvite.parse("opencrew://pair?address=linux&code=123456&code=654321"))
-        assertNull(PairingInvite.parse("opencrew://pair?address=linux&token=bad&code=123456"))
+        assertNull(PairingInvite.parse("kodbot://pair?address=linux&code=123456&code=654321"))
+        assertNull(PairingInvite.parse("kodbot://pair?address=linux&token=bad&code=123456"))
     }
 }

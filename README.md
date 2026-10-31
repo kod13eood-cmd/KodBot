@@ -4,31 +4,31 @@
 
 # KodBot
 
-**Your own team of AI bots, in a chat app.**
+**Your own team of AI agents, getting the job done on your own PC or server.**
 
 <sub>An open-source version of **Grok Bot** — bring-your-own-agent, local-first, on the models you already have.</sub>
 
-Every bot in the sidebar is a real agent — Claude or Codex running locally under the hood — with its own
+Every bot in the sidebar is a real agent — Claude, Codex, or OpenCode running locally under the hood — with its own
 personality, its own model, its own cloud computer, and its own connected apps.
 Talk to them like contacts. Watch them work. Approve what matters.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![Electron](https://img.shields.io/badge/Electron-macOS%20%C2%B7%20Windows%20%C2%B7%20Ubuntu-2B2E3A?logo=electron&logoColor=9FEAF9)
-![Agents](https://img.shields.io/badge/agents-Claude%20·%20Codex-d97757)
+![Agents](https://img.shields.io/badge/agents-Claude%20·%20Codex%20·%20OpenCode-d97757)
 ![PRs](https://img.shields.io/badge/PRs-welcome-38d591)
 
 <br>
 
-<a href="https://github.com/milind-soni/openmausbot-releases/releases/latest/download/OpenMausBot.dmg">
-  <img src="https://img.shields.io/github/v/release/milind-soni/openmausbot-releases?style=for-the-badge&label=%E2%AC%87%EF%B8%8F%20%20Download%20for%20macOS&labelColor=070707&color=1084fe&cacheSeconds=300" alt="Download the latest OpenMausBot for macOS (.dmg)" height="40">
+<a href="https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot.dmg">
+  <img src="https://img.shields.io/github/v/release/kod13eood-cmd/kodbot-releases?style=for-the-badge&label=%E2%AC%87%EF%B8%8F%20%20Download%20for%20macOS&labelColor=070707&color=1084fe&cacheSeconds=300" alt="Download the latest KodBot for macOS (.dmg)" height="40">
 </a>
 &nbsp;
-<a href="https://github.com/milind-soni/openmausbot-releases/releases/latest/download/OpenMausBot-setup.exe">
-  <img src="https://img.shields.io/github/v/release/milind-soni/openmausbot-releases?style=for-the-badge&label=%E2%AC%87%EF%B8%8F%20%20Download%20for%20Windows&labelColor=070707&color=4cc2ff&cacheSeconds=300" alt="Download the latest OpenMausBot for Windows (.exe)" height="40">
+<a href="https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-setup.exe">
+  <img src="https://img.shields.io/github/v/release/kod13eood-cmd/kodbot-releases?style=for-the-badge&label=%E2%AC%87%EF%B8%8F%20%20Download%20for%20Windows&labelColor=070707&color=4cc2ff&cacheSeconds=300" alt="Download the latest KodBot for Windows (.exe)" height="40">
 </a>
 
-<sub>macOS: Apple silicon · signed & notarized · one-click .dmg &nbsp;·&nbsp; Windows: 64-bit · one-click installer, no admin rights &nbsp;·&nbsp; both always the latest · [all releases](https://github.com/milind-soni/openmausbot-releases/releases)</sub>
+<sub>macOS: Apple silicon · signed & notarized · one-click .dmg &nbsp;·&nbsp; Windows: 64-bit · one-click installer, no admin rights &nbsp;·&nbsp; both always the latest · [all releases](https://github.com/kod13eood-cmd/kodbot-releases/releases)</sub>
 
 <br>
 <br>
@@ -46,11 +46,11 @@ it keeps the idea (AI as a *messaging app*: a roster of bots you chat with, each
 memory of its thread, model, computer, and apps) and rebuilds it open, local-first, and on the agents you
 already have:
 
-- **Bring your own agents.** Bots run on the `claude`, `codex`, and `grok` CLIs installed on your own machine
+- **Bring your own agents.** Bots run on the `claude`, `codex`, `grok`, and `opencode` CLIs installed on your own machine
   — your existing logins and subscriptions, no new accounts, no proxy in the middle. Point any engine at a
   custom CLI binary (a versioned build or wrapper) in **Settings → Engines**.
 - **Local first.** One small harness server on `127.0.0.1` owns every agent process. Transcripts, keys, and
-  events live in `~/.opencrew`, not a cloud.
+  events live in `~/.kodbot`, not a cloud.
 - **Agents with hands.** Each bot can get a real computer — a cloud Linux desktop it drives while you watch
   live, or your own Mac — plus 500+ apps through Composio.
 
@@ -62,7 +62,7 @@ already have:
 
 ### 🧠 Pick a brain per bot
 
-A model picker with a provider rail — Claude and Codex models side by side, defaults marked, unavailable
+A model picker with a provider rail — Claude, Codex, and OpenCode models side by side, defaults marked, unavailable
 providers dimmed with the reason. Switch a bot's model mid-conversation.
 
 <img src="docs/screenshots/model-picker.png" alt="Model picker with provider rail" width="100%">
@@ -169,7 +169,7 @@ flowchart LR
 
 | Layer | Where | What it does |
 |---|---|---|
-| Drivers | `server/drivers/` | One per provider: Claude, Codex, and Grok Build over their local CLIs (stream-JSON / JSON-RPC / ACP), plus a cloud-computer agent. Unknown drivers degrade to "unavailable", never crash the fleet. |
+| Drivers | `server/drivers/` | One per provider: Claude, Codex, Grok Build, and OpenCode over their local CLIs (stream-JSON / JSON-RPC / ACP), plus a cloud-computer agent. Unknown drivers degrade to "unavailable", never crash the fleet. |
 | Harness | `server/harness/` | Registry (configs → live instances) and the fan-in event bus every client folds. |
 | API | `server/index.ts` | Bots, turns, approvals, model catalog, computer lifecycle, connectors, config — HTTP + SSE. |
 | Voice | `server/tts/` | ElevenLabs, bring your own key. Runs on the harness so the key never reaches the UI; markdown is rewritten into something worth hearing before it is spoken. |
@@ -182,8 +182,8 @@ flowchart LR
 
 | | Download | Install |
 |---|---|---|
-| **macOS** (Apple silicon) | [OpenMausBot.dmg](https://github.com/milind-soni/openmausbot-releases/releases/latest/download/OpenMausBot.dmg) | Drag it to Applications, open it. Signed & notarized. |
-| **Windows** (x64) | [OpenMausBot-setup.exe](https://github.com/milind-soni/openmausbot-releases/releases/latest/download/OpenMausBot-setup.exe) | Run it — one-click, per-user, no admin rights. The installer isn't code-signed yet, so SmartScreen shows "unknown publisher": **More info → Run anyway**. |
+| **macOS** (Apple silicon) | [KodBot.dmg](https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot.dmg) | Drag it to Applications, open it. Signed & notarized. |
+| **Windows** (x64) | [KodBot-setup.exe](https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-setup.exe) | Run it — one-click, per-user, no admin rights. The installer isn't code-signed yet, so SmartScreen shows "unknown publisher": **More info → Run anyway**. |
 
 **Ubuntu Desktop beta:** build the `.deb` or AppImage from source using the commands below. Release downloads
 will be linked here once Linux publishing is enabled. See [the Ubuntu Desktop guide](docs/linux-desktop.md) for
@@ -192,7 +192,7 @@ installation, capabilities, and troubleshooting.
 **From source:**
 
 ```sh
-git clone https://github.com/milind-soni/OpenMausBot && cd OpenMausBot
+git clone https://github.com/kod13eood-cmd/KodBot && cd KodBot
 pnpm install
 
 pnpm dev:server    # harness server → 127.0.0.1:8799
@@ -222,8 +222,8 @@ pnpm package:linux    # Ubuntu x64: .deb + AppImage; no Swift required
 | Native on-device dictation | Supported | Planned | Planned |
 
 Unavailable native features fail closed on Ubuntu without blocking chat or cloud features. Linux local computer
-control, Wayland capture/automation, dictation, and ARM64 are tracked in
-[#29](https://github.com/milind-soni/OpenMausBot/issues/29) and are not claimed by the baseline package.
+control, Wayland capture/automation, dictation, and ARM64 are tracked in the
+[issue tracker](https://github.com/kod13eood-cmd/KodBot/issues) and are not claimed by the baseline package.
 
 These credentials are optional — local chat works without them. Paste a key once in **App Settings** (gear
 in the sidebar footer) when you want to enable its integration:

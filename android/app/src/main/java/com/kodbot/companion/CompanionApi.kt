@@ -1,4 +1,4 @@
-package com.opencrew.companion
+package com.kodbot.companion
 
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
@@ -107,7 +107,7 @@ data class PairingInvite(
     companion object {
         fun parse(raw: String?): PairingInvite? {
             val uri = raw?.let { runCatching { URI(it) }.getOrNull() } ?: return null
-            if (!uri.scheme.equals("opencrew", ignoreCase = true) || uri.host?.equals("pair", ignoreCase = true) != true) return null
+            if (!uri.scheme.equals("kodbot", ignoreCase = true) || uri.host?.equals("pair", ignoreCase = true) != true) return null
 
             val values = mutableMapOf<String, String>()
             for (part in uri.rawQuery.orEmpty().split('&').filter { it.isNotEmpty() }) {
@@ -228,7 +228,7 @@ class CompanionApi(private val connection: CompanionConnection) {
 
     suspend fun testServer(): ServerCheck = withContext(Dispatchers.IO) {
         val health = JSONObject(request("GET", "/api/health"))
-        if (health.optString("app") != "opencrew") throw IOException("That address isn't a KodBot server.")
+        if (health.optString("app") != "kodbot") throw IOException("That address isn't a KodBot server.")
         ServerCheck(connection.serverName, instances())
     }
 
@@ -366,7 +366,7 @@ class CompanionApi(private val connection: CompanionConnection) {
                 http.useCaches = false
                 if (http.responseCode != HttpURLConnection.HTTP_OK) return false
                 val response = http.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-                return JSONObject(response).optString("app") == "opencrew"
+                return JSONObject(response).optString("app") == "kodbot"
             } finally {
                 http.disconnect()
             }

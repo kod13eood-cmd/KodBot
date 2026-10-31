@@ -1,4 +1,4 @@
-package com.opencrew.companion
+package com.kodbot.companion
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -42,7 +42,7 @@ class CompanionStreamService : Service() {
         startForeground(ONGOING_NOTIFICATION_ID, connectionNotification(connection.serverName))
         if (streamThread?.isAlive != true) {
             running = true
-            streamThread = Thread({ streamLoop() }, "opencrew-companion-events").also { it.start() }
+            streamThread = Thread({ streamLoop() }, "kodbot-companion-events").also { it.start() }
         }
         return START_STICKY
     }
@@ -172,11 +172,11 @@ class CompanionStreamService : Service() {
     }
 
     companion object {
-        const val ACTION_STOP = "com.opencrew.companion.STOP_STREAM"
-        const val EXTRA_BOT_ID = "com.opencrew.companion.BOT_ID"
-        const val EXTRA_THREAD_ID = "com.opencrew.companion.THREAD_ID"
-        private const val CONNECTION_CHANNEL = "opencrew.connection"
-        private const val ALERT_CHANNEL = "opencrew.agent-alerts"
+        const val ACTION_STOP = "com.kodbot.companion.STOP_STREAM"
+        const val EXTRA_BOT_ID = "com.kodbot.companion.BOT_ID"
+        const val EXTRA_THREAD_ID = "com.kodbot.companion.THREAD_ID"
+        private const val CONNECTION_CHANNEL = "kodbot.connection"
+        private const val ALERT_CHANNEL = "kodbot.agent-alerts"
         private const val ONGOING_NOTIFICATION_ID = 401
         private const val MAX_RETRY_MS = 15_000L
 

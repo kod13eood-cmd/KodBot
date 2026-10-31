@@ -52,16 +52,16 @@ beforeAll(async () => {
   home = mkdtempSync(join(tmpdir(), "omb-api-test-"));
   staticDir = join(home, "static");
   // a fleet of exactly one unknown driver: no CLI probes, no network
-  mkdirSync(join(home, ".opencrew"), { recursive: true });
+  mkdirSync(join(home, ".kodbot"), { recursive: true });
   mkdirSync(join(staticDir, "assets"), { recursive: true });
   writeFileSync(join(staticDir, "index.html"), "<!doctype html><title>Packaged KodBot</title>");
   writeFileSync(join(staticDir, "assets", "smoke.css"), "body { color: white; }");
   writeFileSync(
-    join(home, ".opencrew", "config.json"),
+    join(home, ".kodbot", "config.json"),
     JSON.stringify({ instances: { ghost: { driver: "not-a-real-driver", displayName: "Ghost" } } }),
   );
   writeFileSync(
-    join(home, ".opencrew", "groups.json"),
+    join(home, ".kodbot", "groups.json"),
     JSON.stringify([
       {
         id: "test-dm",
@@ -166,7 +166,7 @@ describe("harness HTTP API", () => {
   it("identifies itself on /api/health", async () => {
     const { status, body } = await api("GET", "/api/health");
     expect(status).toBe(200);
-    expect(body.app).toBe("opencrew");
+    expect(body.app).toBe("kodbot");
     expect(typeof body.pid).toBe("number");
     expect(body.static).toBe(true);
   });
@@ -639,7 +639,7 @@ describe("harness HTTP API", () => {
     expect(saved.body.composio).toEqual({ configured: true, mode: "self-hosted" });
     expect(JSON.stringify(saved.body)).not.toContain("ak_good");
 
-    const disk = JSON.parse(readFileSync(join(home, ".opencrew", "config.json"), "utf8"));
+    const disk = JSON.parse(readFileSync(join(home, ".kodbot", "config.json"), "utf8"));
     expect(disk.composio).toMatchObject({ apiKey: "", sessionId: "trs_config_test" });
     expect(JSON.stringify(disk)).not.toContain("ak_good");
 
@@ -650,7 +650,7 @@ describe("harness HTTP API", () => {
   });
 
   it.skipIf(process.platform === "win32")("stores the credentials file with owner-only permissions", () => {
-    expect(statSync(join(home, ".opencrew", "config.json")).mode & 0o777).toBe(0o600);
+    expect(statSync(join(home, ".kodbot", "config.json")).mode & 0o777).toBe(0o600);
   });
 
   it("stores and echoes the user profile (not write-only, unlike keys)", async () => {
@@ -710,7 +710,7 @@ describe("harness HTTP API", () => {
     expect((await api("DELETE", `/api/webhooks/${created.body.webhook.id}`)).status).toBe(200);
     expect((await api("GET", "/api/webhooks")).body.webhooks).toHaveLength(0);
     if (process.platform !== "win32") {
-      expect(statSync(join(home, ".opencrew", "webhooks.json")).mode & 0o777).toBe(0o600);
+      expect(statSync(join(home, ".kodbot", "webhooks.json")).mode & 0o777).toBe(0o600);
     }
   });
 
@@ -815,7 +815,7 @@ describe("bot memory API", () => {
       req.end();
     });
 
-  const workspaceOf = (botId: string) => join(home, ".opencrew", "workspaces", botId);
+  const workspaceOf = (botId: string) => join(home, ".kodbot", "workspaces", botId);
 
   it("reads empty memory for a fresh bot and 404s a bot that does not exist", async () => {
     const bot = (await api("POST", "/api/bots")).body.bot;
@@ -886,7 +886,7 @@ describe("bot memory API", () => {
       // as leaked content and not depend on what happens to exist
       mkdirSync(workspaceOf(bot.id), { recursive: true });
       writeFileSync(join(workspaceOf(bot.id), "MEMORY.md"), "TOP-SECRET-MARKER memory");
-      writeFileSync(join(home, ".opencrew", "secret.md"), "TOP-SECRET-MARKER sibling");
+      writeFileSync(join(home, ".kodbot", "secret.md"), "TOP-SECRET-MARKER sibling");
 
       for (const name of [
         "..%2F..%2Fsecret.md", // encoded slashes

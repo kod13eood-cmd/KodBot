@@ -1,12 +1,12 @@
 ---
 name: windows-release
-description: Build, verify, and publish the Windows desktop build (NSIS installer + latest.yml) to the opencrew-releases repo. Use when cutting a release, shipping a new version to Windows users, or when a Windows user reports they are stuck on an old version. Windows only — does not cover the macOS dmg/notarization flow.
+description: Build, verify, and publish the Windows desktop build (NSIS installer + latest.yml) to the kodbot-releases repo. Use when cutting a release, shipping a new version to Windows users, or when a Windows user reports they are stuck on an old version. Windows only — does not cover the macOS dmg/notarization flow.
 ---
 
 # Windows release
 
 Ships `KodBot-<version>-setup.exe` and its update feed to
-[milind-soni/openmausbot-releases](https://github.com/milind-soni/openmausbot-releases).
+[kod13eood-cmd/kodbot-releases](https://github.com/kod13eood-cmd/kodbot-releases).
 
 **Scope: Windows only.** The macOS build is a separate flow (dmg + notarytool +
 staple) that must run on a Mac. This skill never touches mac artifacts — but see
@@ -59,7 +59,7 @@ Get-Content release\win-unpacked\resources\app-update.yml  # feed config
 - Missing `server/index.js` → `utilityProcess.fork` fails → the 🐭 "Couldn't start
   the bot server" page.
 - Missing `ui/index.html` → server has nothing to serve → black window.
-- `app-update.yml` must point at `milind-soni/openmausbot-releases` and, while the
+- `app-update.yml` must point at `kod13eood-cmd/kodbot-releases` and, while the
   build is unsigned, **must not contain `publisherName`** — electron-updater would
   reject every update as untrusted.
 
@@ -80,7 +80,7 @@ carries both platforms.
 
 ```powershell
 Copy-Item release/KodBot-<version>-setup.exe release/KodBot-setup.exe
-gh release upload v<version> --repo milind-soni/openmausbot-releases `
+gh release upload v<version> --repo kod13eood-cmd/kodbot-releases `
   release/KodBot-<version>-setup.exe `
   release/KodBot-setup.exe `
   release/KodBot-<version>-setup.exe.blockmap `

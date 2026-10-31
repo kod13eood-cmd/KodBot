@@ -44,7 +44,7 @@ async function binaryVersion(candidate) {
 }
 
 async function officialBinary() {
-  const cache = join(root, "node_modules", ".cache", "opencrew", `cua-driver-${release.version}`);
+  const cache = join(root, "node_modules", ".cache", "kodbot", `cua-driver-${release.version}`);
   const cachedBinary = join(cache, "cua-driver");
   if ((await binaryVersion(cachedBinary)) === expectedVersion) return cachedBinary;
 
@@ -125,7 +125,7 @@ await build({
       'export { requestMacOSPermissions, hasRequiredMacOSPermissions } from "@trycua/cua-driver/electron";',
     ].join("\n"),
     resolveDir: root,
-    sourcefile: "opencrew-cua-entry.mjs",
+    sourcefile: "kodbot-cua-entry.mjs",
     loader: "js",
   },
   bundle: true,
@@ -133,7 +133,7 @@ await build({
   target: "node20",
   format: "esm",
   banner: {
-    js: 'import { createRequire as __opencrewCreateRequire } from "node:module"; const require = __opencrewCreateRequire(import.meta.url);',
+    js: 'import { createRequire as __kodbotCreateRequire } from "node:module"; const require = __kodbotCreateRequire(import.meta.url);',
   },
   outfile: bundle,
   logLevel: "silent",

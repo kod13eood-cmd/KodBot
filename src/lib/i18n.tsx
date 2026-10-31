@@ -13,7 +13,7 @@ export const LOCALE_OPTIONS: ReadonlyArray<{ id: Locale; label: string }> = [
   { id: "bg", label: "Български" },
 ];
 
-const STORAGE_KEY = "opencrew.locale";
+const STORAGE_KEY = "kodbot.locale";
 const BULGARIAN: Record<string, string> = {
   // App shell
   "Open bot list": "Отвори списъка с ботове",

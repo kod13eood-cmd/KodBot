@@ -6,19 +6,19 @@ final class FailoverTests: XCTestCase {
     // MARK: - CandidateRotation
 
     func testWalksTheCandidatesInOrderAndWraps() {
-        var rotation = CandidateRotation(hosts: ["mac.tail1234.ts.net", "192.168.1.42", "opencrew-aa.local"])
+        var rotation = CandidateRotation(hosts: ["mac.tail1234.ts.net", "192.168.1.42", "kodbot-aa.local"])
         XCTAssertEqual(rotation.current, "mac.tail1234.ts.net")
         XCTAssertEqual(rotation.advance(), "192.168.1.42")
-        XCTAssertEqual(rotation.advance(), "opencrew-aa.local")
+        XCTAssertEqual(rotation.advance(), "kodbot-aa.local")
         // Wraps rather than giving up: the retry loop backs off between laps,
         // and a network that comes back deserves another try at the front.
         XCTAssertEqual(rotation.advance(), "mac.tail1234.ts.net")
     }
 
     func testPromotesTheWorkingCandidateToTheFront() {
-        var rotation = CandidateRotation(hosts: ["mac.tail1234.ts.net", "192.168.1.42", "opencrew-aa.local"])
+        var rotation = CandidateRotation(hosts: ["mac.tail1234.ts.net", "192.168.1.42", "kodbot-aa.local"])
         rotation.advance() // the tailnet name failed; the LAN address carried a stream
-        XCTAssertEqual(rotation.promoted(), ["192.168.1.42", "mac.tail1234.ts.net", "opencrew-aa.local"])
+        XCTAssertEqual(rotation.promoted(), ["192.168.1.42", "mac.tail1234.ts.net", "kodbot-aa.local"])
     }
 
     func testPromotionWithoutAWalkChangesNothing() {
@@ -91,9 +91,9 @@ final class FailoverTests: XCTestCase {
             name: "Mac",
             host: "192.168.1.42",
             port: 8810,
-            hosts: ["mac.tail1234.ts.net", "192.168.1.42", "opencrew-aa.local"]
+            hosts: ["mac.tail1234.ts.net", "192.168.1.42", "kodbot-aa.local"]
         )
-        XCTAssertEqual(connection.orderedHosts, ["192.168.1.42", "mac.tail1234.ts.net", "opencrew-aa.local"])
+        XCTAssertEqual(connection.orderedHosts, ["192.168.1.42", "mac.tail1234.ts.net", "kodbot-aa.local"])
     }
 
     func testOrderedHostsFallsBackToTheSingleStoredHost() {
@@ -121,11 +121,11 @@ final class FailoverTests: XCTestCase {
             name: "Mac",
             host: "mac.tail1234.ts.net",
             port: 8810,
-            hosts: ["mac.tail1234.ts.net", "192.168.1.42", "opencrew-aa.local"]
+            hosts: ["mac.tail1234.ts.net", "192.168.1.42", "kodbot-aa.local"]
         )
         connection.promote("192.168.1.42")
         XCTAssertEqual(connection.host, "192.168.1.42")
-        XCTAssertEqual(connection.hosts, ["192.168.1.42", "mac.tail1234.ts.net", "opencrew-aa.local"])
+        XCTAssertEqual(connection.hosts, ["192.168.1.42", "mac.tail1234.ts.net", "kodbot-aa.local"])
 
         // A hand-typed address the list has never seen joins at the front —
         // the stored fallbacks remain worth walking behind it.

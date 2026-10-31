@@ -2,13 +2,14 @@
 //
 // Its own directory, not the harness's. The two processes have separate
 // lifecycles and separate concerns, and a sidecar that writes into
-// ~/.opencrew would be reaching into somebody else's data layout — the
+// ~/.kodbot would be reaching into somebody else's data layout — the
 // exact coupling this design exists to avoid. If the harness reorganises its
 // files tomorrow, nothing here notices.
 import { randomUUID } from "node:crypto";
 import {
   chmodSync,
   closeSync,
+  existsSync,
   fsyncSync,
   mkdirSync,
   openSync,
@@ -20,7 +21,10 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 /** OC_COMPANION_DIR isolates a test rig from a real paired fleet. */
-export const DATA_DIR = process.env.OC_COMPANION_DIR ?? join(homedir(), ".opencrew-companion");
+export const DATA_DIR = process.env.OC_COMPANION_DIR ?? join(homedir(), ".kodbot-companion");
+
+/** Pre-rename sidecar state. Migrated only when the new directory is absent. */
+const LEGACY_DATA_DIRS = [join(homedir(), ".opencrew-companion")];
 
 /** 0700 on the directory, 0600 on the files it holds.
  *
@@ -34,6 +38,18 @@ const DIR_MODE = 0o700;
 export const FILE_MODE = 0o600;
 
 export function ensureDataDir(): void {
+  // Keep paired devices across the OpenCrew → KodBot rename. Best-effort:
+  // if the move fails, a fresh directory simply means re-pairing.
+  if (!existsSync(DATA_DIR)) {
+    const legacy = LEGACY_DATA_DIRS.find((dir) => existsSync(dir));
+    if (legacy) {
+      try {
+        renameSync(legacy, DATA_DIR);
+      } catch {
+        /* fall through to creating a fresh directory */
+      }
+    }
+  }
   mkdirSync(DATA_DIR, { recursive: true, mode: DIR_MODE });
   // mkdirSync's mode applies only to a directory it creates — `recursive`
   // leaves an existing one's mode alone — and an install from before this

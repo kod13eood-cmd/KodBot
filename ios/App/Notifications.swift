@@ -38,7 +38,7 @@ final class NotificationCoordinator: NSObject, UNUserNotificationCenterDelegate 
 
         // A replay after a short disconnect must reconcile a missed alert,
         // but a repeated frame must not draw it twice.
-        let identifier = "opencrew.\(notification.threadId).\(sequence.map(String.init) ?? notification.title)"
+        let identifier = "kodbot.\(notification.threadId).\(sequence.map(String.init) ?? notification.title)"
         center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: nil))
     }
 

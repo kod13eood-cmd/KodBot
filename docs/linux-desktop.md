@@ -14,7 +14,7 @@ installed builds do not require Node, pnpm, Swift, or a terminal at runtime.
 The first beta intentionally does **not** claim Linux dictation, local screen preview, or control of this
 computer. Those controls are unavailable in the UI and fail closed in the Electron and server layers. Use a
 Cloud box when a bot needs a computer. Xorg computer control, Wayland validation, bundled CUA, dictation, and
-ARM64 are follow-ups in [issue #29](https://github.com/milind-soni/OpenMausBot/issues/29).
+ARM64 are follow-ups in the [issue tracker](https://github.com/kod13eood-cmd/KodBot/issues).
 
 ## Build packages
 
@@ -25,7 +25,7 @@ Requirements for building from source:
 - pnpm 10.33.0 (Corepack can install the version declared by the project)
 
 ```sh
-git clone https://github.com/milind-soni/OpenMausBot.git
+git clone https://github.com/kod13eood-cmd/KodBot.git
 cd KodBot
 corepack enable
 pnpm install --frozen-lockfile
@@ -50,7 +50,7 @@ sudo apt install ./release/KodBot-*-amd64.deb
 Then open **KodBot** from the GNOME application launcher. To remove it:
 
 ```sh
-sudo apt remove opencrew
+sudo apt remove kodbot
 ```
 
 The portable AppImage does not install system files:
@@ -60,8 +60,8 @@ chmod +x release/KodBot-*-x86_64.AppImage
 ./release/KodBot-*-x86_64.AppImage
 ```
 
-Application data remains local in `~/.opencrew`. Electron browser data and window state use the normal XDG
-configuration directory (`~/.config/opencrew` unless the environment overrides it).
+Application data remains local in `~/.kodbot`. Electron browser data and window state use the normal XDG
+configuration directory (`~/.config/kodbot` unless the environment overrides it).
 
 ## Develop the desktop shell
 
@@ -77,7 +77,7 @@ For a package-shaped build without creating `.deb` or AppImage artifacts:
 
 ```sh
 pnpm package:linux:dir
-./release/linux-unpacked/opencrew
+./release/linux-unpacked/kodbot
 ```
 
 ## Agent CLI discovery

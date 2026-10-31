@@ -270,10 +270,10 @@ export function encodeResponse(
 export interface ServiceInfo {
   /** human-readable instance name — what a picker on the phone shows */
   name: string;
-  /** e.g. "_opencrew._tcp" */
+  /** e.g. "_kodbot._tcp" */
   type: string;
   port: number;
-  /** the name our A records claim, e.g. "opencrew-1a2b3c4d.local" */
+  /** the name our A records claim, e.g. "kodbot-1a2b3c4d.local" */
   host: string;
   addresses: string[];
   /** DNS-SD key=value pairs */
@@ -406,7 +406,7 @@ export function clampBytes(text: string, limit: number): string {
  * user's own machine name is a bad trade for a companion feature. */
 export function defaultHostName(machine = hostname()): string {
   const digest = createHash("sha256").update(machine).digest("hex").slice(0, 8);
-  return `opencrew-${digest}.local`;
+  return `kodbot-${digest}.local`;
 }
 
 /**

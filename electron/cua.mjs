@@ -30,7 +30,7 @@ const STANDALONE_SOCKET = path.join(
   app.getPath("home"),
   "Library/Caches/cua-driver/cua-driver.sock",
 );
-const HOST_BUNDLE_ID = "com.opencrew.app";
+const HOST_BUNDLE_ID = "com.kodbot.app";
 const CUA_ENV = { CUA_DRIVER_RS_TELEMETRY_ENABLED: "0" };
 process.env.CUA_DRIVER_RS_TELEMETRY_ENABLED ??= "0";
 

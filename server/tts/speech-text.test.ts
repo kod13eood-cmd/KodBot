@@ -30,7 +30,7 @@ describe("speakable", () => {
   });
 
   it("turns a bare URL into a noun", () => {
-    expect(speakable("Deployed to https://opencrew.example.com/status now")).toBe(
+    expect(speakable("Deployed to https://kodbot.example.com/status now")).toBe(
       "Deployed to a link now",
     );
   });

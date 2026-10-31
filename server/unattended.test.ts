@@ -70,9 +70,9 @@ posixOnly("unattended turns keep asking", () => {
   beforeAll(async () => {
     chmodSync(FAKE_CLI, 0o755);
     home = mkdtempSync(join(tmpdir(), "omb-unattended-"));
-    mkdirSync(join(home, ".opencrew"), { recursive: true });
+    mkdirSync(join(home, ".kodbot"), { recursive: true });
     writeFileSync(
-      join(home, ".opencrew", "config.json"),
+      join(home, ".kodbot", "config.json"),
       JSON.stringify({
         instances: {
           // asks the client for permission mid-turn, which is exactly the

@@ -1,5 +1,5 @@
 // Paste-a-key rows for PUT /api/config. The server persists to
-// ~/.opencrew/config.json and hot-reloads the provider fleet; secrets
+// ~/.kodbot/config.json and hot-reloads the provider fleet; secrets
 // are write-only — GET /api/config returns configured flags, never values.
 import { useEffect, useId, useRef, useState } from "react";
 import { Check, CircleHelp, ExternalLink, Loader2, TriangleAlert } from "lucide-react";

@@ -28,15 +28,15 @@ import {
 
 const service: ServiceInfo = {
   name: "Milind's computer",
-  type: "_opencrew._tcp",
+  type: "_kodbot._tcp",
   port: 8800,
-  host: "opencrew-1a2b3c4d.local",
+  host: "kodbot-1a2b3c4d.local",
   addresses: ["192.168.1.42"],
   txt: ["v=1", "name=Milind's computer"],
 };
 
-const INSTANCE = "Milind's computer._opencrew._tcp.local";
-const SERVICE_NAME = "_opencrew._tcp.local";
+const INSTANCE = "Milind's computer._kodbot._tcp.local";
+const SERVICE_NAME = "_kodbot._tcp.local";
 
 /** A query packet, built by hand so the decoder is tested against the
  * format rather than against our own encoder. */
@@ -237,7 +237,7 @@ describe("naming", () => {
 
   it("claims a host name the system responder will not fight us for", () => {
     const name = defaultHostName("Milinds-MacBook-Pro");
-    expect(name).toMatch(/^opencrew-[0-9a-f]{8}\.local$/);
+    expect(name).toMatch(/^kodbot-[0-9a-f]{8}\.local$/);
     // stable across restarts, distinct per machine
     expect(defaultHostName("Milinds-MacBook-Pro")).toBe(name);
     expect(defaultHostName("another-machine")).not.toBe(name);

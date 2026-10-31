@@ -53,7 +53,7 @@ describe("isJson", () => {
   // skips scrubbing to reach a phone.
   it("matches structured JSON suffixes too", () => {
     expect(isJson("application/problem+json")).toBe(true);
-    expect(isJson("application/vnd.opencrew.bot+json; charset=utf-8")).toBe(true);
+    expect(isJson("application/vnd.kodbot.bot+json; charset=utf-8")).toBe(true);
     expect(isJson("APPLICATION/PROBLEM+JSON")).toBe(true);
     // and does not match something that merely ends in the letters
     expect(isJson("text/notjson")).toBe(false);

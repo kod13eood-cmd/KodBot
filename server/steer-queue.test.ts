@@ -178,13 +178,13 @@ describe("steer-queue e2e (fake ACP fleet)", () => {
   beforeAll(async () => {
     chmodSync(FAKE_CLI, 0o755);
     home = mkdtempSync(join(tmpdir(), "omb-steer-test-"));
-    mkdirSync(join(home, ".opencrew"), { recursive: true });
+    mkdirSync(join(home, ".kodbot"), { recursive: true });
     mkdirSync(join(home, "gates"), { recursive: true });
     drainGate = join(home, "gates", "drain.gate");
     stopGate = join(home, "gates", "stop.gate");
     stopRpcDump = join(home, "gates", "stop.rpc");
     writeFileSync(
-      join(home, ".opencrew", "config.json"),
+      join(home, ".kodbot", "config.json"),
       JSON.stringify({
         instances: {
           steer: {

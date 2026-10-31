@@ -1,4 +1,4 @@
-// Config + data dirs. One file, ~/.opencrew/config.json, env fallbacks:
+// Config + data dirs. One file, ~/.kodbot/config.json, env fallbacks:
 //   { "xai": {"key":"xai-…"}, "composio": {"apiKey":"ak_…"}, "box": {"token":"…"},
 //     "instances": { "<instanceId>": {"driver":"grok", …} } }
 import { readFileSync, mkdirSync, existsSync, renameSync } from "node:fs";
@@ -63,9 +63,13 @@ export function parseConfigPatch(value: JsonValue): ConfigPatch {
 }
 
 // OC_DATA_DIR isolates test/soak rigs from the user's real fleet.
-export const DATA_DIR = process.env.OC_DATA_DIR ?? join(homedir(), ".opencrew");
+export const DATA_DIR = process.env.OC_DATA_DIR ?? join(homedir(), ".kodbot");
 // Older installs used these dirs; migrate the first that exists (most recent first).
-const LEGACY_DATA_DIRS = [join(homedir(), ".openmausbot"), join(homedir(), ".opengrokbot")];
+const LEGACY_DATA_DIRS = [
+  join(homedir(), ".opencrew"),
+  join(homedir(), ".openmausbot"),
+  join(homedir(), ".opengrokbot"),
+];
 export const EVENTS_DIR = join(DATA_DIR, "events");
 export const NATIVE_DIR = join(DATA_DIR, "native");
 
@@ -101,7 +105,7 @@ export function loadConfig(): AppConfig {
   return cfg;
 }
 
-/** Merge a partial config into ~/.opencrew/config.json (secrets never
+/** Merge a partial config into ~/.kodbot/config.json (secrets never
  * echoed back — callers report configured-or-not booleans only). */
 export function saveConfig(patch: Partial<AppConfig>): void {
   const p = join(DATA_DIR, "config.json");

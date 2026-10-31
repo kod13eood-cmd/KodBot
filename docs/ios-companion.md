@@ -76,7 +76,7 @@ harness API:
   If an API payload changes, regenerate the fixtures with
   `node scripts/capture-companion-fixtures.mjs` and review the diff.
 
-The sidecar keeps its device registry in `~/.opencrew/devices.json`. That is
+The sidecar keeps its device registry in `~/.kodbot-companion/devices.json`. That is
 security state owned by the network boundary, not transcript data, so it does
 not belong in the message database.
 
@@ -84,7 +84,7 @@ not belong in the message database.
 
 ### Same Wi-Fi
 
-The sidecar advertises `_opencrew._tcp` over Bonjour. The app browses with
+The sidecar advertises `_kodbot._tcp` over Bonjour. The app browses with
 `NWBrowser`, resolves the chosen service, and connects directly. If multicast
 is unavailable, the desktop shows the LAN address for manual entry.
 
@@ -128,7 +128,7 @@ the local data in this design.
 
 This mirrors the direct-pairing security shape used by T3 Code: a high-entropy
 bootstrap credential, explicit confirmation of the scanned target, and a
-one-time exchange for a securely stored long-lived credential. An KodBot
+one-time exchange for a securely stored long-lived credential. A KodBot
 account is not required because the phone connects directly to the user's Mac;
 authentication would only become necessary for a future hosted relay.
 

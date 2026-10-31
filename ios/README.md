@@ -52,7 +52,7 @@ ios/
   App/                           SwiftUI, and everything that needs a device
     CompanionApp.swift           entry; owns when the stream lives and dies
     Session.swift                connection, lifecycle, actions
-    Discovery.swift              NWBrowser for _opencrew._tcp
+    Discovery.swift              NWBrowser for _kodbot._tcp
     Keychain.swift               the device token
     CrewAvatar.swift             the mascot face, in the desktop's palette
     PairingView.swift            QR handoff, discovery, address and code fallback

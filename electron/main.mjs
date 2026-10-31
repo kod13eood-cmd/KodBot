@@ -20,11 +20,9 @@ const APP_ICON = path.join(__dirname, "resources/app-icon.png");
 
 // GNOME groups the window with its installed desktop entry only when both
 // identities match. This must run before Electron becomes ready.
-if (process.platform === "linux") app.setDesktopName("com.opencrew.app.desktop");
+if (process.platform === "linux") app.setDesktopName("com.kodbot.app.desktop");
 
-// Display name for menus and the per-app data dir. The bundle/app id stays
-// stable (com.opencrew.app) so existing installs keep updating; the legacy
-// opencrew/openmausbot data dirs are migrated below.
+// Display name for menus and the per-app data dir.
 app.setName("KodBot");
 
 // Migrate Electron's per-app data dir from the pre-rename names so existing
@@ -78,7 +76,7 @@ async function saveSecureCredentials(credentials) {
 }
 
 async function secureComposioConfig() {
-  const dataDir = process.env.OC_DATA_DIR || path.join(app.getPath("home"), ".opencrew");
+  const dataDir = process.env.OC_DATA_DIR || path.join(app.getPath("home"), ".kodbot");
   const configPath = path.join(dataDir, "config.json");
   try {
     const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
@@ -231,7 +229,7 @@ async function startServerOn(port) {
       const res = await fetch(`http://127.0.0.1:${port}/api/health`);
       if (res.ok) {
         const body = await res.json().catch(() => null);
-        if (body?.app === "opencrew" && body.pid === proc.pid && body.static) return proc;
+        if (body?.app === "kodbot" && body.pid === proc.pid && body.static) return proc;
         break; // someone else owns this port — try the next one
       }
     } catch {

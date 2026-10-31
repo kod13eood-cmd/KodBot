@@ -72,7 +72,7 @@ const support = (fetcher: typeof fetch): AcpSupport => ({
   models: mergeOpenCodeCatalogs([ZEN_FALLBACK, GO_FALLBACK]),
   defaultCli: "opencode",
   nativeSource: "opencode.acp",
-  loginNote: "OpenCode is not configured — add an OPENCODE_API_KEY in OpenMausBot settings",
+  loginNote: "OpenCode is not configured — add an OPENCODE_API_KEY in KodBot settings",
   install: {
     command: {
       darwin: "npm install -g opencode-ai",

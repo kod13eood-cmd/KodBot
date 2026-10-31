@@ -9,7 +9,7 @@ approval flow. The phone does not receive a general shell endpoint.
 
 - Scan the Linux Companion QR from within the app, or pair with a manual address and
   one-time six-digit code.
-- Open the same `opencrew://pair` QR handoff used by the Linux Companion panel;
+- Open the same `kodbot://pair` QR handoff used by the Linux Companion panel;
   the debug APK registers that scheme and asks for confirmation before pairing.
 - Keep the authenticated event stream alive with an Android foreground service.
 - Show the same visible bots and group chats as the desktop, send prompts,
@@ -42,7 +42,7 @@ The APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
 Sideload that APK once before scanning the desktop QR; the QR opens the app but
 does not install it. There is not yet a Play Store download link.
 For reliable scanning, open KodBot and tap **Scan pairing QR**. Some
-Android Camera apps display custom `opencrew://` links without dispatching them
+Android Camera apps display custom `kodbot://` links without dispatching them
 to the app; the registered link remains useful from apps that support custom
 URI intents.
 

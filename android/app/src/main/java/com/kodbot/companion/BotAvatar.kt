@@ -1,4 +1,4 @@
-package com.opencrew.companion
+package com.kodbot.companion
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size

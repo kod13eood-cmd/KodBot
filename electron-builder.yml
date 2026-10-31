@@ -1,4 +1,4 @@
-appId: com.opencrew.app
+appId: com.kodbot.app
 productName: KodBot
 artifactName: KodBot-${version}-${arch}.${ext}
 
@@ -11,8 +11,8 @@ artifactName: KodBot-${version}-${arch}.${ext}
 # stranded on its installed version.
 publish:
   - provider: github
-    owner: milind-soni
-    repo: opencrew-releases
+    owner: kod13eood-cmd
+    repo: kodbot-releases
 
 directories:
   buildResources: build

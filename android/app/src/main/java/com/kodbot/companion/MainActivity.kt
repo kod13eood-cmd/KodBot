@@ -1,4 +1,4 @@
-package com.opencrew.companion
+package com.kodbot.companion
 
 import android.Manifest
 import android.content.SharedPreferences
@@ -116,7 +116,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         connectionStore = ConnectionStore(this)
-        displayPreferences = getSharedPreferences("opencrew.mobile.display", MODE_PRIVATE)
+        displayPreferences = getSharedPreferences("kodbot.mobile.display", MODE_PRIVATE)
         showHiddenBots = displayPreferences.getBoolean("showHiddenBots", false)
         showGroups = displayPreferences.getBoolean("showGroups", true)
         connection = try {
@@ -928,7 +928,7 @@ private fun ChatScreen(
                 item { Text("Send a task to ${chat.name}.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             if (chat.busy) {
-                item(key = "opencrew-working-indicator") {
+                item(key = "kodbot-working-indicator") {
                     WorkingBubble(group = chat.kind == "group")
                 }
             }

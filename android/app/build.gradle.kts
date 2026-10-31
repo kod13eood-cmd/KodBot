@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.opencrew.companion"
+    namespace = "com.kodbot.companion"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.opencrew.companion"
+        applicationId = "com.kodbot.companion"
         minSdk = 26
         targetSdk = 35
         versionCode = 7
