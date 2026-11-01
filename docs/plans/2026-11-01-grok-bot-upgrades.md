@@ -34,17 +34,17 @@ merchant relationship that does not exist on the current host.
 
 | Video feature | KodBot now | Gap / next step |
 | --- | --- | --- |
-| Vault for cards, logins, contacts | Provider keys live in the desktop-owned config; tool approvals are enforced per action. No card vault. | Add an OS-keychain-backed vault plus a one-time-card provider. Never expose raw PANs to the model or transcript. This is a security project, not a settings toggle. |
-| Shopping cards with photos, ratings, price, store, Buy now | Connected Apps can reach merchant APIs; chat replies can already show structured cards. | Product-search and checkout tools need a merchant/affiliate API, and `Buy now` needs an approval + payment rail. Add when a store integration is chosen. |
-| Stripe Pay / agent-to-agent transfers | Stripe is in the Composio catalog for ordinary Stripe tools. | Stripe Pay is a separate beta product. Requires a Stripe account enabled for it, API credentials, and a deliberate payment-approval UI. |
-| Bot calls with notes and a summary | TTS can speak replies. KodBot does not place calls. | Telephony provider (for example Twilio) account, phone number, outbound-call approval, recording/transcript consent, and a call-result card. Without those, a "call" button would be a lie. |
+| Vault for cards, logins, contacts | **Connector path ready.** Connected Apps exposes the 1Password toolkit; the bot uses it through Composio tools, so the model never needs raw credentials in the transcript. No card vault of our own. | A card vault needs an OS-keychain-backed design and a one-time-card provider. Never expose raw PANs to the model or transcript. |
+| Shopping cards with photos, ratings, price, store, Buy now | **Implemented.** A bot can emit a fenced `products` JSON array; KodBot renders image/price/store/rating cards. **Buy now** opens the merchant page, never a fake checkout. | Checkout/order tracking still belongs to a merchant or Stripe/Shopify connector, with an explicit payment approval. |
+| Stripe Pay / agent-to-agent transfers | **Connector path ready.** Stripe is in Connected Apps. | Stripe Pay is a separate beta product. Requires a Stripe account enabled for it, credentials, and a deliberate payment-approval UI before money moves. |
+| Bot calls with notes and a summary | **Connector path ready.** Aircall is in Connected Apps; the bot can use its call APIs through Composio. | A telephony account/number, outbound-call approval, recording/transcript consent, and a call-result card. KodBot does not fake a phone call without them. |
 | Bot-created pages | **Implemented.** `pages/*.html` in the bot workspace, sandboxed preview, list/copy-link/delete, prompt guidance. | Public team sharing needs an explicit publish/share surface. Today the copied link is only reachable by someone who can reach the KodBot server. |
 | iPhone app actions (Home, Reminders, Contacts, Alarms, Calendar) | Android companion and desktop app exist; the default-deny companion API exposes chat and approvals, not phone capabilities. | Requires an iOS app with App Intents/Shortcuts, per-capability permission prompts, and companion routes. Android's equivalents are a separate follow-up. |
 | Memory import from ChatGPT/Claude | **Implemented.** Settings → Memory → Import memory: copy the prompt, paste the answer, append/replace/`memory/<topic>.md`. | Direct provider export/OAuth import would need stable provider APIs and user consent. Copy/paste is provider-neutral and works today. |
 | Best model for the job | **Implemented.** `server/model-routing.ts` scores the configured catalog per turn; the routed choice is persisted so usage and the picker reflect what ran. | A developer override and richer cost/latency signals can come later. The router never calls unconfigured providers, including Midjourney/Suno. |
-| Bot-owned email address | Gmail/Outlook are available as Connected Apps when the user authorizes them. There is no hosted `@bot` mailbox. | Either a hosted mail domain/provider (Resend, Postmark, Fastmail, etc.) or a Gmail account dedicated to the bot. Needs DNS/domain control, credentials, and send/receive approval policy. |
-| Image/video generation | Engines can use whatever media tools they are given, but KodBot has no media-generation provider configured. | Add an image/video provider adapter (xAI, OpenAI, Replicate, fal, etc.), key storage, cost caps, and an attachment card. Requires an account and API key. |
-| Shortcut sheet / visual polish | **Implemented.** `Cmd/Ctrl+/` opens a sheet grouped by Navigation and Chat. | Add more chords only when they earn their place; keep the sheet as the single source of truth. |
+| Bot-owned email address | **Connector path ready.** AgentMail is in Connected Apps and supports programmable inboxes, messages, drafts, and domains. Gmail/Outlook remain available for personal mailboxes. | The user must connect or create an AgentMail account and choose the address. KodBot does not invent a hosted mailbox. |
+| Image/video generation | **Connector path ready.** All Images AI is in Connected Apps for image generation; markdown images already render in chat. Video generation needs a provider with a video API (for example HeyGen for avatar video). | Connect the provider, then have the bot attach the resulting image/video URL. Requires an account, cost cap, and provider-specific tool. |
+| Shortcut sheet / visual polish | **Implemented.** `Cmd/Ctrl+/` opens a sheet grouped by Navigation and Chat. Bot avatars now have ten body silhouettes instead of one triangle. | Add more chords only when they earn their place; keep the sheet as the single source of truth. |
 
 ## Phase 1 implementation notes
 
@@ -73,6 +73,33 @@ merchant relationship that does not exist on the current host.
 - The Settings modal includes the exact prompt to give another assistant, a
   paste box, the three destinations, and an irreversible-replace confirmation.
 - Topic mode appends `.md` when the user omits it.
+
+### Shopping cards
+
+- A bot emits a fenced `products` block containing a JSON array. The parser in
+  `src/lib/product-cards.ts` accepts only title + safe http(s) URL, plus optional
+  image, price, store, rating, reviews, and note; it caps the list at 12.
+- `ProductCards` renders a responsive card grid. **Buy now** is an outbound
+  merchant link; there is no simulated checkout or payment success.
+- Prompt guidance in `server/product-cards.ts` tells bots to use real search /
+  connected-app results and never invent prices, ratings, or availability.
+
+### Connected Apps feature hub
+
+- Connected Apps now has a **Grok features** tab. Native features are marked
+  Live; provider-backed features have a real **Set up** button for 1Password,
+  Stripe, Aircall, AgentMail, and All Images AI.
+- Nothing in that tab claims a capability is active until the provider account
+  is connected. iPhone actions remain explicitly blocked on the missing iOS app.
+
+### Bot silhouettes
+
+- `src/lib/mascot-shapes.ts` adds ten shapes: Orb, Bubble, Pill, Hex, Diamond,
+  Star, Drop, Shield, Ghost, and Classic.
+- Existing bots are assigned a stable shape from their id + color on load; new
+  bots get one at creation. The Shape picker in bot settings overrides it.
+- The same `CursorAvatar` face/motion engine drives every shape, so blinking,
+  gaze, expressions, and role badges remain consistent.
 
 ### Best-model routing
 
