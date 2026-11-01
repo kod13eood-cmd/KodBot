@@ -57,6 +57,10 @@ describe("team library", () => {
     expect(parsed.repositoryUrl).toBe("https://github.com/milind-soni/openmausbot-teams");
     expect(parsed.teams[0]).toMatchObject({ slug: "engineering", members: 1 });
 
+    const legacy = structuredClone(catalog);
+    legacy.teams[0]!.manifest = "teams/engineering/team.mausteam.json";
+    expect(parseTeamCatalog(legacy).teams[0]?.manifest).toBe("teams/engineering/team.mausteam.json");
+
     const unsafe = structuredClone(catalog);
     unsafe.teams[0]!.manifest = "../private.json";
     expect(() => parseTeamCatalog(unsafe)).toThrow("safe catalog path");

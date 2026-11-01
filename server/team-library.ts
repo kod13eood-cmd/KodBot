@@ -39,14 +39,15 @@ function text(value: unknown, field: string, max: number): string {
   return normalized;
 }
 
-function relativeFile(value: unknown, field: string, suffix: string, prefix: string): string {
+function relativeFile(value: unknown, field: string, suffix: string | string[], prefix: string): string {
   const path = text(value, field, 300);
+  const suffixes = Array.isArray(suffix) ? suffix : [suffix];
   if (
     path.startsWith("/") ||
     path.includes("\\") ||
     path.split("/").some((part) => !part || part === "." || part === "..") ||
     !path.startsWith(prefix) ||
-    !path.endsWith(suffix)
+    !suffixes.some((candidate) => path.endsWith(candidate))
   ) {
     throw new Error(`${field} is not a safe catalog path`);
   }
@@ -83,7 +84,9 @@ export function parseTeamCatalog(value: unknown): TeamCatalog {
       name: text(raw.name, `${field}.name`, 100),
       summary: text(raw.summary, `${field}.summary`, 300),
       category: text(raw.category, `${field}.category`, 80),
-      manifest: relativeFile(raw.manifest, `${field}.manifest`, ".crewteam.json", prefix),
+      // The public catalog still ships the legacy filename for older teams;
+      // both names hold the same schema and are parsed by parseTeamManifest.
+      manifest: relativeFile(raw.manifest, `${field}.manifest`, [".crewteam.json", ".mausteam.json"], prefix),
       readme: relativeFile(raw.readme, `${field}.readme`, "README.md", prefix),
       members:
         typeof raw.members === "number" && Number.isSafeInteger(raw.members) && raw.members > 0 && raw.members <= 200
