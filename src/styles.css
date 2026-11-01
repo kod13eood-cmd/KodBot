@@ -596,6 +596,37 @@ body {
   43%, 58% { opacity: 1; transform: translate(18px, -15px) scale(0.42); }
 }
 
+@keyframes role-float {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-4px) rotate(5deg); }
+}
+
+@keyframes role-busy {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-2px) scale(1.12); }
+}
+
+@keyframes role-aura {
+  0%, 100% { opacity: 0.32; transform: scale(0.96); }
+  50% { opacity: 0.58; transform: scale(1.05); }
+}
+
+.role-accessory {
+  animation: role-float 3.6s ease-in-out infinite;
+  transform-origin: 50% 70%;
+}
+
+.role-accessory-busy {
+  animation: role-busy 1.8s ease-in-out infinite;
+  transform-origin: 50% 70%;
+}
+
+.role-aura {
+  animation: role-aura 5.5s ease-in-out infinite;
+  filter: blur(5px);
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .crew-motion *,
   .crew-motion {

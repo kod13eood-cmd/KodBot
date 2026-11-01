@@ -993,7 +993,7 @@ private fun FleetScreen(
                                     }
                                 }
                             } else {
-                                BotAvatar(color = chat.color, name = chat.name, size = 44.dp)
+                                BotAvatar(color = chat.color, name = chat.name, size = 44.dp, role = chat.role)
                             }
                             Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
                                 Text(
@@ -1110,7 +1110,7 @@ private fun ChatScreen(
                     }
                 }
             } else {
-                BotAvatar(color = chat.color, name = chat.name, size = 36.dp)
+                BotAvatar(color = chat.color, name = chat.name, size = 36.dp, role = chat.role)
             }
             Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
                 Text(

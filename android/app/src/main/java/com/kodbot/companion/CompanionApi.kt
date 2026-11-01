@@ -121,6 +121,7 @@ data class ConversationRecord(
     val modelSelection: ModelSelectionRecord?,
     val messages: List<TranscriptMessage>,
     val color: String = "green",
+    val role: String? = null,
     val busyBotId: String? = null,
 ) {
     val key: String get() = "$kind:$id"
@@ -536,6 +537,7 @@ class CompanionApi(private val connection: CompanionConnection) {
                 modelSelection = selection,
                 messages = (0 until messages.length()).mapNotNull { messages.optJSONObject(it)?.toMessage() },
                 color = optString("color", "green"),
+                role = optString("role").takeIf(String::isNotBlank),
             )
         }
 

@@ -3,7 +3,17 @@
 // Composio API key is configured, a curated set otherwise. Icons resolve
 // logo → favicon → monogram.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Loader2, RefreshCw, Search, X } from "lucide-react";
+import {
+  Check,
+  ChevronRight,
+  Info,
+  Loader2,
+  RefreshCw,
+  Search,
+  Trash2,
+  UserPlus,
+  X,
+} from "lucide-react";
 import { api, useStore } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
@@ -16,10 +26,18 @@ interface ToolkitCard {
   domain: string | null;
 }
 
+export interface ConnectorAccount {
+  id: string;
+  status?: string;
+  alias?: string;
+  label?: string;
+}
+
 export interface ConnectorStatus {
   connected: boolean;
   pending?: boolean;
   status?: string;
+  accounts?: ConnectorAccount[];
 }
 
 export function mergeCurrentConnectorStatus(
@@ -59,6 +77,253 @@ function ServiceIcon({ card }: { card: ToolkitCard }) {
   );
 }
 
+function accountTone(status: string | undefined): string {
+  if (/^active$/i.test(status ?? "")) return "bg-success/15 text-success";
+  if (/^(initializing|initiated|pending)$/i.test(status ?? "")) return "bg-warning/15 text-warning";
+  if (/^(expired|failed|revoked|error)$/i.test(status ?? "")) return "bg-danger/15 text-danger";
+  return "bg-raised text-ink-secondary";
+}
+
+function AccountRow({
+  account,
+  canRemove,
+  busy,
+  onReconnect,
+  onRemove,
+  onSaveLabel,
+}: {
+  account: ConnectorAccount;
+  canRemove: boolean;
+  busy: boolean;
+  onReconnect: () => void;
+  onRemove: () => void;
+  onSaveLabel: (label: string) => Promise<void>;
+}) {
+  const { t } = useI18n();
+  const [label, setLabel] = useState(account.label ?? "");
+  const [saving, setSaving] = useState(false);
+  const [labelError, setLabelError] = useState<string | null>(null);
+  useEffect(() => {
+    setLabel(account.label ?? "");
+    setLabelError(null);
+  }, [account.id, account.label]);
+  const heading = account.label?.trim() || account.alias || t("Account");
+  const save = async () => {
+    setSaving(true);
+    setLabelError(null);
+    try {
+      await onSaveLabel(label.trim());
+    } catch (error) {
+      setLabelError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <div className="rounded-xl border border-hairline/40 bg-card p-3">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="truncate text-[13.5px] font-medium text-ink">{heading}</span>
+            <span className={cn("rounded-full px-2 py-0.5 text-[10.5px] font-medium", accountTone(account.status))}>
+              {account.status || t("Unknown status")}
+            </span>
+          </div>
+          {account.label?.trim() && account.alias ? (
+            <div className="mt-0.5 truncate text-[11.5px] text-ink-secondary">{account.alias}</div>
+          ) : null}
+          <div className="mt-1 flex items-center gap-1.5 text-[10.5px] text-ink-secondary/70">
+            <span className="truncate font-mono">{account.id}</span>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={onReconnect}
+            disabled={busy || saving}
+            className="flex items-center gap-1 rounded-lg bg-raised px-2 py-1.5 text-[11.5px] text-ink hover:bg-raised-hover disabled:opacity-40"
+            title={t("Reconnect this account")}
+          >
+            <RefreshCw size={12} /> {t("Reconnect")}
+          </button>
+          {canRemove && (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm(t("Remove this account?"))) onRemove();
+              }}
+              disabled={busy || saving}
+              className="rounded-lg p-1.5 text-ink-secondary hover:bg-danger/10 hover:text-danger disabled:opacity-40"
+              title={t("Remove this account")}
+              aria-label={t("Remove this account")}
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
+        </div>
+      </div>
+      <form
+        className="mt-2 flex items-center gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void save();
+        }}
+      >
+        <input
+          value={label}
+          onChange={(event) => setLabel(event.target.value)}
+          placeholder={account.alias || t("Add a friendly label")}
+          maxLength={80}
+          className="min-w-0 flex-1 rounded-lg border border-hairline/40 bg-inset px-2.5 py-1.5 text-[11.5px] text-ink placeholder:text-ink-secondary/70 focus:border-hairline focus:outline-none"
+        />
+        <button
+          type="submit"
+          disabled={saving || busy || label.trim() === (account.label ?? "")}
+          className="rounded-lg bg-raised px-2.5 py-1.5 text-[11.5px] text-ink hover:bg-raised-hover disabled:opacity-40"
+        >
+          {saving ? <Loader2 size={12} className="animate-spin" /> : t("Save label")}
+        </button>
+      </form>
+      {labelError && <div className="mt-1.5 text-[11px] text-danger">{labelError}</div>}
+    </div>
+  );
+}
+
+function ServiceDetails({
+  card,
+  service,
+  mode,
+  busy,
+  error,
+  onClose,
+  onConnect,
+  onDisconnect,
+  onRefresh,
+  onRemoveAccount,
+  onSaveLabel,
+}: {
+  card: ToolkitCard;
+  service: ConnectorStatus | undefined;
+  mode: "managed" | "self-hosted" | "unavailable";
+  busy: boolean;
+  error?: string | null;
+  onClose: () => void;
+  onConnect: () => void;
+  onDisconnect: () => void;
+  onRefresh: () => void;
+  onRemoveAccount: (accountId: string) => void;
+  onSaveLabel: (accountId: string, label: string) => Promise<void>;
+}) {
+  const { t } = useI18n();
+  const accounts = service?.accounts ?? [];
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+      onMouseDown={(event) => event.target === event.currentTarget && onClose()}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="service-details-title"
+        className="animate-pop-in flex max-h-[min(760px,calc(100dvh-2rem))] w-full max-w-[600px] flex-col overflow-hidden rounded-[22px] border border-hairline/50 bg-panel shadow-2xl shadow-black/50"
+      >
+        <header className="flex items-start gap-3 border-b border-hairline/40 px-5 py-4">
+          <ServiceIcon card={card} />
+          <div className="min-w-0 flex-1">
+            <h3 id="service-details-title" className="truncate text-[18px] font-semibold text-ink">
+              {card.label}
+            </h3>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-ink-secondary">
+              <span className={cn("rounded-full px-2 py-0.5 font-medium", accountTone(service?.status))}>
+                {service?.status || (service?.connected ? t("Connected") : t("Not connected"))}
+              </span>
+              {accounts.length > 0 && <span>{t("{count} account(s)", { count: accounts.length })}</span>}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            autoFocus
+            aria-label={t("Close details")}
+            className="rounded-lg p-2 text-ink-secondary hover:bg-raised hover:text-ink"
+          >
+            <X size={18} />
+          </button>
+        </header>
+        {error && (
+          <div role="alert" className="mx-5 mt-3 rounded-lg bg-danger/10 px-3 py-2 text-[12px] text-danger">
+            {error}
+          </div>
+        )}
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-secondary">
+              {t("Accounts")}
+            </div>
+            <button
+              onClick={onRefresh}
+              disabled={busy}
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11.5px] text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40"
+            >
+              <RefreshCw size={12} /> {t("Refresh")}
+            </button>
+          </div>
+          {accounts.length ? (
+            <div className="space-y-2">
+              {accounts.map((account) => (
+                <AccountRow
+                  key={account.id}
+                  account={account}
+                  canRemove={mode === "self-hosted"}
+                  busy={busy}
+                  onReconnect={onConnect}
+                  onRemove={() => onRemoveAccount(account.id)}
+                  onSaveLabel={(label) => onSaveLabel(account.id, label)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-hairline/50 px-4 py-8 text-center text-[12.5px] text-ink-secondary">
+              {t("No account details are visible yet. Connect an account to see it here.")}
+            </div>
+          )}
+          {mode === "managed" && (
+            <p className="mt-3 text-[11.5px] leading-relaxed text-ink-secondary/80">
+              {t("This host uses the managed connected-apps service. Account labels are local; disconnecting removes this app connection.")}
+            </p>
+          )}
+        </div>
+
+        <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-hairline/40 bg-panel/60 px-5 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={onConnect}
+              disabled={busy}
+              className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-[12.5px] font-medium text-white hover:opacity-90 disabled:opacity-50"
+            >
+              <UserPlus size={14} /> {t("Add another account")}
+            </button>
+            <button
+              onClick={onRefresh}
+              disabled={busy}
+              className="flex items-center gap-1.5 rounded-lg bg-raised px-3 py-2 text-[12.5px] text-ink hover:bg-raised-hover disabled:opacity-50"
+            >
+              <RefreshCw size={14} /> {t("Refresh")}
+            </button>
+          </div>
+          <button
+            onClick={onDisconnect}
+            disabled={busy}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12.5px] text-danger hover:bg-danger/10 disabled:opacity-50"
+          >
+            <Trash2 size={14} /> {t("Disconnect app")}
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
 export function PluginsPanel() {
   const { dispatch } = useStore();
   const { t } = useI18n();
@@ -74,6 +339,7 @@ export function PluginsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"marketplace" | "connected">("marketplace");
+  const [detailsSlug, setDetailsSlug] = useState<string | null>(null);
 
   const pollTimers = useRef(new Map<string, ReturnType<typeof setInterval>>());
   const statusGenerations = useRef(new Map<string, number>());
@@ -141,14 +407,18 @@ export function PluginsPanel() {
         ) ?? [],
       );
 
-    (dialog?.querySelector<HTMLElement>("input") ?? focusable()[0] ?? dialog)?.focus();
+    if (!detailsSlug) (dialog?.querySelector<HTMLElement>("input") ?? focusable()[0] ?? dialog)?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
+        if (detailsSlug) {
+          setDetailsSlug(null);
+          return;
+        }
         dispatch({ type: "togglePlugins", open: false });
         return;
       }
-      if (event.key !== "Tab" || !dialog) return;
+      if (event.key !== "Tab" || !dialog || detailsSlug) return;
       const items = focusable();
       if (items.length === 0) {
         event.preventDefault();
@@ -171,7 +441,7 @@ export function PluginsPanel() {
       window.removeEventListener("keydown", onKeyDown);
       returnFocus?.focus();
     };
-  }, [dispatch]);
+  }, [dispatch, detailsSlug]);
 
   const openConnectUrl = async (url: string) => {
     if (window.ogb?.openExternal) {
@@ -225,16 +495,51 @@ export function PluginsPanel() {
   const disconnect = (slug: string) => {
     setBusySlug(slug);
     api(`/api/connectors/${slug}`, { method: "DELETE" })
+      .then(() => {
+        setDetailsSlug(null);
+        return refreshStatus([slug]);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setBusySlug(null));
+  };
+
+  const removeAccount = (slug: string, accountId: string) => {
+    setBusySlug(slug);
+    setError(null);
+    api(`/api/connectors/${slug}/accounts/${encodeURIComponent(accountId)}`, { method: "DELETE" })
       .then(() => refreshStatus([slug]))
       .catch((e) => setError(e.message))
       .finally(() => setBusySlug(null));
   };
 
+  const saveAccountLabel = async (slug: string, accountId: string, label: string) => {
+    await api(`/api/connectors/${slug}/accounts/${encodeURIComponent(accountId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ label }),
+    });
+    setStatus((current) => ({
+      ...current,
+      [slug]: {
+        ...current[slug],
+        accounts: current[slug]?.accounts?.map((account) =>
+          account.id === accountId ? { ...account, label: label || undefined } : account,
+        ),
+      },
+    }));
+  };
+
   const matching = (cards ?? []).filter(
     (c) => !search || `${c.label} ${c.slug} ${c.blurb}`.toLowerCase().includes(search.toLowerCase()),
   );
-  const visible = matching.filter((card) => tab === "marketplace" || status[card.slug]?.connected);
+  const visible = matching.filter(
+    (card) =>
+      tab === "marketplace" ||
+      status[card.slug]?.connected ||
+      (status[card.slug]?.accounts?.length ?? 0) > 0,
+  );
   const connectedCount = Object.values(status).filter((service) => service.connected).length;
+  const detailsCard = detailsSlug ? (cards ?? []).find((card) => card.slug === detailsSlug) : undefined;
+  const detailsStatus = detailsSlug ? status[detailsSlug] : undefined;
   const close = () => dispatch({ type: "togglePlugins", open: false });
 
   return (
@@ -357,6 +662,9 @@ export function PluginsPanel() {
               const connected = serviceStatus?.connected;
               const pending = serviceStatus?.pending;
               const failed = serviceStatus?.status && /^(expired|failed)$/i.test(serviceStatus.status);
+              const accounts = serviceStatus?.accounts ?? [];
+              const hasAccounts = accounts.length > 0;
+              const showDetails = Boolean(connected || hasAccounts);
               const busy = busySlug === card.slug;
               return (
                 <div
@@ -365,15 +673,33 @@ export function PluginsPanel() {
                 >
                   <ServiceIcon card={card} />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[14px] font-medium text-ink">{card.label}</div>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div className="truncate text-[14px] font-medium text-ink">{card.label}</div>
+                      {connected && (
+                        <span className="flex shrink-0 items-center gap-1 rounded-full bg-success/15 px-1.5 py-0.5 text-[10px] font-medium text-success">
+                          <Check size={10} />
+                          {accounts.length > 1 ? `${accounts.length}` : t("Connected")}
+                        </span>
+                      )}
+                    </div>
                     <div className="mt-0.5 truncate text-[12.5px] text-ink-secondary">
-                      {pending ? t("Finish setup in your browser") : failed ? t("Authorization expired — try again") : card.blurb}
+                      {pending
+                        ? t("Finish setup in your browser")
+                        : failed
+                          ? t("Authorization expired — open details")
+                          : connected
+                            ? t("{count} active account(s)", {
+                                count: accounts.filter((account) => /^active$/i.test(account.status ?? "")).length || 1,
+                              })
+                            : hasAccounts
+                              ? t("Accounts need attention — open details")
+                              : card.blurb}
                     </div>
                   </div>
                   <button
                     disabled={!configured || busy}
                     onClick={() => {
-                      if (connected) disconnect(card.slug);
+                      if (showDetails) setDetailsSlug(card.slug);
                       else if (pending && pendingUrls[card.slug]) {
                         setError(null);
                         void openConnectUrl(pendingUrls[card.slug]).catch((e) => setError(e.message));
@@ -381,16 +707,16 @@ export function PluginsPanel() {
                     }}
                     className={cn(
                       "flex min-w-[88px] items-center justify-center gap-1.5 rounded-full px-3 py-2 text-[12.5px] transition-colors disabled:opacity-40",
-                      connected
-                        ? "bg-transparent text-success hover:bg-danger/10 hover:text-danger"
-                        : "bg-raised text-ink hover:bg-raised-hover",
+                      showDetails
+                        ? "bg-raised text-ink hover:bg-raised-hover"
+                        : "bg-accent text-white hover:brightness-110",
                     )}
-                    title={connected ? t("Disconnect {name}", { name: card.label }) : undefined}
+                    title={showDetails ? t("View account details") : undefined}
                   >
                     {busy ? (
                       <Loader2 size={13} className="mx-auto animate-spin" />
-                    ) : connected ? (
-                      <><Check size={14} /> {t("Connected")}</>
+                    ) : showDetails ? (
+                      <><Info size={14} /> {t("Details")} <ChevronRight size={13} /></>
                     ) : pending ? (
                       t("Continue")
                     ) : failed ? (
@@ -417,6 +743,25 @@ export function PluginsPanel() {
           )}
         </div>
       </div>
+      {detailsCard && (
+        <ServiceDetails
+          card={detailsCard}
+          service={detailsStatus}
+          mode={mode}
+          busy={busySlug === detailsCard.slug}
+          error={error}
+          onClose={() => setDetailsSlug(null)}
+          onConnect={() => void connect(detailsCard.slug)}
+          onDisconnect={() => {
+            if (window.confirm(t("Disconnect every account for {name}?", { name: detailsCard.label }))) {
+              disconnect(detailsCard.slug);
+            }
+          }}
+          onRefresh={() => void refreshStatus([detailsCard.slug])}
+          onRemoveAccount={(accountId) => removeAccount(detailsCard.slug, accountId)}
+          onSaveLabel={(accountId, label) => saveAccountLabel(detailsCard.slug, accountId, label)}
+        />
+      )}
     </div>
   );
 }

@@ -146,6 +146,8 @@ export interface Bot {
   notifications: boolean;
   color: CrewColor;
   mascotExpression?: string | null;
+  /** Presentation archetype (coordinator, researcher, builder, …). */
+  role?: string | null;
   unread: boolean;
   busy?: boolean;
   /** what the bot is doing, as the harness sees it; busy is derived from it */
@@ -399,6 +401,7 @@ export type Action =
           | "computer"
           | "color"
           | "mascotExpression"
+          | "role"
           | "autoApprove"
           | "speakReplies"
           | "voice"

@@ -13,7 +13,26 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { CREW_COLORS, type CrewColor, type CrewMotion, type CrewState } from "@/lib/mascot";
+import {
+  BOT_ROLE_META,
+  CREW_COLORS,
+  normalizeRole,
+  type BotRole,
+  type CrewColor,
+  type CrewMotion,
+  type CrewState,
+} from "@/lib/mascot";
+import { cn } from "@/lib/cn";
+import {
+  BarChart3,
+  Compass,
+  MessageCircle,
+  Microscope,
+  Palette,
+  PenLine,
+  Radar,
+  Wrench,
+} from "lucide-react";
 import {
   CursorAvatar,
   DEFAULT_SILHOUETTE,
@@ -95,15 +114,49 @@ function mix(hex: string, toward: string, t: number): string {
  * shadow), with the same light/dark spread as the pack's default green
  * ["#9FE6B5", "#3FAE6E", "#1C7A4C"].
  */
-const gradientFor = (color: CrewColor): [string, string, string] => {
+const gradientFor = (color: CrewColor, roleColor?: string): [string, string, string] => {
   const fill = CREW_COLORS[color] ?? CREW_COLORS.green;
-  return [mix(fill, "#ffffff", 0.55), fill, mix(fill, "#000000", 0.42)];
+  // The job badge is the identity; tint the body toward it so two bots with
+  // the same chosen color still read as different roles at a glance.
+  const base = roleColor ? mix(fill, roleColor, 0.42) : fill;
+  return [mix(base, "#ffffff", 0.55), base, mix(base, "#000000", 0.42)];
 };
 
 export type CrewAvatarHandle = CursorAvatarHandle;
 
+const ROLE_ICONS = {
+  compass: Compass,
+  microscope: Microscope,
+  wrench: Wrench,
+  palette: Palette,
+  pen: PenLine,
+  radar: Radar,
+  chart: BarChart3,
+  message: MessageCircle,
+} as const;
+
+/** The small job badge shown on an avatar. The picker uses the same glyph so
+ * the identity a person chooses is the one they see in the sidebar. */
+export function BotRoleIcon({ role, size = 28 }: { role: BotRole | string | null | undefined; size?: number }) {
+  const resolved = normalizeRole(typeof role === "string" ? role : null) ?? "guide";
+  const meta = BOT_ROLE_META[resolved];
+  const Icon = ROLE_ICONS[meta.icon];
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-flex shrink-0 items-center justify-center rounded-full text-white shadow-sm"
+      style={{ width: size, height: size, backgroundColor: meta.color }}
+    >
+      <Icon size={Math.max(10, Math.round(size * 0.56))} strokeWidth={2.3} />
+    </span>
+  );
+}
+
 export type CrewAvatarProps = {
   color: CrewColor;
+  /** Job badge and resting expression. A caller that has the bot should pass
+   * displayRole(bot); the component itself never guesses from color. */
+  role?: BotRole | string | null;
   /** Named behaviour — drives the expression pool, its cadence and blinking. */
   state?: CrewState;
   /** Pin one of the 25 faces and stop the state's own drift. */
@@ -138,6 +191,7 @@ export type CrewAvatarProps = {
 function CrewAvatarComponent(
   {
     color,
+    role,
     state = "idle",
     expression,
     size = 44,
@@ -190,19 +244,34 @@ function CrewAvatarComponent(
   };
   const onPointerLeave = () => setPointer({ x: 0, y: 0 });
 
+  const roleMeta = role ? BOT_ROLE_META[normalizeRole(role) ?? "guide"] : null;
+  const RoleIcon = roleMeta ? ROLE_ICONS[roleMeta.icon] : null;
+  const badgeSize = Math.max(15, Math.min(34, Math.round(size * 0.40)));
+  const rolePulse = state === "working" || state === "searching" || state === "radar";
+
   return (
     <span
-      className="inline-flex shrink-0"
+      className="relative inline-flex shrink-0"
       onPointerMove={trackPointer && animated ? onPointerMove : undefined}
       onPointerLeave={trackPointer && animated ? onPointerLeave : undefined}
     >
+      {roleMeta && size >= 30 && (
+        <span
+          aria-hidden="true"
+          className="role-aura absolute rounded-full"
+          style={{
+            inset: -Math.round(size * 0.08),
+            background: `radial-gradient(circle, ${roleMeta.color}66 0%, ${roleMeta.color}22 46%, transparent 72%)`,
+          }}
+        />
+      )}
       <CursorAvatar
         ref={inner}
         state={motionState ?? state}
         expression={expression}
         size={size}
         silhouette={GRADIENT_SILHOUETTE}
-        gradient={gradientFor(color)}
+        gradient={gradientFor(color, roleMeta?.color)}
         title={label ?? null}
         lookAround={forward ? 0 : 1}
         gaze={{ x: (gaze?.x ?? 0) + pointer.x, y: (gaze?.y ?? 0) + pointer.y }}
@@ -213,6 +282,19 @@ function CrewAvatarComponent(
         mouthStroke={mouthStroke}
         paused={!animated}
       />
+      {RoleIcon && roleMeta && size >= 22 && (
+        <span
+          className={cn(
+            "absolute -bottom-px -right-px flex items-center justify-center rounded-full border-2 border-panel text-white shadow-sm",
+            animated && (rolePulse ? "role-accessory-busy" : "role-accessory"),
+          )}
+          style={{ width: badgeSize, height: badgeSize, backgroundColor: roleMeta.color }}
+          title={roleMeta.label}
+          aria-hidden="true"
+        >
+          <RoleIcon size={Math.max(9, Math.round(badgeSize * 0.56))} strokeWidth={2.4} />
+        </span>
+      )}
     </span>
   );
 }

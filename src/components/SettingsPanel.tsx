@@ -1,9 +1,14 @@
-import { ChevronDown, ChevronLeft, Crown, FolderOpen, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, Crown, FolderOpen, Sparkles, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api, useStore, type Bot } from "@/state/store";
-import { CrewAvatar } from "./Avatar";
+import { BotRoleIcon, CrewAvatar } from "./Avatar";
 import {
+  BOT_ROLES,
+  BOT_ROLE_META,
   PICKABLE_STATES,
+  displayRole,
+  inferRole,
+  normalizeRole,
   stateForBot,
   CREW_COLORS,
   CREW_COLOR_NAMES,
@@ -343,6 +348,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
         | "computer"
         | "color"
         | "mascotExpression"
+        | "role"
         | "autoApprove"
         | "speakReplies"
         | "voice"
@@ -354,6 +360,9 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
     >,
   ) => dispatch({ type: "updateBot", botId: bot.id, patch: p });
   const activeState = stateForBot(bot);
+  const activeRole = displayRole(bot);
+  const explicitRole = normalizeRole(bot.role);
+  const suggestedRole = inferRole(bot);
   const mascotMotion = state.mascotMotion?.botId === bot.id ? state.mascotMotion : null;
   const engine = state.instances.find((instance) => instance.instanceId === bot.modelSelection.instanceId);
   const canCoordinate = engine?.capabilities?.agentsMcp === true;
@@ -401,6 +410,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
         <div className="flex justify-center py-5">
           <CrewAvatar
             color={bot.color}
+            role={activeRole}
             state={activeState}
             size={112}
             motion={mascotMotion?.kind ?? "none"}
@@ -415,7 +425,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
                 {t("Bot")}
               </span>
               <button
-                onClick={() => patch({ color: "green", mascotExpression: null })}
+                onClick={() => patch({ color: "green", mascotExpression: null, role: null })}
                 className="rounded-md px-2 py-1.5 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink"
               >
                 {t("Reset")}
@@ -423,7 +433,60 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
             </div>
 
             <div className="p-3">
-              <div className="mb-2 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-secondary">
+              <div className="flex items-center justify-between">
+                <div className="text-[12px] font-medium uppercase tracking-[0.08em] text-ink-secondary">
+                  {t("Role")}
+                </div>
+                <button
+                  onClick={() => patch({ role: null })}
+                  className={cn(
+                    "flex items-center gap-1 rounded-lg px-2 py-1 text-[11.5px] text-ink-secondary hover:bg-raised hover:text-ink",
+                    explicitRole === null && "text-ink",
+                  )}
+                  title={suggestedRole ? t("Suggested: {name}", { name: t(BOT_ROLE_META[suggestedRole].label) }) : t("Choose a role")}
+                >
+                  <Sparkles size={12} /> {t("Auto")}
+                </button>
+              </div>
+              <div className="mt-1 text-[11.5px] text-ink-secondary/80">
+                {explicitRole
+                  ? t(BOT_ROLE_META[explicitRole].blurb)
+                  : suggestedRole
+                    ? t("Suggested from the bot's title: {name}", { name: t(BOT_ROLE_META[suggestedRole].label) })
+                    : t("Pick the job this bot presents as. It changes the badge and idle motion.")}
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {BOT_ROLES.map((role) => {
+                  const meta = BOT_ROLE_META[role];
+                  const selected = explicitRole === role;
+                  const suggested = explicitRole === null && suggestedRole === role;
+                  return (
+                    <button
+                      key={role}
+                      onClick={() => patch({ role })}
+                      className={cn(
+                        "flex min-h-[58px] items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition-colors",
+                        selected
+                          ? "border-accent/70 bg-accent/10"
+                          : suggested
+                            ? "border-hairline/70 bg-inset"
+                            : "border-hairline/40 bg-inset hover:bg-raised",
+                      )}
+                      title={t(meta.blurb)}
+                    >
+                      <BotRoleIcon role={role} size={28} />
+                      <span className="min-w-0">
+                        <span className="block truncate text-[12.5px] font-medium text-ink">{t(meta.label)}</span>
+                        <span className="mt-0.5 block text-[10.5px] leading-snug text-ink-secondary line-clamp-2">
+                          {t(meta.blurb)}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mb-2 mt-4 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-secondary">
                 {t("Expression")}
               </div>
               <div className="grid grid-cols-5 gap-2">
@@ -438,7 +501,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
                     title={expression}
                     aria-label={t("Use {name} expression", { name: expression })}
                   >
-                    <CrewAvatar color={bot.color} state={expression} size={42} animated={false} />
+                    <CrewAvatar color={bot.color} role={activeRole} state={expression} size={42} animated={false} />
                   </button>
                 ))}
               </div>

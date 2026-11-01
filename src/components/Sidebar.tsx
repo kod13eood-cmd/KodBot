@@ -29,7 +29,7 @@ import {
 import { api, useStore, formatTime, visibleMessages, type Bot, type Group } from "@/state/store";
 
 import { CrewAvatar, InitialsAvatar } from "./Avatar";
-import { stateForBot } from "@/lib/mascot";
+import { displayRole, stateForBot } from "@/lib/mascot";
 import { useUpdaterState } from "@/lib/updater";
 import { cn } from "@/lib/cn";
 import { downloadAllBots } from "@/lib/team-files";
@@ -518,6 +518,7 @@ function BotListItem({
     <>
       <CrewAvatar
         color={bot.color}
+        role={displayRole(bot)}
         state={stateForBot({ ...bot, messages: visible })}
         size={56}
         motion={mascotMotion?.kind ?? "none"}

@@ -60,6 +60,137 @@ export const CREW_COLOR_NAMES = [
 
 export type CrewColor = (typeof CREW_COLOR_NAMES)[number];
 
+/** The jobs a bot can present as. These are presentation archetypes, not
+ * permissions: they pick an icon, a default expression and an idle motion
+ * while the bot's title and description still do the real work. */
+export const BOT_ROLES = [
+  "coordinator",
+  "researcher",
+  "builder",
+  "designer",
+  "writer",
+  "operator",
+  "analyst",
+  "guide",
+] as const;
+
+export type BotRole = (typeof BOT_ROLES)[number];
+
+export interface BotRoleMeta {
+  label: string;
+  blurb: string;
+  state: CrewState;
+  color: string;
+  icon: "compass" | "microscope" | "wrench" | "palette" | "pen" | "radar" | "chart" | "message";
+}
+
+export const BOT_ROLE_META: Record<BotRole, BotRoleMeta> = {
+  coordinator: {
+    label: "Coordinator",
+    blurb: "Owns the outcome and keeps the team moving",
+    state: "proud",
+    color: "#8057C8",
+    icon: "compass",
+  },
+  researcher: {
+    label: "Researcher",
+    blurb: "Finds sources, checks facts, and maps the ground",
+    state: "searching",
+    color: "#377FE6",
+    icon: "microscope",
+  },
+  builder: {
+    label: "Builder",
+    blurb: "Writes code, fixes systems, and ships changes",
+    state: "working",
+    color: "#009957",
+    icon: "wrench",
+  },
+  designer: {
+    label: "Designer",
+    blurb: "Shapes interfaces, visuals, and the feel of things",
+    state: "playful",
+    color: "#D84F8B",
+    icon: "palette",
+  },
+  writer: {
+    label: "Writer",
+    blurb: "Drafts, edits, and turns notes into clear prose",
+    state: "writing",
+    color: "#E78531",
+    icon: "pen",
+  },
+  operator: {
+    label: "Operator",
+    blurb: "Watches systems, handles incidents, and keeps uptime",
+    state: "radar",
+    color: "#0EA5C6",
+    icon: "radar",
+  },
+  analyst: {
+    label: "Analyst",
+    blurb: "Reads the numbers and explains what they mean",
+    state: "thinking",
+    color: "#D8A729",
+    icon: "chart",
+  },
+  guide: {
+    label: "Guide",
+    blurb: "Onboards people, answers questions, and supports",
+    state: "happy",
+    color: "#01A492",
+    icon: "message",
+  },
+};
+
+/** A stored role, if it is one we know. Unknown values fall back to Auto. */
+export function normalizeRole(value: string | null | undefined): BotRole | null {
+  if (!value) return null;
+  return (BOT_ROLES as readonly string[]).includes(value) ? (value as BotRole) : null;
+}
+
+/** Best-effort role from the bot's own description. This is only a badge
+ * suggestion; the user can always pick a different role. */
+export function inferRole(profile: { name?: string; title?: string; description?: string }): BotRole | null {
+  const text = `${profile.name ?? ""} ${profile.title ?? ""} ${profile.description ?? ""}`.toLowerCase();
+  if (/\b(code|coding|developer|development|engineer|engineering|build|debug|program|software|devops)\b/.test(text)) {
+    return "builder";
+  }
+  if (/\b(research|researcher|search|investigate|strategy|strategist|study|learn|knowledge|scout)\b/.test(text)) {
+    return "researcher";
+  }
+  if (/\b(monitor|monitoring|incident|alert|watch|status|uptime|operations|operator|sre)\b/.test(text)) {
+    return "operator";
+  }
+  if (/\b(analyst|analysis|data|analytics|finance|financial|risk|metrics|report)\b/.test(text)) {
+    return "analyst";
+  }
+  if (/\b(design|designer|creative|brainstorm|art|illustration|music|story|brand)\b/.test(text)) {
+    return "designer";
+  }
+  if (/\b(write|writer|writing|content|copy|editor|document|docs|documentation)\b/.test(text)) {
+    return "writer";
+  }
+  if (/\b(support|help|success|onboarding|coach|teacher|guide|welcome)\b/.test(text)) {
+    return "guide";
+  }
+  if (/\b(chief|coordinator|coordinate|manager|lead|assistant|orchestrator)\b/.test(text)) {
+    return "coordinator";
+  }
+  return null;
+}
+
+/** The role shown on the avatar: an explicit pick, then a suggestion, then
+ * the neutral guide badge so every bot has an identity. */
+export function displayRole(profile: {
+  role?: string | null;
+  name?: string;
+  title?: string;
+  description?: string;
+}): BotRole {
+  return normalizeRole(profile.role) ?? inferRole(profile) ?? "guide";
+}
+
 export const CREW_COLORS = {
   green: "#009957",
   blue: "#377FE6",
@@ -157,6 +288,7 @@ export type MascotBotProfile = {
   name: string;
   title?: string;
   description?: string;
+  role?: string | null;
   mascotExpression?: string | null;
   busy?: boolean;
   unread?: boolean;
@@ -178,6 +310,9 @@ export function stateForBot(bot: MascotBotProfile): CrewState {
   if (bot.busy) return "working";
   if (bot.unread) return "notifying";
   if (last?.kind === "options") return "curious";
+
+  const role = normalizeRole(bot.role) ?? inferRole(bot);
+  if (role) return BOT_ROLE_META[role].state;
 
   const profile = `${bot.name} ${bot.title ?? ""} ${bot.description ?? ""}`.toLowerCase();
   const matches = (words: RegExp) => words.test(profile);

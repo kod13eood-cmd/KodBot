@@ -10,6 +10,7 @@ import { extname, join } from "node:path";
 import { z } from "zod";
 
 import { approvalKey, autoDecision } from "./auto-approve.ts";
+import { writeFileAtomic } from "./atomic.ts";
 import { validateBotCwd } from "./bot-cwd.ts";
 import { groupTurnCwd } from "./room-cwd.ts";
 import * as box from "./box.ts";
@@ -89,6 +90,48 @@ const HOST = process.env.OC_HOST || "127.0.0.1";
 const WEBHOOK_PORT = Number(process.env.OC_WEBHOOK_PORT || PORT + 1);
 const STATIC_DIR = process.env.OC_STATIC_DIR || null;
 const COMPANION_CONTROL = process.env.OC_COMPANION_CONTROL_URL?.trim().replace(/\/$/, "") || "http://127.0.0.1:8811";
+
+// Friendly names for connected-app accounts. The upstream service exposes
+// opaque aliases, so a label is the only stable way for a person to tell a
+// work account from a personal one. Kept alongside the rest of the data dir.
+const CONNECTOR_LABELS_FILE = join(DATA_DIR, "connector-account-labels.json");
+
+function readConnectorLabels(): Record<string, string> {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(CONNECTOR_LABELS_FILE, "utf8"));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>).filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string",
+      ),
+    );
+  } catch {
+    return {};
+  }
+}
+
+function saveConnectorLabels(labels: Record<string, string>): void {
+  writeFileAtomic(CONNECTOR_LABELS_FILE, JSON.stringify(labels, null, 2), { mode: 0o600 });
+}
+
+function connectorLabelKey(slug: string, accountId: string): string {
+  return `${slug.toLowerCase()}:${accountId}`;
+}
+
+function withConnectorLabels(status: Record<string, any>): Record<string, any> {
+  const labels = readConnectorLabels();
+  for (const [slug, state] of Object.entries(status)) {
+    const accounts = Array.isArray(state?.accounts) ? state.accounts : [];
+    if (!accounts.length) continue;
+    state.accounts = accounts.map((account: Record<string, unknown>) => ({
+      ...account,
+      ...(typeof account.id === "string" && labels[connectorLabelKey(slug, account.id)]
+        ? { label: labels[connectorLabelKey(slug, account.id)] }
+        : {}),
+    }));
+  }
+  return status;
+}
 const MIME: Record<string, string> = {
   ".html": "text/html",
   ".js": "text/javascript",
@@ -2950,8 +2993,14 @@ const server = createServer(async (req, res) => {
         if (field === "name" && !value.trim()) return json(res, 400, { error: "name must not be empty" });
       }
       const patch: Record<string, unknown> = {};
-      for (const key of ["name", "title", "description", "notifications", "modelSelection", "unread", "computer", "color", "mascotExpression", "pinned", "hidden", "speakReplies", "voice"] as const) {
+      for (const key of ["name", "title", "description", "notifications", "modelSelection", "unread", "computer", "color", "mascotExpression", "role", "pinned", "hidden", "speakReplies", "voice"] as const) {
         if (body[key] !== undefined) patch[key] = body[key];
+      }
+      if (body.role !== undefined) {
+        if (typeof body.role !== "string" || body.role.length > 32) {
+          return json(res, 400, { error: "role must be a string of at most 32 characters" });
+        }
+        patch.role = body.role.trim() || undefined;
       }
       // per-bot gate on the workspace's connected apps (Composio)
       if (body.composio !== undefined) {
@@ -3638,7 +3687,25 @@ const server = createServer(async (req, res) => {
         return json(res, 200, { configured: false, services: {} });
       }
       const status = await composio.connectionStatus(cfg, services.length ? services : composio.CURATED_SLUGS);
-      return json(res, 200, { configured: true, services: status });
+      return json(res, 200, { configured: true, services: withConnectorLabels(status) });
+    }
+    // Friendly, user-owned display names for individual connected accounts.
+    m = path.match(/^\/api\/connectors\/([\w-]+)\/accounts\/([\w-]+)$/);
+    if (m && method === "PATCH") {
+      const body = await readBody(req);
+      if (typeof body.label !== "string" || body.label.length > 80) {
+        return json(res, 400, { error: "label must be a string of at most 80 characters" });
+      }
+      const label = body.label.trim();
+      const labels = readConnectorLabels();
+      const key = connectorLabelKey(m[1], m[2]);
+      if (label) labels[key] = label;
+      else delete labels[key];
+      saveConnectorLabels(labels);
+      return json(res, 200, { ok: true, ...(label ? { label } : {}) });
+    }
+    if (m && method === "DELETE") {
+      return json(res, 200, await composio.removeAccount(cfg, m[1], m[2]));
     }
     m = path.match(/^\/api\/connectors\/([\w-]+)\/authorize$/);
     if (m && method === "POST") return json(res, 200, await composio.authorizeService(cfg, m[1]));

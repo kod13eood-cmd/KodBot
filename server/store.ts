@@ -239,6 +239,8 @@ export interface BotRecord {
   notifications: boolean;
   color: CrewColor;
   mascotExpression?: CrewExpression | null;
+  /** Presentation archetype; the UI falls back to an inferred role. */
+  role?: string;
   unread: boolean;
   modelSelection: ModelSelection;
   /** provider-native continuation per instance (e.g. claude session id) */
@@ -731,7 +733,7 @@ export class Store {
 
   createBot(
     profile: Partial<
-      Pick<BotRecord, "name" | "title" | "description" | "color" | "mascotExpression" | "modelSelection">
+      Pick<BotRecord, "name" | "title" | "description" | "color" | "mascotExpression" | "role" | "modelSelection">
     > = {},
     opts: {
       /** false = no greeting/onboarding seed. Imported bots must not open
@@ -749,6 +751,7 @@ export class Store {
       notifications: true,
       color: profile.color ?? COLORS[this.bots.length % COLORS.length],
       ...(profile.mascotExpression ? { mascotExpression: profile.mascotExpression } : {}),
+      ...(profile.role ? { role: profile.role } : {}),
       unread: false,
       modelSelection: profile.modelSelection ?? this.defaultSelection(),
       resumeCursors: {},

@@ -223,12 +223,22 @@ export async function relayMcp(
   };
 }
 
-/** Connection status per service slug: { slack: { connected, status } }. */
+/** Connection status per service slug: { slack: { connected, status, accounts } }. */
 export async function connectionStatus(cfg: AppConfig, slugs: string[]) {
   if (brokerAccess() || !cfg.composio?.apiKey) {
     const response = await brokerRequest(`/v1/connectors?${new URLSearchParams({ services: slugs.join(",") })}`);
     if (!response.ok) throw new Error(await responseError(response, `Connected apps: HTTP ${response.status}`));
-    const body = (await response.json()) as { services?: Record<string, { connected: boolean; pending?: boolean; status?: string }> };
+    const body = (await response.json()) as {
+      services?: Record<
+        string,
+        {
+          connected: boolean;
+          pending?: boolean;
+          status?: string;
+          accounts?: Array<{ id?: string; status?: string; alias?: string }>;
+        }
+      >;
+    };
     return body.services ?? {};
   }
   const session = await ensureProjectSession(cfg);
@@ -253,7 +263,13 @@ export async function connectionStatus(cfg: AppConfig, slugs: string[]) {
           .then(async (accountRes) => {
             if (!accountRes.ok) return [];
             const accountBody = (await accountRes.json()) as {
-              items?: Array<{ toolkit?: { slug?: string }; status?: string; updated_at?: string }>;
+              items?: Array<{
+                id?: string;
+                toolkit?: { slug?: string };
+                status?: string;
+                alias?: string;
+                updated_at?: string;
+              }>;
             };
             return Array.isArray(accountBody?.items) ? accountBody.items : [];
           })
@@ -261,40 +277,89 @@ export async function connectionStatus(cfg: AppConfig, slugs: string[]) {
       : Promise.resolve([]),
   ]);
   if (!res.ok) throw new Error(await responseError(res, `Composio toolkits: HTTP ${res.status}`));
-  const body = (await res.json()) as { items?: Array<{ slug?: string; is_no_auth?: boolean; connected_account?: { status?: string } }> };
+  const body = (await res.json()) as {
+    items?: Array<{ slug?: string; is_no_auth?: boolean; connected_account?: { id?: string; status?: string } }>;
+  };
   const bySlug = new Map((body.items ?? []).map((item) => [item.slug?.toLowerCase(), item]));
-  const accountBySlug = new Map<string, { status?: string; updated_at?: string }>();
+  const accountsBySlug = new Map<
+    string,
+    Array<{ id?: string; status?: string; alias?: string; updated_at?: string }>
+  >();
   for (const account of accounts) {
     const slug = account.toolkit?.slug?.toLowerCase();
     if (!slug || !slugs.some((candidate) => candidate.toLowerCase() === slug)) continue;
-    const current = accountBySlug.get(slug);
-    // Prefer an active account. Otherwise the API is newest-first, but keep
-    // the timestamp comparison explicit so response ordering cannot lie.
-    if (
-      !current
-      || /^active$/i.test(account.status ?? "")
-      || (!/^active$/i.test(current.status ?? "") && (account.updated_at ?? "") > (current.updated_at ?? ""))
-    ) {
-      accountBySlug.set(slug, account);
-    }
+    const list = accountsBySlug.get(slug) ?? [];
+    list.push(account);
+    accountsBySlug.set(slug, list);
   }
   return Object.fromEntries(
     slugs.map((slug) => {
       const item = bySlug.get(slug.toLowerCase());
-      const account = accountBySlug.get(slug.toLowerCase());
-      const state = item?.connected_account?.status
-        ?? (item?.is_no_auth ? "ACTIVE" : account?.status ?? "not_connected");
-      return [slug, {
-        connected: item?.is_no_auth === true || /^active$/i.test(state),
-        pending: /^(initiated|initializing|pending)$/i.test(state),
-        status: state,
-      }];
+      const serviceAccounts = accountsBySlug.get(slug.toLowerCase()) ?? [];
+      const state =
+        item?.connected_account?.status
+        ?? (item?.is_no_auth ? "ACTIVE" : serviceAccounts[0]?.status ?? "not_connected");
+      return [
+        slug,
+        {
+          connected: item?.is_no_auth === true || /^active$/i.test(state),
+          pending: /^(initiated|initializing|pending)$/i.test(state),
+          status: state,
+          accounts: serviceAccounts.map((account) => ({
+            id: account.id,
+            status: account.status,
+            alias: account.alias,
+          })),
+        },
+      ];
     }),
   );
 }
 
-/** Disconnect a service: remove every connected account for the slug. */
+/** Delete one connected account by id. The managed broker does not expose
+ * per-account deletion yet; callers should hide that action in managed mode. */
+export async function removeAccount(cfg: AppConfig, slug: string, accountId: string) {
+  if (brokerAccess() || !cfg.composio?.apiKey) {
+    throw new Error("The managed connected-apps service can only remove the app connection.");
+  }
+  const session = await ensureProjectSession(cfg);
+  const userId = session.config?.user_id ?? cfg.composio.userId;
+  if (userId) {
+    const params = new URLSearchParams({ limit: "50", toolkits: slug, user_ids: userId });
+    const list = await fetch(`${apiBase()}/connected_accounts?${params}`, {
+      headers: projectHeaders(cfg.composio.apiKey),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (list.ok) {
+      const body = (await list.json()) as { items?: Array<{ id?: string; toolkit?: { slug?: string } }> };
+      const owned = (body.items ?? []).some(
+        (item) => item.id === accountId && item.toolkit?.slug?.toLowerCase() === slug.toLowerCase(),
+      );
+      if (!owned) throw new Error("That account is not connected to this service.");
+    }
+  }
+  const removed = await fetch(
+    `${apiBase()}/connected_accounts/${encodeURIComponent(accountId)}?revoke_on_delete=true`,
+    { method: "DELETE", headers: projectHeaders(cfg.composio.apiKey), signal: AbortSignal.timeout(30_000) },
+  );
+  if (!removed.ok) throw new Error(await responseError(removed, `Composio disconnect: HTTP ${removed.status}`));
+  return { removed: 1 };
+}
+
+/** Disconnect a service: remove every connected account for the slug. The
+ * managed broker deletes one account per call, so keep going until none are
+ * left. The cap is a safety net, not an expected account count. */
 export async function removeService(cfg: AppConfig, slug: string) {
+  let removed = 0;
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const result = await removeServiceOnce(cfg, slug);
+    if (!result.removed) break;
+    removed += result.removed;
+  }
+  return { removed };
+}
+
+async function removeServiceOnce(cfg: AppConfig, slug: string) {
   if (brokerAccess() || !cfg.composio?.apiKey) {
     const response = await brokerRequest(`/v1/connectors/${encodeURIComponent(slug)}`, { method: "DELETE" });
     if (!response.ok) throw new Error(await responseError(response, `Connected apps: HTTP ${response.status}`));
