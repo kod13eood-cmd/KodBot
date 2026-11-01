@@ -60,6 +60,45 @@ chmod +x release/KodBot-*-x86_64.AppImage
 ./release/KodBot-*-x86_64.AppImage
 ```
 
+## Self-hosted updates
+
+This branch publishes Linux updates from the paperclipi7 harness instead of a
+GitHub release. `electron-builder.yml` points the generic updater at:
+
+```text
+http://paperclipi7.tail89d239.ts.net:8799/updates
+```
+
+The harness serves only `latest-linux.yml` and `KodBot-*.AppImage` from
+`~/.kodbot/desktop/updates`. To publish a build:
+
+```sh
+# bump "version" in package.json first
+pnpm package:linux
+scp release/KodBot-<version>-x86_64.AppImage \
+    paperclipi7:paperclipi7/.kodbot/desktop/updates/
+scp release/latest-linux.yml \
+    paperclipi7:paperclipi7/.kodbot/desktop/updates/
+```
+
+Then open **Settings → General → Check for updates**. The app downloads the
+new AppImage, replaces it, and relaunches.
+
+If FUSE is unavailable on the host (common in containers and some sandboxed
+sessions), launch the AppImage through a wrapper that exports both paths:
+
+```sh
+#!/bin/sh
+export KODBOT_APPIMAGE=/home/deso/.local/opt/kodbot/KodBot.AppImage
+export APPIMAGE_EXTRACT_AND_RUN=1
+exec "$KODBOT_APPIMAGE" "$@"
+```
+
+`APPIMAGE_EXTRACT_AND_RUN` extracts instead of mounting; `KODBOT_APPIMAGE`
+carries the original file path to the updater, which restores `APPIMAGE` for
+the update and sets extract-and-run again for the relaunch. Point the desktop
+launcher at that wrapper rather than at the AppImage directly.
+
 Application data remains local in `~/.kodbot`. Electron browser data and window state use the normal XDG
 configuration directory (`~/.config/kodbot` unless the environment overrides it).
 

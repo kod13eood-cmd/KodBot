@@ -13,6 +13,15 @@ import { createUpdaterCoordinator } from "./updater-coordinator.mjs";
 
 const require = createRequire(import.meta.url);
 
+// APPIMAGE_EXTRACT_AND_RUN clears APPIMAGE in the extracted child, which
+// makes electron-updater unable to identify the installation. The desktop
+// launcher passes the original path in KODBOT_APPIMAGE; restore both values
+// before the updater is required, and keep extract-and-run for the relaunch.
+if (process.platform === "linux" && process.env.KODBOT_APPIMAGE) {
+  if (!process.env.APPIMAGE) process.env.APPIMAGE = process.env.KODBOT_APPIMAGE;
+  process.env.APPIMAGE_EXTRACT_AND_RUN = "1";
+}
+
 let autoUpdater = null;
 let win = null;
 // status: idle | checking | available | downloading | downloaded | installing | error

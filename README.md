@@ -188,9 +188,9 @@ flowchart LR
 | **macOS** (Apple silicon) | [KodBot.dmg](https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot.dmg) | Drag it to Applications, open it. Signed & notarized. |
 | **Windows** (x64) | [KodBot-setup.exe](https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-setup.exe) | Run it — one-click, per-user, no admin rights. The installer isn't code-signed yet, so SmartScreen shows "unknown publisher": **More info → Run anyway**. |
 
-**Ubuntu Desktop beta:** build the `.deb` or AppImage from source using the commands below. Release downloads
-will be linked here once Linux publishing is enabled. See [the Ubuntu Desktop guide](docs/linux-desktop.md) for
-installation, capabilities, and troubleshooting.
+**Ubuntu Desktop beta:** build the `.deb` or AppImage from source using the commands below. This branch
+serves Linux AppImage updates from its 24/7 host; see [the Ubuntu Desktop guide](docs/linux-desktop.md) for
+installation, self-hosted updates, capabilities, and troubleshooting.
 
 **From source:**
 
