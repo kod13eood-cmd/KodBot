@@ -3,6 +3,7 @@
 // unusable model lists stay out of the way until the engine is ready.
 import { useState } from "react";
 import { Check, Copy, Download, ExternalLink, LogIn, TerminalSquare } from "lucide-react";
+import { useDesktopCapabilities } from "@/components/DesktopCapabilities";
 import type { EngineInstall, InstanceInfo } from "@/state/store";
 import { cn } from "@/lib/cn";
 
@@ -34,9 +35,9 @@ export function needsCli(instance: InstanceInfo | undefined): boolean {
   return instance?.snapshot.state !== "available";
 }
 
-function CommandRow({ command, actionLabel }: { command: string; actionLabel: string }) {
+function CommandRow({ command, actionLabel, remote = false }: { command: string; actionLabel: string; remote?: boolean }) {
   const [status, setStatus] = useState<"copied" | "opened" | null>(null);
-  const canOpen = Boolean(window.ogb?.openInstallTerminal);
+  const canOpen = Boolean(window.ogb?.openInstallTerminal) && !remote;
 
   const settle = (next: "copied" | "opened") => {
     setStatus(next);
@@ -101,6 +102,11 @@ function CommandRow({ command, actionLabel }: { command: string; actionLabel: st
           {status === "copied" ? "Command copied" : "Copy command"}
         </button>
       )}
+      {remote && (
+        <p className="mt-1.5 text-center text-[11px] text-ink-secondary/70">
+          Run this command on the remote server, not this laptop.
+        </p>
+      )}
     </div>
   );
 }
@@ -115,6 +121,8 @@ export function EngineSetup({
   /** `inject` installs the CLI but deliberately skips cloud sign-in. */
   intent?: "cloud" | "inject";
 }) {
+  const { capabilities } = useDesktopCapabilities();
+  const remote = Boolean(capabilities.remoteMode);
   const install = instance.install;
   const installCommand = installCommandFor(install);
   const signInCommand = install?.signInCommand;
@@ -153,7 +161,7 @@ export function EngineSetup({
       </div>
 
       {command ? (
-        <CommandRow command={command} actionLabel={signInOnly ? "Open sign-in in Terminal" : "Open install in Terminal"} />
+        <CommandRow command={command} remote={remote} actionLabel={signInOnly ? "Open sign-in in Terminal" : "Open install in Terminal"} />
       ) : (
         <p className="mt-3 rounded-lg bg-inset px-2.5 py-2 text-[12px] leading-relaxed text-ink-secondary">
           There isn’t a one-line installer for this platform. Use the setup guide below.

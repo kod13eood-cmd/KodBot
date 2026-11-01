@@ -220,7 +220,7 @@ function RoomWorkingFolder({ group }: { group: Group }) {
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const canPick = Boolean(window.ogb?.pickFolder);
+  const canPick = Boolean(window.ogb?.pickFolder) && !capabilities.remoteMode;
   const pinned = group.pinnedCwd; // undefined = not yet, null = each bot's own, string = folder
   const locked = pinned !== undefined;
   const shownCwd = locked ? (pinned ?? undefined) : group.cwd;
@@ -288,6 +288,9 @@ function RoomWorkingFolder({ group }: { group: Group }) {
             Save
           </button>
         </form>
+      )}
+      {capabilities.remoteMode && (
+        <div className="mt-2 text-[12px] text-ink-secondary">This folder is on the remote server.</div>
       )}
       {error && <div className="mt-2 text-[12px] text-danger">{error}</div>}
     </div>
