@@ -827,11 +827,11 @@ const BULGARIAN: Record<string, string> = {
   "Compare products as cards; Buy now opens the merchant so you choose the checkout.":
     "Сравнявайте продукти като карти; „Купи сега“ отваря магазина, за да изберете плащането.",
   "Stripe payments": "Плащания със Stripe",
-  "Let a bot prepare payments through your Stripe account, with approval before money moves.":
-    "Ботът подготвя плащания през вашия Stripe акаунт, с одобрение преди движение на пари.",
+  "Connect Stripe to prepare payments; KodBot asks before money moves.":
+    "Свържете Stripe, за да подготвяте плащания; KodBot пита преди движение на пари.",
   "Bot calls": "Обаждания от бот",
-  "Place a call through Aircall and bring the notes back into chat.":
-    "Обадете се чрез Aircall и върнете бележките в чата.",
+  "Place a call through Aircall and bring the notes back; KodBot asks before dialing.":
+    "Обадете се чрез Aircall и върнете бележките; KodBot пита преди набиране.",
   "Private dashboards, checklists, and reports the bot can keep updating.":
     "Частни табла, списъци и отчети, които ботът може да обновява.",
   "iPhone actions": "Действия на iPhone",

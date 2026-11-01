@@ -58,8 +58,8 @@ interface GrokFeature {
 const GROK_FEATURES: GrokFeature[] = [
   { key: "vault", title: "Vault & logins", blurb: "Store cards and logins in a password manager the bot can use without seeing them.", slug: "_1password", state: "connector" },
   { key: "shopping", title: "Shopping cards", blurb: "Compare products as cards; Buy now opens the merchant so you choose the checkout.", state: "live" },
-  { key: "stripe", title: "Stripe payments", blurb: "Let a bot prepare payments through your Stripe account, with approval before money moves.", slug: "stripe", state: "connector" },
-  { key: "calls", title: "Bot calls", blurb: "Place a call through Aircall and bring the notes back into chat.", slug: "aircall", state: "connector" },
+  { key: "stripe", title: "Stripe payments", blurb: "Connect Stripe to prepare payments; KodBot asks before money moves.", slug: "stripe", state: "connector" },
+  { key: "calls", title: "Bot calls", blurb: "Place a call through Aircall and bring the notes back; KodBot asks before dialing.", slug: "aircall", state: "connector" },
   { key: "pages", title: "Pages", blurb: "Private dashboards, checklists, and reports the bot can keep updating.", state: "live" },
   { key: "iphone", title: "iPhone actions", blurb: "Home, Reminders, Contacts, Alarms, and Calendar need the iOS app and its permissions.", state: "blocked" },
   { key: "memory", title: "Memory import", blurb: "Bring preferences and context from another assistant.", state: "live" },
