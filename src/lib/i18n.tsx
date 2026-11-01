@@ -552,6 +552,7 @@ const BULGARIAN: Record<string, string> = {
   "Ready to enable": "Готово за включване",
   "Active": "Активен",
   "Paused": "На пауза",
+  "No upcoming run": "Няма предстоящо изпълнение",
   "Edit settings": "Редактирай настройките",
   "Setup": "Настройка",
   "Activity": "Активност",

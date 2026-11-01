@@ -35,6 +35,16 @@ WantedBy=default.target
 The headless process keeps the harness (and the companion, if you enabled it
 in that install) alive without opening a window.
 
+Set the server's timezone to the timezone you use for schedules. Routine times
+are wall-clock times interpreted by the server; a UTC host would run a 09:00
+schedule at 11:00 in Sofia. Add to the unit's `[Service]` section:
+
+```ini
+Environment=TZ=Europe/Sofia
+```
+
+Then `sudo systemctl daemon-reload && sudo systemctl restart kodbot`.
+
 ## 2. Point the desktop app at it
 
 On the laptop, open **Settings → General → Server**, enter:

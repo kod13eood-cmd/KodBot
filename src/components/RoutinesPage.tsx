@@ -606,6 +606,19 @@ function PausedRoutines({ routines, bots, onClose, onEdit }: { routines: Routine
   );
 }
 
+function routineWhen(routine: Routine, locale: Locale, t: (source: string) => string): string {
+  if (!routine.enabled) return t("Paused");
+  const at = routine.nextRunAt ?? (routine.schedule.type === "once" ? routine.schedule.at : null);
+  if (!at) return t("No upcoming run");
+  return new Date(at).toLocaleString(localeTag(locale), {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function RoutinesPage() {
   const { state, dispatch } = useStore();
   const { t, locale } = useI18n();
@@ -692,6 +705,35 @@ export function RoutinesPage() {
           </div>
         </div>}
       </header>
+
+      {section === "calendar" && state.routines.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 px-5 pb-3">
+          <span className="mr-1 text-[10.5px] font-medium uppercase tracking-[0.1em] text-ink-secondary">
+            {t("Schedules")}
+          </span>
+          {state.routines.map((routine) => {
+            const bot = visibleBots.find((candidate) => candidate.id === routine.botId);
+            return (
+              <button
+                key={routine.id}
+                onClick={() => setEditor(routine)}
+                className="flex max-w-[280px] items-center gap-1.5 rounded-full border border-hairline/50 bg-panel px-2.5 py-1.5 text-left text-[11.5px] text-ink-secondary transition-colors hover:border-hairline hover:bg-raised hover:text-ink"
+                title={`${routine.name} · ${routineWhen(routine, locale, t)}`}
+              >
+                <span
+                  className={cn(
+                    "size-1.5 shrink-0 rounded-full",
+                    routine.enabled ? "bg-success" : "bg-ink-secondary/40",
+                  )}
+                />
+                <span className="min-w-0 truncate font-medium text-ink">{routine.name}</span>
+                {bot && <span className="shrink-0 text-ink-secondary/70">{bot.name}</span>}
+                <span className="shrink-0 text-ink-secondary/70">· {routineWhen(routine, locale, t)}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {section === "webhooks" ? (
         <WebhooksPanel bots={visibleBots} />
