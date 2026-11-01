@@ -661,6 +661,7 @@ const BULGARIAN: Record<string, string> = {
   "Authorization expired — open details": "Разрешението изтече — отворете детайлите",
   "Account": "Акаунт",
   "Accounts": "Акаунти",
+  "Service alias": "Служебен псевдоним",
   "Unknown status": "Неизвестно състояние",
   "Reconnect": "Свържи отново",
   "Reconnect this account": "Свържи отново този акаунт",

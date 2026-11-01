@@ -86,6 +86,7 @@ function accountTone(status: string | undefined): string {
 
 function AccountRow({
   account,
+  index,
   canRemove,
   busy,
   onReconnect,
@@ -93,6 +94,7 @@ function AccountRow({
   onSaveLabel,
 }: {
   account: ConnectorAccount;
+  index: number;
   canRemove: boolean;
   busy: boolean;
   onReconnect: () => void;
@@ -107,7 +109,7 @@ function AccountRow({
     setLabel(account.label ?? "");
     setLabelError(null);
   }, [account.id, account.label]);
-  const heading = account.label?.trim() || account.alias || t("Account");
+  const heading = account.label?.trim() || `${t("Account")} ${index + 1}`;
   const save = async () => {
     setSaving(true);
     setLabelError(null);
@@ -129,9 +131,11 @@ function AccountRow({
               {account.status || t("Unknown status")}
             </span>
           </div>
-          {account.label?.trim() && account.alias ? (
-            <div className="mt-0.5 truncate text-[11.5px] text-ink-secondary">{account.alias}</div>
-          ) : null}
+          {account.alias && (
+            <div className="mt-0.5 truncate text-[11.5px] text-ink-secondary">
+              {t("Service alias")}: <span className="font-mono">{account.alias}</span>
+            </div>
+          )}
           <div className="mt-1 flex items-center gap-1.5 text-[10.5px] text-ink-secondary/70">
             <span className="truncate font-mono">{account.id}</span>
           </div>
@@ -270,10 +274,11 @@ function ServiceDetails({
           </div>
           {accounts.length ? (
             <div className="space-y-2">
-              {accounts.map((account) => (
+              {accounts.map((account, index) => (
                 <AccountRow
                   key={account.id}
                   account={account}
+                  index={index}
                   canRemove={mode === "self-hosted"}
                   busy={busy}
                   onReconnect={onConnect}
