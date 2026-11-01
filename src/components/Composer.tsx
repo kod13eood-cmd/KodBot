@@ -346,6 +346,8 @@ export function Composer({
             if (e.key === "Escape" && recording) setRecording(false);
           }}
           disabled={Boolean(approval)}
+          spellCheck
+          autoCorrect="on"
           placeholder={
             approval
               ? t("Answer the approval above to continue")

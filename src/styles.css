@@ -76,6 +76,14 @@ body {
   color: var(--color-ink);
 }
 
+/* Answers are documents: a reader must be able to drag-select a passage and
+   copy it, including inside rendered markdown. */
+.chat-md,
+.chat-md * {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

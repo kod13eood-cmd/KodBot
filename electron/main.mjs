@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, desktopCapturer, dialog, ipcMain, safeStorage, session, shell, systemPreferences, utilityProcess } from "electron";
+import { app, BrowserWindow, clipboard, desktopCapturer, dialog, ipcMain, Menu, MenuItem, safeStorage, session, shell, systemPreferences, utilityProcess } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -327,6 +327,84 @@ const ERROR_PAGE =
 
 let cuaReady = Promise.resolve({ mode: "unavailable", reason: "not-started" });
 
+/** The same Chromium right-click surface OpenCode uses: spellcheck
+ * corrections in editable fields, standard edit actions, and Copy/Select All
+ * for a selection in a bot answer. */
+function installContextMenu(win) {
+  win.webContents.on("context-menu", (_event, params) => {
+    const menu = new Menu();
+    const editable = params.isEditable;
+    const selection = params.selectionText.trim();
+
+    if (editable && params.misspelledWord) {
+      const suggestions = params.dictionarySuggestions.slice(0, 6);
+      if (suggestions.length) {
+        for (const suggestion of suggestions) {
+          menu.append(
+            new MenuItem({
+              label: suggestion,
+              click: () => win.webContents.replaceMisspelling(suggestion),
+            }),
+          );
+        }
+      } else {
+        menu.append(new MenuItem({ label: "No spelling suggestions", enabled: false }));
+      }
+      menu.append(new MenuItem({ type: "separator" }));
+      menu.append(
+        new MenuItem({
+          label: `Add “${params.misspelledWord}” to dictionary`,
+          click: () => win.webContents.session.addWordToSpellCheckerDictionary(params.misspelledWord),
+        }),
+      );
+      menu.append(new MenuItem({ type: "separator" }));
+    }
+
+    if (editable) {
+      menu.append(new MenuItem({ role: "undo", enabled: params.editFlags.canUndo }));
+      menu.append(new MenuItem({ role: "redo", enabled: params.editFlags.canRedo }));
+      menu.append(new MenuItem({ type: "separator" }));
+      menu.append(new MenuItem({ role: "cut", enabled: params.editFlags.canCut }));
+      menu.append(new MenuItem({ role: "copy", enabled: params.editFlags.canCopy }));
+      menu.append(new MenuItem({ role: "paste", enabled: params.editFlags.canPaste }));
+      menu.append(new MenuItem({ role: "selectAll" }));
+    } else if (selection) {
+      menu.append(new MenuItem({ role: "copy" }));
+      menu.append(new MenuItem({ role: "selectAll" }));
+    } else {
+      menu.append(new MenuItem({ role: "selectAll" }));
+    }
+
+    if (params.linkURL) {
+      menu.append(new MenuItem({ type: "separator" }));
+      menu.append(
+        new MenuItem({
+          label: "Copy Link",
+          click: () => clipboard.writeText(params.linkURL),
+        }),
+      );
+      menu.append(
+        new MenuItem({
+          label: "Open Link",
+          click: () => void shell.openExternal(params.linkURL),
+        }),
+      );
+    }
+
+    if (!app.isPackaged) {
+      menu.append(new MenuItem({ type: "separator" }));
+      menu.append(
+        new MenuItem({
+          label: "Inspect Element",
+          click: () => win.webContents.inspectElement(params.x, params.y),
+        }),
+      );
+    }
+
+    menu.popup({ window: win });
+  });
+}
+
 function createWindow(remoteUrl = null) {
   const isMac = process.platform === "darwin";
   const win = new BrowserWindow({
@@ -354,8 +432,11 @@ function createWindow(remoteUrl = null) {
     webPreferences: {
       contextIsolation: true,
       preload: path.join(__dirname, "preload.cjs"),
+      spellcheck: true,
     },
   });
+
+  installContextMenu(win);
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -664,6 +745,17 @@ app.whenReady().then(async () => {
   }
   registerCuaIpc();
   registerUpdaterIpc();
+  // Native spellcheck lives in Chromium: the same Hunspell path OpenCode's
+  // context menu uses. Include both interface languages so composer
+  // suggestions work in English and Bulgarian.
+  try {
+    const available = session.defaultSession.availableSpellCheckerLanguages ?? [];
+    const preferred = ["en-US", "en-GB", "bg-BG"].filter((language) => available.includes(language));
+    if (preferred.length) session.defaultSession.setSpellCheckerLanguages(preferred);
+    session.defaultSession.setSpellCheckerEnabled(true);
+  } catch {
+    /* spellcheck is a convenience; never block startup on a missing dictionary */
+  }
   // Start the CUA daemon before the window so the harness can pick up the
   // connection descriptor on first render. Never blocks window creation on
   // failure — computer use degrades to "unavailable", the rest still works.
