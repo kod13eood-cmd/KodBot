@@ -255,7 +255,7 @@ function CrewAvatarComponent(
       onPointerMove={trackPointer && animated ? onPointerMove : undefined}
       onPointerLeave={trackPointer && animated ? onPointerLeave : undefined}
     >
-      {roleMeta && size >= 30 && (
+      {roleMeta && animated && size >= 30 && (
         <span
           aria-hidden="true"
           className="role-aura absolute rounded-full"
