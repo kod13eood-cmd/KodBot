@@ -1,6 +1,6 @@
 import { track } from "@/lib/analytics";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, Clock, Mic, Square, Users, X } from "lucide-react";
+import { ArrowUp, Clock, Loader2, Mic, Square, Users, X } from "lucide-react";
 import { useStore, visibleMessages, type Bot, type Group } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { useComposerDraft } from "@/lib/drafts";
@@ -10,6 +10,7 @@ import {
   composeMessage,
   isLongPaste,
   pasteAttachment,
+  uploadRemoteAttachments,
   type Attachment,
 } from "@/lib/composer-attachments";
 import { normalizeState } from "@/lib/mascot";
@@ -135,10 +136,11 @@ export function Composer({
   // mid-turn — the harness queues them (steer-queue), so the message shows
   // in the transcript immediately with a queued affordance.
   const [queued, setQueued] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   // a chip on its own is a message: the send control has to appear for it
   const hasContent = Boolean(text.trim()) || attachments.length > 0;
-  const send = () => {
-    const composed = composeMessage(text, attachments);
+  const submit = (composed: string) => {
     if (!composed) return;
     if (busy && group) {
       setQueued(composed);
@@ -155,6 +157,27 @@ export function Composer({
     }
     setText("");
     setAttachments([]);
+  };
+  const send = () => {
+    if (uploading) return;
+    const local = composeMessage(text, attachments);
+    if (!local) return;
+    // In remote mode a local path is meaningless to the agent. Upload the
+    // bytes first and put the host's stored path in the prompt instead.
+    const needsUpload = capabilities.remoteMode && attachments.some((a) => a.kind === "file");
+    if (!needsUpload) {
+      submit(local);
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    void uploadRemoteAttachments(attachments)
+      .then((ready) => {
+        const composed = composeMessage(text, ready);
+        if (composed) submit(composed);
+      })
+      .catch((error) => setUploadError(error instanceof Error ? error.message : String(error)))
+      .finally(() => setUploading(false));
   };
   useEffect(() => {
     if (!busy && queued && group) {
@@ -209,6 +232,18 @@ export function Composer({
 
   return (
     <div className="px-5 pb-5 pt-2">
+      {uploadError && (
+        <div className="mx-auto mb-2 flex max-w-[900px] items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-[12px] text-warning">
+          <span className="min-w-0 flex-1">{uploadError}</span>
+          <button
+            onClick={() => setUploadError(null)}
+            aria-label={t("Dismiss")}
+            className="shrink-0 rounded p-0.5"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      )}
       {speechError && (
         <div className="mx-auto mb-2 max-w-[900px] rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-[12px] text-warning">
           {speechError}
@@ -398,14 +433,22 @@ export function Composer({
         {hasContent && (
           <button
             onClick={send}
-            aria-label={busy ? t("Queue message") : t("Send message")}
-            title={busy ? t("Sends when the current turn finishes") : t("Send")}
+            disabled={uploading}
+            aria-label={uploading ? t("Uploading attachment") : busy ? t("Queue message") : t("Send message")}
+            title={uploading ? t("Uploading attachment…") : busy ? t("Sends when the current turn finishes") : t("Send")}
             className={cn(
               "flex size-8 shrink-0 items-center justify-center rounded-full text-white",
               busy ? "bg-raised text-ink-secondary hover:bg-raised-hover" : "bg-accent hover:brightness-110",
+              uploading && "cursor-default opacity-70",
             )}
           >
-            {busy ? <Clock size={15} /> : <ArrowUp size={17} />}
+            {uploading ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : busy ? (
+              <Clock size={15} />
+            ) : (
+              <ArrowUp size={17} />
+            )}
           </button>
         )}
         </div>

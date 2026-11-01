@@ -11,6 +11,7 @@ import {
   isLongPaste,
   pasteAttachment,
   pasteSummary,
+  uploadRemoteAttachments,
 } from "../src/lib/composer-attachments.ts";
 
 describe("composer paste attachments", () => {
@@ -91,5 +92,42 @@ describe("composer paste attachments", () => {
     expect(isAttachment({ kind: "paste", id: "a", text: "missing size" })).toBe(false);
     expect(isAttachment({ kind: "file", id: "a", text: "wrong kind", size: 2 })).toBe(false);
     expect(isAttachment({ kind: "file", id: "f", name: "empty", path: "", size: 0 })).toBe(false);
+  });
+
+  it("uploads file bytes before a remote send and uses the stored path", async () => {
+    const file = new File(["hello"], "notes.txt", { type: "text/plain" });
+    const attachment = fileAttachment("notes.txt", "/home/deso/notes.txt", file.size, file);
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const post = (async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      return new Response(
+        JSON.stringify({ path: "/home/host/.kodbot/uploads/notes.txt", name: "notes.txt", size: 5 }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as typeof fetch;
+
+    const result = await uploadRemoteAttachments([attachment], post);
+    expect(result[0]).toMatchObject({
+      kind: "file",
+      path: "/home/host/.kodbot/uploads/notes.txt",
+      name: "notes.txt",
+      size: 5,
+    });
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe("/api/uploads");
+    expect(calls[0].init?.method).toBe("POST");
+    expect(calls[0].init?.body).toBe(file);
+    expect(new Headers(calls[0].init?.headers).get("x-kodbot-filename")).toBe("notes.txt");
+  });
+
+  it("leaves pasted text alone and asks for a re-attach when the bytes are gone", async () => {
+    const paste = pasteAttachment("already text");
+    const post = (async () => {
+      throw new Error("should not upload pasted text");
+    }) as typeof fetch;
+    await expect(uploadRemoteAttachments([paste], post)).resolves.toEqual([paste]);
+
+    const stale = fileAttachment("old.txt", "/home/deso/old.txt", 3);
+    await expect(uploadRemoteAttachments([stale], post)).rejects.toThrow(/attached again/);
   });
 });

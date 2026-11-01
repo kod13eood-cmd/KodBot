@@ -15,6 +15,9 @@ export type FileAttachment = {
   path: string;
   name: string;
   size: number;
+  /** The picked bytes, kept in memory so a remote host can receive them.
+   * Drafts persist only path/name/size; after a reload the user re-attaches. */
+  file?: File;
 };
 
 export type Attachment = PasteAttachment | FileAttachment;
@@ -62,8 +65,8 @@ function newId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `a${Math.random().toString(36).slice(2)}`;
 }
 
-export function fileAttachment(name: string, path: string, size: number): FileAttachment {
-  return { kind: "file", id: newId(), path, name, size };
+export function fileAttachment(name: string, path: string, size: number, file?: File): FileAttachment {
+  return { kind: "file", id: newId(), path, name, size, ...(file ? { file } : {}) };
 }
 
 export function pasteAttachment(text: string): PasteAttachment {
@@ -93,7 +96,7 @@ export async function attachmentsFromDroppedFiles<T extends DroppedFile>(
       } catch {
         // A browser or older desktop shell has no disk path to expose.
       }
-      if (path) return { attachment: fileAttachment(file.name, path, file.size) };
+      if (path) return { attachment: fileAttachment(file.name, path, file.size, file as T & File) };
       if (isInlineText(file) && file.size <= INLINE_DROP_LIMIT) {
         try {
           return { attachment: pasteAttachment(await file.text()) };
@@ -163,4 +166,50 @@ export function escapeAttribute(value: string): string {
     .replaceAll("\t", "&#9;")
     .replaceAll("\r", "&#13;")
     .replaceAll("\n", "&#10;");
+}
+
+/** A remote harness cannot open a path on this laptop. Send the bytes to the
+ * host first and rewrite each file attachment to the path it stored. Paste
+ * attachments are already text and stay untouched. */
+export const REMOTE_UPLOAD_LIMIT = 30 * 1024 * 1024;
+
+export async function uploadRemoteAttachments(
+  attachments: Attachment[],
+  post: typeof fetch = fetch,
+): Promise<Attachment[]> {
+  const out: Attachment[] = [];
+  for (const attachment of attachments) {
+    if (attachment.kind !== "file") {
+      out.push(attachment);
+      continue;
+    }
+    if (!attachment.file) {
+      throw new Error(`"${attachment.name}" needs to be attached again for the remote server.`);
+    }
+    if (attachment.file.size > REMOTE_UPLOAD_LIMIT) {
+      throw new Error(`"${attachment.name}" is larger than 30 MB.`);
+    }
+    const response = await post("/api/uploads", {
+      method: "POST",
+      headers: {
+        "content-type": attachment.file.type || "application/octet-stream",
+        "x-kodbot-filename": encodeURIComponent(attachment.name),
+      },
+      body: attachment.file,
+    });
+    const saved = (await response.json().catch(() => null)) as
+      | { path?: string; name?: string; size?: number; error?: string }
+      | null;
+    if (!response.ok) {
+      throw new Error(saved?.error || `Couldn't upload ${attachment.name} (HTTP ${response.status}).`);
+    }
+    if (!saved?.path) throw new Error(`The remote server didn't return a path for ${attachment.name}.`);
+    out.push({
+      ...attachment,
+      path: saved.path,
+      name: saved.name || attachment.name,
+      size: typeof saved.size === "number" ? saved.size : attachment.size,
+    });
+  }
+  return out;
 }
