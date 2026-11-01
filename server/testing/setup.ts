@@ -12,6 +12,11 @@ import { removeTempDir } from "./cleanup.ts";
 const home = mkdtempSync(join(tmpdir(), "omb-test-home-"));
 process.env.HOME = home;
 process.env.USERPROFILE = home;
+// Provider data roots can override HOME. An inherited HERMES_HOME made the
+// driver suite write its scratch provider block into the developer's real
+// ~/.hermes/config.yaml — which still looked like a pass because the block
+// was already there. Keep every run inside the throwaway home.
+delete process.env.HERMES_HOME;
 // The companion keeps its paired devices in its own directory, and resolves
 // it from homedir() the same way — so the redirect above already covers it.
 // Named explicitly all the same: the device tests delete this directory

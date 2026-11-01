@@ -147,6 +147,14 @@ export function readMemoryTopic(botId: string, name: string): string | null {
   }
 }
 
+/** Write one topic file from the memory importer. The same name gate as
+ * reading applies, so an imported file cannot escape memory/. */
+export function writeMemoryTopic(botId: string, name: string, text: string): void {
+  if (!isMemoryTopicName(name)) throw Object.assign(new Error("invalid topic name"), { status: 400 });
+  ensureWorkspace(botId);
+  writeFileSync(join(workspaceDir(botId), "memory", name), text, { mode: 0o600 });
+}
+
 /** The memory block appended to a bot's system prompt. Always present for
  * bots with a workspace, so the bot knows the mechanism exists even before
  * it has written anything. Content from other bots or imported files must

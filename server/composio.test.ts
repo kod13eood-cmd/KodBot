@@ -14,6 +14,7 @@ let api: Server;
 let base = "";
 const calls: Array<{ method: string; path: string; query: string; body: any }> = [];
 let malformedConnectedAccounts = false;
+let githubRemoved = false;
 
 beforeAll(async () => {
   api = createServer(async (req, res) => {
@@ -48,7 +49,7 @@ beforeAll(async () => {
       res.writeHead(200, { "content-type": "application/json" });
       return res.end(JSON.stringify({
         items: [
-          { slug: "github", connected_account: { id: "ca_github", status: "ACTIVE" } },
+          githubRemoved ? { slug: "github" } : { slug: "github", connected_account: { id: "ca_github", status: "ACTIVE" } },
           { slug: "gmail", is_no_auth: true },
           { slug: "slack" },
         ],
@@ -59,9 +60,26 @@ beforeAll(async () => {
       if (malformedConnectedAccounts) return res.end(JSON.stringify({ items: {} }));
       return res.end(JSON.stringify({
         items: [
-          { toolkit: { slug: "github" }, status: "ACTIVE", updated_at: "2026-08-17T08:00:00Z" },
-          { toolkit: { slug: "notion" }, status: "INITIATED", updated_at: "2026-08-17T08:01:00Z" },
-          { toolkit: { slug: "linear" }, status: "EXPIRED", updated_at: "2026-08-17T08:02:00Z" },
+          {
+            id: "ca_github_primary",
+            toolkit: { slug: "github" },
+            status: "ACTIVE",
+            alias: "octocat",
+            updated_at: "2026-08-17T08:00:00Z",
+          },
+          {
+            id: "ca_notion_primary",
+            toolkit: { slug: "notion" },
+            status: "INITIATED",
+            updated_at: "2026-08-17T08:01:00Z",
+          },
+          {
+            id: "ca_linear_primary",
+            toolkit: { slug: "linear" },
+            status: "EXPIRED",
+            alias: "old-workspace",
+            updated_at: "2026-08-17T08:02:00Z",
+          },
         ],
       }));
     }
@@ -70,6 +88,7 @@ beforeAll(async () => {
       return res.end(JSON.stringify({ redirect_url: `https://connect.composio.dev/link/${body.toolkit}` }));
     }
     if (req.method === "DELETE" && url.pathname === "/api/v3.1/connected_accounts/ca_github") {
+      githubRemoved = true;
       res.writeHead(200, { "content-type": "application/json" });
       return res.end(JSON.stringify({ success: true }));
     }
@@ -145,15 +164,31 @@ describe.sequential("Composio Sessions", () => {
       composio: { apiKey: "ak_test", userId: "opencrew_existing", sessionId: "trs_test" },
     };
     await expect(connectionStatus(cfg, ["github", "gmail", "slack", "notion", "linear"])).resolves.toEqual({
-      github: { connected: true, pending: false, status: "ACTIVE" },
-      gmail: { connected: true, pending: false, status: "ACTIVE" },
-      slack: { connected: false, pending: false, status: "not_connected" },
-      notion: { connected: false, pending: true, status: "INITIATED" },
-      linear: { connected: false, pending: false, status: "EXPIRED" },
+      github: {
+        connected: true,
+        pending: false,
+        status: "ACTIVE",
+        accounts: [{ id: "ca_github_primary", status: "ACTIVE", alias: "octocat" }],
+      },
+      gmail: { connected: true, pending: false, status: "ACTIVE", accounts: [] },
+      slack: { connected: false, pending: false, status: "not_connected", accounts: [] },
+      notion: {
+        connected: false,
+        pending: true,
+        status: "INITIATED",
+        accounts: [{ id: "ca_notion_primary", status: "INITIATED", alias: undefined }],
+      },
+      linear: {
+        connected: false,
+        pending: false,
+        status: "EXPIRED",
+        accounts: [{ id: "ca_linear_primary", status: "EXPIRED", alias: "old-workspace" }],
+      },
     });
     await expect(authorizeService(cfg, "github")).resolves.toEqual({
       url: "https://connect.composio.dev/link/github",
     });
+    githubRemoved = false;
     await expect(removeService(cfg, "github")).resolves.toEqual({ removed: 1 });
     expect(calls.some(
       (call) => call.method === "DELETE"
@@ -167,10 +202,13 @@ describe.sequential("Composio Sessions", () => {
       composio: { apiKey: "ak_test", userId: "opencrew_existing", sessionId: "trs_test" },
     };
     malformedConnectedAccounts = true;
+    githubRemoved = false;
     try {
+      // The account-lifecycle read failed, so only the session toolkit state
+      // remains — and the shape still carries an explicit empty account list.
       await expect(connectionStatus(cfg, ["github", "slack"])).resolves.toEqual({
-        github: { connected: true, pending: false, status: "ACTIVE" },
-        slack: { connected: false, pending: false, status: "not_connected" },
+        github: { connected: true, pending: false, status: "ACTIVE", accounts: [] },
+        slack: { connected: false, pending: false, status: "not_connected", accounts: [] },
       });
     } finally {
       malformedConnectedAccounts = false;

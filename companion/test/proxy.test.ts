@@ -253,7 +253,9 @@ describe("the sidecar in front of an unmodified harness", () => {
     // verbs instead, so a stolen device token cannot smuggle those fields.
     const { body } = await device("GET", "/api/bots");
     const botId = body.bots[0].id;
-    expect((await device("PATCH", `/api/bots/${botId}`, { body: { autoApprove: true } })).status).toBe(404);
+    expect((await device("PATCH", `/api/bots/${botId}`, { body: { autoApprove: true } })).status).toBe(403);
+    // Not a route the harness has at all: default-deny reports it as missing
+    // rather than pretending the phone reached a real resource.
     expect((await device("PATCH", `/api/groups/not-a-room`, { body: { unread: false } })).status).toBe(404);
   });
 

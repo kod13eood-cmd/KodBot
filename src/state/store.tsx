@@ -159,6 +159,8 @@ export interface Bot {
   cwd?: string;
   /** auto mode: the bot approves its own tool permissions */
   autoApprove?: boolean;
+  /** route each task to the strongest available model */
+  autoModel?: boolean;
   /** tools this bot may always use without asking */
   alwaysAllow?: string[];
   /** speak this bot's replies aloud as they settle */
@@ -403,6 +405,7 @@ export type Action =
           | "mascotExpression"
           | "role"
           | "autoApprove"
+          | "autoModel"
           | "speakReplies"
           | "voice"
           | "pinned"

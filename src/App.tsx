@@ -16,6 +16,7 @@ import { DesktopCapabilitiesProvider } from "@/components/DesktopCapabilities";
 import { RoutinesPage } from "@/components/RoutinesPage";
 import { NoEngines } from "@/components/NoEngines";
 import { CommandPalette } from "@/components/CommandPalette";
+import { ShortcutsSheet } from "@/components/ShortcutsSheet";
 import { useI18n } from "@/lib/i18n";
 
 function Shell() {
@@ -137,6 +138,8 @@ function Shell() {
       {/* mounted after the modals: same z-50 tier, so DOM order keeps the
           palette on top when one of them is open underneath */}
       <CommandPalette />
+      {/* App-wide shortcut reference; owns the ⌘/ chord like the palette. */}
+      <ShortcutsSheet />
       </div>
     </div>
   );

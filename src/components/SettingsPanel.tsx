@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronLeft, Crown, FolderOpen, Sparkles, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, Crown, ExternalLink, FileCode2, FolderOpen, RefreshCw, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api, useStore, type Bot } from "@/state/store";
 import { BotRoleIcon, CrewAvatar } from "./Avatar";
@@ -194,6 +194,18 @@ function MemoryCard({ bot }: { bot: Bot }) {
   const [topics, setTopics] = useState<MemoryTopic[]>([]);
   const [saving, setSaving] = useState(false);
   const [topic, setTopic] = useState<{ name: string; text: string } | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importMode, setImportMode] = useState<"append" | "replace" | "topic">("append");
+  const [importTopic, setImportTopic] = useState("imported-memory");
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [promptCopied, setPromptCopied] = useState(false);
+
+  const importPrompt =
+    "Please summarize everything you remember about me and my work in durable Markdown. " +
+    "Include who I am, my preferences, active projects, important decisions, people and accounts I use, " +
+    "and open questions. Do not invent details. Return only the summary.";
 
   const load = async () => {
     setLoading(true);
@@ -240,6 +252,47 @@ function MemoryCard({ bot }: { bot: Bot }) {
     }
   };
 
+  const importMemory = async () => {
+    if (!importText.trim()) return;
+    if (
+      importMode === "replace" &&
+      !window.confirm(t("Replace the current MEMORY.md with this text? This cannot be undone."))
+    ) {
+      return;
+    }
+    setImporting(true);
+    setImportError(null);
+    try {
+      const result: { text: string; truncated: boolean; topics: MemoryTopic[] } = await api(
+        `/api/bots/${bot.id}/memory/import`,
+        {
+          method: "POST",
+          body: JSON.stringify({ text: importText, mode: importMode, topic: importTopic }),
+        },
+      );
+      setText(result.text);
+      setTruncated(result.truncated);
+      setTopics(result.topics);
+      setDirty(false);
+      setImportOpen(false);
+      setImportText("");
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const copyImportPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(importPrompt);
+      setPromptCopied(true);
+      window.setTimeout(() => setPromptCopied(false), 1800);
+    } catch {
+      setImportError(t("The browser blocked clipboard access. Select the prompt and copy it manually."));
+    }
+  };
+
   return (
     <div className="rounded-xl bg-card p-4">
       <button
@@ -281,6 +334,17 @@ function MemoryCard({ bot }: { bot: Bot }) {
 
       {open && !loading && !topic && (
         <div className="mt-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-[11.5px] text-ink-secondary">
+              {t("Bring context from ChatGPT, Claude, or another assistant.")}
+            </span>
+            <button
+              onClick={() => setImportOpen(true)}
+              className="shrink-0 rounded-lg bg-raised px-2.5 py-1.5 text-[12px] text-ink hover:bg-raised-hover"
+            >
+              {t("Import memory")}
+            </button>
+          </div>
           <textarea
             className={cn(inputCls, "min-h-[160px] resize-y font-mono text-[12.5px] leading-relaxed")}
             value={text}
@@ -328,6 +392,293 @@ function MemoryCard({ bot }: { bot: Bot }) {
       )}
 
       {error && <div className="mt-2 text-[12px] text-danger">{error}</div>}
+
+      {importOpen && (
+        <div
+          className="fixed inset-0 z-[65] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => event.target === event.currentTarget && setImportOpen(false)}
+        >
+          <div className="flex max-h-[min(760px,90vh)] w-full max-w-[620px] flex-col overflow-hidden rounded-2xl border border-hairline/60 bg-panel shadow-2xl">
+            <header className="flex items-start justify-between gap-3 border-b border-hairline/40 px-5 py-4">
+              <div>
+                <div className="text-[16px] font-semibold text-ink">{t("Import memory")}</div>
+                <div className="mt-0.5 text-[12px] text-ink-secondary">
+                  {t("Copy the prompt into your other assistant, then paste its answer here.")}
+                </div>
+              </div>
+              <button
+                onClick={() => setImportOpen(false)}
+                aria-label={t("Close")}
+                className="rounded-lg p-2 text-ink-secondary hover:bg-raised hover:text-ink"
+              >
+                <X size={18} />
+              </button>
+            </header>
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-[12px] font-medium text-ink">{t("1. Get the summary")}</span>
+                <button
+                  onClick={() => void copyImportPrompt()}
+                  className="rounded-lg bg-raised px-2.5 py-1.5 text-[11.5px] text-ink hover:bg-raised-hover"
+                >
+                  {promptCopied ? t("Copied") : t("Copy prompt")}
+                </button>
+              </div>
+              <pre className="max-h-[120px] overflow-auto whitespace-pre-wrap rounded-lg border border-hairline/40 bg-inset p-3 text-[11.5px] leading-relaxed text-ink-secondary">
+                {importPrompt}
+              </pre>
+              <div className="mb-2 mt-4 text-[12px] font-medium text-ink">{t("2. Paste the answer")}</div>
+              <textarea
+                value={importText}
+                onChange={(event) => setImportText(event.target.value)}
+                rows={7}
+                placeholder={t("Paste the memory summary here…")}
+                className={cn(inputCls, "min-h-[140px] resize-y text-[12.5px] leading-relaxed")}
+              />
+              <div className="mb-2 mt-4 text-[12px] font-medium text-ink">{t("3. Where should it go?")}</div>
+              <div className="flex flex-wrap gap-1.5">
+                {([
+                  ["append", t("Append to MEMORY.md")],
+                  ["replace", t("Replace MEMORY.md")],
+                  ["topic", t("Save as a topic file")],
+                ] as const).map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    onClick={() => setImportMode(mode)}
+                    className={cn(
+                      "rounded-lg border px-3 py-1.5 text-[11.5px]",
+                      importMode === mode
+                        ? "border-accent/70 bg-accent/10 text-ink"
+                        : "border-hairline/50 bg-inset text-ink-secondary hover:text-ink",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {importMode === "topic" && (
+                <input
+                  value={importTopic}
+                  onChange={(event) => setImportTopic(event.target.value)}
+                  className={cn(inputCls, "mt-2 font-mono text-[12.5px]")}
+                  placeholder={t("imported-memory")}
+                  aria-label={t("Topic file name")}
+                />
+              )}
+              {importError && <div className="mt-3 text-[12px] text-danger">{importError}</div>}
+            </div>
+            <footer className="flex justify-end gap-2 border-t border-hairline/40 px-5 py-3">
+              <button
+                onClick={() => setImportOpen(false)}
+                className="rounded-lg px-3 py-2 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink"
+              >
+                {t("Cancel")}
+              </button>
+              <button
+                onClick={() => void importMemory()}
+                disabled={importing || !importText.trim()}
+                className="rounded-lg bg-accent px-4 py-2 text-[12.5px] font-medium text-white hover:brightness-110 disabled:opacity-40"
+              >
+                {importing ? t("Importing…") : t("Import")}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface PageSummary {
+  name: string;
+  title: string;
+  bytes: number;
+  updatedAt: number;
+}
+
+/** Self-contained HTML pages the bot writes into ./pages/. The document is
+ * served with a sandbox CSP and framed without same-origin access. */
+function PagesCard({ bot }: { bot: Bot }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [pages, setPages] = useState<PageSummary[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<PageSummary | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const pageUrl = (name: string) =>
+    `${window.location.origin}/api/bots/${encodeURIComponent(bot.id)}/pages/${encodeURIComponent(name)}`;
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result: { pages: PageSummary[] } = await api(`/api/bots/${bot.id}/pages`);
+      setPages(result.pages);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copy = async (page: PageSummary) => {
+    try {
+      await navigator.clipboard.writeText(pageUrl(page.name));
+      setCopied(page.name);
+      window.setTimeout(() => setCopied((current) => (current === page.name ? null : current)), 1800);
+    } catch {
+      setError(t("The browser blocked clipboard access; open the page and copy its URL."));
+    }
+  };
+
+  const remove = async (page: PageSummary) => {
+    if (!window.confirm(t("Delete the page “{name}”?", { name: page.title }))) return;
+    setError(null);
+    try {
+      await api(`/api/bots/${bot.id}/pages/${encodeURIComponent(page.name)}`, { method: "DELETE" });
+      if (selected?.name === page.name) setSelected(null);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  return (
+    <div className="rounded-xl bg-card p-4">
+      <button
+        className="flex w-full items-center justify-between gap-4 text-left"
+        aria-expanded={open}
+        onClick={() => {
+          const next = !open;
+          setOpen(next);
+          if (next) void load();
+        }}
+      >
+        <div>
+          <div className="text-[15px] font-medium text-ink">{t("Pages")}</div>
+          <div className="mt-0.5 text-[13px] text-ink-secondary">
+            {t("Dashboards, checklists, and reports the bot builds as private web pages.")}
+          </div>
+        </div>
+        <ChevronDown size={16} className={cn("shrink-0 text-ink-secondary transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div className="mt-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11.5px] text-ink-secondary">
+              {t("Pages run in a sandbox and cannot read your chat or credentials.")}
+            </span>
+            <button
+              onClick={() => void load()}
+              disabled={loading}
+              className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[12px] text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40"
+            >
+              <RefreshCw size={12} className={cn(loading && "animate-spin")} /> {t("Refresh")}
+            </button>
+          </div>
+          {loading && <div className="mt-2 text-[13px] text-ink-secondary">{t("Loading…")}</div>}
+          {!loading && pages?.length === 0 && (
+            <div className="mt-2 rounded-lg border border-dashed border-hairline/50 px-3 py-4 text-[12.5px] leading-relaxed text-ink-secondary">
+              {t("No pages yet. Ask this bot to build a dashboard, checklist, or report — it will appear here.")}
+            </div>
+          )}
+          {!loading && pages && pages.length > 0 && (
+            <div className="mt-2 overflow-hidden rounded-lg border border-hairline/40">
+              {pages.map((page) => (
+                <div
+                  key={page.name}
+                  className="flex items-center gap-2 border-b border-hairline/40 px-3 py-2 last:border-b-0"
+                >
+                  <FileCode2 size={15} className="shrink-0 text-ink-secondary" />
+                  <button
+                    onClick={() => setSelected(page)}
+                    className="min-w-0 flex-1 text-left hover:text-accent"
+                    title={t("Open {name}", { name: page.name })}
+                  >
+                    <span className="block truncate text-[12.5px] font-medium text-ink">{page.title}</span>
+                    <span className="block truncate font-mono text-[10.5px] text-ink-secondary/70">
+                      {page.name} · {formatBytes(page.bytes)}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => void copy(page)}
+                    className="shrink-0 rounded-md px-2 py-1 text-[11px] text-ink-secondary hover:bg-raised hover:text-ink"
+                  >
+                    {copied === page.name ? t("Copied") : t("Copy link")}
+                  </button>
+                  <button
+                    onClick={() => setSelected(page)}
+                    aria-label={t("Open {name}", { name: page.title })}
+                    className="shrink-0 rounded-md p-1 text-ink-secondary hover:bg-raised hover:text-ink"
+                  >
+                    <ExternalLink size={13} />
+                  </button>
+                  <button
+                    onClick={() => void remove(page)}
+                    aria-label={t("Delete {name}", { name: page.title })}
+                    className="shrink-0 rounded-md p-1 text-ink-secondary hover:bg-danger/10 hover:text-danger"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="mt-2 text-[11.5px] text-ink-secondary/80">
+            {t("Tip: ask for “a dashboard with our open orders” or “a checklist I can share with the team”.")}
+          </div>
+        </div>
+      )}
+
+      {error && <div className="mt-2 text-[12px] text-danger">{error}</div>}
+
+      {selected && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => event.target === event.currentTarget && setSelected(null)}
+        >
+          <div className="flex h-[min(860px,90vh)] w-full max-w-[1100px] flex-col overflow-hidden rounded-2xl border border-hairline/60 bg-panel shadow-2xl">
+            <header className="flex items-center gap-3 border-b border-hairline/40 px-4 py-3">
+              <FileCode2 size={16} className="shrink-0 text-accent" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[14px] font-semibold text-ink">{selected.title}</div>
+                <div className="truncate font-mono text-[10.5px] text-ink-secondary">{selected.name}</div>
+              </div>
+              <button
+                onClick={() => void copy(selected)}
+                className="rounded-lg px-2.5 py-1.5 text-[12px] text-ink-secondary hover:bg-raised hover:text-ink"
+              >
+                {copied === selected.name ? t("Copied") : t("Copy link")}
+              </button>
+              <button
+                onClick={() => window.open(pageUrl(selected.name), "_blank", "noopener,noreferrer")}
+                className="rounded-lg p-2 text-ink-secondary hover:bg-raised hover:text-ink"
+                aria-label={t("Open in a new window")}
+                title={t("Open in a new window")}
+              >
+                <ExternalLink size={15} />
+              </button>
+              <button
+                onClick={() => setSelected(null)}
+                className="rounded-lg p-2 text-ink-secondary hover:bg-raised hover:text-ink"
+                aria-label={t("Close page")}
+              >
+                <X size={17} />
+              </button>
+            </header>
+            <iframe
+              src={pageUrl(selected.name)}
+              title={selected.title}
+              sandbox="allow-scripts"
+              referrerPolicy="no-referrer"
+              className="min-h-0 flex-1 border-0 bg-white"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -350,6 +701,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
         | "mascotExpression"
         | "role"
         | "autoApprove"
+        | "autoModel"
         | "speakReplies"
         | "voice"
         | "chiefOfStaff"
@@ -683,6 +1035,41 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
             <ModelPicker bot={bot} />
           </div>
 
+          <div className="rounded-xl bg-card p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[15px] font-medium text-ink">{t("Auto model")}</div>
+                <div className="mt-0.5 text-[13px] text-ink-secondary">
+                  {t(
+                    "Pick the best available model for each task. Complex work gets the strongest engine; short requests get the fastest one.",
+                  )}
+                </div>
+                {bot.autoModel && (
+                  <div className="mt-1 text-[11.5px] text-ink-secondary/80">
+                    {t("The picker shows the last routed model; the next task is routed again.")}
+                  </div>
+                )}
+              </div>
+              <button
+                role="switch"
+                aria-checked={Boolean(bot.autoModel)}
+                aria-label={t("Auto model")}
+                onClick={() => patch({ autoModel: !bot.autoModel })}
+                className={cn(
+                  "relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors",
+                  bot.autoModel ? "bg-accent" : "bg-raised",
+                )}
+              >
+                <span
+                  className={cn(
+                    "absolute top-[3px] size-5 rounded-full bg-white transition-all",
+                    bot.autoModel ? "left-[21px]" : "left-[3px]",
+                  )}
+                />
+              </button>
+            </div>
+          </div>
+
           {!!engine?.capabilities?.effortLevels?.length && (
             <div className="rounded-xl bg-card p-4">
               <div className="text-[15px] font-medium text-ink">{t("Effort")}</div>
@@ -747,6 +1134,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
 
           {/* keyed so switching bots never shows one bot's notes under another's name */}
           <MemoryCard key={bot.id} bot={bot} />
+          <PagesCard key={`pages:${bot.id}`} bot={bot} />
 
           <div className="flex items-center justify-between gap-4 rounded-xl bg-card p-4">
             <div>

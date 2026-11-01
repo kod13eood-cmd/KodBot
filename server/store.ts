@@ -255,6 +255,9 @@ export interface BotRecord {
    * working instead of stopping to ask. Questions it asks YOU still come
    * through, and a short list of destructive commands still stops it. */
   autoApprove?: boolean;
+  /** Choose the strongest available model for each task instead of pinning
+   * one model forever. The last routed choice remains visible in the UI. */
+  autoModel?: boolean;
   /** Tools this bot may always use without asking, even outside auto mode
    * (set by "Always allow" on an approval card). */
   alwaysAllow?: string[];

@@ -31,7 +31,9 @@ export function browserDesktopCapabilities(): DesktopCapabilities {
 }
 
 export function initialDesktopCapabilities(): DesktopCapabilities {
-  const platform = window.ogb?.platform;
+  // `globalThis.window` is absent in node-based unit tests; optional chaining
+  // keeps the pure module importable without pretending a browser exists.
+  const platform = globalThis.window?.ogb?.platform;
   if (!platform) return browserCapabilities;
   const isMac = platform === "darwin";
   const dictation: DesktopCapabilities["dictation"] = {

@@ -705,6 +705,74 @@ const BULGARIAN: Record<string, string> = {
   "Pick the job this bot presents as. It changes the badge and idle motion.":
     "Изберете професията, с която ботът се представя. Тя променя значката и движението в покой.",
   "Choose a role": "Изберете роля",
+  // Memory import
+  "Bring context from ChatGPT, Claude, or another assistant.":
+    "Пренесете контекст от ChatGPT, Claude или друг асистент.",
+  "Import memory": "Импортирай памет",
+  "Copy the prompt into your other assistant, then paste its answer here.":
+    "Копирайте подканата в другия асистент, след което поставете отговора тук.",
+  "1. Get the summary": "1. Вземете обобщението",
+  "Copy prompt": "Копирай подканата",
+  "2. Paste the answer": "2. Поставете отговора",
+  "Paste the memory summary here…": "Поставете обобщението на паметта тук…",
+  "3. Where should it go?": "3. Къде да отиде?",
+  "Append to MEMORY.md": "Добави към MEMORY.md",
+  "Replace MEMORY.md": "Замени MEMORY.md",
+  "Save as a topic file": "Запази като тематичен файл",
+  "imported-memory": "imported-memory",
+  "Topic file name": "Име на тематичния файл",
+  "Importing…": "Импортиране…",
+  "Import": "Импортирай",
+  "Replace the current MEMORY.md with this text? This cannot be undone.":
+    "Да се замени ли текущият MEMORY.md с този текст? Това не може да бъде отменено.",
+  "The browser blocked clipboard access. Select the prompt and copy it manually.":
+    "Браузърът блокира достъпа до клипборда. Изберете подканата и я копирайте ръчно.",
+  // Pages
+  "Pages": "Страници",
+  "Dashboards, checklists, and reports the bot builds as private web pages.":
+    "Табла, списъци и отчети, които ботът създава като частни уеб страници.",
+  "Pages run in a sandbox and cannot read your chat or credentials.":
+    "Страниците се изпълняват в пясъчник и не могат да четат чата или идентификационните ви данни.",
+  "No pages yet. Ask this bot to build a dashboard, checklist, or report — it will appear here.":
+    "Още няма страници. Помолете бота да създаде табло, списък или отчет — те ще се появят тук.",
+  "Open {name}": "Отвори {name}",
+  "Copy link": "Копирай връзката",
+  "Delete {name}": "Изтрий {name}",
+  "Tip: ask for “a dashboard with our open orders” or “a checklist I can share with the team”.":
+    "Съвет: поискайте „табло с отворените поръчки“ или „списък, който да споделя с екипа“.",
+  "Delete the page “{name}”?": "Да се изтрие ли страницата „{name}“?",
+  "Open in a new window": "Отвори в нов прозорец",
+  "Close page": "Затвори страницата",
+  "The browser blocked clipboard access; open the page and copy its URL.":
+    "Браузърът блокира достъпа до клипборда; отворете страницата и копирайте URL адреса ѝ.",
+  // Auto model
+  "Auto model": "Автоматичен модел",
+  "Pick the best available model for each task. Complex work gets the strongest engine; short requests get the fastest one.":
+    "Избира най-добрия наличен модел за всяка задача. Сложната работа получава най-силния двигател; кратките заявки — най-бързия.",
+  "The picker shows the last routed model; the next task is routed again.":
+    "Изборът показва последния използван модел; следващата задача се маршрутизира отново.",
+  // Keyboard shortcuts
+  "Keyboard shortcuts": "Клавишни комбинации",
+  "Work faster with the keyboard. These shortcuts work anywhere in KodBot.":
+    "Работете по-бързо с клавиатурата. Тези комбинации работят навсякъде в KodBot.",
+  "Every app-wide chord in one place.": "Всички глобални комбинации на едно място.",
+  "Show all shortcuts": "Покажи всички комбинации",
+  "Navigation": "Навигация",
+  "Jump to a bot": "Към бот",
+  "Previous bot": "Предишен бот",
+  "Next bot": "Следващ бот",
+  "Chat": "Чат",
+  "New line": "Нов ред",
+  "Edit last message when the box is empty": "Редактирай последното съобщение, когато полето е празно",
+  "Send a room bulletin": "Публикувай бюлетин в стая",
+  "Close a panel or dialog": "Затвори панел или диалог",
+  "Close keyboard shortcuts": "Затвори клавишните комбинации",
+  "Press Esc to close": "Натиснете Esc за затваряне",
+  // Composer and remote paths
+  "Dismiss": "Отхвърли",
+  "Uploading attachment": "Качване на прикачен файл",
+  "Uploading attachment…": "Качване на прикачен файл…",
+  "This folder is on the remote server.": "Тази папка е на отдалечения сървър.",
 };
 
 function initialLocale(): Locale {

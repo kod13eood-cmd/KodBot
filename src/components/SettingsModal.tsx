@@ -13,6 +13,7 @@ import { CompanionSection } from "./CompanionSection";
 import { Card } from "./SettingsPrimitives";
 import { UsageSection } from "./UsageSection";
 import { VoiceSettings } from "./VoiceSettings";
+import { openShortcutsSheet, SHORTCUTS_KEY_LABEL } from "./ShortcutsSheet";
 import { cn } from "@/lib/cn";
 import { LOCALE_OPTIONS, useI18n } from "@/lib/i18n";
 import type { ServerConnectionState } from "@/types/ogb";
@@ -99,6 +100,26 @@ function UpdatesRow() {
           : s?.status === "downloaded"
             ? t("Restart and install")
             : t("Check for updates")}
+      </button>
+    </Card>
+  );
+}
+
+function ShortcutsRow() {
+  const { t } = useI18n();
+  return (
+    <Card
+      title={t("Keyboard shortcuts")}
+      subtitle={t("Every app-wide chord in one place.")}
+    >
+      <button
+        onClick={openShortcutsSheet}
+        className="flex w-full items-center justify-between gap-3 rounded-lg border border-hairline/40 px-3 py-2 text-left text-[13px] text-ink hover:bg-raised"
+      >
+        <span>{t("Show all shortcuts")}</span>
+        <kbd className="rounded-md border border-hairline/50 bg-inset px-1.5 py-0.5 text-[11px] text-ink-secondary">
+          {SHORTCUTS_KEY_LABEL}
+        </kbd>
       </button>
     </Card>
   );
@@ -323,6 +344,7 @@ export function SettingsModal() {
                   <ProfileFields />
                 </Card>
                 <ServerCard />
+                <ShortcutsRow />
                 <LanguageCard />
                 <UpdatesRow />
               </>
