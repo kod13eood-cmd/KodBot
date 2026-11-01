@@ -32,6 +32,7 @@ import {
   withInstanceCli,
   EVENTS_DIR,
   NATIVE_DIR,
+  DATA_DIR,
 } from "./config.ts";
 import { augmentedPath, findCliCandidates, resetPathCache } from "./env-path.ts";
 import { describeSpawnFailure, execCli } from "./procs.ts";
@@ -3320,6 +3321,35 @@ const server = createServer(async (req, res) => {
         ...stored,
         mime: String(req.headers["content-type"] ?? "").split(";")[0].trim() || "application/octet-stream",
       });
+    }
+
+    // Android updates over the paired companion, for phones that cannot
+    // reach GitHub. The files are published on this host into ~/.kodbot/android.
+    if (method === "GET" && path === "/api/android/latest.json") {
+      try {
+        const body = readFileSync(join(DATA_DIR, "android", "latest.json"), "utf8");
+        res.writeHead(200, {
+          "content-type": "application/json",
+          "cache-control": "no-store",
+        });
+        return res.end(body);
+      } catch {
+        return json(res, 404, { error: "no Android update has been published on this host" });
+      }
+    }
+    if (method === "GET" && path === "/api/android/apk") {
+      try {
+        const bytes = readFileSync(join(DATA_DIR, "android", "KodBot-android.apk"));
+        res.writeHead(200, {
+          "content-type": "application/vnd.android.package-archive",
+          "content-length": String(bytes.byteLength),
+          "content-disposition": 'attachment; filename="KodBot-android.apk"',
+          "cache-control": "no-store",
+        });
+        return res.end(bytes);
+      } catch {
+        return json(res, 404, { error: "no Android APK has been published on this host" });
+      }
     }
 
     // ── remote companion control ──────────────────────────────────────

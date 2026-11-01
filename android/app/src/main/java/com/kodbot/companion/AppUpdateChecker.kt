@@ -25,8 +25,34 @@ object AppUpdateChecker {
     private const val MANIFEST_URL =
         "https://raw.githubusercontent.com/kod13eood-cmd/KodBot/main/android/latest.json"
 
-    suspend fun latest(installedVersionCode: Long): AppUpdate? = withContext(Dispatchers.IO) {
-        val connection = (URL(MANIFEST_URL).openConnection() as HttpURLConnection).apply {
+    suspend fun latest(
+        installedVersionCode: Long,
+        fallbackBaseUrl: String? = null,
+    ): AppUpdate? = withContext(Dispatchers.IO) {
+        val sources = buildList {
+            add(MANIFEST_URL)
+            fallbackBaseUrl?.trim()?.trimEnd('/')?.takeIf(String::isNotEmpty)?.let {
+                add("$it/api/android/latest.json")
+            }
+        }
+        val candidates = mutableListOf<AppUpdate>()
+        var lastError: Exception? = null
+        var succeeded = false
+        for ((index, source) in sources.withIndex()) {
+            try {
+                val update = parse(read(source), fallbackBaseUrl, allowHttp = index > 0)
+                succeeded = true
+                if (update != null) candidates += update
+            } catch (error: Exception) {
+                lastError = error
+            }
+        }
+        if (!succeeded && lastError != null) throw lastError
+        candidates.maxByOrNull { it.versionCode }?.takeIf { it.versionCode > installedVersionCode }
+    }
+
+    private fun read(source: String): String {
+        val connection = (URL(source).openConnection() as HttpURLConnection).apply {
             connectTimeout = 10_000
             readTimeout = 15_000
             requestMethod = "GET"
@@ -37,22 +63,39 @@ object AppUpdateChecker {
             if (connection.responseCode != HttpURLConnection.HTTP_OK) {
                 throw IllegalStateException("Update server returned HTTP ${connection.responseCode}.")
             }
-            val body = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-            val json = JSONObject(body)
-            val versionCode = json.optLong("versionCode", 0)
-            val versionName = json.optString("versionName").trim()
-            val apkUrl = json.optString("apkUrl").trim()
-            if (versionCode <= 0 || versionName.isBlank() || !apkUrl.startsWith("https://")) return@withContext null
-            if (versionCode <= installedVersionCode) return@withContext null
-            AppUpdate(
-                versionCode = versionCode,
-                versionName = versionName,
-                apkUrl = apkUrl,
-                notes = json.optString("notes").trim(),
-            )
+            return connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
         } finally {
             connection.disconnect()
         }
+    }
+
+    /** The GitHub manifest uses an absolute HTTPS APK URL. The companion
+     * fallback is served by the paired host, whose harness port is 8799; an
+     * absolute HTTP URL or a host-relative one is accepted only there. */
+    private fun parse(body: String, fallbackBaseUrl: String?, allowHttp: Boolean): AppUpdate? {
+        val json = JSONObject(body)
+        val versionCode = json.optLong("versionCode", 0)
+        val versionName = json.optString("versionName").trim()
+        val rawApkUrl = json.optString("apkUrl").trim()
+        if (versionCode <= 0 || versionName.isBlank() || rawApkUrl.isBlank()) return null
+        val harnessBase = fallbackBaseUrl?.let { base ->
+            runCatching {
+                val uri = java.net.URI(base)
+                java.net.URI("http", null, uri.host, 8799, null, null, null).toString()
+            }.getOrNull()
+        }
+        val apkUrl = when {
+            rawApkUrl.startsWith("https://") -> rawApkUrl
+            allowHttp && rawApkUrl.startsWith("http://") -> rawApkUrl
+            rawApkUrl.startsWith("/") && harnessBase != null -> harnessBase.trimEnd('/') + rawApkUrl
+            else -> return null
+        }
+        return AppUpdate(
+            versionCode = versionCode,
+            versionName = versionName,
+            apkUrl = apkUrl,
+            notes = json.optString("notes").trim(),
+        )
     }
 
     suspend fun download(context: Context, update: AppUpdate): File = withContext(Dispatchers.IO) {

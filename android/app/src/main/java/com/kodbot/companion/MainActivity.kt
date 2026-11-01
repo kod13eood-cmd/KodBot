@@ -182,6 +182,7 @@ class MainActivity : ComponentActivity() {
                     appVersion = appVersionName,
                     onCheckForUpdates = { checkForUpdates(manual = true) },
                     onInstallUpdate = ::installUpdate,
+                    onDownloadApk = ::downloadApk,
                     onDismissError = { actionError = null },
                     onPair = ::pair,
                     onScanQr = ::scanPairingQr,
@@ -552,7 +553,7 @@ class MainActivity : ComponentActivity() {
         updateState = updateState.copy(checking = true, error = null, message = null)
         lifecycleScope.launch {
             updateState = try {
-                val latest = AppUpdateChecker.latest(installedVersionCode)
+                val latest = AppUpdateChecker.latest(installedVersionCode, connection?.baseUrl)
                 if (latest != null) {
                     updateState.copy(info = latest, checking = false, error = null)
                 } else {
@@ -588,6 +589,13 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    private fun downloadApk() {
+        val saved = connection ?: return
+        val uri = runCatching { java.net.URI(saved.baseUrl) }.getOrNull() ?: return
+        val url = java.net.URI("http", null, uri.host, 8799, "/api/android/apk", null, null).toString()
+        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     }
 
     private fun disconnect() {
@@ -648,6 +656,7 @@ private fun KodBotScreen(
     appVersion: String,
     onCheckForUpdates: () -> Unit,
     onInstallUpdate: () -> Unit,
+    onDownloadApk: () -> Unit,
     onDismissError: () -> Unit,
     onPair: (String, String) -> Unit,
     onScanQr: () -> Unit,
@@ -718,6 +727,7 @@ private fun KodBotScreen(
                     appVersion = appVersion,
                     onCheckForUpdates = onCheckForUpdates,
                     onInstallUpdate = onInstallUpdate,
+                    onDownloadApk = onDownloadApk,
                 )
             } else {
                 val activeChat = chats.firstOrNull { it.key == activeChatKey }

@@ -36,6 +36,8 @@ describe("what the app may do", () => {
     ["GET", "/api/config"],
     ["GET", "/api/events"],
     ["GET", "/api/instances"],
+    ["GET", "/api/android/latest.json"],
+    ["GET", "/api/android/apk"],
     ["POST", "/api/uploads"],
     ["GET", "/api/bots"],
     ["POST", "/api/bots"],

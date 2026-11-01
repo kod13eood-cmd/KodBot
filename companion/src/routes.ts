@@ -56,6 +56,11 @@ const ALLOWED: ReadonlyArray<{ method: string; path: RegExp }> = [
   { method: "GET", path: /^\/api\/config$/ },
   { method: "GET", path: /^\/api\/events$/ },
   { method: "GET", path: /^\/api\/instances$/ },
+  // Android updates served by the paired host, for a phone that cannot reach
+  // GitHub. The APK is a public build, not a secret; the routes are still
+  // authenticated like every other companion call.
+  { method: "GET", path: /^\/api\/android\/latest\.json$/ },
+  { method: "GET", path: /^\/api\/android\/apk$/ },
   // One phone attachment, copied into the host's data directory. The
   // harness bounds the body; this route exists so the prompt can name a path
   // an agent on this machine can open.

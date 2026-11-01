@@ -64,6 +64,7 @@ fun SettingsScreen(
     appVersion: String,
     onCheckForUpdates: () -> Unit,
     onInstallUpdate: () -> Unit,
+    onDownloadApk: () -> Unit,
 ) {
     var address by rememberSaveable(connection.baseUrl) { mutableStateOf(connection.baseUrl) }
     var modelBotKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -180,6 +181,18 @@ fun SettingsScreen(
                                 Text(if (update != null) "Download and install" else "Check for updates")
                             }
                         }
+                        TextButton(
+                            onClick = onDownloadApk,
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Download APK directly")
+                        }
+                        Text(
+                            "Use this if Check for updates can't reach the update server.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
 
