@@ -239,6 +239,8 @@ export interface BotRecord {
   notifications: boolean;
   color: CrewColor;
   mascotExpression?: CrewExpression | null;
+  /** Body silhouette; absent means a role-derived shape. */
+  mascotShape?: string | null;
   /** Presentation archetype; the UI falls back to an inferred role. */
   role?: string;
   unread: boolean;
@@ -313,6 +315,19 @@ const COLORS: CrewColor[] = [
   "teal",
   "coral",
 ];
+
+// Keep in sync with src/lib/mascot-shapes.ts. The server persists a shape so
+// two same-colored bots in the same role do not collapse into one silhouette.
+const AUTO_SHAPES = ["orb", "bubble", "pill", "hex", "diamond", "star", "drop", "shield", "ghost"] as const;
+
+function autoShapeFor(id: string, color: string): string {
+  let hash = 2166136261;
+  for (const part of `${id}:${color}`) {
+    hash ^= part.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return AUTO_SHAPES[(hash >>> 0) % AUTO_SHAPES.length]!;
+}
 
 /** Resolve @mentions in a message against a bot roster: `@` must start a
  * word, the name must end on a word boundary (so "@New Bottle" never matches
@@ -429,6 +444,12 @@ export class Store {
       if (b.busy || (b.activity !== undefined && b.activity !== "idle")) botsMigrated = true;
       b.busy = false;
       b.activity = "idle";
+      // Bots created before silhouettes existed get a stable body once. An
+      // explicit null is "Auto" and is left alone.
+      if (b.mascotShape === undefined) {
+        b.mascotShape = autoShapeFor(b.id, b.color);
+        botsMigrated = true;
+      }
     }
     for (const b of this.bots) {
       if (!b.chiefOfStaff) continue;
@@ -736,7 +757,10 @@ export class Store {
 
   createBot(
     profile: Partial<
-      Pick<BotRecord, "name" | "title" | "description" | "color" | "mascotExpression" | "role" | "modelSelection">
+      Pick<
+        BotRecord,
+        "name" | "title" | "description" | "color" | "mascotExpression" | "mascotShape" | "role" | "modelSelection"
+      >
     > = {},
     opts: {
       /** false = no greeting/onboarding seed. Imported bots must not open
@@ -745,14 +769,17 @@ export class Store {
     } = {},
   ): BotRecord {
     const name = profile.name?.trim() || pickBotName(this.bots.map((b) => b.name));
+    const id = newId();
+    const color = profile.color ?? COLORS[this.bots.length % COLORS.length];
     const bot: BotRecord = {
-      id: newId(),
+      id,
       threadId: newId(),
       name,
       title: profile.title ?? "",
       description: profile.description ?? "",
       notifications: true,
-      color: profile.color ?? COLORS[this.bots.length % COLORS.length],
+      color,
+      mascotShape: profile.mascotShape === undefined ? autoShapeFor(id, color) : profile.mascotShape,
       ...(profile.mascotExpression ? { mascotExpression: profile.mascotExpression } : {}),
       ...(profile.role ? { role: profile.role } : {}),
       unread: false,

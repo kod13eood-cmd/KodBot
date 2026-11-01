@@ -3028,12 +3028,21 @@ const server = createServer(async (req, res) => {
         if (field === "name" && !value.trim()) return json(res, 400, { error: "name must not be empty" });
       }
       const patch: Record<string, unknown> = {};
-      for (const key of ["name", "title", "description", "notifications", "modelSelection", "unread", "computer", "color", "mascotExpression", "role", "pinned", "hidden", "speakReplies", "voice"] as const) {
+      for (const key of ["name", "title", "description", "notifications", "modelSelection", "unread", "computer", "color", "mascotExpression", "mascotShape", "role", "pinned", "hidden", "speakReplies", "voice"] as const) {
         if (body[key] !== undefined) patch[key] = body[key];
       }
       if (body.autoModel !== undefined) {
         if (typeof body.autoModel !== "boolean") return json(res, 400, { error: "autoModel must be true or false" });
         patch.autoModel = body.autoModel;
+      }
+      if (body.mascotShape !== undefined) {
+        if (
+          body.mascotShape !== null &&
+          (typeof body.mascotShape !== "string" || !/^[a-z0-9-]{1,32}$/.test(body.mascotShape))
+        ) {
+          return json(res, 400, { error: "mascotShape must be a short shape name or null" });
+        }
+        patch.mascotShape = body.mascotShape;
       }
       if (body.role !== undefined) {
         if (typeof body.role !== "string" || body.role.length > 32) {

@@ -9,7 +9,7 @@ import { Loader2, PhoneOff, X } from "lucide-react";
 import { currentCall, deferCallCleanup, endCall, useOnCall } from "@/lib/call";
 import { routeSpokenGroupMessage } from "@/lib/group-call";
 import { track } from "@/lib/analytics";
-import { normalizeState } from "@/lib/mascot";
+import { displayRole, normalizeState } from "@/lib/mascot";
 import { speaker } from "@/lib/tts";
 import { useSpeech } from "@/lib/tts/useSpeech";
 import { usePushToTalk } from "@/lib/push-to-talk";
@@ -426,6 +426,8 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
               >
                 <CrewAvatar
                   color={member.color}
+                  shape={member.mascotShape}
+                  role={displayRole(member)}
                   state={state}
                   size={94}
                   animated

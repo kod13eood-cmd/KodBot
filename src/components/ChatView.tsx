@@ -576,7 +576,7 @@ const MessagesList = memo(function MessagesList({
     <>
       {messages.length === 0 && !bot.busy && (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 py-24 text-center">
-          <CrewAvatar color={bot.color} role={displayRole(bot)} state="idle" size={64} motion="none" motionKey={0} />
+          <CrewAvatar color={bot.color} shape={bot.mascotShape} role={displayRole(bot)} state="idle" size={64} motion="none" motionKey={0} />
           <RenameTitle
             value={bot.name}
             onCommit={(name) => dispatch({ type: "updateBot", botId: bot.id, patch: { name } })}
@@ -838,6 +838,7 @@ export function ChatView({ bot }: { bot: Bot }) {
           >
             <CrewAvatar
               color={bot.color}
+              shape={bot.mascotShape}
               role={displayRole(bot)}
               state={stateForBot({ ...bot, messages })}
               size={28}

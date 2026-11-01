@@ -14,7 +14,7 @@ import {
   uploadRemoteAttachments,
   type Attachment,
 } from "@/lib/composer-attachments";
-import { normalizeState } from "@/lib/mascot";
+import { displayRole, normalizeState } from "@/lib/mascot";
 import { groupComposerHint } from "@/lib/group-routing";
 import { PendingApprovalActions, PendingApprovalPanel, pendingApprovals } from "./PendingApproval";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
@@ -306,6 +306,8 @@ export function Composer({
                 {peer.bot ? (
                   <CrewAvatar
                     color={peer.bot.color}
+                    shape={peer.bot.mascotShape}
+                    role={displayRole(peer.bot)}
                     state={normalizeState(peer.bot.mascotExpression) ?? "happy"}
                     size={24}
                   />

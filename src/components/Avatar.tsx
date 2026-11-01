@@ -33,23 +33,8 @@ import {
   Radar,
   Wrench,
 } from "lucide-react";
-import {
-  CursorAvatar,
-  DEFAULT_SILHOUETTE,
-  type CursorAvatarHandle,
-  type CursorSilhouette,
-} from "./CursorAvatar";
-
-/**
- * The pack's baked-in silhouette was exported with the body fill hardcoded
- * to black instead of the {{GRADIENT}} placeholder the component
- * substitutes, which painted every bot the same. Restore the slot so the
- * per-bot gradient actually lands on the body.
- */
-const GRADIENT_SILHOUETTE: CursorSilhouette = {
-  ...DEFAULT_SILHOUETTE,
-  body: DEFAULT_SILHOUETTE.body.replace(/fill="#000000"/g, 'fill="{{GRADIENT}}"'),
-};
+import { CursorAvatar, type CursorAvatarHandle } from "./CursorAvatar";
+import { mascotSilhouette } from "@/lib/mascot-shapes";
 
 /**
  * Legacy face-placement knobs from the Crew body era. The cursor mascot
@@ -154,6 +139,9 @@ export function BotRoleIcon({ role, size = 28 }: { role: BotRole | string | null
 
 export type CrewAvatarProps = {
   color: CrewColor;
+  /** Body silhouette. Absent means a role-derived shape, so existing bots
+   * gain variety without a migration. */
+  shape?: string | null;
   /** Job badge and resting expression. A caller that has the bot should pass
    * displayRole(bot); the component itself never guesses from color. */
   role?: BotRole | string | null;
@@ -191,6 +179,7 @@ export type CrewAvatarProps = {
 function CrewAvatarComponent(
   {
     color,
+    shape,
     role,
     state = "idle",
     expression,
@@ -270,7 +259,7 @@ function CrewAvatarComponent(
         state={motionState ?? state}
         expression={expression}
         size={size}
-        silhouette={GRADIENT_SILHOUETTE}
+        silhouette={mascotSilhouette(shape, normalizeRole(typeof role === "string" ? role : null), color)}
         gradient={gradientFor(color, roleMeta?.color)}
         title={label ?? null}
         lookAround={forward ? 0 : 1}

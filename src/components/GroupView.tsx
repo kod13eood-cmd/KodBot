@@ -15,7 +15,7 @@ import {
   type Message,
 } from "@/state/store";
 import { CrewAvatar } from "./Avatar";
-import { normalizeState } from "@/lib/mascot";
+import { displayRole, normalizeState } from "@/lib/mascot";
 import { effectiveDefaultResponder, groupResponseHint } from "@/lib/group-routing";
 import { ChatMarkdown } from "./ChatMarkdown";
 import { Composer } from "./Composer";
@@ -53,6 +53,8 @@ function ClusterLabel({ bot, name, color }: { bot?: Bot; name: string; color: st
     <div className="mt-1 flex items-center gap-1.5 pl-0.5">
       <CrewAvatar
         color={(bot?.color ?? color) as Bot["color"]}
+        shape={bot?.mascotShape}
+        role={bot ? displayRole(bot) : undefined}
         state={normalizeState(bot?.mascotExpression) ?? "happy"}
         size={16}
         motion="none"
@@ -477,6 +479,8 @@ export function GroupView({ group }: { group: Group }) {
             >
               <CrewAvatar
                 color={b.color}
+                shape={b.mascotShape}
+                role={displayRole(b)}
                 state={normalizeState(b.mascotExpression) ?? "happy"}
                 size={24}
                 animated={false}
@@ -574,6 +578,8 @@ export function GroupView({ group }: { group: Group }) {
                   <CrewAvatar
                     key={b.id}
                     color={b.color}
+                    shape={b.mascotShape}
+                    role={displayRole(b)}
                     state="happy"
                     size={44}
                     motion="none"

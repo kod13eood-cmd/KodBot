@@ -797,6 +797,20 @@ const BULGARIAN: Record<string, string> = {
     "Да се премахне ли {service} акаунтът „{name}“? KodBot ще загуби достъп до него. Можете да го свържете отново по-късно.",
   "Labels are stored only in KodBot. Removing a row revokes KodBot's access to that connection; it does not delete the Google account.":
     "Етикетите се пазят само в KodBot. Премахването на ред отнема достъпа на KodBot до тази връзка; не изтрива Google акаунта.",
+  // Mascot body shapes
+  "Shape": "Форма",
+  "Use the shape suggested by this bot's role": "Използвай формата, подсказана от ролята на бота",
+  "Use {name} body shape": "Използвай форма „{name}“",
+  "Orb": "Сфера",
+  "Bubble": "Балон",
+  "Pill": "Капсула",
+  "Hex": "Шестоъгълник",
+  "Diamond": "Диамант",
+  "Star": "Звезда",
+  "Drop": "Капка",
+  "Shield": "Щит",
+  "Ghost": "Духче",
+  "Classic": "Класическа",
 };
 
 function initialLocale(): Locale {

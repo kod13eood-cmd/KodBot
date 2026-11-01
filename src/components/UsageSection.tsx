@@ -4,6 +4,7 @@
 // summed here; nothing is fetched.
 import { useStore } from "@/state/store";
 import { CrewAvatar } from "./Avatar";
+import { displayRole } from "@/lib/mascot";
 import { Card } from "./SettingsPrimitives";
 import { botUsage, costCaption, formatTokens, formatUsd, sumUsage } from "@/lib/usage";
 import { useI18n } from "@/lib/i18n";
@@ -39,7 +40,7 @@ export function UsageSection() {
           {rows.map(({ bot, usage }) => (
             <div key={bot.id} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-5 border-b border-hairline/20 py-2 text-[13px]">
               <span className="flex min-w-0 items-center gap-2 text-ink">
-                <CrewAvatar color={bot.color} state="idle" size={22} animated={false} />
+                <CrewAvatar color={bot.color} shape={bot.mascotShape} role={displayRole(bot)} state="idle" size={22} animated={false} />
                 <span className="truncate">{bot.name}</span>
               </span>
               <span className="w-16 text-right tabular-nums text-ink-secondary">{usage.turns}</span>

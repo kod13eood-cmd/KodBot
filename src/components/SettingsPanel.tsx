@@ -14,6 +14,7 @@ import {
   CREW_COLOR_NAMES,
 } from "@/lib/mascot";
 import { ModelPicker } from "./ModelPicker";
+import { autoMascotShape, MASCOT_SHAPE_IDS, MASCOT_SHAPES, normalizeMascotShape } from "@/lib/mascot-shapes";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { cn } from "@/lib/cn";
 import { requestNotificationPermission } from "@/lib/notify";
@@ -699,6 +700,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
         | "computer"
         | "color"
         | "mascotExpression"
+        | "mascotShape"
         | "role"
         | "autoApprove"
         | "autoModel"
@@ -713,6 +715,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
   ) => dispatch({ type: "updateBot", botId: bot.id, patch: p });
   const activeState = stateForBot(bot);
   const activeRole = displayRole(bot);
+  const activeShape = normalizeMascotShape(bot.mascotShape) ?? autoMascotShape(activeRole, bot.color);
   const explicitRole = normalizeRole(bot.role);
   const suggestedRole = inferRole(bot);
   const mascotMotion = state.mascotMotion?.botId === bot.id ? state.mascotMotion : null;
@@ -762,6 +765,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
         <div className="flex justify-center py-5">
           <CrewAvatar
             color={bot.color}
+            shape={activeShape}
             role={activeRole}
             state={activeState}
             size={112}
@@ -777,7 +781,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
                 {t("Bot")}
               </span>
               <button
-                onClick={() => patch({ color: "green", mascotExpression: null, role: null })}
+                onClick={() => patch({ color: "green", mascotExpression: null, mascotShape: null, role: null })}
                 className="rounded-md px-2 py-1.5 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink"
               >
                 {t("Reset")}
@@ -853,7 +857,14 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
                     title={expression}
                     aria-label={t("Use {name} expression", { name: expression })}
                   >
-                    <CrewAvatar color={bot.color} role={activeRole} state={expression} size={42} animated={false} />
+                    <CrewAvatar
+                      color={bot.color}
+                      shape={activeShape}
+                      role={activeRole}
+                      state={expression}
+                      size={42}
+                      animated={false}
+                    />
                   </button>
                 ))}
               </div>
@@ -874,6 +885,45 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
                     title={color}
                     aria-label={t("Use {name} mascot color", { name: color })}
                   />
+                ))}
+              </div>
+
+              <div className="mb-2 mt-4 flex items-center justify-between">
+                <div className="text-[12px] font-medium uppercase tracking-[0.08em] text-ink-secondary">
+                  {t("Shape")}
+                </div>
+                <button
+                  onClick={() => patch({ mascotShape: null })}
+                  className={cn(
+                    "flex items-center gap-1 rounded-lg px-2 py-1 text-[11.5px] text-ink-secondary hover:bg-raised hover:text-ink",
+                    !normalizeMascotShape(bot.mascotShape) && "text-ink",
+                  )}
+                  title={t("Use the shape suggested by this bot's role")}
+                >
+                  <Sparkles size={12} /> {t("Auto")}
+                </button>
+              </div>
+              <div className="grid grid-cols-5 gap-2">
+                {MASCOT_SHAPE_IDS.map((shape) => (
+                  <button
+                    key={shape}
+                    onClick={() => patch({ mascotShape: shape })}
+                    className={cn(
+                      "flex h-[58px] items-center justify-center rounded-xl bg-inset transition-colors hover:bg-raised",
+                      activeShape === shape && "ring-2 ring-accent-border",
+                    )}
+                    title={t(MASCOT_SHAPES[shape].label)}
+                    aria-label={t("Use {name} body shape", { name: t(MASCOT_SHAPES[shape].label) })}
+                  >
+                    <CrewAvatar
+                      color={bot.color}
+                      shape={shape}
+                      role={activeRole}
+                      state="idle"
+                      size={42}
+                      animated={false}
+                    />
+                  </button>
                 ))}
               </div>
             </div>
