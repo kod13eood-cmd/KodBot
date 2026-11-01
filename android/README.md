@@ -59,15 +59,21 @@ The app checks [`latest.json`](latest.json) on launch and from
 **Settings → App updates**. To publish an update:
 
 1. Bump `versionCode` and `versionName` in `app/build.gradle.kts`.
-2. Build and attach the APK to a GitHub release as `KodBot-android.apk`.
-3. Set `versionCode`, `versionName`, `notes`, and the release date in
-   `android/latest.json`.
+2. Build the APK and publish it where the manifest points. The current
+   manifest points at a versioned file on the `android-release` branch:
+   `https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-<version>.apk`.
+   A GitHub release asset named `KodBot-android.apk` also works if the
+   manifest uses the stable
+   `https://github.com/kod13eood-cmd/KodBot/releases/latest/download/KodBot-android.apk`
+   URL instead.
+3. Set `versionCode`, `versionName`, `apkUrl`, `notes`, and the release date
+   in `android/latest.json`, then push that file to `main`.
 
-The manifest's `apkUrl` is the stable
-`https://github.com/kod13eood-cmd/KodBot/releases/latest/download/KodBot-android.apk`,
-so the asset name must stay `KodBot-android.apk`. Android asks the user to allow
-installs from KodBot the first time; after that the download starts the system
-installer directly.
+The manifest is read from
+`https://raw.githubusercontent.com/kod13eood-cmd/KodBot/main/android/latest.json`,
+so the `latest.json` push is what makes **Check for updates** see a release.
+Android asks the user to allow installs from KodBot the first time; after that
+the download starts the system installer directly.
 For reliable scanning, open KodBot and tap **Scan pairing QR**. Some
 Android Camera apps display custom `kodbot://` links without dispatching them
 to the app; the registered link remains useful from apps that support custom

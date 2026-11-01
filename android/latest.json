@@ -1,7 +1,7 @@
 {
-  "versionCode": 7,
-  "versionName": "0.1.6",
-  "apkUrl": "https://github.com/kod13eood-cmd/KodBot/releases/latest/download/KodBot-android.apk",
-  "notes": "",
-  "publishedAt": "2026-10-31T00:00:00Z"
+  "versionCode": 9,
+  "versionName": "0.1.8",
+  "apkUrl": "https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.8.apk",
+  "notes": "Copy and paste bot answers, attach photos, PDFs, or files, and bot deletion is now desktop-only.",
+  "publishedAt": "2026-11-01T14:16:00Z"
 }
