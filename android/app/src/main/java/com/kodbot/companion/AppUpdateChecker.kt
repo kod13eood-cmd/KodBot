@@ -28,6 +28,7 @@ object AppUpdateChecker {
     suspend fun latest(
         installedVersionCode: Long,
         fallbackBaseUrl: String? = null,
+        fallbackToken: String? = null,
     ): AppUpdate? = withContext(Dispatchers.IO) {
         val sources = buildList {
             add(MANIFEST_URL)
@@ -40,7 +41,8 @@ object AppUpdateChecker {
         var succeeded = false
         for ((index, source) in sources.withIndex()) {
             try {
-                val update = parse(read(source), fallbackBaseUrl, allowHttp = index > 0)
+                val token = if (index > 0) fallbackToken else null
+                val update = parse(read(source, token), fallbackBaseUrl, allowHttp = index > 0)
                 succeeded = true
                 if (update != null) candidates += update
             } catch (error: Exception) {
@@ -51,13 +53,14 @@ object AppUpdateChecker {
         candidates.maxByOrNull { it.versionCode }?.takeIf { it.versionCode > installedVersionCode }
     }
 
-    private fun read(source: String): String {
+    private fun read(source: String, token: String? = null): String {
         val connection = (URL(source).openConnection() as HttpURLConnection).apply {
             connectTimeout = 10_000
             readTimeout = 15_000
             requestMethod = "GET"
             setRequestProperty("Accept", "application/json")
             setRequestProperty("User-Agent", "KodBot-Android")
+            if (!token.isNullOrBlank()) setRequestProperty("Authorization", "Bearer $token")
         }
         try {
             if (connection.responseCode != HttpURLConnection.HTTP_OK) {

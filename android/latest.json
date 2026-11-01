@@ -1,7 +1,7 @@
 {
-  "versionCode": 10,
-  "versionName": "0.1.9",
-  "apkUrl": "https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.9.apk",
-  "notes": "Adds a paired-host update fallback and a direct APK download link. Copy/paste, photo/PDF/file attachments, and desktop-only bot deletion remain.",
-  "publishedAt": "2026-11-01T14:49:00Z"
+  "versionCode": 11,
+  "versionName": "0.1.10",
+  "apkUrl": "https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.10.apk",
+  "notes": "Fixes the paired-host update fallback and keeps the direct APK download. Copy/paste, photo/PDF/file attachments, and desktop-only bot deletion remain.",
+  "publishedAt": "2026-11-01T14:58:00Z"
 }

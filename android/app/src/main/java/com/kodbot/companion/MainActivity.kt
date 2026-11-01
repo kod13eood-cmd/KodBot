@@ -553,7 +553,11 @@ class MainActivity : ComponentActivity() {
         updateState = updateState.copy(checking = true, error = null, message = null)
         lifecycleScope.launch {
             updateState = try {
-                val latest = AppUpdateChecker.latest(installedVersionCode, connection?.baseUrl)
+                val latest = AppUpdateChecker.latest(
+                    installedVersionCode,
+                    connection?.baseUrl,
+                    connection?.token,
+                )
                 if (latest != null) {
                     updateState.copy(info = latest, checking = false, error = null)
                 } else {
