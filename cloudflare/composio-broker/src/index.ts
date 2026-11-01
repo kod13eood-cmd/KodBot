@@ -186,17 +186,52 @@ async function catalog(env: Env) {
 async function connectionStatus(url: URL, installation: InstallationRow, env: Env, ctx: ExecutionContext) {
   const slugs = [...new Set((url.searchParams.get("services") ?? "").split(",").map((slug) => slug.toLowerCase()).filter(Boolean))].slice(0, 50);
   const session = await ensureSession(installation, env, ctx);
-  const response = await composioRequest(
-    env,
-    `/tool_router/session/${encodeURIComponent(session.sessionId)}/toolkits?${new URLSearchParams({ limit: "50", toolkits: slugs.join(",") })}`,
-  );
+  const [response, accountResponse] = await Promise.all([
+    composioRequest(
+      env,
+      `/tool_router/session/${encodeURIComponent(session.sessionId)}/toolkits?${new URLSearchParams({ limit: "50", toolkits: slugs.join(",") })}`,
+    ),
+    // Session toolkits only surface a usable account. Reading the account
+    // lifecycle is additive: expired and still-initializing connections stay
+    // visible so the person can identify and remove them.
+    composioRequest(
+      env,
+      `/connected_accounts?${new URLSearchParams({
+        limit: "50",
+        user_ids: installation.composio_user_id,
+        ...(slugs.length ? { toolkits: slugs.join(",") } : {}),
+      })}`,
+    ).catch(() => null),
+  ]);
   if (!response.ok) return json({ error: await upstreamError(response, "Connection status unavailable") }, 502);
-  const body = await response.json() as { items?: Array<{ slug?: string; is_no_auth?: boolean; connected_account?: { status?: string } }> };
+  const body = await response.json() as {
+    items?: Array<{ slug?: string; is_no_auth?: boolean; connected_account?: { status?: string } }>;
+  };
   const items = new Map((body.items ?? []).map((item) => [item.slug?.toLowerCase(), item]));
+  const accountBody = accountResponse?.ok
+    ? await accountResponse.json() as {
+        items?: Array<{ id?: string; toolkit?: { slug?: string }; status?: string; alias?: string; updated_at?: string }>;
+      }
+    : null;
+  const allAccounts = Array.isArray(accountBody?.items) ? accountBody.items : [];
+  const accountsBySlug = new Map<string, typeof allAccounts>();
+  for (const account of allAccounts) {
+    const slug = account.toolkit?.slug?.toLowerCase();
+    if (!slug || !slugs.some((candidate) => candidate === slug)) continue;
+    const list = accountsBySlug.get(slug) ?? [];
+    list.push(account);
+    accountsBySlug.set(slug, list);
+  }
   return json({ services: Object.fromEntries(slugs.map((slug) => {
     const item = items.get(slug);
-    const status = item?.connected_account?.status ?? (item?.is_no_auth ? "ACTIVE" : "not_connected");
-    return [slug, { connected: item?.is_no_auth === true || /^active$/i.test(status), pending: /^(initiated|initializing|pending)$/i.test(status), status }];
+    const accounts = accountsBySlug.get(slug) ?? [];
+    const status = item?.connected_account?.status ?? (item?.is_no_auth ? "ACTIVE" : accounts[0]?.status ?? "not_connected");
+    return [slug, {
+      connected: item?.is_no_auth === true || /^active$/i.test(status),
+      pending: /^(initiated|initializing|pending)$/i.test(status),
+      status,
+      accounts: accounts.map((account) => ({ id: account.id, status: account.status, alias: account.alias })),
+    }];
   })) });
 }
 
@@ -214,6 +249,32 @@ async function authorize(slug: string, installation: InstallationRow, env: Env, 
     return json({ error: "Composio returned an untrusted authorization link" }, 502);
   }
   return json({ url: redirect.toString() });
+}
+
+/** Remove one account owned by this installation. The ownership check keeps
+ * a broker token from deleting another installation's connection by id. */
+async function disconnectAccount(slug: string, accountId: string, installation: InstallationRow, env: Env) {
+  const list = await composioRequest(
+    env,
+    `/connected_accounts?${new URLSearchParams({
+      limit: "50",
+      user_ids: installation.composio_user_id,
+      toolkits: slug,
+    })}`,
+  );
+  if (!list.ok) return json({ error: await upstreamError(list, "Connection lookup unavailable") }, 502);
+  const body = await list.json() as { items?: Array<{ id?: string; toolkit?: { slug?: string } }> };
+  const owned = (body.items ?? []).some(
+    (item) => item.id === accountId && item.toolkit?.slug?.toLowerCase() === slug,
+  );
+  if (!owned) return json({ removed: 0 });
+  const response = await composioRequest(
+    env,
+    `/connected_accounts/${encodeURIComponent(accountId)}?revoke_on_delete=true`,
+    { method: "DELETE" },
+  );
+  if (!response.ok) return json({ error: await upstreamError(response, "Disconnect failed") }, 502);
+  return json({ removed: 1 });
 }
 
 async function disconnect(slug: string, installation: InstallationRow, env: Env, ctx: ExecutionContext) {
@@ -242,6 +303,10 @@ async function route(request: Request, env: Env, ctx: ExecutionContext) {
   if (request.method === "POST" && url.pathname === "/v1/mcp") return proxyMcp(request, installation, env, ctx);
   if (request.method === "GET" && url.pathname === "/v1/catalog") return catalog(env);
   if (request.method === "GET" && url.pathname === "/v1/connectors") return connectionStatus(url, installation, env, ctx);
+  const accountMatch = url.pathname.match(/^\/v1\/connectors\/([a-z0-9][a-z0-9_-]{0,80})\/accounts\/([\w-]+)$/);
+  if (accountMatch && request.method === "DELETE") {
+    return disconnectAccount(accountMatch[1], accountMatch[2], installation, env);
+  }
   const match = url.pathname.match(/^\/v1\/connectors\/([a-z0-9][a-z0-9_-]{0,80})(?:\/(authorize))?$/);
   if (match?.[2] && request.method === "POST") return authorize(match[1], installation, env, ctx);
   if (match && !match[2] && request.method === "DELETE") return disconnect(match[1], installation, env, ctx);

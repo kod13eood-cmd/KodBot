@@ -316,11 +316,115 @@ export async function connectionStatus(cfg: AppConfig, slugs: string[]) {
   );
 }
 
-/** Delete one connected account by id. The managed broker does not expose
- * per-account deletion yet; callers should hide that action in managed mode. */
+// ── managed-session account identity ───────────────────────────────────
+// The broker deliberately keeps the Composio project key on Cloudflare, so a
+// provider profile lookup goes through the Session MCP endpoint it already
+// proxies. Removal stays on the broker's own per-account route below, which
+// also works for expired accounts the session no longer exposes.
+
+interface McpToolPayload {
+  successful?: boolean;
+  error?: unknown;
+  data?: {
+    results?: Record<string, { status?: string; error_message?: string; accounts?: unknown[] }> | unknown[];
+    message?: string;
+  };
+}
+
+function parseMcpMessage(text: string): any {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("{")) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return null;
+    }
+  }
+  // Streamable HTTP responses arrive as SSE frames.
+  for (const line of trimmed.split(/\r?\n/)) {
+    if (!line.startsWith("data:")) continue;
+    const frame = line.slice(5).trim();
+    if (!frame || frame === "[DONE]") continue;
+    try {
+      return JSON.parse(frame);
+    } catch {
+      /* try the next frame */
+    }
+  }
+  return null;
+}
+
+function parseToolPayload(body: any): any {
+  const content = body?.result?.content;
+  const text = Array.isArray(content)
+    ? content.flatMap((part) => (typeof part?.text === "string" ? [part.text] : [])).join("\n")
+    : "";
+  if (text) {
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
+    }
+  }
+  return body?.result ?? body;
+}
+
+function mcpErrorMessage(body: any): string | null {
+  if (!body || typeof body !== "object") return null;
+  if (body.error) {
+    const error = body.error;
+    if (typeof error === "string") return error;
+    if (typeof error.message === "string") return error.message;
+  }
+  if (body.result?.isError) {
+    const text = Array.isArray(body.result.content)
+      ? body.result.content.flatMap((part: any) => (typeof part?.text === "string" ? [part.text] : [])).join("\n")
+      : "";
+    return text || "The connected-apps service rejected the request.";
+  }
+  return null;
+}
+
+/** One tool call over a fresh broker MCP session. Each account operation is
+ * independent, so a dedicated session avoids sharing transport state with a
+ * bot's connector proxy. */
+async function managedTool(cfg: AppConfig, name: string, args: Record<string, unknown>): Promise<any> {
+  const init = await relayMcp(cfg, {
+    jsonrpc: "2.0",
+    id: 1,
+    method: "initialize",
+    params: {
+      protocolVersion: "2025-06-18",
+      capabilities: {},
+      clientInfo: { name: "kodbot-connected-apps", version: "1" },
+    },
+  });
+  if (init.status >= 400) throw new Error(`Connected-apps service: HTTP ${init.status}`);
+  const call = await relayMcp(
+    cfg,
+    { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name, arguments: args } },
+    init.transportSessionId,
+  );
+  if (call.status >= 400) throw new Error(`Connected-apps service: HTTP ${call.status}`);
+  const body = parseMcpMessage(Buffer.from(call.bytes).toString("utf8"));
+  const failure = mcpErrorMessage(body);
+  if (failure) throw new Error(failure);
+  return parseToolPayload(body);
+}
+
+/** Delete one account by id. The managed broker exposes a per-account route
+ * and returns `{removed:0}` for an account that is already gone, so the UI
+ * can refresh instead of keeping a stale row. */
 export async function removeAccount(cfg: AppConfig, slug: string, accountId: string) {
   if (brokerAccess() || !cfg.composio?.apiKey) {
-    throw new Error("The managed connected-apps service can only remove the app connection.");
+    const response = await brokerRequest(
+      `/v1/connectors/${encodeURIComponent(slug)}/accounts/${encodeURIComponent(accountId)}`,
+      { method: "DELETE" },
+    );
+    if (!response.ok) throw new Error(await responseError(response, `Connected apps: HTTP ${response.status}`));
+    const body = (await response.json()) as { removed?: unknown };
+    return { removed: typeof body.removed === "number" ? body.removed : 0 };
   }
   const session = await ensureProjectSession(cfg);
   const userId = session.config?.user_id ?? cfg.composio.userId;
@@ -381,6 +485,69 @@ async function removeServiceOnce(cfg: AppConfig, slug: string) {
   );
   if (!removed.ok) throw new Error(await responseError(removed, `Composio disconnect: HTTP ${removed.status}`));
   return { removed: 1 };
+}
+
+const PROFILE_TOOLS: Record<string, string> = {
+  gmail: "GMAIL_GET_PROFILE",
+  outlook: "OUTLOOK_GET_PROFILE",
+};
+
+const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+
+/** Find an address in whichever wrapper the provider chose. Gmail nests it
+ * under data.emailAddress; Outlook uses data.mail/userPrincipalName. */
+function findEmail(value: unknown, depth = 0): string | null {
+  if (value == null || depth > 8) return null;
+  if (typeof value === "string") return value.match(EMAIL_PATTERN)?.[0] ?? null;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findEmail(item, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  for (const key of ["emailAddress", "email", "mail", "userPrincipalName"]) {
+    const direct = record[key];
+    if (typeof direct === "string") {
+      const found = direct.match(EMAIL_PATTERN)?.[0];
+      if (found) return found;
+    }
+  }
+  for (const nested of Object.values(record)) {
+    const found = findEmail(nested, depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
+
+/** Read the signed-in address for one account. Only active accounts can
+ * answer; expired/initializing ones return a reason the UI can explain
+ * instead of another opaque id. */
+export async function accountIdentity(cfg: AppConfig, slug: string, accountId: string) {
+  const tool = PROFILE_TOOLS[slug.toLowerCase()];
+  if (!tool) return { identity: null, reason: "This app does not expose a profile address." };
+  try {
+    const payload = (await managedTool(cfg, "COMPOSIO_MULTI_EXECUTE_TOOL", {
+      tools: [{ tool_slug: tool, arguments: { user_id: "me" }, account: accountId }],
+      sync_response_to_workbench: false,
+      current_step: "READING_ACCOUNT_IDENTITY",
+    })) as McpToolPayload;
+    const results = payload?.data?.results;
+    const row = Array.isArray(results) ? results[0] : undefined;
+    const error = (row as { error?: unknown } | undefined)?.error;
+    if (error) return { identity: null, reason: String(error).slice(0, 180) };
+    const identity = findEmail((row as { response_data?: unknown } | undefined)?.response_data ?? row);
+    return identity
+      ? { identity }
+      : { identity: null, reason: "The provider did not return an email address for this account." };
+  } catch (error) {
+    return {
+      identity: null,
+      reason: error instanceof Error ? error.message.slice(0, 180) : String(error).slice(0, 180),
+    };
+  }
 }
 
 /** Mint a browser auth link for one service. Returns { url } or throws. */

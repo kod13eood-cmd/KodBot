@@ -773,6 +773,30 @@ const BULGARIAN: Record<string, string> = {
   "Uploading attachment": "Качване на прикачен файл",
   "Uploading attachment…": "Качване на прикачен файл…",
   "This folder is on the remote server.": "Тази папка е на отдалечения сървър.",
+  // Composer attachments
+  "Attach files": "Прикачи файлове",
+  "Could not attach {names}. Choose a file saved on this computer.":
+    "Неуспешно прикачване на {names}. Изберете файл, записан на този компютър.",
+  // Connected-app account details
+  "About connected accounts": "Относно свързаните акаунти",
+  "Each row is one connected account. Active means KodBot can use it. Expired means the sign-in has ended — remove that row, then connect the account again. Waiting for sign-in means the Google page is still open or unfinished. When the address is hidden, Google will reveal it after the account is active again.":
+    "Всеки ред е един свързан акаунт. „Активен“ означава, че KodBot може да го използва. „Изтекъл“ означава, че входът е приключил — премахнете реда и свържете акаунта отново. „Чака вход“ означава, че страницата на Google е още отворена или незавършена. Когато адресът е скрит, Google ще го покаже, след като акаунтът отново стане активен.",
+  "Expired — sign in again": "Изтекъл — влезте отново",
+  "Waiting for sign-in": "Чака вход",
+  "Checking the signed-in address…": "Проверка на адреса за вход…",
+  "Signed in as": "Влязъл като",
+  "Address unavailable: {reason}": "Адресът е недостъпен: {reason}",
+  "The address is hidden until this account is active again.":
+    "Адресът е скрит, докато акаунтът отново не стане активен.",
+  "Technical details": "Технически данни",
+  "Start a fresh sign-in. Remove this expired row after the new one works.":
+    "Стартирайте нов вход. Премахнете изтеклия ред, след като новият работи.",
+  "Sign in again": "Влезте отново",
+  "Remove": "Премахни",
+  "Remove the {service} account “{name}”? KodBot will lose access to it. You can connect it again later.":
+    "Да се премахне ли {service} акаунтът „{name}“? KodBot ще загуби достъп до него. Можете да го свържете отново по-късно.",
+  "Labels are stored only in KodBot. Removing a row revokes KodBot's access to that connection; it does not delete the Google account.":
+    "Етикетите се пазят само в KodBot. Премахването на ред отнема достъпа на KodBot до тази връзка; не изтрива Google акаунта.",
 };
 
 function initialLocale(): Locale {

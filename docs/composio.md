@@ -22,6 +22,19 @@ A default project API key works without additional configuration. For a least-pr
 
 Connected-account write access is required so **Disconnect** can revoke the upstream provider grant before removing the connection.
 
+## Managing multiple accounts
+
+Open **Connected apps → your app → Details** to see every connected account.
+Each row has its own **Remove** button, which revokes only that connection;
+the provider account itself is not deleted. **Add another account** starts a
+fresh sign-in.
+
+Active accounts show the signed-in address when the provider profile tool can
+read it. Expired accounts deliberately show "address hidden" until they are
+signed in again. The usual cleanup is: remove the expired row, then add the
+account you actually want. Friendly labels are stored only in KodBot and are
+kept locally, not in Composio.
+
 ## Running from source
 
 Set the key in the server environment:

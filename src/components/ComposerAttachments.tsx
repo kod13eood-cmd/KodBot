@@ -13,8 +13,12 @@ import {
 } from "@/lib/composer-attachments";
 
 /** Electron 32 removed File.path — only the preload can name a file. */
-function pathForFile(file: File): string {
-  return window.ogb?.getPathForFile?.(file) ?? "";
+export function pathForFile(file: File): string {
+  try {
+    return window.ogb?.getPathForFile?.(file) ?? "";
+  } catch {
+    return "";
+  }
 }
 
 export function ComposerAttachments({
@@ -62,7 +66,7 @@ export function ComposerAttachments({
       if (attachments.length) onAdd(attachments);
       setNotice(
         rejectedNames.length
-          ? `${rejectedNames.join(", ")} — that drag carried no file on disk. Save it first, then drop it from Finder.`
+          ? `${rejectedNames.join(", ")} — that drag carried no file on disk. Save it first, then drop it from your file manager.`
           : null,
       );
     };

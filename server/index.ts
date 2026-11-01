@@ -3794,6 +3794,13 @@ const server = createServer(async (req, res) => {
       const status = await composio.connectionStatus(cfg, services.length ? services : composio.CURATED_SLUGS);
       return json(res, 200, { configured: true, services: withConnectorLabels(status) });
     }
+    // Account identity for the Details view. The broker keeps the provider
+    // key, so this runs through the Session MCP profile tool rather than a
+    // direct Composio API call.
+    m = path.match(/^\/api\/connectors\/([\w-]+)\/accounts\/([\w-]+)\/identity$/);
+    if (m && method === "GET") {
+      return json(res, 200, await composio.accountIdentity(cfg, m[1], m[2]));
+    }
     // Friendly, user-owned display names for individual connected accounts.
     m = path.match(/^\/api\/connectors\/([\w-]+)\/accounts\/([\w-]+)$/);
     if (m && method === "PATCH") {
@@ -3810,7 +3817,16 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true, ...(label ? { label } : {}) });
     }
     if (m && method === "DELETE") {
-      return json(res, 200, await composio.removeAccount(cfg, m[1], m[2]));
+      const result = await composio.removeAccount(cfg, m[1], m[2]);
+      // The account is gone or already absent; either way its friendly label
+      // must not linger for a future account that happens to reuse the id.
+      const labels = readConnectorLabels();
+      const key = connectorLabelKey(m[1], m[2]);
+      if (key in labels) {
+        delete labels[key];
+        saveConnectorLabels(labels);
+      }
+      return json(res, 200, result);
     }
     m = path.match(/^\/api\/connectors\/([\w-]+)\/authorize$/);
     if (m && method === "POST") return json(res, 200, await composio.authorizeService(cfg, m[1]));

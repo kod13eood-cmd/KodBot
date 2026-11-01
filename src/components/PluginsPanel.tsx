@@ -33,6 +33,12 @@ export interface ConnectorAccount {
   label?: string;
 }
 
+interface AccountIdentityState {
+  identity?: string | null;
+  reason?: string;
+  loading?: boolean;
+}
+
 export interface ConnectorStatus {
   connected: boolean;
   pending?: boolean;
@@ -84,11 +90,21 @@ function accountTone(status: string | undefined): string {
   return "bg-raised text-ink-secondary";
 }
 
+function accountStatusLabel(status: string | undefined, t: (source: string) => string): string {
+  if (/^active$/i.test(status ?? "")) return t("Active");
+  if (/^(expired|revoked)$/i.test(status ?? "")) return t("Expired — sign in again");
+  if (/^(initializing|initiated|pending)$/i.test(status ?? "")) return t("Waiting for sign-in");
+  if (/^(failed|error)$/i.test(status ?? "")) return t("Failed");
+  return status || t("Unknown status");
+}
+
 function AccountRow({
   account,
   index,
   canRemove,
   busy,
+  identityState,
+  serviceLabel,
   onReconnect,
   onRemove,
   onSaveLabel,
@@ -97,6 +113,8 @@ function AccountRow({
   index: number;
   canRemove: boolean;
   busy: boolean;
+  identityState?: AccountIdentityState;
+  serviceLabel: string;
   onReconnect: () => void;
   onRemove: () => void;
   onSaveLabel: (label: string) => Promise<void>;
@@ -109,7 +127,9 @@ function AccountRow({
     setLabel(account.label ?? "");
     setLabelError(null);
   }, [account.id, account.label]);
-  const heading = account.label?.trim() || `${t("Account")} ${index + 1}`;
+  const identity = identityState?.identity?.trim() || "";
+  const active = /^active$/i.test(account.status ?? "");
+  const heading = account.label?.trim() || identity || `${t("Account")} ${index + 1}`;
   const save = async () => {
     setSaving(true);
     setLabelError(null);
@@ -128,40 +148,72 @@ function AccountRow({
           <div className="flex flex-wrap items-center gap-2">
             <span className="truncate text-[13.5px] font-medium text-ink">{heading}</span>
             <span className={cn("rounded-full px-2 py-0.5 text-[10.5px] font-medium", accountTone(account.status))}>
-              {account.status || t("Unknown status")}
+              {accountStatusLabel(account.status, t)}
             </span>
           </div>
-          {account.alias && (
-            <div className="mt-0.5 truncate text-[11.5px] text-ink-secondary">
-              {t("Service alias")}: <span className="font-mono">{account.alias}</span>
+          {identityState?.loading && (
+            <div className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-ink-secondary">
+              <Loader2 size={11} className="animate-spin" /> {t("Checking the signed-in address…")}
             </div>
           )}
-          <div className="mt-1 flex items-center gap-1.5 text-[10.5px] text-ink-secondary/70">
-            <span className="truncate font-mono">{account.id}</span>
-          </div>
+          {identity && (
+            <div className="mt-0.5 truncate text-[11.5px] text-ink-secondary">
+              {t("Signed in as")} <span className="font-medium text-ink">{identity}</span>
+            </div>
+          )}
+          {!identity && !identityState?.loading && identityState?.reason && (
+            <div className="mt-0.5 text-[11px] leading-relaxed text-warning">
+              {t("Address unavailable: {reason}", { reason: identityState.reason })}
+            </div>
+          )}
+          {!identity && !identityState?.loading && !identityState?.reason && !active && (
+            <div className="mt-0.5 text-[11px] leading-relaxed text-ink-secondary/80">
+              {t("The address is hidden until this account is active again.")}
+            </div>
+          )}
+          <details className="mt-1.5">
+            <summary className="cursor-pointer text-[10.5px] text-ink-secondary/60 hover:text-ink-secondary">
+              {t("Technical details")}
+            </summary>
+            <div className="mt-1 space-y-0.5 break-all font-mono text-[10.5px] leading-relaxed text-ink-secondary/70">
+              <div>{account.id}</div>
+              {account.alias && <div>{account.alias}</div>}
+            </div>
+          </details>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={onReconnect}
-            disabled={busy || saving}
-            className="flex items-center gap-1 rounded-lg bg-raised px-2 py-1.5 text-[11.5px] text-ink hover:bg-raised-hover disabled:opacity-40"
-            title={t("Reconnect this account")}
-          >
-            <RefreshCw size={12} /> {t("Reconnect")}
-          </button>
+          {!active && (
+            <button
+              type="button"
+              onClick={onReconnect}
+              disabled={busy || saving}
+              className="flex items-center gap-1 rounded-lg bg-raised px-2 py-1.5 text-[11.5px] text-ink hover:bg-raised-hover disabled:opacity-40"
+              title={t("Start a fresh sign-in. Remove this expired row after the new one works.")}
+            >
+              <RefreshCw size={12} /> {t("Sign in again")}
+            </button>
+          )}
           {canRemove && (
             <button
               type="button"
               onClick={() => {
-                if (window.confirm(t("Remove this account?"))) onRemove();
+                if (
+                  window.confirm(
+                    t("Remove the {service} account “{name}”? KodBot will lose access to it. You can connect it again later.", {
+                      service: serviceLabel,
+                      name: heading,
+                    }),
+                  )
+                ) {
+                  onRemove();
+                }
               }}
               disabled={busy || saving}
-              className="rounded-lg p-1.5 text-ink-secondary hover:bg-danger/10 hover:text-danger disabled:opacity-40"
+              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11.5px] text-danger hover:bg-danger/10 disabled:opacity-40"
               title={t("Remove this account")}
               aria-label={t("Remove this account")}
             >
-              <Trash2 size={13} />
+              <Trash2 size={13} /> {t("Remove")}
             </button>
           )}
         </div>
@@ -193,6 +245,40 @@ function AccountRow({
   );
 }
 
+function AccountsHelp() {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  return (
+    <span
+      className="relative inline-flex"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        aria-label={t("About connected accounts")}
+        aria-expanded={open}
+        className="rounded-full p-0.5 text-ink-secondary/70 hover:text-ink focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+      >
+        <Info size={13} />
+      </button>
+      {open && (
+        <span
+          role="tooltip"
+          className="absolute left-0 top-full z-20 mt-1.5 w-[320px] rounded-xl border border-hairline/60 bg-panel px-3 py-2.5 text-[11.5px] font-normal normal-case leading-relaxed tracking-normal text-ink-secondary shadow-2xl"
+        >
+          {t(
+            "Each row is one connected account. Active means KodBot can use it. Expired means the sign-in has ended — remove that row, then connect the account again. Waiting for sign-in means the Google page is still open or unfinished. When the address is hidden, Google will reveal it after the account is active again.",
+          )}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function ServiceDetails({
   card,
   service,
@@ -220,6 +306,40 @@ function ServiceDetails({
 }) {
   const { t } = useI18n();
   const accounts = service?.accounts ?? [];
+  const [identities, setIdentities] = useState<Record<string, AccountIdentityState>>({});
+  const attemptedIdentities = useRef(new Set<string>());
+  const accountKey = accounts.map((account) => `${account.id}:${account.status ?? ""}`).join("|");
+
+  useEffect(() => {
+    let alive = true;
+    for (const account of accounts) {
+      if (!/^active$/i.test(account.status ?? "") || attemptedIdentities.current.has(account.id)) continue;
+      attemptedIdentities.current.add(account.id);
+      setIdentities((current) => ({ ...current, [account.id]: { loading: true } }));
+      void api(`/api/connectors/${encodeURIComponent(card.slug)}/accounts/${encodeURIComponent(account.id)}/identity`)
+        .then((result: { identity?: string | null; reason?: string }) => {
+          if (!alive) return;
+          setIdentities((current) => ({
+            ...current,
+            [account.id]: { identity: result.identity ?? null, reason: result.reason },
+          }));
+        })
+        .catch((error) => {
+          if (!alive) return;
+          setIdentities((current) => ({
+            ...current,
+            [account.id]: {
+              identity: null,
+              reason: error instanceof Error ? error.message : String(error),
+            },
+          }));
+        });
+    }
+    return () => {
+      alive = false;
+    };
+  }, [accountKey, card.slug]);
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
@@ -261,8 +381,9 @@ function ServiceDetails({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           <div className="mb-2 flex items-center justify-between">
-            <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-secondary">
-              {t("Accounts")}
+            <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-secondary">
+              <span>{t("Accounts")}</span>
+              <AccountsHelp />
             </div>
             <button
               onClick={onRefresh}
@@ -279,8 +400,10 @@ function ServiceDetails({
                   key={account.id}
                   account={account}
                   index={index}
-                  canRemove={mode === "self-hosted"}
+                  canRemove={mode !== "unavailable"}
                   busy={busy}
+                  identityState={identities[account.id]}
+                  serviceLabel={card.label}
                   onReconnect={onConnect}
                   onRemove={() => onRemoveAccount(account.id)}
                   onSaveLabel={(label) => onSaveLabel(account.id, label)}
@@ -292,11 +415,9 @@ function ServiceDetails({
               {t("No account details are visible yet. Connect an account to see it here.")}
             </div>
           )}
-          {mode === "managed" && (
-            <p className="mt-3 text-[11.5px] leading-relaxed text-ink-secondary/80">
-              {t("This host uses the managed connected-apps service. Account labels are local; disconnecting removes this app connection.")}
-            </p>
-          )}
+          <p className="mt-3 text-[11.5px] leading-relaxed text-ink-secondary/80">
+            {t("Labels are stored only in KodBot. Removing a row revokes KodBot's access to that connection; it does not delete the Google account.")}
+          </p>
         </div>
 
         <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-hairline/40 bg-panel/60 px-5 py-3">
@@ -750,6 +871,7 @@ export function PluginsPanel() {
       </div>
       {detailsCard && (
         <ServiceDetails
+          key={detailsCard.slug}
           card={detailsCard}
           service={detailsStatus}
           mode={mode}

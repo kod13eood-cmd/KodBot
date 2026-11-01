@@ -1,12 +1,13 @@
 import { track } from "@/lib/analytics";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, Clock, Loader2, Mic, Square, Users, X } from "lucide-react";
+import { ArrowUp, Clock, Loader2, Mic, Paperclip, Square, Users, X } from "lucide-react";
 import { useStore, visibleMessages, type Bot, type Group } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { useComposerDraft } from "@/lib/drafts";
 import { CrewAvatar } from "./Avatar";
-import { ComposerAttachments } from "./ComposerAttachments";
+import { ComposerAttachments, pathForFile } from "./ComposerAttachments";
 import {
+  attachmentsFromDroppedFiles,
   composeMessage,
   isLongPaste,
   pasteAttachment,
@@ -73,6 +74,24 @@ export function Composer({
     (next: Attachment[]) => setAttachments((prev) => [...prev, ...next]),
     [setAttachments],
   );
+  const addFiles = useCallback(
+    async (files: File[]) => {
+      if (!files.length) return;
+      const { attachments: next, rejectedNames } = await attachmentsFromDroppedFiles(files, pathForFile);
+      if (next.length) {
+        addAttachments(next);
+        setUploadError(null);
+      }
+      if (rejectedNames.length) {
+        setUploadError(
+          t("Could not attach {names}. Choose a file saved on this computer.", {
+            names: rejectedNames.join(", "),
+          }),
+        );
+      }
+    },
+    [addAttachments, t],
+  );
   const removeAttachment = useCallback(
     (id: string) => setAttachments((prev) => prev.filter((a) => a.id !== id)),
     [setAttachments],
@@ -83,6 +102,7 @@ export function Composer({
   const [highlight, setHighlight] = useState(0);
   const [dismissedAt, setDismissedAt] = useState<number | null>(null); // Esc'd this @
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   // what was typed before the mic went on — partials append after it
   const baseText = useRef("");
 
@@ -322,6 +342,28 @@ export function Composer({
           onRemove={removeAttachment}
         />
         <div className="composer-frame flex items-end gap-2 rounded-3xl border border-hairline/40 bg-raised/60 py-2 pl-3 pr-2 transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/20">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={Boolean(approval)}
+          aria-label={t("Attach files")}
+          title={t("Attach files")}
+          className="flex size-8 shrink-0 items-center justify-center rounded-full text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40"
+        >
+          <Paperclip size={17} />
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(event) => {
+            const files = Array.from(event.target.files ?? []);
+            // Reset first so choosing the same file twice still fires.
+            event.target.value = "";
+            void addFiles(files);
+          }}
+        />
         <textarea
           ref={inputRef}
           rows={1}
