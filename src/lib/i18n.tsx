@@ -160,6 +160,7 @@ const BULGARIAN: Record<string, string> = {
   "Connections": "Връзки",
   "Engines": "Двигатели",
   "Companion": "Компаньон",
+  "Managed on the remote server": "Управлява се от отдалечения сървър",
   "Local VM": "Локална VM",
   "Voice": "Глас",
   "Usage": "Използване",

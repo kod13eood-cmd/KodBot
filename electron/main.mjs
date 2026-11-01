@@ -603,6 +603,17 @@ ipcMain.handle("speech:finish", () => {
 // The renderer gets these five and nothing else: it can turn the companion
 // on and off, look at it, open or cancel a pairing window, and remove a
 // device. It cannot reach the sidecar's control port itself.
+async function remoteCompanion(pathname, method = "GET") {
+  const response = await fetch(`${remoteConnection.url}/api/companion${pathname}`, {
+    method,
+    headers: { accept: "application/json" },
+    signal: AbortSignal.timeout(8_000),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || `Companion request failed (HTTP ${response.status})`);
+  return body;
+}
+
 ipcMain.handle("server:get-connection", () => ({
   ...remoteConnection,
   active: remoteMode ? "remote" : "local",
@@ -628,18 +639,10 @@ ipcMain.handle("server:set-connection", async (_event, value) => {
   return { ok: true };
 });
 ipcMain.handle("companion:state", () =>
-  remoteMode
-    ? {
-        enabled: false,
-        port: 0,
-        devices: [],
-        pairing: null,
-        error: "The companion runs on the remote server. Pair phones from that computer.",
-      }
-    : companionState(),
+  remoteMode ? remoteCompanion("/state") : companionState(),
 );
 ipcMain.handle("companion:start", async () => {
-  if (remoteMode) throw new Error("The companion runs on the remote server.");
+  if (remoteMode) return remoteCompanion("/start", "POST");
   const state = await startCompanion({
     resourcesPath: process.resourcesPath,
     harnessPort: SERVER_PORT,
@@ -652,20 +655,22 @@ ipcMain.handle("companion:start", async () => {
   return state;
 });
 ipcMain.handle("companion:stop", () => {
-  if (remoteMode) throw new Error("The companion runs on the remote server.");
+  if (remoteMode) return remoteCompanion("/stop", "POST");
   rememberCompanionEnabled(false);
   return stopCompanion();
 });
 ipcMain.handle("companion:pairing", (_event, open) => {
-  if (remoteMode) throw new Error("Pair phones from the remote server.");
+  if (remoteMode) return remoteCompanion("/pairing", open ? "POST" : "DELETE");
   return companionPairing(Boolean(open));
 });
 ipcMain.handle("companion:cloud-desktop", (_event, deviceId, allowed) => {
-  if (remoteMode) throw new Error("Pair phones from the remote server.");
+  if (remoteMode) {
+    return remoteCompanion(`/devices/${encodeURIComponent(deviceId)}/cloud-desktop`, allowed ? "POST" : "DELETE");
+  }
   return companionCloudDesktopAccess(deviceId, Boolean(allowed));
 });
 ipcMain.handle("companion:revoke", (_event, deviceId) => {
-  if (remoteMode) throw new Error("Pair phones from the remote server.");
+  if (remoteMode) return remoteCompanion(`/devices/${encodeURIComponent(deviceId)}`, "DELETE");
   return companionRevoke(deviceId);
 });
 

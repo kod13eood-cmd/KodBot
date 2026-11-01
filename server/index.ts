@@ -86,6 +86,7 @@ const PORT = Number(process.env.OC_PORT || 8799);
 const HOST = process.env.OC_HOST || "127.0.0.1";
 const WEBHOOK_PORT = Number(process.env.OC_WEBHOOK_PORT || PORT + 1);
 const STATIC_DIR = process.env.OC_STATIC_DIR || null;
+const COMPANION_CONTROL = process.env.OC_COMPANION_CONTROL_URL?.trim().replace(/\/$/, "") || "http://127.0.0.1:8811";
 const MIME: Record<string, string> = {
   ".html": "text/html",
   ".js": "text/javascript",
@@ -1980,6 +1981,18 @@ function json(res: ServerResponse, status: number, body: unknown) {
   res.end(data);
 }
 
+async function companionControl(pathname: string, method = "GET"): Promise<{ status: number; body: any }> {
+  const response = await fetch(`${COMPANION_CONTROL}${pathname}`, {
+    method,
+    headers: { accept: "application/json" },
+    signal: AbortSignal.timeout(5_000),
+  });
+  return {
+    status: response.status,
+    body: await response.json().catch(() => ({})),
+  };
+}
+
 function readBody(req: IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {
     let data = "";
@@ -3255,6 +3268,46 @@ const server = createServer(async (req, res) => {
     // the same API shape but a different pid)
     if (method === "GET" && path === "/api/health") {
       return json(res, 200, { app: "kodbot", pid: process.pid, static: Boolean(STATIC_DIR) });
+    }
+
+    // ── remote companion control ──────────────────────────────────────
+    // The sidecar's control plane is loopback-only by design. A desktop
+    // pointed at this harness can still inspect it and open a pairing window
+    // through these endpoints; the harness is the process with access to the
+    // loopback control port. The whole harness is already a trusted-tailnet
+    // surface, so this does not widen a boundary that has authentication.
+    if (path.startsWith("/api/companion/")) {
+      const suffix = path.slice("/api/companion".length);
+      try {
+        if (method === "GET" && suffix === "/state") {
+          const state = await companionControl("/state");
+          return json(res, state.status, { ...state.body, enabled: true, managed: true });
+        }
+        if (method === "POST" && suffix === "/start") {
+          const state = await companionControl("/state");
+          return json(res, state.status, { ...state.body, enabled: true, managed: true });
+        }
+        if (method === "POST" && suffix === "/stop") {
+          return json(res, 409, { error: "The companion is managed by the remote host's service." });
+        }
+        if ((method === "POST" || method === "DELETE") && suffix === "/pairing") {
+          const state = await companionControl("/pairing", method);
+          return json(res, state.status, { ...state.body, enabled: true, managed: true });
+        }
+        const cloud = suffix.match(/^\/devices\/([\w-]+)\/cloud-desktop$/);
+        if (cloud && (method === "POST" || method === "DELETE")) {
+          const state = await companionControl(`/devices/${cloud[1]}/cloud-desktop`, method);
+          return json(res, state.status, { ...state.body, enabled: true, managed: true });
+        }
+        const revoke = suffix.match(/^\/devices\/([\w-]+)$/);
+        if (revoke && method === "DELETE") {
+          const state = await companionControl(`/devices/${revoke[1]}`, "DELETE");
+          return json(res, state.status, { ...state.body, enabled: true, managed: true });
+        }
+        return json(res, 404, { error: "no such companion route" });
+      } catch {
+        return json(res, 503, { error: "The companion control service is not running on this host." });
+      }
     }
 
     // ── inspector: a thread's runtime events + native protocol tee ──

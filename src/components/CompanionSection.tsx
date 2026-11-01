@@ -48,6 +48,8 @@ interface CompanionState {
   discovery?: { advertising: boolean; name: string };
   /** Why it is not running, or not answering. */
   error?: string;
+  /** The sidecar is owned by the remote host's service, not this window. */
+  managed?: boolean;
 }
 
 /** The bridge the preload exposes. Absent in a browser tab — the companion
@@ -186,6 +188,9 @@ export function CompanionSection() {
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <div className="text-[14px] text-ink">{state.enabled ? t("On") : t("Off")}</div>
+            {state.managed && (
+              <div className="mt-0.5 text-[12px] text-ink-secondary">{t("Managed on the remote server")}</div>
+            )}
             <div className="mt-0.5 text-[13px] text-ink-secondary">
               {!state.enabled
                 ? t("Nothing on this computer is reachable from the network.")
@@ -202,7 +207,8 @@ export function CompanionSection() {
             role="switch"
             aria-checked={state.enabled}
             aria-label={t("Companion")}
-            disabled={busy}
+            title={state.managed ? t("Managed on the remote server") : undefined}
+            disabled={busy || state.managed}
             onClick={() => void act((c) => (state.enabled ? c.stop() : c.start()))}
             className={cnSwitch(state.enabled)}
           >
