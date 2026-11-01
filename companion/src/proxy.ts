@@ -114,6 +114,11 @@ const forwardHeaders = (req: IncomingMessage): Record<string, string> => {
   const out: Record<string, string> = { accept: String(req.headers.accept ?? "*/*") };
   const contentType = req.headers["content-type"];
   if (contentType) out["content-type"] = String(contentType);
+  // Uploads name the file in a header, percent-encoded because an HTTP header
+  // cannot carry arbitrary Unicode. Dropping it would leave every phone
+  // attachment called "attachment".
+  const filename = req.headers["x-kodbot-filename"];
+  if (filename) out["x-kodbot-filename"] = String(filename);
   // Last-Event-ID is how a reconnecting client asks for the gap. Dropping it
   // would turn every resume into a full re-hydration, silently.
   const lastEventId = req.headers["last-event-id"];

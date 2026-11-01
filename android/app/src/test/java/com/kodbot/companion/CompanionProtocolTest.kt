@@ -63,4 +63,30 @@ class CompanionProtocolTest {
         assertNull(PairingInvite.parse("kodbot://pair?address=linux&code=123456&code=654321"))
         assertNull(PairingInvite.parse("kodbot://pair?address=linux&token=bad&code=123456"))
     }
+
+    @Test
+    fun attachmentsUseTheSameTaggedBlockAsTheDesktopComposer() {
+        val composed = composeMessage(
+            "  look at this  ",
+            listOf(
+                UploadedFile("/home/me/Report & Notes.pdf", "Report & Notes.pdf", 12),
+                UploadedFile("/home/me/plain.png", "plain.png", 3),
+            ),
+        )
+
+        assertEquals(
+            "look at this\n\n" +
+                "<attached-file path=\"/home/me/Report &amp; Notes.pdf\" />\n\n" +
+                "<attached-file path=\"/home/me/plain.png\" />",
+            composed,
+        )
+    }
+
+    @Test
+    fun anAttachmentCanStandWithoutAnyTypedText() {
+        assertEquals(
+            "<attached-file path=\"/tmp/a.txt\" />",
+            composeMessage("   ", listOf(UploadedFile("/tmp/a.txt", "a.txt", 1))),
+        )
+    }
 }

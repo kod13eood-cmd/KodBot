@@ -1,14 +1,19 @@
 package com.kodbot.companion
 
 import android.Manifest
+import android.content.Context
 import android.content.SharedPreferences
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.OpenableColumns
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -19,6 +24,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +37,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
@@ -40,9 +47,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -71,12 +79,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -188,7 +200,6 @@ class MainActivity : ComponentActivity() {
                     onRespond = ::respond,
                     onInterrupt = ::interrupt,
                     onSelectModel = ::selectModel,
-                    onDeleteBot = ::deleteBot,
                     onDisconnect = ::disconnect,
                 )
             }
@@ -467,18 +478,39 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun send(chat: ConversationRecord, text: String) {
-        val saved = connection ?: return
+    private fun send(
+        chat: ConversationRecord,
+        text: String,
+        attachments: List<PendingAttachment>,
+        done: (Boolean) -> Unit,
+    ) {
+        val saved = connection ?: run {
+            done(false)
+            return
+        }
         lifecycleScope.launch {
             loading = true
             actionError = null
+            var sent = false
             try {
-                CompanionApi(saved).send(chat, text)
+                val api = CompanionApi(saved)
+                val uploaded = attachments.map { attachment ->
+                    try {
+                        api.upload(attachment, contentResolver)
+                    } catch (error: Exception) {
+                        throw java.io.IOException(
+                            "Couldn't attach ${attachment.name}: ${error.message ?: "upload failed"}",
+                        )
+                    }
+                }
+                api.send(chat, composeMessage(text, uploaded))
                 refreshFleet()
+                sent = true
             } catch (error: Exception) {
                 actionError = error.message ?: "Couldn't send the message."
             } finally {
                 loading = false
+                done(sent)
             }
         }
     }
@@ -509,23 +541,6 @@ class MainActivity : ComponentActivity() {
                 refreshFleet()
             } catch (error: Exception) {
                 actionError = error.message ?: "Couldn't stop the agent."
-            } finally {
-                loading = false
-            }
-        }
-    }
-
-    private fun deleteBot(chat: ConversationRecord) {
-        val saved = connection ?: return
-        lifecycleScope.launch {
-            loading = true
-            actionError = null
-            try {
-                CompanionApi(saved).deleteBot(chat)
-                if (activeChatKey == chat.key) activeChatKey = null
-                refreshFleet()
-            } catch (error: Exception) {
-                actionError = error.message ?: "Couldn't delete that bot."
             } finally {
                 loading = false
             }
@@ -647,15 +662,13 @@ private fun KodBotScreen(
     onShowHiddenBots: (Boolean) -> Unit,
     onShowGroups: (Boolean) -> Unit,
     onCreateBot: () -> Unit,
-    onSend: (ConversationRecord, String) -> Unit,
+    onSend: (ConversationRecord, String, List<PendingAttachment>, (Boolean) -> Unit) -> Unit,
     onRespond: (ConversationRecord, ApprovalCard, String) -> Unit,
     onInterrupt: (ConversationRecord) -> Unit,
     onSelectModel: (ConversationRecord, EngineRecord, ModelOptionRecord) -> Unit,
-    onDeleteBot: (ConversationRecord) -> Unit,
     onDisconnect: () -> Unit,
 ) {
     var confirmDisconnect by rememberSaveable { mutableStateOf(false) }
-    var confirmDelete by remember { mutableStateOf<ConversationRecord?>(null) }
     BackHandler(enabled = settingsOpen || activeChatKey != null) {
         if (settingsOpen) onCloseSettings() else onBackToFleet()
     }
@@ -721,7 +734,6 @@ private fun KodBotScreen(
                         onCreateBot = onCreateBot,
                         updateState = updateState,
                         onInstallUpdate = onInstallUpdate,
-                        onDeleteBot = { confirmDelete = it },
                     )
                 } else {
                     ChatScreen(
@@ -748,25 +760,6 @@ private fun KodBotScreen(
                 TextButton(onClick = { confirmDisconnect = false; onDisconnect() }) { Text("Disconnect") }
             },
             dismissButton = { TextButton(onClick = { confirmDisconnect = false }) { Text("Cancel") } },
-        )
-    }
-
-    confirmDelete?.let { bot ->
-        AlertDialog(
-            onDismissRequest = { confirmDelete = null },
-            title = { Text("Delete ${bot.name}?") },
-            text = {
-                Text("This removes the bot and its conversation from the computer. This cannot be undone.")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        confirmDelete = null
-                        onDeleteBot(bot)
-                    },
-                ) { Text("Delete", color = Color(0xFFFF8A80)) }
-            },
-            dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text("Cancel") } },
         )
     }
 }
@@ -861,7 +854,6 @@ private fun FleetScreen(
     onCreateBot: () -> Unit,
     updateState: UpdateUiState,
     onInstallUpdate: () -> Unit,
-    onDeleteBot: (ConversationRecord) -> Unit,
 ) {
     val visibleChats = chats.filter { chat ->
         (chat.kind != "group" || showGroups) && (chat.kind != "bot" || showHiddenBots || !chat.hidden)
@@ -1020,19 +1012,6 @@ private fun FleetScreen(
                                 if (chat.unread) Spacer(Modifier.width(8.dp))
                             }
                             if (chat.unread) Surface(modifier = Modifier.size(9.dp), shape = CircleShape, color = CrewGreen) {}
-                            if (chat.kind == "bot") {
-                                IconButton(
-                                    onClick = { onDeleteBot(chat) },
-                                    modifier = Modifier.size(32.dp),
-                                ) {
-                                    Icon(
-                                        Icons.Filled.Delete,
-                                        contentDescription = "Delete ${chat.name}",
-                                        modifier = Modifier.size(18.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
                         }
                     }
                 }
@@ -1046,15 +1025,62 @@ private fun ChatScreen(
     chat: ConversationRecord,
     loading: Boolean,
     onBack: () -> Unit,
-    onSend: (ConversationRecord, String) -> Unit,
+    onSend: (ConversationRecord, String, List<PendingAttachment>, (Boolean) -> Unit) -> Unit,
     onRespond: (ConversationRecord, ApprovalCard, String) -> Unit,
     onInterrupt: (ConversationRecord) -> Unit,
 ) {
     var draft by rememberSaveable(chat.key) { mutableStateOf("") }
+    var attachments by rememberSaveable(chat.key) { mutableStateOf(emptyList<PendingAttachment>()) }
+    var sending by rememberSaveable(chat.key) { mutableStateOf(false) }
+    var attachmentError by rememberSaveable(chat.key) { mutableStateOf<String?>(null) }
+    var choosingAttachment by rememberSaveable(chat.key) { mutableStateOf(false) }
+    val context = LocalContext.current
+    val acceptPicked: (List<Uri>) -> Unit = { uris ->
+        if (uris.isNotEmpty()) {
+            val accepted = mutableListOf<PendingAttachment>()
+            val rejected = mutableListOf<String>()
+            for (uri in uris) {
+                val picked = runCatching { attachmentFromUri(context, uri) }.getOrNull()
+                when {
+                    picked == null -> rejected += "a selected file"
+                    picked.size > CompanionApi.MAX_ATTACHMENT_BYTES -> rejected += picked.name
+                    else -> accepted += picked
+                }
+            }
+            if (accepted.isNotEmpty()) {
+                attachments = attachments + accepted
+                attachmentError = null
+            }
+            if (rejected.isNotEmpty()) {
+                attachmentError = "Couldn't attach ${rejected.distinct().joinToString(", ")}. " +
+                    "Files must be 30 MB or smaller."
+            }
+        }
+    }
+    val pickDocuments = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { acceptPicked(it) }
+    val pickPdf = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { acceptPicked(it) }
+    val pickImages = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(10)) { acceptPicked(it) }
     val listState = rememberLazyListState()
     val workingItemIndex = chat.messages.lastIndex + if (chat.busy) 1 else 0
     LaunchedEffect(chat.messages.lastOrNull()?.id, chat.busy) {
         if (workingItemIndex >= 0) listState.animateScrollToItem(workingItemIndex)
+    }
+
+    val canSend = (draft.isNotBlank() || attachments.isNotEmpty()) && !loading && !sending
+    // Upload first, then send. The draft and its chips stay put until the
+    // host confirms, so a failed upload can be retried without retyping.
+    val submit: () -> Unit = {
+        if (canSend) {
+            sending = true
+            attachmentError = null
+            onSend(chat, draft.trim(), attachments) { sent ->
+                sending = false
+                if (sent) {
+                    draft = ""
+                    attachments = emptyList()
+                }
+            }
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -1118,39 +1144,189 @@ private fun ChatScreen(
                 }
             }
         }
+        if (attachments.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                attachments.forEach { attachment ->
+                    AttachmentChip(
+                        attachment = attachment,
+                        enabled = !sending,
+                        onRemove = {
+                            attachments = attachments.filterNot { it.uri == attachment.uri }
+                        },
+                    )
+                }
+            }
+        }
+        attachmentError?.let { message ->
+            Text(
+                message,
+                color = Color(0xFFFF8A80),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
+            IconButton(
+                onClick = { choosingAttachment = true },
+                enabled = !loading && !sending,
+                modifier = Modifier
+                    .padding(bottom = 4.dp)
+                    .semantics { contentDescription = "Attach a file" },
+            ) {
+                Text("📎", fontSize = 20.sp)
+            }
             OutlinedTextField(
                 value = draft,
                 onValueChange = { draft = it },
                 modifier = Modifier.weight(1f),
                 placeholder = { Text("Message ${chat.name}") },
                 maxLines = 5,
+                enabled = !sending,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = {
-                        val text = draft.trim()
-                        if (text.isNotEmpty() && !loading) {
-                            draft = ""
-                            onSend(chat, text)
-                    }
-                }),
+                keyboardActions = KeyboardActions(onSend = { submit() }),
             )
             Button(
-                onClick = {
-                    val text = draft.trim()
-                    if (text.isNotEmpty() && !loading) {
-                        draft = ""
-                        onSend(chat, text)
-                    }
-                },
-                enabled = draft.isNotBlank() && !loading,
+                onClick = submit,
+                enabled = canSend,
                 modifier = Modifier.padding(bottom = 4.dp),
-            ) { Text("Send") }
+            ) {
+                if (sending) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("Send")
+                }
+            }
         }
     }
+
+    if (choosingAttachment) {
+        AlertDialog(
+            onDismissRequest = { choosingAttachment = false },
+            title = { Text("Attach to message") },
+            text = {
+                Column {
+                    TextButton(
+                        onClick = {
+                            choosingAttachment = false
+                            pickImages.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("🖼  Photo or image") }
+                    TextButton(
+                        onClick = {
+                            choosingAttachment = false
+                            pickPdf.launch(arrayOf("application/pdf"))
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("📄  PDF") }
+                    TextButton(
+                        onClick = {
+                            choosingAttachment = false
+                            pickDocuments.launch(arrayOf("*/*"))
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("📎  Any file") }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { choosingAttachment = false }) { Text("Cancel") }
+            },
+        )
+    }
+}
+
+/** Read the display name, byte size, and MIME type a document provider
+ * exposes. Providers are allowed to omit any of them; the fallbacks keep the
+ * chip useful without pretending a guessed size is real. */
+private fun attachmentFromUri(context: Context, uri: Uri): PendingAttachment {
+    val resolver = context.contentResolver
+    var name = "attachment"
+    var size = 0L
+    resolver.query(
+        uri,
+        arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE),
+        null,
+        null,
+        null,
+    )?.use { cursor ->
+        if (cursor.moveToFirst()) {
+            val nameColumn = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (nameColumn >= 0) {
+                cursor.getString(nameColumn)?.takeIf(String::isNotBlank)?.let { name = it }
+            }
+            val sizeColumn = cursor.getColumnIndex(OpenableColumns.SIZE)
+            if (sizeColumn >= 0 && !cursor.isNull(sizeColumn)) {
+                size = cursor.getLong(sizeColumn).coerceAtLeast(0L)
+            }
+        }
+    }
+    return PendingAttachment(
+        uri = uri.toString(),
+        name = name,
+        size = size,
+        mimeType = resolver.getType(uri) ?: "application/octet-stream",
+    )
+}
+
+@Composable
+private fun AttachmentChip(
+    attachment: PendingAttachment,
+    enabled: Boolean,
+    onRemove: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 12.dp, top = 6.dp, bottom = 6.dp, end = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.widthIn(max = 210.dp)) {
+                Text(
+                    attachment.name,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    formatAttachmentSize(attachment.size),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+            IconButton(
+                onClick = onRemove,
+                enabled = enabled,
+                modifier = Modifier.size(30.dp),
+            ) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = "Remove ${attachment.name}",
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+    }
+}
+
+private fun formatAttachmentSize(bytes: Long): String = when {
+    bytes <= 0 -> "Size unknown"
+    bytes < 1024 -> "$bytes B"
+    bytes < 1024 * 1024 -> String.format(java.util.Locale.US, "%.1f KB", bytes / 1024.0)
+    else -> String.format(java.util.Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
 }
 
 @Composable
@@ -1292,10 +1468,15 @@ private fun MessageItem(
                     message.senderName?.takeIf(String::isNotBlank)?.let {
                         Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     }
-                    Text(
-                        message.text,
-                        color = if (message.role == "user") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                    )
+                    // Long-press to select and copy an answer, like any native
+                    // text. Without this, a Compose Text is a single
+                    // non-selectable drawing.
+                    SelectionContainer {
+                        Text(
+                            message.text,
+                            color = if (message.role == "user") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
                 }
             }
         }

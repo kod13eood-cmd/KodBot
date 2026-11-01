@@ -36,9 +36,9 @@ describe("what the app may do", () => {
     ["GET", "/api/config"],
     ["GET", "/api/events"],
     ["GET", "/api/instances"],
+    ["POST", "/api/uploads"],
     ["GET", "/api/bots"],
     ["POST", "/api/bots"],
-    ["DELETE", "/api/bots/bot_123"],
     ["POST", "/api/bots/bot_123/messages"],
     ["PATCH", "/api/bots/bot_123/model"],
     ["POST", "/api/bots/bot_123/interrupt"],
@@ -71,6 +71,7 @@ describe("what it may not", () => {
     for (const [method, path] of [
       ["PUT", "/api/config"],
       ["PATCH", "/api/config"],
+      ["DELETE", "/api/bots/bot_123"],
       ["GET", "/api/devices"],
       ["GET", "/api/companion"],
       ["POST", "/api/local-computer/start"],
@@ -107,10 +108,11 @@ describe("what it may not", () => {
   });
 
   // The method is part of the allowance, not decoration: reading the fleet
-  // is allowed, and deleting one bot is a deliberate narrow DELETE.
+  // is allowed, but deleting a bot is a desktop-only action.
   it("allows a path only for the methods it was allowed for", () => {
     expect(allowed("GET", "/api/bots")).toBe(true);
-    expect(allowed("DELETE", "/api/bots/bot_123")).toBe(true);
+    expect(allowed("DELETE", "/api/bots/bot_123")).toBe(false);
+    expect(ask("DELETE", "/api/bots/bot_123")?.error).toMatch(/on your computer/);
     expect(allowed("PATCH", "/api/bots/bot_123/model")).toBe(true);
     expect(allowed("POST", "/api/threads/th_1/messages")).toBe(false);
     expect(allowed("GET", "/api/groups/room-1")).toBe(false);

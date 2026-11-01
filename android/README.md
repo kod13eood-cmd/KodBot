@@ -18,10 +18,17 @@ approval flow. The phone does not receive a general shell endpoint.
   read transcripts, and allow or deny pending tool requests. The foreground
   service posts native Android notifications for
   approval, question, completion, and routine-failure events.
+- Long-press any answer to select and copy text, then paste it into the
+  composer with the normal Android text controls.
+- Attach photos, PDFs, or files from the composer. The phone uploads the bytes
+  to the host's `~/.kodbot/uploads` directory and sends the same
+  `<attached-file path="…" />` block the desktop composer uses, so the agent
+  can open the file with its normal tools. Attachments are capped at 30 MB.
 - Settings can test or repair the host address, change a bot's model from the
   host catalog, and toggle whether hidden bots or group chats are shown.
-- Delete a bot from the fleet with its trash icon; a confirmation dialog shows
-  the bot name before anything is removed.
+- Bot deletion is desktop-only. The phone intentionally has no delete action
+  for a bot: deleting one removes every transcript and its workspace, which is
+  too destructive for a single tap on a pocket device.
 - Store the paired device token encrypted with an Android Keystore AES key.
 
 Pairing, chat, and notifications use the existing default-deny companion API

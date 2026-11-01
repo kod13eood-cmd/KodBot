@@ -1,5 +1,6 @@
 package com.kodbot.companion
 
+import android.content.ContentResolver
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,6 +18,42 @@ data class CompanionConnection(
     val serverName: String,
     val token: String,
 )
+
+/** One local file the phone is about to hand to the host. The content URI
+ * stays valid only while the app has permission, so the bytes are uploaded
+ * when the message is sent rather than at pick time. */
+data class PendingAttachment(
+    val uri: String,
+    val name: String,
+    val size: Long,
+    val mimeType: String,
+) : java.io.Serializable
+
+/** A file that now exists on the host. `path` is what the prompt names. */
+data class UploadedFile(
+    val path: String,
+    val name: String,
+    val size: Long,
+)
+
+/** The same tagged block the desktop composer sends, so every engine sees
+ * one attachment shape whether the prompt came from a laptop or a phone. */
+fun composeMessage(text: String, files: List<UploadedFile>): String {
+    val parts = mutableListOf(text.trim())
+    for (file in files) {
+        parts += "<attached-file path=\"${escapeAttachmentValue(file.path)}\" />"
+    }
+    return parts.filter { it.isNotEmpty() }.joinToString("\n\n")
+}
+
+private fun escapeAttachmentValue(value: String): String = value
+    .replace("&", "&amp;")
+    .replace("\"", "&quot;")
+    .replace("<", "&lt;")
+    .replace(">", "&gt;")
+    .replace("\t", "&#9;")
+    .replace("\r", "&#13;")
+    .replace("\n", "&#10;")
 
 data class ApprovalCard(
     val title: String,
@@ -240,6 +277,56 @@ class CompanionApi(private val connection: CompanionConnection) {
         request("POST", "$route/${encodePath(chat.id)}/messages", JSONObject().put("text", text))
     }
 
+    /** Copy one picked file to the host and return the path an agent can
+     * open. Chunked on purpose: a content provider may report no size, and a
+     * fixed-length stream would then truncate or fail before the request. */
+    suspend fun upload(attachment: PendingAttachment, resolver: ContentResolver): UploadedFile =
+        withContext(Dispatchers.IO) {
+            require(attachment.size <= MAX_ATTACHMENT_BYTES) {
+                "${attachment.name} is larger than ${MAX_ATTACHMENT_BYTES / (1024 * 1024)} MB."
+            }
+            val input = resolver.openInputStream(Uri.parse(attachment.uri))
+                ?: throw IOException("Couldn't open ${attachment.name}.")
+            val http = URL(connection.baseUrl + "/api/uploads").openConnection() as HttpURLConnection
+            try {
+                http.requestMethod = "POST"
+                http.connectTimeout = 15_000
+                http.readTimeout = 120_000
+                http.doOutput = true
+                http.setChunkedStreamingMode(64 * 1024)
+                http.setRequestProperty("Accept", "application/json")
+                http.setRequestProperty("Authorization", "Bearer ${connection.token}")
+                http.setRequestProperty(
+                    "Content-Type",
+                    attachment.mimeType.takeIf(String::isNotBlank) ?: "application/octet-stream",
+                )
+                http.setRequestProperty("X-KodBot-Filename", Uri.encode(attachment.name))
+                input.use { source ->
+                    http.outputStream.use { target -> source.copyTo(target, 64 * 1024) }
+                }
+                val status = http.responseCode
+                val stream = if (status in 200..299) http.inputStream else http.errorStream
+                val response = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+                if (status !in 200..299) {
+                    val detail = runCatching { JSONObject(response).optString("error") }.getOrNull()
+                    throw IOException(
+                        detail?.takeIf(String::isNotBlank)
+                            ?: "The computer couldn't accept ${attachment.name} (HTTP $status).",
+                    )
+                }
+                val saved = JSONObject(response)
+                UploadedFile(
+                    path = saved.optString("path").takeIf(String::isNotBlank)
+                        ?: throw IOException("The computer didn't return a path for ${attachment.name}."),
+                    name = saved.optString("name", attachment.name),
+                    size = saved.optLong("size", attachment.size),
+                )
+            } finally {
+                input.close()
+                http.disconnect()
+            }
+        }
+
     suspend fun createBot(): ConversationRecord = withContext(Dispatchers.IO) {
         val response = JSONObject(request("POST", "/api/bots", JSONObject()))
         response.getJSONObject("bot").toBotConversation()
@@ -258,11 +345,6 @@ class CompanionApi(private val connection: CompanionConnection) {
             else -> throw IllegalArgumentException("This conversation can't be interrupted.")
         }
         request("POST", "/api/bots/${encodePath(botId)}/interrupt")
-    }
-
-    suspend fun deleteBot(chat: ConversationRecord) = withContext(Dispatchers.IO) {
-        require(chat.kind == "bot") { "Only a bot can be deleted." }
-        request("DELETE", "/api/bots/${encodePath(chat.id)}")
     }
 
     suspend fun selectModel(botId: String, instanceId: String, model: String) = withContext(Dispatchers.IO) {
@@ -333,6 +415,8 @@ class CompanionApi(private val connection: CompanionConnection) {
     }
 
     companion object {
+        const val MAX_ATTACHMENT_BYTES = 30L * 1024 * 1024
+
         suspend fun pair(
             address: String,
             code: String,

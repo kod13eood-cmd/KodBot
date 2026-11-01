@@ -81,6 +81,7 @@ import { memberTurnSelection } from "./member-turn.ts";
 import { WebhookManager } from "./webhooks.ts";
 import { SPAWNED_PROXIES } from "./proxy-paths.ts";
 import { askJev, jevConfigured, jevRequest, type JevError } from "./jev.ts";
+import { MAX_UPLOAD_BYTES, sanitizeUploadName, storeUpload } from "./uploads.ts";
 
 const PORT = Number(process.env.OC_PORT || 8799);
 const HOST = process.env.OC_HOST || "127.0.0.1";
@@ -2030,6 +2031,41 @@ function readBody(req: IncomingMessage): Promise<any> {
   });
 }
 
+/** The upload body is bytes, not JSON. Stop retaining at the ceiling but
+ * keep reading so the response can still reach the sender; a caller that
+ * streams forever is bounded by the connection, not by an ever-growing
+ * buffer in this process. */
+function readRawBody(req: IncomingMessage, limit: number): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let bytes = 0;
+    let tooLarge = false;
+    let done = false;
+    const fail = (status: number, msg: string) => {
+      if (done) return;
+      done = true;
+      reject(Object.assign(new Error(msg), { status }));
+    };
+    req.on("data", (chunk: Buffer) => {
+      if (done || tooLarge) return;
+      bytes += chunk.length;
+      if (bytes > limit) {
+        tooLarge = true;
+        chunks.length = 0;
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => {
+      if (done) return;
+      if (tooLarge) return fail(413, `file is larger than ${Math.round(limit / (1024 * 1024))} MB`);
+      done = true;
+      resolve(Buffer.concat(chunks));
+    });
+    req.on("error", (e) => fail(400, e instanceof Error ? e.message : String(e)));
+  });
+}
+
 // Loopback-only enforcement: the harness runs on 127.0.0.1 but accepts
 // requests from any loopback connection and any web page that DNS-rebinds
 // onto it. Reject non-loopback Hosts outright (defeats rebinding) and
@@ -3268,6 +3304,22 @@ const server = createServer(async (req, res) => {
     // the same API shape but a different pid)
     if (method === "GET" && path === "/api/health") {
       return json(res, 200, { app: "kodbot", pid: process.pid, static: Boolean(STATIC_DIR) });
+    }
+
+    // A paired phone has the file, not this host. Copy it into the data
+    // directory first so the prompt can carry the absolute path the agent
+    // already knows how to open. The companion allowlist admits this route
+    // explicitly; the harness itself stays scoped to the same trusted
+    // surface as the rest of the API.
+    if (method === "POST" && path === "/api/uploads") {
+      const name = sanitizeUploadName(req.headers["x-kodbot-filename"]);
+      const bytes = await readRawBody(req, MAX_UPLOAD_BYTES);
+      if (!bytes.byteLength) return json(res, 400, { error: "empty file" });
+      const stored = storeUpload(bytes, name);
+      return json(res, 200, {
+        ...stored,
+        mime: String(req.headers["content-type"] ?? "").split(";")[0].trim() || "application/octet-stream",
+      });
     }
 
     // ── remote companion control ──────────────────────────────────────

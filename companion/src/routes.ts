@@ -56,11 +56,15 @@ const ALLOWED: ReadonlyArray<{ method: string; path: RegExp }> = [
   { method: "GET", path: /^\/api\/config$/ },
   { method: "GET", path: /^\/api\/events$/ },
   { method: "GET", path: /^\/api\/instances$/ },
+  // One phone attachment, copied into the host's data directory. The
+  // harness bounds the body; this route exists so the prompt can name a path
+  // an agent on this machine can open.
+  { method: "POST", path: /^\/api\/uploads$/ },
 
-  // the fleet, and making a bot
+  // the fleet, and making a bot. Deletion stays on the computer: a phone
+  // should not be able to erase a bot and its workspace in one tap.
   { method: "GET", path: /^\/api\/bots$/ },
   { method: "POST", path: /^\/api\/bots$/ },
-  { method: "DELETE", path: /^\/api\/bots\/[\w-]+$/ },
   { method: "POST", path: /^\/api\/bots\/[\w-]+\/messages$/ },
   // A narrow model picker write. The general bot PATCH can also change
   // permissions, workspaces, computers, and integrations, so it stays closed.
@@ -106,6 +110,13 @@ const EXPLAINED: ReadonlyArray<{ path: RegExp; error: string }> = [
   },
   { path: /^\/api\/config$/, error: "API keys can only be changed on your computer" },
   { path: /^\/api\/local-computer(\/|$)/, error: "the Local VM is set up on your computer" },
+  {
+    // Deleting a bot also deletes every task transcript and its workspace.
+    // That is too destructive to expose to a pocket device that can be
+    // unlocked by accident; the desktop keeps the explicit control.
+    path: /^\/api\/bots\/[\w-]+$/,
+    error: "bots can only be deleted on your computer",
+  },
   {
     // Creating one exposes an endpoint to the internet, and rotating a
     // secret breaks whatever was sending to it. Neither belongs on a device
