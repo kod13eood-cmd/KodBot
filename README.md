@@ -155,6 +155,8 @@ The factual, marketing-ready catalog is [docs/FEATURES.md](docs/FEATURES.md).
 Website and ad copy lives in [docs/marketing/product-page.md](docs/marketing/product-page.md).
 For dogfooding KodBot on its own repository, see
 [docs/developing-kodbot-with-kodbot.md](docs/developing-kodbot-with-kodbot.md).
+For a maintainer or agent handoff, start with [HANDOFF.md](HANDOFF.md) and
+[AGENTS.md](AGENTS.md).
 
 ### 🎧 Bots that talk back
 
