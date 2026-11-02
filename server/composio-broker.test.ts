@@ -3,7 +3,7 @@
 import { createServer, type Server } from "node:http";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { accountIdentity, removeAccount } from "./composio.ts";
+import { accountIdentity, authorizeService, removeAccount } from "./composio.ts";
 
 let api: Server;
 let base = "";
@@ -12,6 +12,7 @@ let removeCount = 1;
 let removeStatus = 200;
 let removeError = "The broker refused to revoke this connection.";
 let identityEmail = "work@example.com";
+let gmailAccounts = 1;
 
 const sse = (value: unknown) =>
   `event: message\ndata: ${JSON.stringify(value)}\n\n`;
@@ -31,6 +32,25 @@ beforeAll(async () => {
     if (req.method === "DELETE" && req.url?.startsWith("/v1/connectors/gmail/accounts/")) {
       res.writeHead(removeStatus, { "content-type": "application/json" });
       return res.end(JSON.stringify(removeStatus === 200 ? { removed: removeCount } : { error: removeError }));
+    }
+    if (req.method === "GET" && req.url?.startsWith("/v1/connectors?services=gmail")) {
+      res.writeHead(200, { "content-type": "application/json" });
+      return res.end(JSON.stringify({
+        services: {
+          gmail: {
+            connected: gmailAccounts > 0,
+            status: gmailAccounts > 0 ? "ACTIVE" : "not_connected",
+            accounts: Array.from({ length: gmailAccounts }, (_, index) => ({
+              id: `ca_${index}`,
+              status: "ACTIVE",
+            })),
+          },
+        },
+      }));
+    }
+    if (req.method === "POST" && req.url === "/v1/connectors/gmail/authorize") {
+      res.writeHead(200, { "content-type": "application/json" });
+      return res.end(JSON.stringify({ url: "https://connect.composio.dev/link/test" }));
     }
     if (body?.method === "initialize") {
       res.writeHead(200, { "content-type": "text/event-stream", "mcp-session-id": "test-session" });
@@ -59,6 +79,7 @@ beforeEach(() => {
   removeStatus = 200;
   removeError = "The broker refused to revoke this connection.";
   identityEmail = "work@example.com";
+  gmailAccounts = 1;
 });
 
 afterAll(async () => {
@@ -80,6 +101,20 @@ describe("managed connected apps", () => {
     await expect(removeAccount({}, "gmail", "ca_missing")).resolves.toEqual({ removed: 0 });
     removeStatus = 502;
     await expect(removeAccount({}, "gmail", "ca_missing")).rejects.toThrow(/refused to revoke/i);
+  });
+
+  it("adds a unique alias when the service already has an account", async () => {
+    gmailAccounts = 1;
+    await expect(authorizeService({}, "gmail")).resolves.toEqual({ url: "https://connect.composio.dev/link/test" });
+    const call = calls.find((entry) => entry.method === "POST" && entry.url === "/v1/connectors/gmail/authorize");
+    expect(call?.body?.alias).toMatch(/^kodbot-gmail-/);
+  });
+
+  it("does not send an alias for the first account", async () => {
+    gmailAccounts = 0;
+    await expect(authorizeService({}, "gmail")).resolves.toEqual({ url: "https://connect.composio.dev/link/test" });
+    const call = calls.find((entry) => entry.method === "POST" && entry.url === "/v1/connectors/gmail/authorize");
+    expect(call?.body).toBeNull();
   });
 
   it("resolves the signed-in address from the provider profile tool", async () => {

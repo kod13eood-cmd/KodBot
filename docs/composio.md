@@ -35,6 +35,11 @@ signed in again. The usual cleanup is: remove the expired row, then add the
 account you actually want. Friendly labels are stored only in KodBot and are
 kept locally, not in Composio.
 
+Adding another account is supported even when one is already connected. KodBot
+generates a unique internal alias for the new connection so the provider does
+not replace the existing account; the signed-in address appears once the new
+account becomes active.
+
 ## Running from source
 
 Set the key in the server environment:

@@ -550,10 +550,32 @@ export async function accountIdentity(cfg: AppConfig, slug: string, accountId: s
   }
 }
 
-/** Mint a browser auth link for one service. Returns { url } or throws. */
-export async function authorizeService(cfg: AppConfig, slug: string) {
+/** Mint a browser auth link for one service. Returns { url } or throws.
+ *
+ * Composio refuses to open a second account without an alias because it would
+ * otherwise replace the first one. When the service already has an account,
+ * generate a unique alias for the new connection; the UI can still rename it
+ * to the real mailbox address once it is active. */
+export async function authorizeService(cfg: AppConfig, slug: string, alias?: string) {
+  let accountAlias = alias?.trim();
+  if (!accountAlias) {
+    try {
+      const current = await connectionStatus(cfg, [slug]);
+      if ((current[slug]?.accounts?.length ?? 0) > 0) {
+        accountAlias = `kodbot-${slug}-${Date.now().toString(36)}`.slice(0, 80);
+      }
+    } catch {
+      // Status is only an optimization; let the provider explain if the
+      // connection state cannot be read.
+    }
+  }
   if (brokerAccess() || !cfg.composio?.apiKey) {
-    const response = await brokerRequest(`/v1/connectors/${encodeURIComponent(slug)}/authorize`, { method: "POST" });
+    const response = await brokerRequest(`/v1/connectors/${encodeURIComponent(slug)}/authorize`, {
+      method: "POST",
+      ...(accountAlias
+        ? { headers: { "content-type": "application/json" }, body: JSON.stringify({ alias: accountAlias }) }
+        : {}),
+    });
     if (!response.ok) throw new Error(await responseError(response, `Connected apps: HTTP ${response.status}`));
     const body = (await response.json()) as { url?: string };
     return { url: trustedAuthUrl(body.url, slug) };
@@ -562,7 +584,7 @@ export async function authorizeService(cfg: AppConfig, slug: string) {
   const res = await fetch(`${apiBase()}/tool_router/session/${encodeURIComponent(session.session_id)}/link`, {
     method: "POST",
     headers: projectHeaders(cfg.composio.apiKey, true),
-    body: JSON.stringify({ toolkit: slug }),
+    body: JSON.stringify({ toolkit: slug, ...(accountAlias ? { alias: accountAlias } : {}) }),
     signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) throw new Error(await responseError(res, `Composio authorization: HTTP ${res.status}`));
