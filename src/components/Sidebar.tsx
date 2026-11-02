@@ -1,5 +1,5 @@
 import { track } from "@/lib/analytics";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Archive,
@@ -47,7 +47,7 @@ import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/cn";
 import { downloadAllBots } from "@/lib/team-files";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
-import { MIN_QUERY, SearchResults } from "./SearchResults";
+import { SearchDialog } from "./SearchDialog";
 import { TeamLibraryPanel, type TeamImportResult } from "./TeamLibraryPanel";
 import { TeamsPanel } from "./TeamsPanel";
 import { RenameTitle } from "./RenameTitle";
@@ -833,6 +833,10 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   } | null>(null);
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    setQuery("");
+  }, []);
 
   // Esc closes the drawer, mirroring ApiKeys.tsx:75-85. Bound only while the
   // drawer is open — on mobile, exactly when a bot/room context menu or the
@@ -1081,57 +1085,21 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           className="flex items-center gap-0.5"
           style={macInset ? ({ WebkitAppRegion: "no-drag" } as React.CSSProperties) : undefined}
         >
-          <div className="relative">
-            <button
-              onClick={() => {
-                setPlusOpen(false);
-                setSearchOpen((open) => !open);
-              }}
-              aria-label={t("Search bots and messages")}
-              aria-expanded={searchOpen}
-              className={cn(
-                "rounded-md p-1.5 hover:bg-raised hover:text-ink",
-                searchOpen || query ? "bg-raised text-accent" : "text-ink-secondary",
-              )}
-              title={t("Search bots and messages")}
-            >
-              <Search size={18} />
-            </button>
-            {searchOpen && (
-              <>
-                <div className="fixed inset-0 z-30" onMouseDown={() => setSearchOpen(false)} />
-                <div className="absolute right-0 top-full z-40 mt-1 w-[280px] rounded-xl border border-hairline/50 bg-card p-2 shadow-2xl shadow-black/60">
-                  <div className="flex items-center gap-2 rounded-lg bg-inset px-2.5 py-1.5">
-                    <Search size={14} className="shrink-0 text-ink-secondary" />
-                    <input
-                      autoFocus
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key !== "Escape") return;
-                        e.stopPropagation();
-                        if (query) setQuery("");
-                        else setSearchOpen(false);
-                      }}
-                      placeholder={t("Search")}
-                      aria-label={t("Search bots and messages")}
-                      className="w-full bg-transparent text-[13px] text-ink placeholder:text-ink-secondary focus:outline-none"
-                    />
-                    <button
-                      onClick={() => {
-                        setQuery("");
-                        setSearchOpen(false);
-                      }}
-                      aria-label={t("Close search")}
-                      className="shrink-0 rounded p-0.5 text-ink-secondary hover:bg-raised hover:text-ink"
-                    >
-                      <X size={13} />
-                    </button>
-                  </div>
-                </div>
-              </>
+          <button
+            onClick={() => {
+              setPlusOpen(false);
+              setSearchOpen(true);
+            }}
+            aria-label={t("Search bots and messages")}
+            aria-expanded={searchOpen}
+            className={cn(
+              "rounded-md p-1.5 hover:bg-raised hover:text-ink",
+              searchOpen ? "bg-raised text-accent" : "text-ink-secondary",
             )}
-          </div>
+            title={t("Search bots and messages")}
+          >
+            <Search size={18} />
+          </button>
           <div className="relative">
             <button
               ref={importReturnRef}
@@ -1243,9 +1211,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       {/* Bot list */}
       <div className="flex-1 overflow-y-auto px-2">
         <div className="flex flex-col gap-0.5">
-          {!chiefBot && visibleBots.length === 0 && visibleGroups.length === 0 && q && q.length < MIN_QUERY && (
-            <div className="px-3 py-6 text-center text-[13px] text-ink-secondary">{t("Nothing matches “{query}”", { query })}</div>
-          )}
           {chiefBot && showChiefAlone && (
             <div className="mb-1.5">
               <BotListItem
@@ -1334,7 +1299,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               );
             })
           )}
-          <SearchResults query={query} onLanded={() => setQuery("")} />
         </div>
       </div>
 
@@ -1361,6 +1325,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         </div>
       </div>
 
+      {searchOpen && <SearchDialog query={query} onQuery={setQuery} onClose={closeSearch} />}
       {menu && <BotContextMenu menu={menu} onClose={() => setMenu(null)} onArchive={(bot) => void archiveBot(bot)} />}
       {roomMenu && (
         <RoomContextMenu
