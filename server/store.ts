@@ -107,6 +107,18 @@ export type GroupDefaultResponder =
  * messages follow `defaultResponder`; explicit @mentions always override it.
  * The bulletin is the room's shared instructions — every member's turn gets
  * it as part of its system prompt. */
+/** A real team: one leader, an explicit membership list, and an optional
+ * shared room. A bot can be in at most one team. */
+export interface TeamRecord {
+  id: string;
+  name: string;
+  leaderBotId: string;
+  memberIds: string[];
+  createdAt: number;
+  /** Shared room/chat with the team bulletin, when one was attached. */
+  roomId?: string | null;
+}
+
 export interface GroupRecord {
   id: string;
   threadId: ThreadId;
@@ -216,7 +228,9 @@ export type StoreChange =
   | { type: "bot"; botId: string }
   | { type: "bot.deleted"; botId: string }
   | { type: "group"; groupId: string }
-  | { type: "group.deleted"; groupId: string };
+  | { type: "group.deleted"; groupId: string }
+  | { type: "team"; teamId: string }
+  | { type: "team.deleted"; teamId: string };
 
 /** What a task is called before its first message names it. */
 export const UNTITLED_TASK = "New task";
@@ -243,7 +257,7 @@ export interface BotRecord {
   mascotShape?: string | null;
   /** Presentation archetype; the UI falls back to an inferred role. */
   role?: string;
-  /** Sidebar team/section label. null = explicitly ungrouped. */
+  /** Legacy pre-TeamRecord label; migrated and removed on load. */
   team?: string | null;
   unread: boolean;
   modelSelection: ModelSelection;
@@ -306,6 +320,7 @@ export interface BotRecord {
 
 const BOTS_FILE = join(DATA_DIR, "bots.json");
 const GROUPS_FILE = join(DATA_DIR, "groups.json");
+const TEAMS_FILE = join(DATA_DIR, "teams.json");
 const messagesFile = (threadId: string) => join(DATA_DIR, `messages-${threadId}.json`);
 
 const COLORS: CrewColor[] = [
@@ -465,6 +480,7 @@ interface ThreadState {
 export class Store {
   bots: BotRecord[] = [];
   groups: GroupRecord[] = [];
+  teams: TeamRecord[] = [];
   private threads = new Map<string, ThreadState>();
   private defaultSelection: () => ModelSelection;
   private listeners = new Set<(change: StoreChange) => void>();
@@ -482,11 +498,17 @@ export class Store {
     } catch {
       this.groups = [];
     }
+    try {
+      this.teams = JSON.parse(readFileSync(TEAMS_FILE, "utf8"));
+    } catch {
+      this.teams = [];
+    }
     // busy never survives a restart — no turn does either. Rooms saved
     // before default responders existed adopt their first member as lead.
     let botsMigrated = false;
     let chiefSeen = false;
     let groupsMigrated = false;
+    let teamsMigrated = false;
     for (const b of this.bots) {
       // transient state never survives a restart — and if a previous
       // process died mid-turn, bots.json still says busy/working; persist
@@ -501,27 +523,102 @@ export class Store {
         botsMigrated = true;
       }
     }
-    // Bots created by an older team import have no team field. They were
-    // created in one batch, so cluster close creation times and name the
-    // batch from the words its members share. Single bots stay ungrouped.
-    const ungrouped = this.bots
-      .filter((b) => b.team === undefined)
+    // Migrate the old per-bot team label into a real TeamRecord. Multiple
+    // bots with the same label form one team; the first member becomes its
+    // initial leader. A final fallback groups close-created unlabelled bots
+    // from pre-label imports, then the legacy label is removed.
+    const memberOf = new Map<string, string>();
+    for (const team of this.teams) {
+      const kept: string[] = [];
+      for (const id of new Set((team.memberIds ?? []).filter((candidate) => this.bot(candidate)))) {
+        if (memberOf.has(id)) {
+          teamsMigrated = true;
+          continue;
+        }
+        kept.push(id);
+        memberOf.set(id, team.id);
+      }
+      team.memberIds = kept;
+      if (!team.leaderBotId || !team.memberIds.includes(team.leaderBotId)) {
+        team.leaderBotId = team.memberIds[0] ?? "";
+        teamsMigrated = true;
+      }
+      if (team.roomId === undefined) team.roomId = null;
+    }
+    const legacyTeams = new Map<string, BotRecord[]>();
+    for (const bot of this.bots) {
+      const legacy = typeof bot.team === "string" ? bot.team.trim() : "";
+      if (!legacy) continue;
+      if (bot.team !== undefined) {
+        delete bot.team;
+        botsMigrated = true;
+      }
+      if (memberOf.has(bot.id)) continue;
+      const members = legacyTeams.get(legacy) ?? [];
+      members.push(bot);
+      legacyTeams.set(legacy, members);
+    }
+    for (const [name, members] of legacyTeams) {
+      let team = this.teams.find((candidate) => candidate.name === name);
+      if (!team) {
+        team = {
+          id: newId(),
+          name,
+          leaderBotId: members[0]!.id,
+          memberIds: [],
+          createdAt: Math.min(...members.map((member) => Number(member.createdAt) || Date.now())),
+          roomId: null,
+        };
+        this.teams.push(team);
+      }
+      for (const member of members) {
+        if (memberOf.has(member.id)) continue;
+        team.memberIds.push(member.id);
+        memberOf.set(member.id, team.id);
+      }
+      if (!team.leaderBotId) team.leaderBotId = team.memberIds[0] ?? "";
+      teamsMigrated = true;
+    }
+    const unlabelled = this.bots
+      .filter((b) => !memberOf.has(b.id))
       .sort((a, b) => (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0));
     let batch: BotRecord[] = [];
     const flushBatch = () => {
       if (batch.length >= 2) {
         const name = inferTeamName(batch);
-        for (const member of batch) member.team = name;
-        botsMigrated = true;
+        let team = this.teams.find((candidate) => candidate.name === name);
+        if (!team) {
+          team = {
+            id: newId(),
+            name,
+            leaderBotId: batch[0]!.id,
+            memberIds: [],
+            createdAt: Math.min(...batch.map((member) => Number(member.createdAt) || Date.now())),
+            roomId: null,
+          };
+          this.teams.push(team);
+        }
+        for (const member of batch) {
+          if (memberOf.has(member.id)) continue;
+          team.memberIds.push(member.id);
+          memberOf.set(member.id, team.id);
+        }
+        teamsMigrated = true;
       }
       batch = [];
     };
-    for (const bot of ungrouped) {
+    for (const bot of unlabelled) {
       const last = batch.at(-1);
       if (last && (Number(bot.createdAt) || 0) - (Number(last.createdAt) || 0) > 5_000) flushBatch();
       batch.push(bot);
     }
     flushBatch();
+    for (const team of this.teams) {
+      if (!team.leaderBotId || !team.memberIds.includes(team.leaderBotId)) {
+        team.leaderBotId = team.memberIds[0] ?? "";
+        teamsMigrated = true;
+      }
+    }
 
     for (const b of this.bots) {
       if (!b.chiefOfStaff) continue;
@@ -563,6 +660,8 @@ export class Store {
     }
     if (botsMigrated) this.saveBots();
     if (groupsMigrated) this.saveGroups();
+    this.associateRoomsToTeams();
+    if (teamsMigrated) this.saveTeams();
     // bots saved before tasks existed have one endless thread; adopt it as
     // their first task so nothing is lost and nothing special-cases it
     for (const b of this.bots) {
@@ -595,6 +694,10 @@ export class Store {
 
   private saveGroups() {
     writeFileAtomic(GROUPS_FILE, JSON.stringify(this.groups.map(({ busyBotId, ...g }) => g), null, 2));
+  }
+
+  private saveTeams() {
+    writeFileAtomic(TEAMS_FILE, JSON.stringify(this.teams, null, 2));
   }
 
   // ── groups ────────────────────────────────────────────────────────────
@@ -639,6 +742,7 @@ export class Store {
     this.groups.unshift(group);
     this.saveGroups();
     this.emit({ type: "group", groupId: group.id });
+    if (!dm) this.associateRoomsToTeams();
     return group;
   }
 
@@ -660,6 +764,7 @@ export class Store {
     );
     this.saveGroups();
     this.emit({ type: "group", groupId: group.id });
+    this.associateRoomsToTeams();
     return group;
   }
 
@@ -681,7 +786,182 @@ export class Store {
     this.saveGroups();
     this.deleteThreadRecord(group.threadId);
     this.emit({ type: "group.deleted", groupId: id });
+    this.associateRoomsToTeams();
     return true;
+  }
+
+  // ── teams ─────────────────────────────────────────────────────────────
+  team(id: string): TeamRecord | undefined {
+    return this.teams.find((team) => team.id === id);
+  }
+
+  teamForBot(botId: string): TeamRecord | undefined {
+    return this.teams.find((team) => team.memberIds.includes(botId));
+  }
+
+  private assertTeamName(name: string, exceptId?: string): string {
+    const clean = name.trim();
+    if (!clean || clean.length > 80) {
+      throw Object.assign(new Error("team name must be 1–80 characters"), { status: 400 });
+    }
+    const duplicate = this.teams.some(
+      (team) => team.id !== exceptId && team.name.toLowerCase() === clean.toLowerCase(),
+    );
+    if (duplicate) throw Object.assign(new Error("a team with that name already exists"), { status: 409 });
+    return clean;
+  }
+
+  createTeam(name: string, creatorBotId: string): TeamRecord {
+    const creator = this.bot(creatorBotId);
+    if (!creator) throw Object.assign(new Error("no such bot"), { status: 404 });
+    if (this.teamForBot(creatorBotId)) {
+      throw Object.assign(new Error("that bot is already a member of a team"), { status: 409 });
+    }
+    const team: TeamRecord = {
+      id: newId(),
+      name: this.assertTeamName(name),
+      leaderBotId: creatorBotId,
+      memberIds: [creatorBotId],
+      createdAt: Date.now(),
+      roomId: null,
+    };
+    this.teams.unshift(team);
+    this.associateRoomsToTeams();
+    this.saveTeams();
+    this.emit({ type: "team", teamId: team.id });
+    return team;
+  }
+
+  patchTeam(
+    id: string,
+    patch: Partial<Pick<TeamRecord, "name" | "leaderBotId" | "roomId">>,
+  ): TeamRecord | null {
+    const team = this.team(id);
+    if (!team) return null;
+    if (patch.name !== undefined) team.name = this.assertTeamName(patch.name, id);
+    if (patch.leaderBotId !== undefined) {
+      if (!team.memberIds.includes(patch.leaderBotId)) {
+        throw Object.assign(new Error("the leader must be a member of the team"), { status: 400 });
+      }
+      team.leaderBotId = patch.leaderBotId;
+    }
+    if (patch.roomId !== undefined) team.roomId = patch.roomId;
+    this.saveTeams();
+    this.emit({ type: "team", teamId: team.id });
+    return team;
+  }
+
+  addTeamMember(teamId: string, botId: string): TeamRecord {
+    const team = this.team(teamId);
+    if (!team) throw Object.assign(new Error("no such team"), { status: 404 });
+    const bot = this.bot(botId);
+    if (!bot) throw Object.assign(new Error("no such bot"), { status: 404 });
+    const existing = this.teamForBot(botId);
+    if (existing) {
+      throw Object.assign(new Error(`that bot is already in ${existing.name}`), { status: 409 });
+    }
+    team.memberIds.push(botId);
+    if (team.roomId) {
+      const room = this.group(team.roomId);
+      if (room && !room.memberIds.includes(botId)) {
+        room.memberIds.push(botId);
+        this.saveGroups();
+        this.emit({ type: "group", groupId: room.id });
+      }
+    }
+    this.saveTeams();
+    this.emit({ type: "team", teamId: team.id });
+    return team;
+  }
+
+  removeTeamMember(teamId: string, botId: string): TeamRecord {
+    const team = this.team(teamId);
+    if (!team) throw Object.assign(new Error("no such team"), { status: 404 });
+    if (team.leaderBotId === botId) {
+      throw Object.assign(new Error("choose a new leader before this bot leaves"), { status: 409 });
+    }
+    team.memberIds = team.memberIds.filter((id) => id !== botId);
+    if (team.roomId) {
+      const room = this.group(team.roomId);
+      if (room) {
+        room.memberIds = room.memberIds.filter((id) => id !== botId);
+        this.saveGroups();
+        this.emit({ type: "group", groupId: room.id });
+      }
+    }
+    if (team.memberIds.length === 0) team.leaderBotId = "";
+    this.saveTeams();
+    this.emit({ type: "team", teamId: team.id });
+    return team;
+  }
+
+  createTeamRoom(teamId: string): GroupRecord {
+    const team = this.team(teamId);
+    if (!team) throw Object.assign(new Error("no such team"), { status: 404 });
+    if (team.roomId) {
+      const existing = this.group(team.roomId);
+      if (existing) return existing;
+    }
+    if (team.memberIds.length === 0) {
+      throw Object.assign(new Error("a team room needs at least one member"), { status: 400 });
+    }
+    const room = this.createGroup(team.name, [...team.memberIds]);
+    team.roomId = room.id;
+    this.saveTeams();
+    this.emit({ type: "team", teamId: team.id });
+    return room;
+  }
+
+  deleteTeam(id: string): boolean {
+    if (!this.team(id)) return false;
+    this.teams = this.teams.filter((team) => team.id !== id);
+    this.saveTeams();
+    this.emit({ type: "team.deleted", teamId: id });
+    return true;
+  }
+
+  /** Attach an existing non-DM room to a team when every room member belongs
+   * to that team. Prefer a room with the team's name, then the largest and
+   * oldest candidate. A room that stops matching is detached, not deleted. */
+  private associateRoomsToTeams(): void {
+    const changed = new Set<string>();
+    for (const team of this.teams) {
+      const current = team.roomId ? this.group(team.roomId) : undefined;
+      if (
+        current &&
+        !current.dm &&
+        current.memberIds.length > 0 &&
+        current.memberIds.every((id) => team.memberIds.includes(id))
+      ) {
+        continue;
+      }
+      if (team.roomId) {
+        team.roomId = null;
+        changed.add(team.id);
+      }
+      const candidates = this.groups
+        .filter(
+          (group) =>
+            !group.dm &&
+            group.memberIds.length > 0 &&
+            group.memberIds.every((id) => team.memberIds.includes(id)),
+        )
+        .sort((a, b) => {
+          const aName = a.name.trim().toLowerCase() === team.name.trim().toLowerCase() ? 1 : 0;
+          const bName = b.name.trim().toLowerCase() === team.name.trim().toLowerCase() ? 1 : 0;
+          if (aName !== bName) return bName - aName;
+          if (a.memberIds.length !== b.memberIds.length) return b.memberIds.length - a.memberIds.length;
+          return a.createdAt - b.createdAt;
+        });
+      if (candidates[0] && candidates[0].id !== team.roomId) {
+        team.roomId = candidates[0].id;
+        changed.add(team.id);
+      }
+    }
+    if (changed.size) {
+      this.saveTeams();
+      for (const teamId of changed) this.emit({ type: "team", teamId });
+    }
   }
 
   /** Toggle an emoji reaction on a message ("user" or a member botId). */
@@ -831,7 +1111,7 @@ export class Store {
     profile: Partial<
       Pick<
         BotRecord,
-        "name" | "title" | "description" | "color" | "mascotExpression" | "mascotShape" | "role" | "team" | "modelSelection"
+        "name" | "title" | "description" | "color" | "mascotExpression" | "mascotShape" | "role" | "modelSelection"
       >
     > = {},
     opts: {
@@ -852,7 +1132,6 @@ export class Store {
       notifications: true,
       color,
       mascotShape: profile.mascotShape === undefined ? autoShapeFor(id, color) : profile.mascotShape,
-      team: profile.team ?? null,
       ...(profile.mascotExpression ? { mascotExpression: profile.mascotExpression } : {}),
       ...(profile.role ? { role: profile.role } : {}),
       unread: false,

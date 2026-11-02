@@ -71,14 +71,56 @@ describe("Store", () => {
     const saved = JSON.parse(readFileSync(botsFile, "utf8")) as BotRecord[];
     for (const bot of saved) {
       delete bot.team;
-      bot.createdAt = bot.id === lone.id ? 20_000 : 1_000;
+      bot.createdAt = bot.id === lone.id ? 20_000 : bot.id === first.id ? 1_000 : 1_100;
     }
     writeFileSync(botsFile, JSON.stringify(saved));
 
     const reloaded = new Store(selection);
-    expect(reloaded.bot(first.id)?.team).toBe("SEO Team");
-    expect(reloaded.bot(second.id)?.team).toBe("SEO Team");
-    expect(reloaded.bot(lone.id)?.team).toBeUndefined();
+    const seo = reloaded.teams.find((team) => team.name === "SEO Team");
+    expect(seo?.memberIds).toEqual(expect.arrayContaining([first.id, second.id]));
+    expect(seo?.leaderBotId).toBe(first.id);
+    expect(reloaded.teamForBot(lone.id)).toBeUndefined();
+  });
+
+  it("creates one team from an ungrouped bot and enforces membership rules", () => {
+    const store = new Store(selection);
+    const first = store.createBot({ name: "Leader" }, { seedMessages: false });
+    const second = store.createBot({ name: "Member" }, { seedMessages: false });
+    const third = store.createBot({ name: "Other" }, { seedMessages: false });
+
+    const team = store.createTeam("SEO Growth Team", first.id);
+    expect(team.leaderBotId).toBe(first.id);
+    expect(team.memberIds).toEqual([first.id]);
+    store.addTeamMember(team.id, second.id);
+    expect(store.teamForBot(second.id)?.id).toBe(team.id);
+
+    expect(() => store.createTeam("Second team", second.id)).toThrow(/already a member/);
+    expect(() => store.addTeamMember(team.id, third.id)).not.toThrow();
+    expect(() => store.addTeamMember(team.id, third.id)).toThrow(/already in/);
+  });
+
+  it("requires a leader transfer before the leader can leave", () => {
+    const store = new Store(selection);
+    const leader = store.createBot({ name: "Leader" }, { seedMessages: false });
+    const member = store.createBot({ name: "Member" }, { seedMessages: false });
+    const team = store.createTeam("Ops", leader.id);
+    store.addTeamMember(team.id, member.id);
+
+    expect(() => store.removeTeamMember(team.id, leader.id)).toThrow(/new leader/);
+    store.patchTeam(team.id, { leaderBotId: member.id });
+    store.removeTeamMember(team.id, leader.id);
+    expect(store.team(team.id)?.leaderBotId).toBe(member.id);
+    expect(store.team(team.id)?.memberIds).not.toContain(leader.id);
+  });
+
+  it("attaches an existing room whose members all belong to the team", () => {
+    const store = new Store(selection);
+    const a = store.createBot({ name: "A" }, { seedMessages: false });
+    const b = store.createBot({ name: "B" }, { seedMessages: false });
+    const team = store.createTeam("Shared Team", a.id);
+    store.addTeamMember(team.id, b.id);
+    const room = store.createGroup("Shared room", [a.id, b.id]);
+    expect(store.team(team.id)?.roomId).toBe(room.id);
   });
 
   it("rotates colors across created bots", () => {

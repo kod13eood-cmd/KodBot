@@ -73,13 +73,19 @@ or a `memory/<topic>.md` file.
 `Cmd/Ctrl+/` opens one sheet with every app-wide shortcut. It also has a
 visible row in **App Settings → Keyboard shortcuts**.
 
-### Team sections in the sidebar — Live
+### Teams with leaders and membership — Live
 
-Bots can carry a **team** label. The sidebar groups bots into collapsible team
-sections instead of one mixed list. Imported teams get the manifest's team name
-automatically; older imports are grouped by their creation batch. Move a bot
-from its context menu (**Move to team**) or edit **Bot settings → Team**.
-Ungrouped bots stay under **Other bots**.
+A team is a real object with a **leader** and an explicit member list. Only an
+ungrouped bot can create one; the creator becomes leader and first member. A
+bot can belong to **one team at a time**. The leader or a human can add
+ungrouped bots; members can leave. The leader must transfer leadership before
+leaving.
+
+Open **Plus → Manage teams** to create teams, add/remove members, transfer
+leadership, rename, or open/create the optional team room. New team imports
+create their team automatically. Existing rooms whose members all belong to one
+team are attached to that team automatically. Ungrouped bots stay under
+**Other bots**. Moving between teams is leave, then join the new team.
 
 ### Connected Apps with readable identities — Live
 
@@ -126,6 +132,7 @@ connecting. These are ordinary Connected Apps, not a separate “Grok” section
 | Pages | Bot settings → Pages |
 | Memory and import | Bot settings → Memory |
 | Auto model and model pool | Bot settings → Model → Auto model → Choose models |
+| Teams, leaders, membership, team rooms | Sidebar → Plus → Manage teams |
 | Connected apps and provider setup | Sidebar → Connected apps (hover an app for its full description) |
 | Shortcuts | `Cmd/Ctrl+/` or App Settings → Keyboard shortcuts |
 | Remote server | App Settings → Server |

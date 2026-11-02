@@ -107,6 +107,15 @@ export interface Group {
   messages: Message[];
 }
 
+export interface Team {
+  id: string;
+  name: string;
+  leaderBotId: string;
+  memberIds: string[];
+  createdAt: number;
+  roomId?: string | null;
+}
+
 export interface ModelSelection {
   instanceId: string;
   model: string;
@@ -150,8 +159,6 @@ export interface Bot {
   mascotShape?: string | null;
   /** Presentation archetype (coordinator, researcher, builder, …). */
   role?: string | null;
-  /** Sidebar team/section label. null = explicitly ungrouped. */
-  team?: string | null;
   unread: boolean;
   busy?: boolean;
   /** what the bot is doing, as the harness sees it; busy is derived from it */
@@ -286,6 +293,7 @@ export type AppSettingsSection =
 export interface AppState {
   bots: Bot[];
   groups: Group[];
+  teams: Team[];
   instances: InstanceInfo[];
   config: ConfigStatus | null;
   /** selected chat — a bot id OR a group id */
@@ -322,7 +330,7 @@ export interface AppState {
 type BotAnnouncement = Omit<Bot, "messages"> & { messages?: Message[] };
 
 export type Action =
-  | { type: "hydrate"; bots: Bot[]; groups: Group[] }
+  | { type: "hydrate"; bots: Bot[]; groups: Group[]; teams?: Team[] }
   | { type: "showRoutines" }
   | { type: "routinesHydrated"; routines: Routine[]; runs: RoutineRun[] }
   | { type: "routinePatched"; routine: Routine }
@@ -340,6 +348,8 @@ export type Action =
   | { type: "markRoutineRunSeen"; runId: string }
   | { type: "groupPatched"; group: Partial<Group> & { id: string } }
   | { type: "groupDeleted"; groupId: string }
+  | { type: "teamPatched"; team: Team }
+  | { type: "teamDeleted"; teamId: string }
   | { type: "createGroup"; memberIds: string[]; name?: string }
   | { type: "sendGroup"; groupId: string; text: string }
   | {
@@ -411,7 +421,6 @@ export type Action =
           | "mascotExpression"
           | "mascotShape"
           | "role"
-          | "team"
           | "autoApprove"
           | "autoModel"
           | "autoModelPool"
@@ -461,8 +470,19 @@ export function reducer(state: AppState, action: Action): AppState {
       const known = (id: string) => action.bots.some((b) => b.id === id) || action.groups.some((g) => g.id === id);
       const selectedId =
         state.selectedId && known(state.selectedId) ? state.selectedId : (action.bots[0]?.id ?? "");
-      return { ...state, bots: action.bots, groups: action.groups, selectedId };
+      return { ...state, bots: action.bots, groups: action.groups, teams: action.teams ?? [], selectedId };
     }
+    case "teamPatched": {
+      const exists = state.teams.some((team) => team.id === action.team.id);
+      return {
+        ...state,
+        teams: exists
+          ? state.teams.map((team) => (team.id === action.team.id ? action.team : team))
+          : [action.team, ...state.teams],
+      };
+    }
+    case "teamDeleted":
+      return { ...state, teams: state.teams.filter((team) => team.id !== action.teamId) };
     case "showRoutines":
       return {
         ...state,
@@ -870,6 +890,7 @@ const MAX_KEPT_SCREEN_FRAMES = 8;
 export const initialState: AppState = {
   bots: [],
   groups: [],
+  teams: [],
   instances: [],
   config: null,
   selectedId: "",
@@ -1116,7 +1137,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                   description: source.description,
                   notifications: source.notifications,
                   modelSelection: source.modelSelection,
-                  ...(source.team ? { team: source.team } : {}),
                   ...(source.mascotShape ? { mascotShape: source.mascotShape } : {}),
                   ...(source.role ? { role: source.role } : {}),
                   color: source.color,
@@ -1243,7 +1263,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const loadAll = () =>
       Promise.all([
         api("/api/bots")
-          .then(({ bots, groups }) => alive && rawDispatch({ type: "hydrate", bots, groups: groups ?? [] }))
+          .then(({ bots, groups, teams }) => alive && rawDispatch({ type: "hydrate", bots, groups: groups ?? [], teams: teams ?? [] }))
           .catch(() => {}),
         api("/api/instances")
           .then(({ instances }) => alive && rawDispatch({ type: "instances", instances }))
@@ -1372,6 +1392,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           break;
         case "group.deleted":
           rawDispatch({ type: "groupDeleted", groupId: frame.groupId });
+          break;
+        case "team":
+          rawDispatch({ type: "teamPatched", team: frame.team as Team });
+          break;
+        case "team.deleted":
+          rawDispatch({ type: "teamDeleted", teamId: frame.teamId });
           break;
         case "routine":
           rawDispatch({ type: "routinePatched", routine: frame.routine });

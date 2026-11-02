@@ -817,11 +817,7 @@ const BULGARIAN: Record<string, string> = {
   "Connect this app to let bots use its tools.":
     "Свържете това приложение, за да могат ботовете да използват инструментите му.",
   // Bot teams
-  "Move to team": "Премести в екип",
   "Team name": "Име на екипа",
-  "Group bots in the sidebar": "Групирай ботовете в страничната лента",
-  "Team": "Екип",
-  "Ungrouped": "Без екип",
   "Other bots": "Други ботове",
   // Model capability badges
   "Text": "Текст",
@@ -843,6 +839,40 @@ const BULGARIAN: Record<string, string> = {
   "No available models. Install or sign in to an engine first.":
     "Няма налични модели. Първо инсталирайте или влезте в engine.",
   "All": "Всички",
+  // Teams
+  "Manage teams": "Управление на екипи",
+  "Team library": "Библиотека с екипи",
+  "Create team": "Създай екип",
+  "Create a team": "Създаване на екип",
+  "Team leader": "Лидер на екипа",
+  "Choose a bot…": "Изберете бот…",
+  "No ungrouped bots": "Няма ботове без екип",
+  "Every bot is already in a team. Leave a team before creating another.":
+    "Всеки бот вече е в екип. Напуснете екип, преди да създадете нов.",
+  "No teams yet.": "Още няма екипи.",
+  "Create teams with an ungrouped bot as leader. Members can join one team at a time; a new leader must be chosen before the current one leaves.":
+    "Създавайте екипи с бот без екип като лидер. Членовете могат да са в един екип; преди лидерът да напусне, трябва да бъде избран нов.",
+  "Leader": "Лидер",
+  "Make leader": "Направи лидер",
+  "No leader": "Без лидер",
+  "{count} members": "{count} членове",
+  "No members.": "Няма членове.",
+  "Remove {name} from the team": "Премахни {name} от екипа",
+  "Remove from team": "Премахни от екипа",
+  "Remove {name} from this team?": "Да се премахне ли {name} от този екип?",
+  "Rename team": "Преименувай екипа",
+  "Delete team": "Изтрий екипа",
+  "Delete the team “{name}”? Bots become ungrouped.":
+    "Да се изтрие ли екипът „{name}“? Ботовете остават без екип.",
+  "Bot to add": "Бот за добавяне",
+  "Add a bot…": "Добави бот…",
+  "Add": "Добави",
+  "Open team room": "Отвори стаята на екипа",
+  "Create team room": "Създай стая за екипа",
+  "Leave team": "Напусни екипа",
+  "Choose a new leader first": "Първо изберете нов лидер",
+  "Leave this team": "Напусни този екип",
+  "Create a team with this bot as leader": "Създай екип с този бот като лидер",
 };
 
 function initialLocale(): Locale {

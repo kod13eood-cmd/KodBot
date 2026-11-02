@@ -47,6 +47,58 @@ const TOOLS = [
     },
   },
   {
+    name: "team_status",
+    description:
+      "Show the team you belong to, its leader, and its members. Use this before adding, removing, transferring leadership, or leaving.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "create_team",
+    description:
+      "Create a team and become its leader. Only a bot that is not already in a team can create one. The creator is the first member and leader.",
+    inputSchema: {
+      type: "object",
+      properties: { name: { type: "string", description: "Team name (1–80 characters)." } },
+      required: ["name"],
+    },
+  },
+  {
+    name: "add_team_member",
+    description:
+      "Add another bot to your team. Only the team leader can call this. Bots can belong to only one team.",
+    inputSchema: {
+      type: "object",
+      properties: { bot_id: { type: "string", description: "The bot id from list_bots." } },
+      required: ["bot_id"],
+    },
+  },
+  {
+    name: "remove_team_member",
+    description:
+      "Remove another bot from your team. Only the team leader can call this; the leader cannot remove themselves.",
+    inputSchema: {
+      type: "object",
+      properties: { bot_id: { type: "string", description: "The bot id from team_status or list_bots." } },
+      required: ["bot_id"],
+    },
+  },
+  {
+    name: "transfer_team_leadership",
+    description:
+      "Make another member the team leader. Only the current leader can call this. Transfer leadership before leaving the team.",
+    inputSchema: {
+      type: "object",
+      properties: { bot_id: { type: "string", description: "A current member who should become leader." } },
+      required: ["bot_id"],
+    },
+  },
+  {
+    name: "leave_team",
+    description:
+      "Leave your current team. The leader must transfer leadership first; a non-leader leaves immediately.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
     name: "delegate_bot",
     description:
       "Hand a task to another bot ASYNCHRONOUSLY: returns immediately and the peer runs after your current turn finishes. Use this when you want to keep working or hand off a long-running subtask without waiting. The user sees the peer's reply as its own turn; you do NOT receive the reply inline.",
@@ -102,6 +154,60 @@ async function callTool(name: string, args: Json): Promise<{ text: string; isErr
     if (r.busy) return { text: `That bot is busy right now — try again after it finishes.` };
     if (r.error) return { text: `Couldn't reach that bot: ${r.error}`, isError: true };
     return { text: `${r.botName ?? "Bot"} replied:\n${r.text ?? "(no reply)"}` };
+  }
+  if (name === "team_status") {
+    const r = await api(`/api/internal/team?self=${encodeURIComponent(BOT_ID)}`);
+    const team = r.team as Json | null;
+    if (!team) return { text: "You are not in a team." };
+    const members = (team.members as Array<Json>) ?? [];
+    return {
+      text: `Team: ${team.name}\nLeader: ${team.leader ?? "unknown"}\nMembers:\n${members
+        .map((member) => `- ${member.name}${member.leader ? " (leader)" : ""} [id: ${member.id}]`)
+        .join("\n")}`,
+    };
+  }
+  if (name === "create_team") {
+    const teamName = String(args.name ?? "").trim();
+    if (!teamName) return { text: "create_team needs a name.", isError: true };
+    const r = await api("/api/internal/team/create", {
+      method: "POST",
+      body: JSON.stringify({ botId: BOT_ID, name: teamName }),
+    });
+    return { text: `Created team "${(r.team as Json).name}" — you are its leader.` };
+  }
+  if (name === "add_team_member") {
+    const target = String(args.bot_id ?? "").trim();
+    if (!target) return { text: "add_team_member needs bot_id.", isError: true };
+    const r = await api("/api/internal/team/add", {
+      method: "POST",
+      body: JSON.stringify({ botId: BOT_ID, targetBotId: target }),
+    });
+    return { text: `Added that bot to "${(r.team as Json).name}".` };
+  }
+  if (name === "remove_team_member") {
+    const target = String(args.bot_id ?? "").trim();
+    if (!target) return { text: "remove_team_member needs bot_id.", isError: true };
+    const r = await api("/api/internal/team/remove", {
+      method: "POST",
+      body: JSON.stringify({ botId: BOT_ID, targetBotId: target }),
+    });
+    return { text: `Removed that bot from "${(r.team as Json).name}".` };
+  }
+  if (name === "transfer_team_leadership") {
+    const target = String(args.bot_id ?? "").trim();
+    if (!target) return { text: "transfer_team_leadership needs bot_id.", isError: true };
+    const r = await api("/api/internal/team/leader", {
+      method: "POST",
+      body: JSON.stringify({ botId: BOT_ID, targetBotId: target }),
+    });
+    return { text: `Leadership transferred in "${(r.team as Json).name}".` };
+  }
+  if (name === "leave_team") {
+    const r = await api("/api/internal/team/leave", {
+      method: "POST",
+      body: JSON.stringify({ botId: BOT_ID }),
+    });
+    return { text: `You left "${(r.team as Json).name}".` };
   }
   if (name === "delegate_bot") {
     const toBotId = String(args.bot_id ?? "").trim();

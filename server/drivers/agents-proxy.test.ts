@@ -44,6 +44,20 @@ beforeAll(async () => {
       res.writeHead(401, { "content-type": "application/json" });
       return res.end(JSON.stringify({ error: "unauthorized" }));
     }
+    if (req.method === "GET" && req.url?.startsWith("/api/internal/team")) {
+      res.writeHead(200, { "content-type": "application/json" });
+      return res.end(JSON.stringify({
+        team: {
+          id: "team-1",
+          name: "SEO",
+          leader: "Asker",
+          members: [
+            { id: "bot-asker", name: "Asker", leader: true },
+            { id: "bot-helper", name: "Helper", leader: false },
+          ],
+        },
+      }));
+    }
     if (req.method === "GET" && req.url?.startsWith("/api/internal/agents")) {
       res.writeHead(200, { "content-type": "application/json" });
       return res.end(
@@ -114,7 +128,17 @@ describe("agents-proxy MCP surface", () => {
     const init = await rpc("initialize", { protocolVersion: "2024-11-05" });
     expect(init.result.serverInfo.name).toContain("agents");
     const list = await rpc("tools/list");
-    expect(list.result.tools.map((t: { name: string }) => t.name)).toEqual(["list_bots", "ask_bot", "delegate_bot"]);
+    expect(list.result.tools.map((t: { name: string }) => t.name)).toEqual([
+      "list_bots",
+      "ask_bot",
+      "team_status",
+      "create_team",
+      "add_team_member",
+      "remove_team_member",
+      "transfer_team_leadership",
+      "leave_team",
+      "delegate_bot",
+    ]);
   });
 
   it("list_bots renders the roster and authenticates with the shared token", async () => {
@@ -123,6 +147,13 @@ describe("agents-proxy MCP surface", () => {
     expect(text).toContain("Helper");
     expect(text).toContain("bot-helper");
     expect(lastAuth).toBe(`Bearer ${TOKEN}`);
+  });
+
+  it("team_status renders the leader and members", async () => {
+    const res = await callTool("team_status", {});
+    expect(res.result.content[0].text).toContain("Team: SEO");
+    expect(res.result.content[0].text).toContain("Asker (leader)");
+    expect(res.result.content[0].text).toContain("bot-helper");
   });
 
   it("ask_bot forwards sender + depth and returns the reply", async () => {

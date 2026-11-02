@@ -82,7 +82,7 @@ Two bots with the same job still look like different teammates.
 - **Capability icons:** see text, vision, audio, image, video, and reasoning support before choosing a model.
 - **A real computer per bot:** cloud Linux, local machine, or shared room computer.
 - **Approval cards:** shell commands, edits, and questions stop for a human decision.
-- **Rooms:** several bots in one conversation with a shared bulletin.
+- **Teams:** a leader, explicit membership, one team per bot, and an optional shared room attached automatically when its members match.
 - **Tasks and branches:** separate workstreams and a transcript you can rewind.
 - **Pages:** private HTML dashboards, checklists, and reports.
 - **Memory import:** bring context from another assistant.

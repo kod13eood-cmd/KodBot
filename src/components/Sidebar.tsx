@@ -38,6 +38,7 @@ import { downloadAllBots } from "@/lib/team-files";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { MIN_QUERY, SearchResults } from "./SearchResults";
 import { TeamLibraryPanel, type TeamImportResult } from "./TeamLibraryPanel";
+import { TeamsPanel } from "./TeamsPanel";
 import { RenameTitle } from "./RenameTitle";
 import { useI18n } from "@/lib/i18n";
 
@@ -377,6 +378,7 @@ function BotContextMenu({
   const { state, dispatch } = useStore();
   const { t } = useI18n();
   const bot = state.bots.find((b) => b.id === menu.botId);
+  const botTeam = bot ? state.teams.find((team) => team.memberIds.includes(bot.id)) : undefined;
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
@@ -454,15 +456,34 @@ function BotContextMenu({
             hint: !bot.chiefOfStaff && !canCoordinate ? t("Choose a Claude or ACP engine first") : undefined,
           },
         ),
-        item(<FolderPlus size={16} className="text-ink-secondary" />, t("Move to team"), () => {
-          const name = window.prompt(t("Team name"), bot.team ?? "");
-          if (name === null) return;
-          dispatch({
-            type: "updateBot",
-            botId: bot.id,
-            patch: { team: name.trim() || null },
-          });
-        }, { hint: t("Group bots in the sidebar") }),
+        item(
+          <FolderPlus size={16} className="text-ink-secondary" />,
+          botTeam ? t("Leave team") : t("Create team"),
+          () => {
+            if (botTeam) {
+              void api(`/api/teams/${botTeam.id}/members/${bot.id}`, { method: "DELETE" })
+                .then(({ team }) => dispatch({ type: "teamPatched", team }))
+                .catch((error) => dispatch({ type: "error", message: error.message }));
+              return;
+            }
+            const name = window.prompt(t("Team name"), `${bot.name}'s team`);
+            if (!name?.trim()) return;
+            void api("/api/teams", {
+              method: "POST",
+              body: JSON.stringify({ name: name.trim(), creatorBotId: bot.id }),
+            })
+              .then(({ team }) => dispatch({ type: "teamPatched", team }))
+              .catch((error) => dispatch({ type: "error", message: error.message }));
+          },
+          {
+            disabled: Boolean(botTeam && botTeam.leaderBotId === bot.id),
+            hint: botTeam?.leaderBotId === bot.id
+              ? t("Choose a new leader first")
+              : botTeam
+                ? t("Leave this team")
+                : t("Create a team with this bot as leader"),
+          },
+        ),
         item(<BellDot size={16} className="text-ink-secondary" />, t("Mark as Unread"), () =>
           dispatch({ type: "markUnread", botId: bot.id }),
         ),
@@ -769,6 +790,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const [plusOpen, setPlusOpen] = useState(false);
   const [newRoom, setNewRoom] = useState(false);
   const [teamLibraryOpen, setTeamLibraryOpen] = useState(false);
+  const [teamsPanelOpen, setTeamsPanelOpen] = useState(false);
   const [archivedBotsOpen, setArchivedBotsOpen] = useState(false);
   const [collapsedTeams, setCollapsedTeams] = useState<Set<string>>(new Set());
   const [exportingTeam, setExportingTeam] = useState(false);
@@ -918,18 +940,24 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     .filter((bot) => !bot.chiefOfStaff)
     .sort((a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false));
   const visibleGroups = state.groups.filter((g) => !q || g.name.toLowerCase().includes(q));
-  const teamBuckets = new Map<string, Bot[]>();
+  const teamByBot = new Map<string, { id: string; name: string }>();
+  for (const team of state.teams) {
+    for (const botId of team.memberIds) teamByBot.set(botId, { id: team.id, name: team.name });
+  }
+  const teamBuckets = new Map<string, { name: string; bots: Bot[] }>();
   for (const bot of visibleBots) {
-    const key = bot.team?.trim() ?? "";
-    const bucket = teamBuckets.get(key) ?? [];
-    bucket.push(bot);
+    const team = teamByBot.get(bot.id);
+    const key = team?.id ?? "";
+    const bucket = teamBuckets.get(key) ?? { name: team?.name ?? "", bots: [] };
+    bucket.bots.push(bot);
     teamBuckets.set(key, bucket);
   }
+  const teamOrder = new Map(state.teams.map((team, index) => [team.id, index]));
   const teamKeys = [...teamBuckets.keys()].sort((a, b) => {
     if (a === b) return 0;
     if (a === "") return 1;
     if (b === "") return -1;
-    return a.localeCompare(b);
+    return (teamOrder.get(a) ?? 999) - (teamOrder.get(b) ?? 999);
   });
   const hasTeams = teamKeys.some((key) => key !== "");
   const activeBotCount = state.bots.filter((bot) => !bot.hidden).length;
@@ -1018,12 +1046,22 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                 <button
                   onClick={() => {
                     setPlusOpen(false);
+                    setTeamsPanelOpen(true);
+                  }}
+                  className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-[14px] text-ink hover:bg-raised/70"
+                >
+                  <Users size={16} className="text-ink-secondary" />
+                  {t("Manage teams")}
+                </button>
+                <button
+                  onClick={() => {
+                    setPlusOpen(false);
                     setTeamLibraryOpen(true);
                   }}
                   className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-[14px] text-ink hover:bg-raised/70"
                 >
                   <Library size={16} className="text-ink-secondary" />
-                  {t("Teams")}
+                  {t("Team library")}
                 </button>
                 {archivedBots.length > 0 && (
                   <button
@@ -1090,7 +1128,8 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             ))
           ) : (
             teamKeys.map((team) => {
-              const bots = teamBuckets.get(team) ?? [];
+              const bucket = teamBuckets.get(team);
+              const bots = bucket?.bots ?? [];
               const collapseKey = team || "__ungrouped__";
               const collapsed = !q && collapsedTeams.has(collapseKey);
               return (
@@ -1108,7 +1147,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                     className="mt-1.5 flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1 text-left text-[10.5px] font-medium uppercase tracking-[0.08em] text-ink-secondary hover:bg-raised/50 hover:text-ink"
                   >
                     {collapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
-                    <span className="truncate">{team || t("Other bots")}</span>
+                    <span className="truncate">{bucket?.name || t("Other bots")}</span>
                     <span className="ml-auto shrink-0 text-[10px] font-normal tracking-normal text-ink-secondary/70">
                       {bots.length}
                     </span>
@@ -1189,6 +1228,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           onRestored={(message) => setTeamFeedback({ error: false, text: message })}
         />
       )}
+      {teamsPanelOpen && <TeamsPanel onClose={() => setTeamsPanelOpen(false)} />}
       {teamLibraryOpen && (
         <TeamLibraryPanel
           returnFocusRef={importReturnRef}

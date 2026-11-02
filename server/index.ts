@@ -333,6 +333,14 @@ store.onChange((change) => {
     case "group.deleted":
       broadcast({ kind: "group.deleted", groupId: change.groupId });
       break;
+    case "team": {
+      const team = store.team(change.teamId);
+      if (team) broadcast({ kind: "team", team });
+      break;
+    }
+    case "team.deleted":
+      broadcast({ kind: "team.deleted", teamId: change.teamId });
+      break;
   }
 });
 
@@ -1456,7 +1464,7 @@ async function startTurn(
       const coordinationPrompt = bot.chiefOfStaff
         ? chiefOfStaffSystemPrompt(bot.id, store.bots, Boolean(integrations.agents))
         : integrations.agents
-          ? "You can work with the user's other bots through the agents tools — list_bots shows who's available, ask_bot sends one of them a message and returns their reply."
+          ? "You can work with the user's other bots through the agents tools — list_bots shows who's available, ask_bot sends one of them a message and returns their reply. You can also inspect and manage your own team with team_status, create_team, add_team_member, remove_team_member, transfer_team_leadership, and leave_team; only a team leader may add, remove, or transfer."
           : "";
 
       watchdog.watch(threadId, bot.id);
@@ -2267,6 +2275,67 @@ const server = createServer(async (req, res) => {
           }));
         return json(res, 200, { bots });
       }
+      if (method === "GET" && path === "/api/internal/team") {
+        const self = url.searchParams.get("self") ?? "";
+        const team = store.teamForBot(self);
+        return json(res, 200, {
+          team: team
+            ? {
+                ...team,
+                leader: store.bot(team.leaderBotId)?.name ?? null,
+                members: team.memberIds.flatMap((id) => {
+                  const bot = store.bot(id);
+                  return bot ? [{ id: bot.id, name: bot.name, title: bot.title || undefined, leader: bot.id === team.leaderBotId }] : [];
+                }),
+              }
+            : null,
+        });
+      }
+      if (method === "POST" && path === "/api/internal/team/create") {
+        const body = await readBody(req);
+        const botId = String(body.botId ?? "");
+        const name = String(body.name ?? "");
+        if (!store.bot(botId)) return json(res, 404, { error: "no such bot" });
+        return json(res, 201, { team: store.createTeam(name, botId) });
+      }
+      if (method === "POST" && path === "/api/internal/team/add") {
+        const body = await readBody(req);
+        const botId = String(body.botId ?? "");
+        const targetBotId = String(body.targetBotId ?? "");
+        const team = store.teamForBot(botId);
+        if (!team) return json(res, 404, { error: "you are not in a team" });
+        if (team.leaderBotId !== botId) return json(res, 403, { error: "only the team leader can add members" });
+        return json(res, 200, { team: store.addTeamMember(team.id, targetBotId) });
+      }
+      if (method === "POST" && path === "/api/internal/team/remove") {
+        const body = await readBody(req);
+        const botId = String(body.botId ?? "");
+        const targetBotId = String(body.targetBotId ?? "");
+        const team = store.teamForBot(botId);
+        if (!team) return json(res, 404, { error: "you are not in a team" });
+        if (team.leaderBotId !== botId) return json(res, 403, { error: "only the team leader can remove members" });
+        return json(res, 200, { team: store.removeTeamMember(team.id, targetBotId) });
+      }
+      if (method === "POST" && path === "/api/internal/team/leader") {
+        const body = await readBody(req);
+        const botId = String(body.botId ?? "");
+        const targetBotId = String(body.targetBotId ?? "");
+        const team = store.teamForBot(botId);
+        if (!team) return json(res, 404, { error: "you are not in a team" });
+        if (team.leaderBotId !== botId) return json(res, 403, { error: "only the team leader can transfer leadership" });
+        const updated = store.patchTeam(team.id, { leaderBotId: targetBotId });
+        return json(res, 200, { team: updated });
+      }
+      if (method === "POST" && path === "/api/internal/team/leave") {
+        const body = await readBody(req);
+        const botId = String(body.botId ?? "");
+        const team = store.teamForBot(botId);
+        if (!team) return json(res, 404, { error: "you are not in a team" });
+        if (team.leaderBotId === botId) {
+          return json(res, 409, { error: "choose a new leader before leaving" });
+        }
+        return json(res, 200, { team: store.removeTeamMember(team.id, botId) });
+      }
       if (method === "POST" && path === "/api/internal/ask-bot") {
         const body = await readBody(req);
         const fromBotId = String(body.fromBotId ?? "");
@@ -2574,6 +2643,7 @@ const server = createServer(async (req, res) => {
       return json(res, 200, {
         bots: store.bots.map((bot) => ({ ...publicBot(bot), ...messagePage(bot.threadId, limit) })),
         groups: store.groups.map((g) => ({ ...g, ...messagePage(g.threadId, limit) })),
+        teams: store.teams,
       });
     }
 
@@ -2792,6 +2862,7 @@ const server = createServer(async (req, res) => {
             .map((bot) => ({ id: bot.id, chiefOfStaff: Boolean(bot.chiefOfStaff) }))
         : [];
       const importedBots: ReturnType<typeof store.createBot>[] = [];
+      let importedTeamId: string | null = null;
       try {
         const selection = await defaultSelection();
         for (const member of manifest.team.members) {
@@ -2806,13 +2877,28 @@ const server = createServer(async (req, res) => {
               description: member.description,
               color: member.appearance.color,
               mascotExpression: member.appearance.mascotExpression,
-              team: manifest.team.name,
               modelSelection: selection,
             },
             { seedMessages: false },
           );
           store.patchBot(created.id, { composio: false });
           importedBots.push(created);
+        }
+        // The imported members form a real team. The first member is the
+        // initial leader; the rest are added through the same membership
+        // path as a manual invite.
+        if (importedBots[0]) {
+          let team;
+          try {
+            team = store.createTeam(manifest.team.name, importedBots[0].id);
+          } catch {
+            team = store.createTeam(
+              `${manifest.team.name} ${new Date().toISOString().slice(0, 10)}`,
+              importedBots[0].id,
+            );
+          }
+          importedTeamId = team.id;
+          for (const bot of importedBots.slice(1)) store.addTeamMember(team.id, bot.id);
         }
         const archivedBots = archived.flatMap(({ id }) => {
           const bot = store.patchBot(id, { hidden: true, chiefOfStaff: false });
@@ -2824,6 +2910,7 @@ const server = createServer(async (req, res) => {
         return json(res, 201, { bots: publicBots, archivedBots, archived });
       } catch (error) {
         for (const bot of importedBots) store.deleteBot(bot.id);
+        if (importedTeamId) store.deleteTeam(importedTeamId);
         throw error;
       }
     }
@@ -2901,6 +2988,52 @@ const server = createServer(async (req, res) => {
       const instance = busy ? registry.get(busy.modelSelection.instanceId) : undefined;
       await instance?.adapter.interruptTurn(group.threadId).catch(() => {});
       return json(res, 200, { ok: true });
+    }
+
+    // ── teams ─────────────────────────────────────────────────────────
+    if (method === "GET" && path === "/api/teams") {
+      return json(res, 200, { teams: store.teams });
+    }
+    if (method === "POST" && path === "/api/teams") {
+      const body = await readBody(req);
+      const name = typeof body.name === "string" ? body.name : "";
+      const creatorBotId = typeof body.creatorBotId === "string" ? body.creatorBotId : "";
+      if (!creatorBotId) return json(res, 400, { error: "creatorBotId is required" });
+      const team = store.createTeam(name, creatorBotId);
+      return json(res, 201, { team });
+    }
+    m = path.match(/^\/api\/teams\/([\w-]+)$/);
+    if (m && method === "PATCH") {
+      const body = await readBody(req);
+      const team = store.patchTeam(m[1], {
+        ...(body.name !== undefined ? { name: String(body.name) } : {}),
+        ...(body.leaderBotId !== undefined ? { leaderBotId: String(body.leaderBotId) } : {}),
+      });
+      if (!team) return json(res, 404, { error: "no such team" });
+      return json(res, 200, { team });
+    }
+    if (m && method === "DELETE") {
+      if (!store.deleteTeam(m[1])) return json(res, 404, { error: "no such team" });
+      return json(res, 200, { ok: true });
+    }
+    m = path.match(/^\/api\/teams\/([\w-]+)\/members$/);
+    if (m && method === "POST") {
+      const body = await readBody(req);
+      const botId = typeof body.botId === "string" ? body.botId : "";
+      if (!botId) return json(res, 400, { error: "botId is required" });
+      return json(res, 200, { team: store.addTeamMember(m[1], botId) });
+    }
+    m = path.match(/^\/api\/teams\/([\w-]+)\/members\/([\w-]+)$/);
+    if (m && method === "DELETE") {
+      const team = store.removeTeamMember(m[1], m[2]);
+      return json(res, 200, { team });
+    }
+    m = path.match(/^\/api\/teams\/([\w-]+)\/room$/);
+    if (m && method === "POST") {
+      const team = store.team(m[1]);
+      if (!team) return json(res, 404, { error: "no such team" });
+      const group = store.createTeamRoom(m[1]);
+      return json(res, 201, { team: store.team(m[1]), group });
     }
 
     // emoji reactions — works on any thread (1:1 or room)
@@ -3051,7 +3184,7 @@ const server = createServer(async (req, res) => {
         if (field === "name" && !value.trim()) return json(res, 400, { error: "name must not be empty" });
       }
       const patch: Record<string, unknown> = {};
-      for (const key of ["name", "title", "description", "notifications", "modelSelection", "unread", "computer", "color", "mascotExpression", "mascotShape", "role", "team", "autoModelPool", "pinned", "hidden", "speakReplies", "voice"] as const) {
+      for (const key of ["name", "title", "description", "notifications", "modelSelection", "unread", "computer", "color", "mascotExpression", "mascotShape", "role", "autoModelPool", "pinned", "hidden", "speakReplies", "voice"] as const) {
         if (body[key] !== undefined) patch[key] = body[key];
       }
       if (body.autoModelPool !== undefined) {
@@ -3077,12 +3210,6 @@ const server = createServer(async (req, res) => {
           pool.push({ instanceId: entry.instanceId.trim().slice(0, 128), model: entry.model.trim().slice(0, 512) });
         }
         patch.autoModelPool = pool;
-      }
-      if (body.team !== undefined) {
-        if (body.team !== null && (typeof body.team !== "string" || body.team.trim().length > 80)) {
-          return json(res, 400, { error: "team must be a short name or null" });
-        }
-        patch.team = typeof body.team === "string" ? body.team.trim() || null : null;
       }
       if (body.autoModel !== undefined) {
         if (typeof body.autoModel !== "boolean") return json(res, 400, { error: "autoModel must be true or false" });

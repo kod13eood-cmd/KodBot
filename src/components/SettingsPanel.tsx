@@ -704,7 +704,6 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
         | "mascotExpression"
         | "mascotShape"
         | "role"
-        | "team"
         | "autoApprove"
         | "autoModel"
         | "autoModelPool"
@@ -938,14 +937,6 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
               className={inputCls}
               value={bot.name}
               onChange={(e) => patch({ name: e.target.value })}
-            />
-          </Field>
-          <Field label={t("Team")}>
-            <input
-              className={inputCls}
-              placeholder={t("Ungrouped")}
-              value={bot.team ?? ""}
-              onChange={(e) => patch({ team: e.target.value })}
             />
           </Field>
           <Field label={t("Title")}>
