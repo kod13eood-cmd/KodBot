@@ -11,6 +11,8 @@ import {
   Clock,
   Copy,
   Crown,
+  ExternalLink,
+  FileCode2,
   Folder,
   Loader2,
   Monitor,
@@ -504,6 +506,60 @@ function ScreenFrame({ png, mime }: { png: string; mime?: string }) {
   );
 }
 
+/** A page the bot wrote this turn. The document is served with a sandbox
+ * CSP and framed without same-origin access, so a dashboard cannot read the
+ * chat around it. */
+function PageArtifactCard({ page }: { page: NonNullable<Message["page"]> }) {
+  const { t } = useI18n();
+  const url = `${window.location.origin}/api/bots/${encodeURIComponent(page.botId)}/pages/${encodeURIComponent(page.name)}`;
+  const size = page.bytes < 1024 ? `${page.bytes} B` : `${Math.round(page.bytes / 102.4) / 10} KB`;
+  const open = () => window.open(url, "_blank", "noopener,noreferrer");
+  return (
+    <div className="flex w-full justify-start">
+      <div className="w-full max-w-[680px] overflow-hidden rounded-2xl border border-hairline/40 bg-card">
+        <div className="flex items-center gap-2.5 border-b border-hairline/40 px-4 py-2.5">
+          <FileCode2 size={16} className="shrink-0 text-accent" />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[13px] font-semibold text-ink">{page.title}</div>
+            <div className="truncate font-mono text-[10.5px] text-ink-secondary/80">
+              {page.name} · {size} · {formatTime(page.updatedAt)}
+            </div>
+          </div>
+          <button
+            onClick={open}
+            aria-label={t("Open page")}
+            title={t("Open page")}
+            className="shrink-0 rounded-lg p-1.5 text-ink-secondary hover:bg-raised hover:text-ink"
+          >
+            <ExternalLink size={14} />
+          </button>
+        </div>
+        <div className="h-[220px] bg-white">
+          <iframe
+            src={url}
+            title={page.title}
+            sandbox="allow-scripts"
+            referrerPolicy="no-referrer"
+            loading="lazy"
+            className="pointer-events-none h-full w-full border-0 bg-white"
+          />
+        </div>
+        <div className="flex items-center justify-between gap-3 px-4 py-2">
+          <span className="min-w-0 truncate text-[11px] text-ink-secondary/80">
+            {t("Private page")} · {t("Pages run in a sandbox and cannot read your chat or credentials.")}
+          </span>
+          <button
+            onClick={open}
+            className="shrink-0 rounded-lg bg-raised px-2.5 py-1.5 text-[11.5px] font-medium text-ink hover:bg-raised-hover"
+          >
+            {t("Open page")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StreamingBubble({ text }: { text: string }) {
   // markdown re-parses on a deferred value: when tokens arrive faster than
   // the parser keeps up, React lags the parse instead of janking the frame
@@ -641,6 +697,8 @@ const MessagesList = memo(function MessagesList({
               );
             case "screen":
               return m.png ? <ScreenFrame png={m.png} mime={m.mime} /> : null;
+            case "page":
+              return m.page ? <PageArtifactCard page={m.page} /> : null;
             default:
               return (
                 <Bubble

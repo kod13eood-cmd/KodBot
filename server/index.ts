@@ -86,7 +86,17 @@ import { WebhookManager } from "./webhooks.ts";
 import { SPAWNED_PROXIES } from "./proxy-paths.ts";
 import { askJev, jevConfigured, jevRequest, type JevError } from "./jev.ts";
 import { MAX_UPLOAD_BYTES, sanitizeUploadName, storeUpload } from "./uploads.ts";
-import { deletePage, listPages, PAGE_MAX_BYTES, PAGE_NAME, readPage, writePage, pagesSystemPrompt } from "./pages.ts";
+import {
+  changedPages,
+  deletePage,
+  listPages,
+  PAGE_MAX_BYTES,
+  PAGE_NAME,
+  pageSnapshot,
+  readPage,
+  writePage,
+  pagesSystemPrompt,
+} from "./pages.ts";
 import { productCardsSystemPrompt } from "./product-cards.ts";
 import { chooseAutoModel } from "./model-routing.ts";
 
@@ -462,6 +472,9 @@ function broadcast(payload: Record<string, unknown>) {
 // once can collide on a bare id and patch each other's messages.
 const toolMessageByItem = new Map<string, string>(); // threadId:itemId -> messageId
 const askMessageByRequest = new Map<string, string>(); // threadId:requestId -> messageId
+// Pages present before the turn, so the fold can announce only the ones this
+// turn created or rewrote. Keyed by thread because a room has one active turn.
+const turnPageSnapshots = new Map<string, Map<string, number>>();
 
 /** Deliver a person's answer to the engine that asked, and tell the truth
  * about what happened. `unavailable` — the turn ended, the ask timed out,
@@ -672,6 +685,11 @@ bus.subscribe((event: RuntimeEvent) => {
   };
 
   switch (event.type) {
+    case "turn.started": {
+      const pageBot = bot ?? (speaker ? store.bot(speaker.botId) : undefined);
+      if (pageBot) turnPageSnapshots.set(event.threadId, pageSnapshot(listPages(pageBot.id)));
+      break;
+    }
     case "session.started":
       if (bot && event.sessionId && event.providerInstanceId) {
         store.setResumeCursor(bot.id, event.providerInstanceId, event.sessionId, event.threadId);
@@ -837,6 +855,28 @@ bus.subscribe((event: RuntimeEvent) => {
       turnUsage.set(event.threadId, { input: event.input, output: event.output });
       break;
     case "turn.completed": {
+      // A page the bot wrote is a chat artifact, not a hidden file in Bot
+      // settings. Compare against the turn's opening snapshot so a dashboard
+      // edit shows one card — and an unrelated turn shows none.
+      const pageSpeaker = groupSpeakers.get(event.threadId);
+      const pageBot = bot ?? (pageSpeaker ? store.bot(pageSpeaker.botId) : undefined);
+      const pagesBefore = turnPageSnapshots.get(event.threadId);
+      turnPageSnapshots.delete(event.threadId);
+      if (pageBot && pagesBefore) {
+        for (const page of changedPages(pagesBefore, listPages(pageBot.id))) {
+          pushMessage({
+            role: "bot",
+            kind: "page",
+            page: {
+              botId: pageBot.id,
+              name: page.name,
+              title: page.title,
+              bytes: page.bytes,
+              updatedAt: page.updatedAt,
+            },
+          });
+        }
+      }
       const reply = lastReply.get(event.threadId) ?? "";
       lastReply.delete(event.threadId);
       const lastReported = turnUsage.get(event.threadId);

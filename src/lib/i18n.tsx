@@ -730,6 +730,8 @@ const BULGARIAN: Record<string, string> = {
     "Браузърът блокира достъпа до клипборда. Изберете подканата и я копирайте ръчно.",
   // Pages
   "Pages": "Страници",
+  "Open page": "Отвори страницата",
+  "Private page": "Частна страница",
   "Dashboards, checklists, and reports the bot builds as private web pages.":
     "Табла, списъци и отчети, които ботът създава като частни уеб страници.",
   "Pages run in a sandbox and cannot read your chat or credentials.":

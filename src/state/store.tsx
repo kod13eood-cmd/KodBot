@@ -53,10 +53,12 @@ export interface ConnectorCardData {
 export interface Message {
   id: string;
   role: "bot" | "user";
-  kind: "text" | "options" | "activity" | "screen" | "connector";
+  kind: "text" | "options" | "activity" | "screen" | "connector" | "page";
   text?: string;
   card?: OptionCardData;
   connector?: ConnectorCardData;
+  /** page messages: a self-contained HTML artifact the bot wrote this turn. */
+  page?: { botId: string; name: string; title: string; bytes: number; updatedAt: number };
   /** activity messages: tool name + outcome. `spoken` is the server's
    * narration of the same chip ("reading a file"), used by call mode. */
   /** `setup` marks an error fixed by installing something, not by retrying. */

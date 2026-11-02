@@ -5,9 +5,11 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
+  changedPages,
   deletePage,
   listPages,
   PAGE_MAX_BYTES,
+  pageSnapshot,
   readPage,
   writePage,
   pagesSystemPrompt,
@@ -48,6 +50,17 @@ describe("pages", () => {
     expect(readPage(BOT, "../secret.html")).toBeNull();
     expect(deletePage(BOT, "../secret.html")).toBe(false);
     expect(() => writePage(BOT, "big.html", "x".repeat(PAGE_MAX_BYTES + 1))).toThrow(/too large/);
+  });
+
+  it("finds only the pages a turn created or rewrote", () => {
+    const pages = [
+      { name: "old.html", title: "Old", bytes: 10, updatedAt: 100 },
+      { name: "new.html", title: "New", bytes: 20, updatedAt: 300 },
+      { name: "edited.html", title: "Edited", bytes: 30, updatedAt: 400 },
+    ];
+    const before = pageSnapshot(pages.slice(0, 1));
+    expect(changedPages(before, pages).map((page) => page.name)).toEqual(["new.html", "edited.html"]);
+    expect(changedPages(before, pages.slice(0, 1))).toEqual([]);
   });
 
   it("tells the bot where pages live without leaking secrets", () => {

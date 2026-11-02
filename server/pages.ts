@@ -45,6 +45,30 @@ function titleOf(html: string, name: string): string {
   return text.slice(0, 120) || name;
 }
 
+/** Cheap before/after snapshot used to announce a page in chat exactly once
+ * per turn. It records mtimes, not titles: the title is read only for pages
+ * that actually changed. */
+export function pageSnapshot(pages: PageSummary[]): Map<string, number> {
+  return new Map(pages.map((page) => [page.name, page.updatedAt]));
+}
+
+/** Pages created or rewritten since `before`, oldest first so a turn that
+ * writes a report and then a checklist reads in that order. Capped because
+ * one turn should not turn the transcript into a file browser. */
+export function changedPages(
+  before: Map<string, number>,
+  after: PageSummary[],
+  limit = 12,
+): PageSummary[] {
+  return after
+    .filter((page) => {
+      const previous = before.get(page.name);
+      return previous === undefined || page.updatedAt > previous;
+    })
+    .sort((a, b) => a.updatedAt - b.updatedAt)
+    .slice(-limit);
+}
+
 export function listPages(botId: string): PageSummary[] {
   const dir = pageDir(botId);
   try {
@@ -107,5 +131,5 @@ export function pagesSystemPrompt(botId: string): string {
   const dir = join(pageDir(botId));
   return ` You can build private web pages for the user. Write complete self-contained HTML files into ${JSON.stringify(
     dir,
-  )}; they appear in this bot's Pages tab and the user can open or share them. Use a page instead of a wall of chat when a dashboard, checklist, report, or visual comparison would be clearer. Keep CSS and JavaScript inline and never put API keys or other secrets in a page. Tell the user the page title when you finish.`;
+  )}; they appear in this bot's Pages tab and as a preview card in the chat, and the user can open or share them. Use a page instead of a wall of chat when a dashboard, checklist, report, or visual comparison would be clearer. Keep CSS and JavaScript inline and never put API keys or other secrets in a page. Tell the user the page title when you finish.`;
 }

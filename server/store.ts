@@ -66,10 +66,12 @@ export interface ConnectorCardData {
 export interface Message {
   id: string;
   role: "bot" | "user";
-  kind: "text" | "options" | "activity" | "screen" | "connector";
+  kind: "text" | "options" | "activity" | "screen" | "connector" | "page";
   text?: string;
   card?: OptionCardData;
   connector?: ConnectorCardData;
+  /** page messages: a self-contained HTML artifact the bot wrote this turn. */
+  page?: { botId: string; name: string; title: string; bytes: number; updatedAt: number };
   /** activity messages: tool name + outcome. `spoken` is the same chip as
    * a phrase a voice can read ("reading a file") — computed once here so
    * call mode never has to re-derive it from the raw tool name, and absent

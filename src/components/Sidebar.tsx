@@ -145,6 +145,7 @@ function preview(bot: Bot, t: Translate): string {
   if (last.kind === "options" && last.card) return last.card.title;
   if (last.kind === "activity" && last.tool) return last.tool.name;
   if (last.kind === "screen") return t("Screen frame");
+  if (last.kind === "page" && last.page) return last.page.title;
   return last.text ?? "";
 }
 
@@ -161,7 +162,12 @@ function groupPreview(group: Group, bots: Bot[], t: Translate): string {
   }
   const last = group.messages.at(-1);
   if (!last) return t("No messages yet");
-  const text = last.kind === "activity" && last.tool ? last.tool.name : (last.text ?? "");
+  const text =
+    last.kind === "activity" && last.tool
+      ? last.tool.name
+      : last.kind === "page" && last.page
+        ? last.page.title
+        : (last.text ?? "");
   if (last.role === "user") return t("You: {text}", { text });
   return last.from ? `${last.from.name}: ${text}` : text;
 }
