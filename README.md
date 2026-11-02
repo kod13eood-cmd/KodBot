@@ -153,6 +153,8 @@ Secrets are write-only: the UI only ever sees "configured" flags.
 
 The factual, marketing-ready catalog is [docs/FEATURES.md](docs/FEATURES.md).
 Website and ad copy lives in [docs/marketing/product-page.md](docs/marketing/product-page.md).
+For dogfooding KodBot on its own repository, see
+[docs/developing-kodbot-with-kodbot.md](docs/developing-kodbot-with-kodbot.md).
 
 ### 🎧 Bots that talk back
 
