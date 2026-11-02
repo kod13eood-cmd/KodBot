@@ -823,6 +823,26 @@ const BULGARIAN: Record<string, string> = {
   "Team": "Екип",
   "Ungrouped": "Без екип",
   "Other bots": "Други ботове",
+  // Model capability badges
+  "Text": "Текст",
+  "Vision": "Зрение",
+  "Audio": "Звук",
+  "Image generation": "Генериране на изображения",
+  "Video generation": "Генериране на видео",
+  "Reasoning": "Разсъждение",
+  // Auto model pool
+  "Auto model pool": "Набор за автоматичен модел",
+  "Choose which models Auto mode may use. Only this list is considered; nothing else is sent to another provider.":
+    "Изберете кои модели може да използва автоматичният режим. Разглежда се само този списък; нищо друго не се изпраща към друг доставчик.",
+  "Choose models": "Избери модели",
+  "{count} models in the auto pool": "{count} модела в автоматичния набор",
+  "Using all models from the current engine.": "Използват се всички модели от текущия engine.",
+  "Use current engine only": "Само текущият engine",
+  "{count} selected": "{count} избрани",
+  "Save pool": "Запази набора",
+  "No available models. Install or sign in to an engine first.":
+    "Няма налични модели. Първо инсталирайте или влезте в engine.",
+  "All": "Всички",
 };
 
 function initialLocale(): Locale {

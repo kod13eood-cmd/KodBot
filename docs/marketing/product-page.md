@@ -78,7 +78,8 @@ Two bots with the same job still look like different teammates.
 - **Local-first:** transcripts, keys, and events stay in `~/.kodbot` or your own server.
 - **Bring your own agents:** Claude, Codex, Grok, and OpenCode.
 - **Per-bot model picker:** switch models per bot, mid-conversation.
-- **Auto model routing:** strongest model for complex work, fastest for simple asks.
+- **Auto model routing with a model pool:** strongest for complex work, fastest for simple asks, or a hand-picked list across engines.
+- **Capability icons:** see text, vision, audio, image, video, and reasoning support before choosing a model.
 - **A real computer per bot:** cloud Linux, local machine, or shared room computer.
 - **Approval cards:** shell commands, edits, and questions stop for a human decision.
 - **Rooms:** several bots in one conversation with a shared bulletin.

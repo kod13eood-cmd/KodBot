@@ -9,6 +9,7 @@ import { isCustomOnly, splitEngineRail } from "@/lib/engine-rail";
 import { ProviderMark } from "./ProviderIcons";
 import { EngineSetup, needsCli, needsSignIn } from "./EngineSetup";
 import { EngineGroupLabel } from "./EngineGroupLabel";
+import { ModelCapabilityIcons } from "./ModelCapabilityIcons";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
 
@@ -48,6 +49,7 @@ function ModelRow({
     >
       <span className="flex min-w-0 items-center gap-2">
         <span className="truncate">{option.label}</span>
+        <ModelCapabilityIcons option={option} />
         {option.group && (
           <span className="shrink-0 rounded bg-inset px-1.5 py-px text-[10px] text-ink-secondary">{option.group}</span>
         )}
@@ -221,6 +223,11 @@ export function ModelPicker({ bot, className }: { bot: Bot; className?: string }
       >
         {active && <ProviderMark driverKind={active.driverKind} size={14} />}
         <span className="max-w-[160px] truncate">{modelLabel(active, selection.model)}</span>
+        {active && (
+          <ModelCapabilityIcons
+            option={active.models.options.find((option) => option.id === selection.model) ?? { id: selection.model }}
+          />
+        )}
         <ChevronDown size={14} className={cn("text-ink-secondary transition-transform", open && "rotate-180")} />
       </button>
 

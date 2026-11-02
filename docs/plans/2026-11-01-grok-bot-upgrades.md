@@ -112,9 +112,12 @@ merchant relationship that does not exist on the current host.
 - Candidates are the models of the engine the user already chose, from
   `registry.describe()`, and exclude an unavailable / unauthenticated engine.
   The current selection is a fallback, so a catalog refresh failure never
-  blocks a turn. Cross-engine routing is deliberately out of scope: changing
-  the engine changes which provider receives the prompt and where the turn
-  runs, which needs explicit consent rather than a heuristic.
+  blocks a turn.
+- A bot can also have an explicit **auto model pool**. The pool may span
+  engines, but it is the user's explicit consent: only entries in that list are
+  considered. An empty pool preserves the single-engine behavior.
+- Every model row carries small capability badges (text, vision, audio, image,
+  video, reasoning) so a pool is readable before it is saved.
 - The bot's `autoModel` flag is stored on the bot, toggled in Settings, and
   routed on every non-cloud 1:1 turn. Room turns keep their per-bot picker
   choice so a shared conversation cannot silently swap models between members.

@@ -1176,21 +1176,41 @@ async function startTurn(
   if (bot.autoModel && opts?.runOn !== "cloud") {
     try {
       const described = await registry.describe();
-      // Stay on the engine the user chose. Routing across engines would
-      // silently change where a turn runs (and which provider sees the
-      // prompt), which is a consent boundary, not a model-quality choice.
-      const current = described.find((entry) => entry.instanceId === bot.modelSelection.instanceId);
-      const options =
-        current && current.snapshot.state === "available" && current.snapshot.authenticated !== false
-          ? current.models.options.map((option) => ({
-              instanceId: current.instanceId,
-              model: option.id,
-              label: option.label,
-              free: option.free,
-              group: option.group,
-            }))
-          : [];
-      const choice = chooseAutoModel(text, options, bot.modelSelection);
+      const usable = described.filter(
+        (entry) => entry.snapshot.state === "available" && entry.snapshot.authenticated !== false,
+      );
+      const pool = bot.autoModelPool ?? [];
+      // A non-empty pool is explicit consent to cross engines. Without one,
+      // stay on the engine the user chose so a prompt never silently reaches
+      // a different provider.
+      const options = pool.length
+        ? usable.flatMap((instance) =>
+            instance.models.options
+              .filter((option) => pool.some((entry) => entry.instanceId === instance.instanceId && entry.model === option.id))
+              .map((option) => ({
+                instanceId: instance.instanceId,
+                model: option.id,
+                label: option.label,
+                free: option.free,
+                group: option.group,
+              })),
+          )
+        : usable
+            .filter((entry) => entry.instanceId === bot.modelSelection.instanceId)
+            .flatMap((instance) =>
+              instance.models.options.map((option) => ({
+                instanceId: instance.instanceId,
+                model: option.id,
+                label: option.label,
+                free: option.free,
+                group: option.group,
+              })),
+            );
+      const choice = pool.length
+        ? options.length
+          ? chooseAutoModel(text, options)
+          : null
+        : chooseAutoModel(text, options, bot.modelSelection);
       if (choice && (choice.instanceId !== bot.modelSelection.instanceId || choice.model !== bot.modelSelection.model)) {
         store.patchBot(bot.id, { modelSelection: choice });
       }
@@ -3031,8 +3051,32 @@ const server = createServer(async (req, res) => {
         if (field === "name" && !value.trim()) return json(res, 400, { error: "name must not be empty" });
       }
       const patch: Record<string, unknown> = {};
-      for (const key of ["name", "title", "description", "notifications", "modelSelection", "unread", "computer", "color", "mascotExpression", "mascotShape", "role", "team", "pinned", "hidden", "speakReplies", "voice"] as const) {
+      for (const key of ["name", "title", "description", "notifications", "modelSelection", "unread", "computer", "color", "mascotExpression", "mascotShape", "role", "team", "autoModelPool", "pinned", "hidden", "speakReplies", "voice"] as const) {
         if (body[key] !== undefined) patch[key] = body[key];
+      }
+      if (body.autoModelPool !== undefined) {
+        if (!Array.isArray(body.autoModelPool) || body.autoModelPool.length > 24) {
+          return json(res, 400, { error: "autoModelPool must be an array of up to 24 models" });
+        }
+        const seen = new Set<string>();
+        const pool: Array<{ instanceId: string; model: string }> = [];
+        for (const entry of body.autoModelPool) {
+          if (
+            !entry ||
+            typeof entry !== "object" ||
+            typeof entry.instanceId !== "string" ||
+            typeof entry.model !== "string" ||
+            !entry.instanceId.trim() ||
+            !entry.model.trim()
+          ) {
+            return json(res, 400, { error: "each autoModelPool entry needs instanceId and model" });
+          }
+          const key = `${entry.instanceId}\u0000${entry.model}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          pool.push({ instanceId: entry.instanceId.trim().slice(0, 128), model: entry.model.trim().slice(0, 512) });
+        }
+        patch.autoModelPool = pool;
       }
       if (body.team !== undefined) {
         if (body.team !== null && (typeof body.team !== "string" || body.team.trim().length > 80)) {

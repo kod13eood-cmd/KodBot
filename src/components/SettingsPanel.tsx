@@ -14,6 +14,7 @@ import {
   CREW_COLOR_NAMES,
 } from "@/lib/mascot";
 import { ModelPicker } from "./ModelPicker";
+import { AutoModelPool } from "./AutoModelPool";
 import { autoMascotShape, MASCOT_SHAPE_IDS, MASCOT_SHAPES, normalizeMascotShape } from "@/lib/mascot-shapes";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { cn } from "@/lib/cn";
@@ -689,6 +690,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
   const { t } = useI18n();
   const [voices, setVoices] = useState<Array<{ id: string; label: string; description?: string }>>([]);
   const [voicesLoading, setVoicesLoading] = useState(false);
+  const [poolOpen, setPoolOpen] = useState(false);
   const patch = (
     p: Partial<
       Pick<
@@ -705,6 +707,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
         | "team"
         | "autoApprove"
         | "autoModel"
+        | "autoModelPool"
         | "speakReplies"
         | "voice"
         | "chiefOfStaff"
@@ -1127,6 +1130,19 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
                 />
               </button>
             </div>
+            <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-inset px-3 py-2">
+              <div className="min-w-0 text-[11.5px] leading-snug text-ink-secondary">
+                {bot.autoModelPool?.length
+                  ? t("{count} models in the auto pool", { count: bot.autoModelPool.length })
+                  : t("Using all models from the current engine.")}
+              </div>
+              <button
+                onClick={() => setPoolOpen(true)}
+                className="shrink-0 rounded-lg bg-raised px-2.5 py-1.5 text-[11.5px] text-ink hover:bg-raised-hover"
+              >
+                {t("Choose models")}
+              </button>
+            </div>
           </div>
 
           {!!engine?.capabilities?.effortLevels?.length && (
@@ -1307,6 +1323,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
           </div>
         </div>
       </div>
+      {poolOpen && <AutoModelPool bot={bot} onClose={() => setPoolOpen(false)} />}
     </aside>
   );
 }

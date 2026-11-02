@@ -165,6 +165,8 @@ export interface Bot {
   autoApprove?: boolean;
   /** route each task to the strongest available model */
   autoModel?: boolean;
+  /** explicit models auto routing may choose from; empty = current engine */
+  autoModelPool?: ModelSelection[];
   /** tools this bot may always use without asking */
   alwaysAllow?: string[];
   /** speak this bot's replies aloud as they settle */
@@ -412,6 +414,7 @@ export type Action =
           | "team"
           | "autoApprove"
           | "autoModel"
+          | "autoModelPool"
           | "speakReplies"
           | "voice"
           | "pinned"
@@ -1117,6 +1120,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                   ...(source.mascotShape ? { mascotShape: source.mascotShape } : {}),
                   ...(source.role ? { role: source.role } : {}),
                   color: source.color,
+                  ...(source.autoModel ? { autoModel: true } : {}),
+                  ...(source.autoModelPool?.length ? { autoModelPool: source.autoModelPool } : {}),
                   ...(source.computer ? { computer: source.computer } : {}),
                 }),
               }).then(({ bot: patched }) =>

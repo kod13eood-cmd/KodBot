@@ -18,11 +18,13 @@ Status keys:
   `opencode` CLIs you already use, with your existing logins and subscriptions.
 - **Local-first.** The harness, transcripts, keys, and events stay on your
   machine (`~/.kodbot`) or on a server you control.
-- **Per-bot model picker.** Switch one bot to Claude, another to Codex, another
-  to Grok or OpenCode — mid-conversation if needed.
+- **Per-bot model picker with capability icons.** Every model shows small
+  **text, vision, audio, image, video, and reasoning** badges so the choice is
+  readable before you pick it.
 - **Auto model routing.** Complex work goes to the strongest configured model;
-  short simple requests go to the fastest/free one. Routing stays inside the
-  engine the user chose, so the prompt never silently changes provider.
+  short simple requests go to the fastest/free one. Each bot can use an
+  explicit **Auto model pool** — a hand-picked list that may span engines. An
+  empty pool keeps routing inside the current engine.
 - **A real computer per bot.** A cloud Linux desktop, the local machine, or a
   shared room computer. Watch the live screen or take over.
 - **Approvals before risky actions.** Shell commands, file edits, and questions
@@ -97,7 +99,7 @@ connecting. These are ordinary Connected Apps, not a separate “Grok” section
 | Bot-created pages | **Live** | Private HTML dashboards and reports | Nothing |
 | iPhone app actions | **Platform** | Home, Reminders, Contacts, Alarms, Calendar | An iOS app with App Intents and permissions |
 | Memory import | **Live** | Bring context from another assistant | Nothing |
-| Best-model routing | **Live** | Strongest model for hard work, fastest for short asks | At least one configured engine |
+| Best-model routing | **Live** | Strongest model for hard work, fastest for short asks; optional per-bot model pool | At least one configured engine |
 | Bot email | **Connected app** | Programmable inbox, messages, drafts, and address | Connect **AgentMail** (or Gmail/Outlook for a personal mailbox) |
 | Image generation | **Connected app** | Generate images and attach them in chat | Connect **All Images AI** |
 | Video generation | **Connected app** | Generate short avatar videos | Connect **HeyGen** |
@@ -123,7 +125,7 @@ connecting. These are ordinary Connected Apps, not a separate “Grok” section
 | Bot identity, shape, expression, color | Bot settings → Bot |
 | Pages | Bot settings → Pages |
 | Memory and import | Bot settings → Memory |
-| Auto model | Bot settings → Model → Auto model |
+| Auto model and model pool | Bot settings → Model → Auto model → Choose models |
 | Connected apps and provider setup | Sidebar → Connected apps (hover an app for its full description) |
 | Shortcuts | `Cmd/Ctrl+/` or App Settings → Keyboard shortcuts |
 | Remote server | App Settings → Server |

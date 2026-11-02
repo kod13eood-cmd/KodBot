@@ -262,6 +262,9 @@ export interface BotRecord {
   /** Choose the strongest available model for each task instead of pinning
    * one model forever. The last routed choice remains visible in the UI. */
   autoModel?: boolean;
+  /** Optional allowlist for auto routing. Entries are explicit consent to
+   * send a turn to that engine/model; empty means the current engine. */
+  autoModelPool?: ModelSelection[];
   /** Tools this bot may always use without asking, even outside auto mode
    * (set by "Always allow" on an approval card). */
   alwaysAllow?: string[];
