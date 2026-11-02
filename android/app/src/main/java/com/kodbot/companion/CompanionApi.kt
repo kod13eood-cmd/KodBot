@@ -122,6 +122,12 @@ data class ConversationRecord(
     val messages: List<TranscriptMessage>,
     val color: String = "green",
     val role: String? = null,
+    val mascotShape: String? = null,
+    val teamId: String? = null,
+    val teamName: String? = null,
+    val teamIsLeader: Boolean = false,
+    val autoModel: Boolean = false,
+    val autoModelPool: List<ModelSelectionRecord> = emptyList(),
     val busyBotId: String? = null,
 ) {
     val key: String get() = "$kind:$id"
@@ -256,7 +262,23 @@ class CompanionApi(private val connection: CompanionConnection) {
         val root = JSONObject(request("GET", "/api/bots?messages=50"))
         val bots = root.optJSONArray("bots") ?: JSONArray()
         val groups = root.optJSONArray("groups") ?: JSONArray()
-        val botChats = (0 until bots.length()).mapNotNull { index -> bots.optJSONObject(index)?.toBotConversation() }
+        val teams = root.optJSONArray("teams") ?: JSONArray()
+        val teamByBot = mutableMapOf<String, TeamInfo>()
+        for (index in 0 until teams.length()) {
+            val team = teams.optJSONObject(index) ?: continue
+            val id = team.optString("id")
+            val name = team.optString("name")
+            val leader = team.optString("leaderBotId")
+            val members = team.optJSONArray("memberIds") ?: JSONArray()
+            for (memberIndex in 0 until members.length()) {
+                val botId = members.optString(memberIndex)
+                if (botId.isNotBlank()) teamByBot[botId] = TeamInfo(id, name, leader)
+            }
+        }
+        val botChats = (0 until bots.length()).mapNotNull { index ->
+            val bot = bots.optJSONObject(index) ?: return@mapNotNull null
+            bot.toBotConversation(teamByBot[bot.optString("id")])
+        }
         val groupChats = (0 until groups.length()).mapNotNull { index -> groups.optJSONObject(index)?.toGroupConversation() }
         (botChats + groupChats).filterNot { it.id.isBlank() }
     }
@@ -354,6 +376,42 @@ class CompanionApi(private val connection: CompanionConnection) {
             "/api/bots/${encodePath(botId)}/model",
             JSONObject().put("instanceId", instanceId).put("model", model),
         )
+    }
+
+    /** Auto routing is a per-bot model pool. An empty pool keeps Auto inside
+     * the bot's current engine; a populated one is explicit consent to route
+     * across the listed models, and nothing else. */
+    suspend fun setAutoModel(botId: String, autoModel: Boolean, pool: List<ModelSelectionRecord>) =
+        withContext(Dispatchers.IO) {
+            val entries = JSONArray()
+            for (entry in pool.take(24)) {
+                entries.put(JSONObject().put("instanceId", entry.instanceId).put("model", entry.model))
+            }
+            request(
+                "PATCH",
+                "/api/bots/${encodePath(botId)}/auto-model",
+                JSONObject().put("autoModel", autoModel).put("autoModelPool", entries),
+            )
+        }
+
+    suspend fun createTeam(name: String, creatorBotId: String) = withContext(Dispatchers.IO) {
+        request(
+            "POST",
+            "/api/teams",
+            JSONObject().put("name", name).put("creatorBotId", creatorBotId),
+        )
+    }
+
+    suspend fun joinTeam(teamId: String, botId: String) = withContext(Dispatchers.IO) {
+        request("POST", "/api/teams/${encodePath(teamId)}/members", JSONObject().put("botId", botId))
+    }
+
+    suspend fun leaveTeam(teamId: String, botId: String) = withContext(Dispatchers.IO) {
+        request("DELETE", "/api/teams/${encodePath(teamId)}/members/${encodePath(botId)}")
+    }
+
+    suspend fun setTeamLeader(teamId: String, botId: String) = withContext(Dispatchers.IO) {
+        request("PATCH", "/api/teams/${encodePath(teamId)}", JSONObject().put("leaderBotId", botId))
     }
 
     suspend fun respond(threadId: String, card: ApprovalCard, answer: String) = withContext(Dispatchers.IO) {
@@ -516,7 +574,9 @@ class CompanionApi(private val connection: CompanionConnection) {
 
         private fun encodePath(value: String): String = Uri.encode(value)
 
-        private fun JSONObject.toBotConversation(): ConversationRecord? {
+        private data class TeamInfo(val id: String, val name: String, val leaderBotId: String)
+
+        private fun JSONObject.toBotConversation(team: TeamInfo? = null): ConversationRecord? {
             val messages = optJSONArray("messages") ?: JSONArray()
             val selection = optJSONObject("modelSelection")?.let {
                 ModelSelectionRecord(
@@ -538,6 +598,21 @@ class CompanionApi(private val connection: CompanionConnection) {
                 messages = (0 until messages.length()).mapNotNull { messages.optJSONObject(it)?.toMessage() },
                 color = optString("color", "green"),
                 role = optString("role").takeIf(String::isNotBlank),
+                mascotShape = optString("mascotShape").takeIf(String::isNotBlank),
+                teamId = team?.id,
+                teamName = team?.name,
+                teamIsLeader = team?.leaderBotId == optString("id"),
+                autoModel = optBoolean("autoModel"),
+                autoModelPool = optJSONArray("autoModelPool")?.let { pool ->
+                    (0 until pool.length()).mapNotNull { index ->
+                        pool.optJSONObject(index)?.let { entry ->
+                            val instanceId = entry.optString("instanceId")
+                            val model = entry.optString("model")
+                            if (instanceId.isBlank() || model.isBlank()) null
+                            else ModelSelectionRecord(instanceId, model, null)
+                        }
+                    }
+                }.orEmpty(),
             )
         }
 

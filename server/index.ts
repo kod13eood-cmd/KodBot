@@ -52,6 +52,7 @@ import {
   mentionedBots,
   roomResponders,
   Store,
+  type BotRecord,
   type GroupDefaultResponder,
   type Message,
   type TaskRecord,
@@ -3135,6 +3136,41 @@ const server = createServer(async (req, res) => {
       }
 
       const updated = store.patchBot(bot.id, { modelSelection: selection });
+      if (!updated) return json(res, 404, { error: "no such bot" });
+      const visible = wireBot(updated);
+      broadcast({ kind: "bot", bot: visible });
+      return json(res, 200, { bot: visible });
+    }
+    // Auto mode is also a narrow companion write. It changes which models a
+    // turn may be routed to, but not execution policy, credentials, or the
+    // bot's workspace, so the phone can tune its own routing without gaining
+    // the general bot PATCH.
+    m = path.match(/^\/api\/bots\/([\w-]+)\/auto-model$/);
+    if (m && method === "PATCH") {
+      const parsed = z.object({
+        autoModel: z.boolean().optional(),
+        autoModelPool: z
+          .array(z.object({ instanceId: z.string().trim().min(1).max(128), model: z.string().trim().min(1).max(512) }).strict())
+          .max(24)
+          .optional(),
+      }).strict().safeParse(await readBody(req));
+      if (!parsed.success || (parsed.data.autoModel === undefined && parsed.data.autoModelPool === undefined)) {
+        return json(res, 400, { error: "autoModel or autoModelPool is required" });
+      }
+      const bot = store.bot(m[1]);
+      if (!bot) return json(res, 404, { error: "no such bot" });
+      const patch: Partial<BotRecord> = {};
+      if (parsed.data.autoModelPool !== undefined) {
+        const seen = new Set<string>();
+        patch.autoModelPool = parsed.data.autoModelPool.filter((entry) => {
+          const key = `${entry.instanceId}\u0000${entry.model}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      }
+      if (parsed.data.autoModel !== undefined) patch.autoModel = parsed.data.autoModel;
+      const updated = store.patchBot(bot.id, patch);
       if (!updated) return json(res, 404, { error: "no such bot" });
       const visible = wireBot(updated);
       broadcast({ kind: "bot", bot: visible });

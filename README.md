@@ -147,6 +147,9 @@ Secrets are write-only: the UI only ever sees "configured" flags.
 - **Connected Apps with real names and full descriptions:** 1Password, Stripe,
   Aircall, AgentMail, All Images AI, and HeyGen are in the same marketplace as
   the rest of the catalog. Hover any app to read what it does before connecting.
+- **Android companion parity:** native bot shapes, fleet grouping by
+  room/team/other bots, team management, capability badges, Zen/Go sections,
+  per-bot Auto pools, and tappable product cards.
 
 The factual, marketing-ready catalog is [docs/FEATURES.md](docs/FEATURES.md).
 Website and ad copy lives in [docs/marketing/product-page.md](docs/marketing/product-page.md).

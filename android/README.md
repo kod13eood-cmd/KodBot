@@ -26,6 +26,16 @@ approval flow. The phone does not receive a general shell endpoint.
   can open the file with its normal tools. Attachments are capped at 30 MB.
 - Settings can test or repair the host address, change a bot's model from the
   host catalog, and toggle whether hidden bots or group chats are shown.
+- The same bot shapes and job badges as the desktop are drawn natively with
+  Compose, and the fleet is grouped into **Rooms**, **teams**, and **Other
+  bots**. Settings shows each bot's team and leader, with join, leave, create,
+  and leader-transfer actions.
+- The model picker has capability badges (text, vision, audio, image, video,
+  reasoning), search, and separate **OpenCode Zen** / **OpenCode Go** sections.
+- Each bot can turn on Auto routing and choose an explicit Auto model pool. An
+  empty pool keeps Auto inside the bot's current engine.
+- `products` blocks in replies render as tappable merchant cards. **Buy now**
+  opens the merchant page; the phone never claims a checkout happened.
 - Bot deletion is desktop-only. The phone intentionally has no delete action
   for a bot: deleting one removes every transcript and its workspace, which is
   too destructive for a single tap on a pocket device.

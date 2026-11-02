@@ -43,6 +43,7 @@ describe("what the app may do", () => {
     ["POST", "/api/bots"],
     ["POST", "/api/bots/bot_123/messages"],
     ["PATCH", "/api/bots/bot_123/model"],
+    ["PATCH", "/api/bots/bot_123/auto-model"],
     ["POST", "/api/bots/bot_123/interrupt"],
     ["POST", "/api/bots/bot_123/read"],
     ["POST", "/api/bots/bot_123/always-allow"],
@@ -53,6 +54,11 @@ describe("what the app may do", () => {
     ["PATCH", "/api/bots/bot_123/tasks/th_1"],
     ["DELETE", "/api/bots/bot_123/tasks/th_1"],
     ["POST", "/api/bots/bot_123/computer/join"],
+    ["GET", "/api/teams"],
+    ["POST", "/api/teams"],
+    ["PATCH", "/api/teams/team_1"],
+    ["POST", "/api/teams/team_1/members"],
+    ["DELETE", "/api/teams/team_1/members/bot_123"],
     ["POST", "/api/groups/room-1/messages"],
     ["POST", "/api/groups/room-1/read"],
     ["GET", "/api/threads/th_1/messages"],
@@ -83,6 +89,8 @@ describe("what it may not", () => {
       ["DELETE", "/api/connectors/gmail"],
       ["GET", "/api/routines"],
       ["POST", "/api/teams/import"],
+      ["DELETE", "/api/teams/team_1"],
+      ["POST", "/api/teams/team_1/room"],
     ] as Array<[string, string]>) {
       const denial = ask(method, path);
       expect(denial?.status, `${method} ${path}`).toBe(403);
@@ -116,6 +124,7 @@ describe("what it may not", () => {
     expect(allowed("DELETE", "/api/bots/bot_123")).toBe(false);
     expect(ask("DELETE", "/api/bots/bot_123")?.error).toMatch(/on your computer/);
     expect(allowed("PATCH", "/api/bots/bot_123/model")).toBe(true);
+    expect(allowed("PATCH", "/api/bots/bot_123/auto-model")).toBe(true);
     expect(allowed("POST", "/api/threads/th_1/messages")).toBe(false);
     expect(allowed("GET", "/api/groups/room-1")).toBe(false);
     expect(allowed("PATCH", "/api/bots/bot_123")).toBe(false);

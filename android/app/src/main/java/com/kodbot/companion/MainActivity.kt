@@ -201,6 +201,11 @@ class MainActivity : ComponentActivity() {
                     onRespond = ::respond,
                     onInterrupt = ::interrupt,
                     onSelectModel = ::selectModel,
+                    onSetAutoModel = ::setAutoModel,
+                    onCreateTeam = ::createTeam,
+                    onJoinTeam = ::joinTeam,
+                    onLeaveTeam = ::leaveTeam,
+                    onTransferTeam = ::transferTeam,
                     onDisconnect = ::disconnect,
                 )
             }
@@ -449,6 +454,104 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun setAutoModel(chat: ConversationRecord, enabled: Boolean, pool: List<ModelSelectionRecord>) {
+        if (chat.kind != "bot") return
+        val saved = connection ?: return
+        lifecycleScope.launch {
+            settingsBusy = true
+            settingsError = null
+            settingsMessage = null
+            try {
+                CompanionApi(saved).setAutoModel(chat.id, enabled, pool)
+                refreshFleet()
+                settingsMessage = when {
+                    !enabled -> "Auto routing is off for ${chat.name}."
+                    pool.isEmpty() -> "${chat.name} will auto-route within its current engine."
+                    else -> "${chat.name} will auto-route between ${pool.size} selected models."
+                }
+            } catch (error: Exception) {
+                settingsError = error.message ?: "Couldn't change auto routing."
+            } finally {
+                settingsBusy = false
+            }
+        }
+    }
+
+    private fun createTeam(chat: ConversationRecord, name: String) {
+        if (chat.kind != "bot" || name.isBlank()) return
+        val saved = connection ?: return
+        lifecycleScope.launch {
+            settingsBusy = true
+            settingsError = null
+            settingsMessage = null
+            try {
+                CompanionApi(saved).createTeam(name.trim(), chat.id)
+                refreshFleet()
+                settingsMessage = "${chat.name} leads the new team ${name.trim()}."
+            } catch (error: Exception) {
+                settingsError = error.message ?: "Couldn't create the team."
+            } finally {
+                settingsBusy = false
+            }
+        }
+    }
+
+    private fun joinTeam(chat: ConversationRecord, teamId: String) {
+        if (chat.kind != "bot") return
+        val saved = connection ?: return
+        lifecycleScope.launch {
+            settingsBusy = true
+            settingsError = null
+            settingsMessage = null
+            try {
+                CompanionApi(saved).joinTeam(teamId, chat.id)
+                refreshFleet()
+                settingsMessage = "${chat.name} joined the team."
+            } catch (error: Exception) {
+                settingsError = error.message ?: "Couldn't join the team."
+            } finally {
+                settingsBusy = false
+            }
+        }
+    }
+
+    private fun leaveTeam(chat: ConversationRecord, teamId: String) {
+        if (chat.kind != "bot") return
+        val saved = connection ?: return
+        lifecycleScope.launch {
+            settingsBusy = true
+            settingsError = null
+            settingsMessage = null
+            try {
+                CompanionApi(saved).leaveTeam(teamId, chat.id)
+                refreshFleet()
+                settingsMessage = "${chat.name} left the team."
+            } catch (error: Exception) {
+                settingsError = error.message ?: "Couldn't leave the team."
+            } finally {
+                settingsBusy = false
+            }
+        }
+    }
+
+    private fun transferTeam(teamId: String, leaderId: String) {
+        val saved = connection ?: return
+        lifecycleScope.launch {
+            settingsBusy = true
+            settingsError = null
+            settingsMessage = null
+            try {
+                CompanionApi(saved).setTeamLeader(teamId, leaderId)
+                refreshFleet()
+                settingsMessage = "Team leadership transferred."
+            } catch (error: Exception) {
+                settingsError = error.message ?: "Couldn't transfer leadership."
+            } finally {
+                settingsBusy = false
+            }
+        }
+    }
+
     private fun createBot() {
         val saved = connection ?: return
         lifecycleScope.launch {
@@ -679,6 +782,11 @@ private fun KodBotScreen(
     onRespond: (ConversationRecord, ApprovalCard, String) -> Unit,
     onInterrupt: (ConversationRecord) -> Unit,
     onSelectModel: (ConversationRecord, EngineRecord, ModelOptionRecord) -> Unit,
+    onSetAutoModel: (ConversationRecord, Boolean, List<ModelSelectionRecord>) -> Unit,
+    onCreateTeam: (ConversationRecord, String) -> Unit,
+    onJoinTeam: (ConversationRecord, String) -> Unit,
+    onLeaveTeam: (ConversationRecord, String) -> Unit,
+    onTransferTeam: (String, String) -> Unit,
     onDisconnect: () -> Unit,
 ) {
     var confirmDisconnect by rememberSaveable { mutableStateOf(false) }
@@ -726,6 +834,11 @@ private fun KodBotScreen(
                     onShowHiddenBots = onShowHiddenBots,
                     onShowGroups = onShowGroups,
                     onSelectModel = onSelectModel,
+                    onSetAutoModel = onSetAutoModel,
+                    onCreateTeam = onCreateTeam,
+                    onJoinTeam = onJoinTeam,
+                    onLeaveTeam = onLeaveTeam,
+                    onTransferTeam = onTransferTeam,
                     onDisconnect = { confirmDisconnect = true },
                     updateState = updateState,
                     appVersion = appVersion,
@@ -855,6 +968,75 @@ private fun PairingScreen(
     }
 }
 
+private sealed interface FleetRow {
+    data class Header(val key: String, val title: String, val count: Int) : FleetRow
+    data class Chat(val chat: ConversationRecord) : FleetRow
+}
+
+@Composable
+private fun FleetChatCard(chat: ConversationRecord, onSelectChat: (ConversationRecord) -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { onSelectChat(chat) },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (chat.kind == "group") {
+                Surface(modifier = Modifier.size(38.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primary) {
+                    BoxCenter {
+                        Text("G", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
+                    }
+                }
+            } else {
+                BotAvatar(color = chat.color, name = chat.name, size = 44.dp, role = chat.role, shape = chat.mascotShape)
+            }
+            Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        chat.name,
+                        modifier = Modifier.weight(1f, fill = false),
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (chat.teamIsLeader) {
+                        Text(
+                            "  leader",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = CrewGreen,
+                        )
+                    }
+                }
+                val preview = chat.messages.lastOrNull()?.let { message ->
+                    when (message.kind) {
+                        "options" -> if (message.card?.pending == true) "Waiting on you" else message.card?.title.orEmpty()
+                        "activity" -> message.toolName.ifBlank { "Working" }
+                        else -> message.text
+                    }
+                }.orEmpty()
+                Text(
+                    when {
+                        chat.busy && chat.kind == "group" -> "Group working · $preview"
+                        chat.busy -> "Working · $preview"
+                        chat.kind == "group" -> "${chat.memberCount} bots · $preview".trimEnd(' ', '·')
+                        preview.isBlank() -> "Start a conversation"
+                        else -> preview
+                    },
+                    maxLines = 1,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (chat.busy) {
+                WorkingBadge()
+                if (chat.unread) Spacer(Modifier.width(8.dp))
+            }
+            if (chat.unread) Surface(modifier = Modifier.size(9.dp), shape = CircleShape, color = CrewGreen) {}
+        }
+    }
+}
+
 @Composable
 private fun FleetScreen(
     connection: CompanionConnection,
@@ -969,64 +1151,67 @@ private fun FleetScreen(
                 )
             }
         } else {
+            val sortedChats = visibleChats.sortedWith(
+                compareByDescending<ConversationRecord> { it.unread }.thenByDescending { it.busy },
+            )
+            val rooms = sortedChats.filter { it.kind == "group" }
+            val bots = sortedChats.filter { it.kind == "bot" }
+            val namedTeams = bots
+                .filter { !it.teamName.isNullOrBlank() }
+                .groupBy { it.teamName.orEmpty() }
+                .toSortedMap()
+            val ungrouped = bots.filter { it.teamName.isNullOrBlank() }
+            val rows = buildList<FleetRow> {
+                if (rooms.isNotEmpty()) {
+                    add(FleetRow.Header("rooms", "Rooms", rooms.size))
+                    rooms.forEach { add(FleetRow.Chat(it)) }
+                }
+                namedTeams.forEach { (name, members) ->
+                    add(FleetRow.Header("team:$name", name, members.size))
+                    members.forEach { add(FleetRow.Chat(it)) }
+                }
+                if (ungrouped.isNotEmpty()) {
+                    val title = when {
+                        namedTeams.isNotEmpty() -> "Other bots"
+                        rooms.isNotEmpty() -> "Bots"
+                        else -> null
+                    }
+                    if (title != null) add(FleetRow.Header("ungrouped", title, ungrouped.size))
+                    ungrouped.forEach { add(FleetRow.Chat(it)) }
+                }
+            }
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(top = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(visibleChats.sortedWith(compareByDescending<ConversationRecord> { it.unread }.thenByDescending { it.busy }), key = { it.key }) { chat ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth().clickable { onSelectChat(chat) },
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                items(
+                    rows,
+                    key = {
+                        when (it) {
+                            is FleetRow.Header -> "header:${it.key}"
+                            is FleetRow.Chat -> it.chat.key
+                        }
+                    },
+                ) { row ->
+                    when (row) {
+                        is FleetRow.Header -> Row(
+                            modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 10.dp, bottom = 2.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            if (chat.kind == "group") {
-                                Surface(modifier = Modifier.size(38.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primary) {
-                                    BoxCenter {
-                                        Text(
-                                            "G",
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            fontWeight = FontWeight.Bold,
-                                        )
-                                    }
-                                }
-                            } else {
-                                BotAvatar(color = chat.color, name = chat.name, size = 44.dp, role = chat.role)
-                            }
-                            Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
-                                Text(
-                                    chat.name,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                val preview = chat.messages.lastOrNull()?.let { message ->
-                                    when (message.kind) {
-                                        "options" -> if (message.card?.pending == true) "Waiting on you" else message.card?.title.orEmpty()
-                                        "activity" -> message.toolName.ifBlank { "Working" }
-                                        else -> message.text
-                                    }
-                                }.orEmpty()
-                                Text(
-                                    when {
-                                        chat.busy && chat.kind == "group" -> "Group working · $preview"
-                                        chat.busy -> "Working · $preview"
-                                        chat.kind == "group" -> "${chat.memberCount} bots · $preview".trimEnd(' ', '·')
-                                        preview.isBlank() -> "Start a conversation"
-                                        else -> preview
-                                    },
-                                    maxLines = 1,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            if (chat.busy) {
-                                WorkingBadge()
-                                if (chat.unread) Spacer(Modifier.width(8.dp))
-                            }
-                            if (chat.unread) Surface(modifier = Modifier.size(9.dp), shape = CircleShape, color = CrewGreen) {}
+                            Text(
+                                row.title,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                row.count.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                            )
                         }
+                        is FleetRow.Chat -> FleetChatCard(row.chat, onSelectChat)
                     }
                 }
             }
@@ -1110,7 +1295,7 @@ private fun ChatScreen(
                     }
                 }
             } else {
-                BotAvatar(color = chat.color, name = chat.name, size = 36.dp, role = chat.role)
+                BotAvatar(color = chat.color, name = chat.name, size = 36.dp, role = chat.role, shape = chat.mascotShape)
             }
             Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
                 Text(
@@ -1469,27 +1654,42 @@ private fun MessageItem(
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(start = 4.dp),
         )
-        message.text.isNotBlank() -> Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = if (message.role == "user") Arrangement.End else Arrangement.Start,
-        ) {
-            Surface(
-                shape = RoundedCornerShape(18.dp),
-                color = if (message.role == "user") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-                modifier = Modifier.fillMaxWidth(0.88f),
+        message.text.isNotBlank() -> {
+            // Product lists arrive as a fenced JSON block. On the phone they
+            // become tappable merchant cards; the fence itself must not leak
+            // into the bubble. A malformed block stays as plain text.
+            val block = remember(message.text, message.role) {
+                if (message.role == "user") ProductCardsBlock(message.text, emptyList())
+                else extractProductCards(message.text)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = if (message.role == "user") Arrangement.End else Arrangement.Start,
             ) {
-                Column(modifier = Modifier.padding(horizontal = 15.dp, vertical = 11.dp)) {
-                    message.senderName?.takeIf(String::isNotBlank)?.let {
-                        Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                    }
-                    // Long-press to select and copy an answer, like any native
-                    // text. Without this, a Compose Text is a single
-                    // non-selectable drawing.
-                    SelectionContainer {
-                        Text(
-                            message.text,
-                            color = if (message.role == "user") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                        )
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = if (message.role == "user") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.fillMaxWidth(0.88f),
+                ) {
+                    Column(modifier = Modifier.padding(horizontal = 15.dp, vertical = 11.dp)) {
+                        message.senderName?.takeIf(String::isNotBlank)?.let {
+                            Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        }
+                        if (block.text.isNotBlank()) {
+                            // Long-press to select and copy an answer, like any
+                            // native text. Without this, a Compose Text is a
+                            // single non-selectable drawing.
+                            SelectionContainer {
+                                Text(
+                                    block.text,
+                                    color = if (message.role == "user") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                        }
+                        if (block.items.isNotEmpty()) {
+                            Spacer(Modifier.size(8.dp))
+                            ProductCards(block.items)
+                        }
                     }
                 }
             }

@@ -517,6 +517,40 @@ describe("harness HTTP API", () => {
     })).status).toBe(404);
   });
 
+  it("exposes a narrow auto-model endpoint for the companion", async () => {
+    const bot = (await api("POST", "/api/bots")).body.bot;
+    const broad = await api("PATCH", `/api/bots/${bot.id}/auto-model`, {
+      autoModel: true,
+      autoModelPool: [{ instanceId: "ghost", model: "ghost-1" }],
+      autoApprove: true,
+    });
+    expect(broad.status).toBe(400);
+
+    const empty = await api("PATCH", `/api/bots/${bot.id}/auto-model`, {});
+    expect(empty.status).toBe(400);
+
+    const saved = await api("PATCH", `/api/bots/${bot.id}/auto-model`, {
+      autoModel: true,
+      autoModelPool: [
+        { instanceId: "ghost", model: "ghost-1" },
+        { instanceId: "ghost", model: "ghost-1" },
+        { instanceId: "ghost", model: "ghost-2" },
+      ],
+    });
+    expect(saved.status).toBe(200);
+    expect(saved.body.bot.autoModel).toBe(true);
+    expect(saved.body.bot.autoModelPool).toEqual([
+      { instanceId: "ghost", model: "ghost-1" },
+      { instanceId: "ghost", model: "ghost-2" },
+    ]);
+
+    const reread = (await api("GET", "/api/bots")).body.bots.find((candidate: { id: string }) => candidate.id === bot.id);
+    expect(reread.autoModel).toBe(true);
+    expect(reread.autoModelPool).toHaveLength(2);
+
+    expect((await api("PATCH", "/api/bots/missing/auto-model", { autoModel: false })).status).toBe(404);
+  });
+
   it("persists an answered onboarding card", async () => {
     const { body } = await api("GET", "/api/bots");
     const bot = body.bots[0];

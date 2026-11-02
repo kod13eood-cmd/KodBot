@@ -74,6 +74,8 @@ const ALLOWED: ReadonlyArray<{ method: string; path: RegExp }> = [
   // A narrow model picker write. The general bot PATCH can also change
   // permissions, workspaces, computers, and integrations, so it stays closed.
   { method: "PATCH", path: /^\/api\/bots\/[\w-]+\/model$/ },
+  // Auto routing is its own narrow write: a model pool, not a policy.
+  { method: "PATCH", path: /^\/api\/bots\/[\w-]+\/auto-model$/ },
   { method: "POST", path: /^\/api\/bots\/[\w-]+\/interrupt$/ },
   { method: "POST", path: /^\/api\/bots\/[\w-]+\/read$/ },
   { method: "POST", path: /^\/api\/bots\/[\w-]+\/always-allow$/ },
@@ -86,6 +88,15 @@ const ALLOWED: ReadonlyArray<{ method: string; path: RegExp }> = [
   // Full cloud desktop access. The route is narrow and the proxy applies a
   // second, per-device capability check before it reaches the harness.
   CLOUD_DESKTOP_JOIN_ROUTE,
+
+  // teams: membership and leadership, but no deletion or room control. A
+  // phone can move a bot between teams; the desktop keeps the destructive
+  // and host-level operations.
+  { method: "GET", path: /^\/api\/teams$/ },
+  { method: "POST", path: /^\/api\/teams$/ },
+  { method: "PATCH", path: /^\/api\/teams\/[\w-]+$/ },
+  { method: "POST", path: /^\/api\/teams\/[\w-]+\/members$/ },
+  { method: "DELETE", path: /^\/api\/teams\/[\w-]+\/members\/[\w-]+$/ },
 
   // rooms
   { method: "POST", path: /^\/api\/groups\/[\w-]+\/messages$/ },
