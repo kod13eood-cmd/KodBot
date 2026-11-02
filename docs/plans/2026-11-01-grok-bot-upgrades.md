@@ -118,6 +118,8 @@ merchant relationship that does not exist on the current host.
   considered. An empty pool preserves the single-engine behavior.
 - Every model row carries small capability badges (text, vision, audio, image,
   video, reasoning) so a pool is readable before it is saved.
+- OpenCode's Zen and Go catalogs are grouped as separate sections in the
+  picker and Auto pool; the underlying model ids keep the provider prefix.
 - The bot's `autoModel` flag is stored on the bot, toggled in Settings, and
   routed on every non-cloud 1:1 turn. Room turns keep their per-bot picker
   choice so a shared conversation cannot silently swap models between members.

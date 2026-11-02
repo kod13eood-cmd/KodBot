@@ -141,6 +141,7 @@ Secrets are write-only: the UI only ever sees "configured" flags.
 - **Auto model routing with a per-bot model pool:** strongest model for complex
   work, fastest for simple asks, or a hand-picked list that can span engines.
 - **Capability icons on every model:** text, vision, audio, image, video, reasoning.
+- **OpenCode Zen and Go are separate sections** in the model picker and Auto model pool, so each bot’s routing list is unambiguous.
 - **One shortcut sheet:** `Cmd/Ctrl+/`.
 - **Connected Apps with real names and full descriptions:** 1Password, Stripe,
   Aircall, AgentMail, All Images AI, and HeyGen are in the same marketplace as

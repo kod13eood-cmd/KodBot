@@ -45,16 +45,21 @@ export function AutoModelPool({ bot, onClose }: { bot: Bot; onClose: () => void 
   );
 
   const needle = query.trim().toLowerCase();
-  const visible = instances
-    .map((instance) => ({
-      instance,
-      options: instance.models.options.filter(
-        (option) =>
-          !needle ||
-          `${option.label} ${option.id} ${instance.displayName}`.toLowerCase().includes(needle),
-      ),
-    }))
-    .filter((entry) => entry.options.length > 0);
+  const visible = instances.flatMap((instance) => {
+    const filtered = instance.models.options.filter(
+      (option) =>
+        !needle ||
+        `${option.label} ${option.id} ${instance.displayName} ${option.group ?? ""}`.toLowerCase().includes(needle),
+    );
+    const groups = new Map<string, typeof filtered>();
+    for (const option of filtered) {
+      const group = option.group ?? "";
+      const bucket = groups.get(group) ?? [];
+      bucket.push(option);
+      groups.set(group, bucket);
+    }
+    return [...groups.entries()].map(([group, options]) => ({ instance, group, options }));
+  });
 
   const toggle = (instanceId: string, model: string) => {
     const key = keyOf(instanceId, model);
@@ -145,14 +150,14 @@ export function AutoModelPool({ bot, onClose }: { bot: Bot; onClose: () => void 
               {t("No available models. Install or sign in to an engine first.")}
             </div>
           )}
-          {visible.map(({ instance, options }) => {
+          {visible.map(({ instance, group, options }) => {
             const allSelected = options.every((option) => selected.has(keyOf(instance.instanceId, option.id)));
             return (
-              <section key={instance.instanceId} className="mb-3 last:mb-0">
+              <section key={`${instance.instanceId}:${group}`} className="mb-3 last:mb-0">
                 <div className="mb-1.5 flex items-center gap-2 px-1">
                   <ProviderMark driverKind={instance.driverKind} size={15} />
                   <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-ink">
-                    {instance.displayName}
+                    {group ? `${instance.displayName} · ${group}` : instance.displayName}
                   </span>
                   <button
                     type="button"

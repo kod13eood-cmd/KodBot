@@ -20,7 +20,8 @@ Status keys:
   machine (`~/.kodbot`) or on a server you control.
 - **Per-bot model picker with capability icons.** Every model shows small
   **text, vision, audio, image, video, and reasoning** badges so the choice is
-  readable before you pick it.
+  readable before you pick it. OpenCode **Zen** and **Go** are separate sections
+  in both the picker and the Auto pool.
 - **Auto model routing.** Complex work goes to the strongest configured model;
   short simple requests go to the fastest/free one. Each bot can use an
   explicit **Auto model pool** — a hand-picked list that may span engines. An

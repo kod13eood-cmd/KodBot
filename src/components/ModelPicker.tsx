@@ -184,6 +184,13 @@ export function ModelPicker({ bot, className }: { bot: Bot; className?: string }
     ? suggestedModels(official, railInstance.models.default, currentModel, COMPACT_MODEL_COUNT)
     : [];
   const shownOfficial = query ? filteredOfficial : showAll ? official : compactOfficial;
+  const groupedShown = new Map<string, ModelOption[]>();
+  for (const option of shownOfficial) {
+    const group = option.group ?? "";
+    const bucket = groupedShown.get(group) ?? [];
+    bucket.push(option);
+    groupedShown.set(group, bucket);
+  }
   const filteredCustom = filterCustomModels(custom, query);
   const { pinned, rest } = partitionCustomModels(filteredCustom);
   const blocked = railInstance
@@ -224,9 +231,16 @@ export function ModelPicker({ bot, className }: { bot: Bot; className?: string }
         {active && <ProviderMark driverKind={active.driverKind} size={14} />}
         <span className="max-w-[160px] truncate">{modelLabel(active, selection.model)}</span>
         {active && (
-          <ModelCapabilityIcons
-            option={active.models.options.find((option) => option.id === selection.model) ?? { id: selection.model }}
-          />
+          <>
+            <ModelCapabilityIcons
+              option={active.models.options.find((option) => option.id === selection.model) ?? { id: selection.model }}
+            />
+            {active.models.options.find((option) => option.id === selection.model)?.group && (
+              <span className="rounded bg-inset px-1.5 py-px text-[9.5px] text-ink-secondary">
+                {active.models.options.find((option) => option.id === selection.model)?.group}
+              </span>
+            )}
+          </>
         )}
         <ChevronDown size={14} className={cn("text-ink-secondary transition-transform", open && "rotate-180")} />
       </button>
@@ -351,7 +365,16 @@ export function ModelPicker({ bot, className }: { bot: Bot; className?: string }
                                 ? t("All models · {count}", { count: official.length })
                                 : t("Suggested")}
                           </EngineGroupLabel>
-                          {shownOfficial.map(renderRow)}
+                          {shownOfficial.some((option) => option.group)
+                            ? [...groupedShown.entries()].map(([group, options]) => (
+                                <div key={group || "ungrouped"}>
+                                  <EngineGroupLabel className="px-2 pb-1 pt-1.5">
+                                    {group ? `${railInstance?.displayName ?? ""} · ${group}` : (railInstance?.displayName ?? "")}
+                                  </EngineGroupLabel>
+                                  {options.map(renderRow)}
+                                </div>
+                              ))
+                            : shownOfficial.map(renderRow)}
                           {shownOfficial.length === 0 && (
                             <div className="px-2 py-5 text-center text-[12.5px] text-ink-secondary">
                               {t("Nothing matches “{query}”", { query: query.trim() })}
