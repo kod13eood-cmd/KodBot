@@ -846,6 +846,7 @@ const BULGARIAN: Record<string, string> = {
   "Create team": "Създай екип",
   "Create a team": "Създаване на екип",
   "Team leader": "Лидер на екипа",
+  "Lead: {name}": "Лидер: {name}",
   "Choose a bot…": "Изберете бот…",
   "No ungrouped bots": "Няма ботове без екип",
   "Every bot is already in a team. Leave a team before creating another.":

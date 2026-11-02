@@ -90,9 +90,11 @@ section, not in a separate slot above it. New team imports
 create their team automatically. Existing rooms whose members all belong to one
 team are attached to that team automatically. Ungrouped bots stay under
 **Other bots**. Moving between teams is leave, then join the new team. The
-Android companion mirrors this: its fleet groups by room/team/other bots,
-**Settings → Teams** can join, leave, create, and transfer leadership, and each
-bot's Auto pool and model capability badges are available there too.
+sidebar team heading names the **Lead**, and the leader's row carries a
+**Team leader** badge. The Android companion mirrors this: its fleet groups by
+room/team/other bots, **Settings → Teams** can join, leave, create, and transfer
+leadership, and each bot's Auto pool and model capability badges are available
+there too.
 
 ### Connected Apps with readable identities — Live
 

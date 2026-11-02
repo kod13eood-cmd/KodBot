@@ -522,11 +522,13 @@ function BotListItem({
   onMenu,
   onArchive,
   archiveDisabled,
+  teamLeader = false,
 }: {
   bot: Bot;
   onMenu: (menu: MenuState) => void;
   onArchive: (bot: Bot) => void;
   archiveDisabled: boolean;
+  teamLeader?: boolean;
 }) {
   const { state, dispatch } = useStore();
   const { t } = useI18n();
@@ -582,7 +584,14 @@ function BotListItem({
                 <Crown size={11} /> {t("Chief of Staff")}
               </span>
             )}
-            {bot.chiefOfStaff && preview(bot, t) && <span className="shrink-0 text-ink-secondary/60">·</span>}
+            {teamLeader && (
+              <span className="flex shrink-0 items-center gap-1 text-[11.5px] font-medium text-accent">
+                <Crown size={11} /> {t("Team leader")}
+              </span>
+            )}
+            {(bot.chiefOfStaff || teamLeader) && preview(bot, t) && (
+              <span className="shrink-0 text-ink-secondary/60">·</span>
+            )}
             <span className="truncate">{preview(bot, t)}</span>
           </span>
           {bot.unread && (
@@ -947,6 +956,8 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     .filter((bot) => !showChiefAlone || !bot.chiefOfStaff)
     .sort((a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false));
   const visibleGroups = state.groups.filter((g) => !q || g.name.toLowerCase().includes(q));
+  const teamById = new Map(state.teams.map((team) => [team.id, team]));
+  const botById = new Map(state.bots.map((bot) => [bot.id, bot]));
   const teamByBot = new Map<string, { id: string; name: string }>();
   for (const team of state.teams) {
     for (const botId of team.memberIds) teamByBot.set(botId, { id: team.id, name: team.name });
@@ -1137,6 +1148,8 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             teamKeys.map((team) => {
               const bucket = teamBuckets.get(team);
               const bots = bucket?.bots ?? [];
+              const record = team ? teamById.get(team) : undefined;
+              const leader = record ? botById.get(record.leaderBotId) : undefined;
               const collapseKey = team || "__ungrouped__";
               const collapsed = !q && collapsedTeams.has(collapseKey);
               return (
@@ -1154,7 +1167,15 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                     className="mt-1.5 flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1 text-left text-[10.5px] font-medium uppercase tracking-[0.08em] text-ink-secondary hover:bg-raised/50 hover:text-ink"
                   >
                     {collapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
-                    <span className="truncate">{bucket?.name || t("Other bots")}</span>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate">{bucket?.name || t("Other bots")}</span>
+                      {leader && (
+                        <span className="flex min-w-0 items-center gap-1 text-[10px] font-normal normal-case tracking-normal text-accent/90">
+                          <Crown size={9} className="shrink-0" />
+                          <span className="truncate">{t("Lead: {name}", { name: leader.name })}</span>
+                        </span>
+                      )}
+                    </span>
                     <span className="ml-auto shrink-0 text-[10px] font-normal tracking-normal text-ink-secondary/70">
                       {bots.length}
                     </span>
@@ -1167,6 +1188,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                         onMenu={setMenu}
                         onArchive={(bot) => void archiveBot(bot)}
                         archiveDisabled={activeBotCount <= 1}
+                        teamLeader={record?.leaderBotId === b.id}
                       />
                     ))}
                 </div>
