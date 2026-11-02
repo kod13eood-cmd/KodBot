@@ -71,11 +71,12 @@ or a `memory/<topic>.md` file.
 `Cmd/Ctrl+/` opens one sheet with every app-wide shortcut. It also has a
 visible row in **App Settings → Keyboard shortcuts**.
 
-### Grok features hub — Live
+### Connected Apps with readable identities — Live
 
-**Connected Apps → Grok features** shows the ten capabilities from the Grok Bot
-video, marks the native ones **Live**, and gives every account-bound feature a
-real **Set up** button.
+The Connected Apps marketplace now includes **1Password, Stripe, Aircall,
+AgentMail, All Images AI, and HeyGen** under their real names, alongside the
+rest of the catalog. Hover any app to read its full description before
+connecting. These are ordinary Connected Apps, not a separate “Grok” section.
 
 ## Grok Bot parity
 
@@ -115,7 +116,7 @@ real **Set up** button.
 | Pages | Bot settings → Pages |
 | Memory and import | Bot settings → Memory |
 | Auto model | Bot settings → Model → Auto model |
-| Connected apps and feature setup | Sidebar → Connected apps → Grok features |
+| Connected apps and provider setup | Sidebar → Connected apps (hover an app for its full description) |
 | Shortcuts | `Cmd/Ctrl+/` or App Settings → Keyboard shortcuts |
 | Remote server | App Settings → Server |
 | Models and engines | App Settings → Engines / bot Model picker |
@@ -127,5 +128,5 @@ real **Set up** button.
 3. Ask for a dashboard; open the generated Page.
 4. Ask to compare three products; show the product cards and Buy now link.
 5. Toggle Auto model and run a short question vs. a complex task.
-6. Open Connected Apps → Grok features and show the real setup paths.
+6. Open Connected Apps and hover apps like 1Password, Stripe, Aircall, and AgentMail to show their full descriptions.
 7. End on the approval card: the bot asks before it acts.

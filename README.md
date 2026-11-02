@@ -135,8 +135,9 @@ Secrets are write-only: the UI only ever sees "configured" flags.
 - **Memory import:** bring context from ChatGPT, Claude, or another assistant.
 - **Auto model routing:** strongest model for complex work, fastest for simple asks.
 - **One shortcut sheet:** `Cmd/Ctrl+/`.
-- **Grok features hub:** real setup paths for 1Password, Stripe, Aircall,
-  AgentMail, All Images AI, and HeyGen in **Connected Apps → Grok features**.
+- **Connected Apps with real names and full descriptions:** 1Password, Stripe,
+  Aircall, AgentMail, All Images AI, and HeyGen are in the same marketplace as
+  the rest of the catalog. Hover any app to read what it does before connecting.
 
 The factual, marketing-ready catalog is [docs/FEATURES.md](docs/FEATURES.md).
 Website and ad copy lives in [docs/marketing/product-page.md](docs/marketing/product-page.md).

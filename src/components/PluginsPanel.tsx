@@ -22,6 +22,7 @@ interface ToolkitCard {
   slug: string;
   label: string;
   blurb: string;
+  description?: string;
   logo: string | null;
   domain: string | null;
 }
@@ -46,31 +47,7 @@ export interface ConnectorStatus {
   accounts?: ConnectorAccount[];
 }
 
-interface GrokFeature {
-  key: string;
-  title: string;
-  blurb: string;
-  /** Connector that unlocks the capability; absent means native or blocked. */
-  slug?: string;
-  state: "live" | "connector" | "blocked";
-}
 
-const GROK_FEATURES: GrokFeature[] = [
-  { key: "vault", title: "Vault & logins", blurb: "Store cards and logins in a password manager the bot can use without seeing them.", slug: "_1password", state: "connector" },
-  { key: "shopping", title: "Shopping cards", blurb: "Compare products as cards; Buy now opens the merchant so you choose the checkout.", state: "live" },
-  { key: "stripe", title: "Stripe payments", blurb: "Connect Stripe to prepare payments; KodBot asks before money moves.", slug: "stripe", state: "connector" },
-  { key: "calls", title: "Bot calls", blurb: "Place a call through Aircall and bring the notes back; KodBot asks before dialing.", slug: "aircall", state: "connector" },
-  { key: "pages", title: "Pages", blurb: "Private dashboards, checklists, and reports the bot can keep updating.", state: "live" },
-  { key: "iphone", title: "iPhone actions", blurb: "Home, Reminders, Contacts, Alarms, and Calendar need the iOS app and its permissions.", state: "blocked" },
-  { key: "memory", title: "Memory import", blurb: "Bring preferences and context from another assistant.", state: "live" },
-  { key: "routing", title: "Best-model routing", blurb: "Send complex work to the strongest model and simple requests to the fastest one.", state: "live" },
-  { key: "email", title: "Bot email", blurb: "Give a bot its own inbox, messages, drafts, and address with AgentMail.", slug: "agent_mail", state: "connector" },
-  { key: "images", title: "Image generation", blurb: "Generate images through All Images AI and attach them in chat.", slug: "all_images_ai", state: "connector" },
-  { key: "video", title: "Video generation", blurb: "Generate short avatar videos through HeyGen.", slug: "heygen", state: "connector" },
-  { key: "shortcuts", title: "Keyboard shortcuts", blurb: "One searchable sheet with every app-wide command.", state: "live" },
-];
-
-const GROK_FEATURE_SLUGS = [...new Set(GROK_FEATURES.flatMap((feature) => (feature.slug ? [feature.slug] : [])))];
 
 export function mergeCurrentConnectorStatus(
   current: Record<string, ConnectorStatus>,
@@ -490,8 +467,9 @@ export function PluginsPanel() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<"marketplace" | "connected" | "features">("marketplace");
+  const [tab, setTab] = useState<"marketplace" | "connected">("marketplace");
   const [detailsSlug, setDetailsSlug] = useState<string | null>(null);
+  const [hoveredCard, setHoveredCard] = useState<{ card: ToolkitCard; x: number; y: number } | null>(null);
 
   const pollTimers = useRef(new Map<string, ReturnType<typeof setInterval>>());
   const statusGenerations = useRef(new Map<string, number>());
@@ -531,11 +509,6 @@ export function PluginsPanel() {
     for (const timer of pollTimers.current.values()) clearInterval(timer);
     pollTimers.current.clear();
   }, []);
-
-  useEffect(() => {
-    if (tab !== "features" || !configured) return;
-    void refreshStatus(GROK_FEATURE_SLUGS);
-  }, [tab, configured, refreshStatus]);
 
   useEffect(() => {
     let alive = true;
@@ -759,30 +732,17 @@ export function PluginsPanel() {
             >
               {t("Connected tab")}{connectedCount > 0 ? ` ${connectedCount}` : ""}
             </button>
-            <button
-              role="tab"
-              aria-selected={tab === "features"}
-              onClick={() => setTab("features")}
-              className={cn(
-                "rounded-lg px-4 py-2 text-[13.5px] transition-colors",
-                tab === "features" ? "bg-card text-ink shadow-sm" : "text-ink-secondary hover:text-ink",
-              )}
-            >
-              {t("Grok features")}
-            </button>
           </div>
-          {tab !== "features" && (
-            <label className="flex h-11 w-full items-center gap-2.5 rounded-xl bg-raised/70 px-3.5 sm:w-[320px]">
-              <Search size={17} className="shrink-0 text-ink-secondary" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={t("Search apps")}
-                aria-label={t("Search apps")}
-                className="min-w-0 flex-1 bg-transparent text-[14px] text-ink placeholder:text-ink-secondary focus:outline-none"
-              />
-            </label>
-          )}
+          <label className="flex h-11 w-full items-center gap-2.5 rounded-xl bg-raised/70 px-3.5 sm:w-[320px]">
+            <Search size={17} className="shrink-0 text-ink-secondary" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("Search apps")}
+              aria-label={t("Search apps")}
+              className="min-w-0 flex-1 bg-transparent text-[14px] text-ink placeholder:text-ink-secondary focus:outline-none"
+            />
+          </label>
         </div>
 
         {!configured && (
@@ -817,71 +777,7 @@ export function PluginsPanel() {
         {error && <div role="alert" className="mx-6 mt-2 rounded-lg bg-danger/10 px-3 py-2 text-[12px] text-danger sm:mx-8">{error}</div>}
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-7 pt-5 sm:px-8">
-          {tab === "features" ? (
-            <div className="space-y-2">
-              <div className="mb-3 text-[12px] leading-relaxed text-ink-secondary">
-                {t("Native features are live now. The rest connect through a real provider account — nothing is simulated.")}
-              </div>
-              {GROK_FEATURES.map((feature) => {
-                const service = feature.slug ? status[feature.slug] : undefined;
-                const connected = Boolean(service?.connected || (service?.accounts?.length ?? 0) > 0);
-                const busy = feature.slug ? busySlug === feature.slug : false;
-                return (
-                  <div
-                    key={feature.key}
-                    className="flex items-start gap-3 rounded-xl border border-hairline/40 bg-card px-3.5 py-3"
-                  >
-                    <div className="mt-0.5 min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[13.5px] font-medium text-ink">{t(feature.title)}</span>
-                        {feature.state === "live" && (
-                          <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10.5px] font-medium text-success">
-                            {t("Live")}
-                          </span>
-                        )}
-                        {feature.state === "blocked" && (
-                          <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[10.5px] font-medium text-warning">
-                            {t("Needs iOS app")}
-                          </span>
-                        )}
-                        {connected && feature.state === "connector" && (
-                          <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10.5px] font-medium text-success">
-                            {t("Connected")}
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-1 text-[12px] leading-relaxed text-ink-secondary">{t(feature.blurb)}</div>
-                    </div>
-                    {feature.slug && feature.state === "connector" && (
-                      <button
-                        disabled={busy || !configured}
-                        onClick={() => {
-                          if (connected) {
-                            const card = (cards ?? []).find((entry) => entry.slug === feature.slug);
-                            if (card) setDetailsSlug(feature.slug ?? null);
-                            else {
-                              setSearch(feature.slug ?? "");
-                              setTab("marketplace");
-                            }
-                          } else {
-                            void connect(feature.slug!);
-                          }
-                        }}
-                        className={cn(
-                          "shrink-0 rounded-full px-3 py-2 text-[12px] transition-colors disabled:opacity-40",
-                          connected
-                            ? "bg-raised text-ink hover:bg-raised-hover"
-                            : "bg-accent text-white hover:brightness-110",
-                        )}
-                      >
-                        {busy ? <Loader2 size={13} className="animate-spin" /> : connected ? t("Details") : t("Set up")}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : cards === null ? (
+          {cards === null ? (
             <div className="flex items-center justify-center gap-2 py-24 text-[13px] text-ink-secondary">
               <Loader2 size={14} className="animate-spin" /> {t("Loading catalog…")}
             </div>
@@ -906,7 +802,12 @@ export function PluginsPanel() {
                   className="flex min-h-[88px] items-center gap-3 border-b border-hairline/35 px-1 py-4"
                 >
                   <ServiceIcon card={card} />
-                  <div className="min-w-0 flex-1">
+                  <div
+                    className="min-w-0 flex-1 cursor-help"
+                    onMouseEnter={(event) => setHoveredCard({ card, x: event.clientX, y: event.clientY })}
+                    onMouseMove={(event) => setHoveredCard({ card, x: event.clientX, y: event.clientY })}
+                    onMouseLeave={() => setHoveredCard(null)}
+                  >
                     <div className="flex min-w-0 items-center gap-2">
                       <div className="truncate text-[14px] font-medium text-ink">{card.label}</div>
                       {connected && (
@@ -965,7 +866,7 @@ export function PluginsPanel() {
               </div>
             </div>
           )}
-          {tab !== "features" && cards !== null && visible.length === 0 && (
+          {cards !== null && visible.length === 0 && (
             <div className="flex min-h-56 flex-col items-center justify-center text-center">
               <div className="text-[14px] font-medium text-ink">
                 {tab === "connected" ? t("No connected apps yet") : t("No apps found")}
@@ -996,6 +897,29 @@ export function PluginsPanel() {
           onRemoveAccount={(accountId) => removeAccount(detailsCard.slug, accountId)}
           onSaveLabel={(accountId, label) => saveAccountLabel(detailsCard.slug, accountId, label)}
         />
+      )}
+      {hoveredCard && (
+        <div
+          role="tooltip"
+          style={{
+            left: Math.max(12, Math.min(hoveredCard.x + 14, window.innerWidth - 352)),
+            top: Math.max(12, Math.min(hoveredCard.y + 14, window.innerHeight - 280)),
+          }}
+          className="pointer-events-none fixed z-[80] w-[340px] max-w-[calc(100vw-2rem)] rounded-xl border border-hairline/60 bg-panel px-3.5 py-3 text-left shadow-2xl shadow-black/50"
+        >
+          <div className="flex items-baseline justify-between gap-2">
+            <div className="text-[13px] font-semibold text-ink">{hoveredCard.card.label}</div>
+            {hoveredCard.card.domain && (
+              <div className="shrink-0 text-[10.5px] text-ink-secondary/60">{hoveredCard.card.domain}</div>
+            )}
+          </div>
+          <p className="mt-1.5 text-[12px] leading-relaxed text-ink-secondary">
+            {hoveredCard.card.description?.trim() || hoveredCard.card.blurb}
+          </p>
+          <p className="mt-2 text-[11px] leading-relaxed text-ink-secondary/70">
+            {t("Connect this app to let bots use its tools.")}
+          </p>
+        </div>
       )}
     </div>
   );

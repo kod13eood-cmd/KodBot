@@ -813,47 +813,9 @@ const BULGARIAN: Record<string, string> = {
   "Classic": "Класическа",
   // Product cards
   "Buy now": "Купи сега",
-  // Grok feature setup
-  "Grok features": "Функции на Grok",
-  "Live": "Готово",
-  "Set up": "Настрой",
-  "Needs iOS app": "Нужно е iOS приложение",
-  "Native features are live now. The rest connect through a real provider account — nothing is simulated.":
-    "Готовите функции работят веднага. Останалите се свързват чрез реален доставчик — нищо не се симулира.",
-  "Vault & logins": "Трезор и входове",
-  "Store cards and logins in a password manager the bot can use without seeing them.":
-    "Пазете карти и пароли в мениджър, който ботът използва, без да ги вижда.",
-  "Shopping cards": "Карти за пазаруване",
-  "Compare products as cards; Buy now opens the merchant so you choose the checkout.":
-    "Сравнявайте продукти като карти; „Купи сега“ отваря магазина, за да изберете плащането.",
-  "Stripe payments": "Плащания със Stripe",
-  "Connect Stripe to prepare payments; KodBot asks before money moves.":
-    "Свържете Stripe, за да подготвяте плащания; KodBot пита преди движение на пари.",
-  "Bot calls": "Обаждания от бот",
-  "Place a call through Aircall and bring the notes back; KodBot asks before dialing.":
-    "Обадете се чрез Aircall и върнете бележките; KodBot пита преди набиране.",
-  "Private dashboards, checklists, and reports the bot can keep updating.":
-    "Частни табла, списъци и отчети, които ботът може да обновява.",
-  "iPhone actions": "Действия на iPhone",
-  "Home, Reminders, Contacts, Alarms, and Calendar need the iOS app and its permissions.":
-    "Home, Reminders, Contacts, Alarms и Calendar изискват iOS приложението и неговите разрешения.",
-  "Memory import": "Импорт на памет",
-  "Bring preferences and context from another assistant.":
-    "Пренесете предпочитания и контекст от друг асистент.",
-  "Best-model routing": "Маршрутизиране към най-добрия модел",
-  "Send complex work to the strongest model and simple requests to the fastest one.":
-    "Изпращайте сложната работа към най-силния модел, а простите заявки — към най-бързия.",
-  "Bot email": "Имейл на бота",
-  "Give a bot its own inbox, messages, drafts, and address with AgentMail.":
-    "Дайте на бота собствена поща, съобщения, чернови и адрес чрез AgentMail.",
-  "Image generation": "Генериране на изображения",
-  "Generate images through All Images AI and attach them in chat.":
-    "Генерирайте изображения чрез All Images AI и ги прикачайте в чата.",
-  "Video generation": "Генериране на видео",
-  "Generate short avatar videos through HeyGen.":
-    "Генерирайте кратки видео клипове с аватар чрез HeyGen.",
-  "One searchable sheet with every app-wide command.":
-    "Един списък с всички глобални команди.",
+  // Connected apps hover help
+  "Connect this app to let bots use its tools.":
+    "Свържете това приложение, за да могат ботовете да използват инструментите му.",
 };
 
 function initialLocale(): Locale {

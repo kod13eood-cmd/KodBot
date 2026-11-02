@@ -574,7 +574,10 @@ export async function authorizeService(cfg: AppConfig, slug: string) {
 export interface ToolkitCard {
   slug: string;
   label: string;
+  /** One-line summary used in the row. */
   blurb: string;
+  /** Full provider description shown in the hover card. */
+  description?: string;
   logo: string | null;
   /** used for the client-side favicon fallback when logo is null/broken */
   domain: string | null;
@@ -608,7 +611,58 @@ const CURATED: ToolkitCard[] = [
   { slug: "airtable", label: "Airtable", blurb: "Bases and records", domain: "airtable.com", logo: null },
   { slug: "figma", label: "Figma", blurb: "Files and comments", domain: "figma.com", logo: null },
   { slug: "stripe", label: "Stripe", blurb: "Payments and customers", domain: "stripe.com", logo: null },
+  {
+    slug: "_1password",
+    label: "1Password",
+    blurb: "Password manager and digital vault",
+    description: "1Password is a password manager and digital vault for secure credential storage, logins, cards, and team collaboration.",
+    domain: "1password.com",
+    logo: null,
+  },
+  {
+    slug: "aircall",
+    label: "Aircall",
+    blurb: "Cloud phone system and calls",
+    description: "Aircall is a cloud phone and call-center platform for users, teams, numbers, calls, and conversation history.",
+    domain: "aircall.io",
+    logo: null,
+  },
+  {
+    slug: "agent_mail",
+    label: "AgentMail",
+    blurb: "Programmable inboxes for agents",
+    description: "AgentMail provides programmable email inboxes, messages, drafts, domains, webhooks, and replies for AI agents.",
+    domain: "agentmail.to",
+    logo: null,
+  },
+  {
+    slug: "all_images_ai",
+    label: "All Images AI",
+    blurb: "AI image generation and management",
+    description: "All Images AI provides AI-powered image generation, retrieval, and management services.",
+    domain: null,
+    logo: null,
+  },
+  {
+    slug: "heygen",
+    label: "HeyGen",
+    blurb: "AI avatar and video generation",
+    description: "HeyGen is a generative AI video platform for avatar videos, voice, and short-form video production.",
+    domain: "heygen.com",
+    logo: null,
+  },
 ];
+
+/** Marketplace labels that the API ships with raw slugs or inconsistent
+ * casing. Keep the provider's real public name in front of the user. */
+const TOOLKIT_OVERRIDES: Record<string, Partial<ToolkitCard>> = {
+  _1password: { label: "1Password", domain: "1password.com" },
+  agent_mail: { label: "AgentMail", domain: "agentmail.to" },
+  all_images_ai: { label: "All Images AI" },
+  aircall: { label: "Aircall", domain: "aircall.io" },
+  heygen: { label: "HeyGen", domain: "heygen.com" },
+  stripe: { label: "Stripe", domain: "stripe.com" },
+};
 
 let toolkitCache: { at: number; cards: ToolkitCard[] } | null = null;
 
@@ -633,13 +687,19 @@ export async function listToolkits(cfg: AppConfig): Promise<{ cards: ToolkitCard
         const json: any = await res.json();
         const items = json.items ?? json.data ?? [];
         if (Array.isArray(items) && items.length) {
-          const cards: ToolkitCard[] = items.map((t: any) => ({
-            slug: (t.slug ?? t.key ?? t.name ?? "").toLowerCase(),
-            label: t.name ?? t.slug ?? "",
-            blurb: (t.meta?.description ?? t.description ?? "").slice(0, 90),
-            logo: t.meta?.logo ?? t.logo ?? null,
-            domain: null,
-          }));
+          const cards: ToolkitCard[] = items.map((t: any) => {
+            const slug = String(t.slug ?? t.key ?? t.name ?? "").toLowerCase();
+            const full = String(t.meta?.description ?? t.description ?? "").trim();
+            const override = TOOLKIT_OVERRIDES[slug] ?? {};
+            return {
+              slug,
+              label: override.label ?? t.name ?? t.slug ?? "",
+              blurb: (override.blurb ?? full).slice(0, 90),
+              description: override.description ?? full,
+              logo: t.meta?.logo ?? t.logo ?? null,
+              domain: override.domain ?? null,
+            };
+          });
           toolkitCache = { at: Date.now(), cards };
           return { cards, source: "api" };
         }
@@ -660,6 +720,7 @@ export async function toolkitCard(cfg: AppConfig, slug: string): Promise<Toolkit
       slug: normalized,
       label: normalized.replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
       blurb: "Connect this app so your bot can continue",
+      description: "Connect this app so your bot can use its tools through Connected Apps.",
       logo: null,
       domain: null,
     };

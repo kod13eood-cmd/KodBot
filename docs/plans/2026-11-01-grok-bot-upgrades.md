@@ -86,11 +86,12 @@ merchant relationship that does not exist on the current host.
 
 ### Connected Apps feature hub
 
-- Connected Apps now has a **Grok features** tab. Native features are marked
-  Live; provider-backed features have a real **Set up** button for 1Password,
-  Stripe, Aircall, AgentMail, and All Images AI.
-- Nothing in that tab claims a capability is active until the provider account
-  is connected. iPhone actions remain explicitly blocked on the missing iOS app.
+- Connected Apps now carries the real provider names and full descriptions for
+  1Password, Stripe, Aircall, AgentMail, All Images AI, and HeyGen. Hovering an
+  app shows its full description; connecting it is the normal Connected Apps
+  flow.
+- Nothing claims a capability is active until the provider account is connected.
+  iPhone actions remain explicitly blocked on the missing iOS app.
 
 ### Bot silhouettes
 

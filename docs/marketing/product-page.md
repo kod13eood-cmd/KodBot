@@ -155,7 +155,7 @@ signed/installable builds.
 - Pages: a generated dashboard in the sandbox preview.
 - Shopping cards: three products with price, store, rating, and Buy now.
 - Auto model: a short prompt vs. a complex prompt with different routed models.
-- Connected Apps → Grok features: Live badges and real Set up buttons.
+- Connected Apps: real provider names (1Password, Stripe, Aircall, AgentMail) and a full hover description.
 - Approval card: the human decision moment.
 
 ## Claims to avoid
