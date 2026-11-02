@@ -16,18 +16,20 @@ Last reviewed: **2026-11-02**.
 
 | Item | Value |
 | --- | --- |
-| Local working copy | `/home/deso/Developer/OpenBot` |
+| Owner working copy | `/home/deso/Developer/OpenBot` |
+| Handoff checkout on paperclipi7 | `/home/paperclipi7/kodbot-handoff/OpenBot` |
 | Current branch | `main` |
-| Current commit at handoff | `d762a3e` |
+| Handoff bundle commit | `5a6689b` |
 | GitHub remote | `git@github.com:kod13eood-cmd/KodBot.git` |
 | Gitea remote | `ssh://git@llm1:2222/deso/kodbot.git` |
 | Android release branch | `android-release` (APK-only branch) |
 | App version | `0.1.28` |
 | Android version | `0.1.12` / versionCode `13` |
 
-There is a stale remote checkout at `paperclipi7:~/Developer/OpenBot`; it is
-not the deployment source. The canonical source is the local working copy
-above, pushed to GitHub and Gitea.
+There is also a stale remote checkout at `paperclipi7:~/Developer/OpenBot`;
+it is not the deployment source. The canonical source is the owner working
+copy above, pushed to GitHub and Gitea, with the handoff checkout as the
+remote copy for KodBot.
 
 Useful project docs:
 
