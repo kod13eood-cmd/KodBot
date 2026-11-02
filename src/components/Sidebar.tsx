@@ -962,13 +962,41 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   for (const team of state.teams) {
     for (const botId of team.memberIds) teamByBot.set(botId, { id: team.id, name: team.name });
   }
-  const teamBuckets = new Map<string, { name: string; bots: Bot[] }>();
+  // A conversation belongs inside a team when the team explicitly owns its
+  // room, or when every participant belongs to that same team. A room with
+  // one member outside the team (or a member in another team) stays in the
+  // general room list — it cannot honestly claim to be that team's room.
+  const teamByGroup = new Map<string, string>();
+  for (const team of state.teams) {
+    if (team.roomId) teamByGroup.set(team.roomId, team.id);
+  }
+  for (const group of state.groups) {
+    if (teamByGroup.has(group.id) || group.memberIds.length === 0) continue;
+    const teamId = teamByBot.get(group.memberIds[0]!)?.id;
+    if (teamId && group.memberIds.every((botId) => teamByBot.get(botId)?.id === teamId)) {
+      teamByGroup.set(group.id, teamId);
+    }
+  }
+  const teamBuckets = new Map<string, { name: string; leaderBotId?: string; bots: Bot[] }>();
   for (const bot of visibleBots) {
     const team = teamByBot.get(bot.id);
     const key = team?.id ?? "";
-    const bucket = teamBuckets.get(key) ?? { name: team?.name ?? "", bots: [] };
+    const bucket =
+      teamBuckets.get(key) ??
+      { name: team?.name ?? "", leaderBotId: team ? teamById.get(team.id)?.leaderBotId : undefined, bots: [] };
     bucket.bots.push(bot);
     teamBuckets.set(key, bucket);
+  }
+  // A team reads leader-first: the person in charge is the first row, then
+  // pinned bots, then the rest. This is stable, so existing order survives
+  // for members with the same rank.
+  for (const bucket of teamBuckets.values()) {
+    const leaderId = bucket.leaderBotId;
+    bucket.bots.sort(
+      (a, b) =>
+        Number(b.id === leaderId) - Number(a.id === leaderId) ||
+        Number(b.pinned ?? false) - Number(a.pinned ?? false),
+    );
   }
   const teamOrder = new Map(state.teams.map((team, index) => [team.id, index]));
   const teamKeys = [...teamBuckets.keys()].sort((a, b) => {
@@ -978,6 +1006,20 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     return (teamOrder.get(a) ?? 999) - (teamOrder.get(b) ?? 999);
   });
   const hasTeams = teamKeys.some((key) => key !== "");
+  const groupsByTeam = new Map<string, Group[]>();
+  const ungroupedGroups: Group[] = [];
+  for (const group of visibleGroups) {
+    const teamId = teamByGroup.get(group.id);
+    // Keep the room visible if its team has no visible bots; moving it into a
+    // section that is not rendered would silently hide the conversation.
+    if (teamId && teamBuckets.has(teamId)) {
+      const bucket = groupsByTeam.get(teamId) ?? [];
+      bucket.push(group);
+      groupsByTeam.set(teamId, bucket);
+    } else {
+      ungroupedGroups.push(group);
+    }
+  }
   const activeBotCount = state.bots.filter((bot) => !bot.hidden).length;
   const archivedBots = state.bots.filter((bot) => bot.hidden);
   const pendingTeamUndo = teamFeedback?.undo;
@@ -1014,18 +1056,20 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           </div>
         ) : <div />}
         <div
-          className="relative"
+          className="flex items-center gap-0.5"
           style={macInset ? ({ WebkitAppRegion: "no-drag" } as React.CSSProperties) : undefined}
         >
-          <button
-            ref={importReturnRef}
-            onClick={() => setPlusOpen((o) => !o)}
-            className="rounded-md p-1 text-ink-secondary hover:bg-raised hover:text-ink"
-            title={t("New or share")}
-          >
-            <Plus size={20} strokeWidth={2} />
-          </button>
-          {plusOpen && (
+          <div className="relative">
+            <button
+              ref={importReturnRef}
+              onClick={() => setPlusOpen((o) => !o)}
+              aria-label={t("New or share")}
+              className="rounded-md p-1.5 text-ink-secondary hover:bg-raised hover:text-ink"
+              title={t("New or share")}
+            >
+              <Plus size={20} strokeWidth={2} />
+            </button>
+            {plusOpen && (
             <>
               <div className="fixed inset-0 z-30" onMouseDown={() => setPlusOpen(false)} />
               <div className="absolute right-0 top-full z-40 mt-1 w-44 overflow-hidden rounded-xl border border-hairline/50 bg-card py-1.5 shadow-2xl shadow-black/60">
@@ -1097,6 +1141,29 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               </div>
             </>
           )}
+          </div>
+          <button
+            onClick={() => dispatch({ type: "showRoutines" })}
+            aria-label={t("Automations")}
+            title={t("Automations")}
+            className={cn(
+              "relative rounded-md p-1.5 hover:bg-raised hover:text-ink",
+              state.activeView === "routines" ? "bg-raised text-accent" : "text-ink-secondary",
+            )}
+          >
+            <CalendarDays size={18} />
+            {state.routineRuns.some((run) => ["failed", "missed"].includes(run.status) && !run.seenAt) && (
+              <span className="absolute right-0.5 top-0.5 size-1.5 rounded-full bg-danger" />
+            )}
+          </button>
+          <button
+            onClick={() => dispatch({ type: "togglePlugins", open: true })}
+            aria-label={t("Connected apps")}
+            title={t("Connected apps")}
+            className="rounded-md p-1.5 text-ink-secondary hover:bg-raised hover:text-ink"
+          >
+            <Puzzle size={18} />
+          </button>
         </div>
       </div>
 
@@ -1131,7 +1198,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               />
             </div>
           )}
-          {visibleGroups.map((g) => (
+          {ungroupedGroups.map((g) => (
             <GroupListItem key={g.id} group={g} onMenu={setRoomMenu} />
           ))}
           {!hasTeams ? (
@@ -1150,6 +1217,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               const bots = bucket?.bots ?? [];
               const record = team ? teamById.get(team) : undefined;
               const leader = record ? botById.get(record.leaderBotId) : undefined;
+              const rooms = team ? (groupsByTeam.get(team) ?? []) : [];
               const collapseKey = team || "__ungrouped__";
               const collapsed = !q && collapsedTeams.has(collapseKey);
               return (
@@ -1191,6 +1259,16 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                         teamLeader={record?.leaderBotId === b.id}
                       />
                     ))}
+                  {!collapsed && rooms.length > 0 && (
+                    <div className="mt-1 flex flex-col gap-0.5">
+                      <div className="px-2.5 text-[10px] font-medium uppercase tracking-[0.08em] text-ink-secondary/70">
+                        {t("Rooms")}
+                      </div>
+                      {rooms.map((g) => (
+                        <GroupListItem key={g.id} group={g} onMenu={setRoomMenu} />
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })
@@ -1201,26 +1279,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 
       {/* Footer */}
       <div className="px-3 pb-3 pt-2">
-        <button
-          onClick={() => dispatch({ type: "showRoutines" })}
-          className={cn(
-            "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors",
-            state.activeView === "routines" ? "bg-raised text-ink" : "text-ink hover:bg-raised/50",
-          )}
-        >
-          <CalendarDays size={20} className={state.activeView === "routines" ? "text-accent" : "text-ink-secondary"} />
-          <span className="flex-1 text-[14px]">{t("Automations")}</span>
-          {state.routineRuns.some((run) => ["failed", "missed"].includes(run.status) && !run.seenAt) && (
-            <span className="size-2 rounded-full bg-danger" />
-          )}
-        </button>
-        <button
-          onClick={() => dispatch({ type: "togglePlugins", open: true })}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-raised/50"
-        >
-          <Puzzle size={20} className="text-ink-secondary" />
-          <span className="text-[14px] text-ink">{t("Connected apps")}</span>
-        </button>
         <div className="flex items-center">
           <button
             onClick={() => dispatch({ type: "toggleAppSettings" })}
