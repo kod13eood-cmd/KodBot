@@ -1,5 +1,5 @@
 import { track } from "@/lib/analytics";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Archive,
@@ -28,7 +28,17 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { api, useStore, formatTime, visibleMessages, type Bot, type Group } from "@/state/store";
+import {
+  api,
+  useStore,
+  formatTime,
+  visibleMessages,
+  type Action,
+  type AppState,
+  type Bot,
+  type Group,
+  type Message,
+} from "@/state/store";
 
 import { CrewAvatar, InitialsAvatar } from "./Avatar";
 import { displayRole, stateForBot } from "@/lib/mascot";
@@ -136,18 +146,21 @@ function UpdateButton() {
 
 type Translate = (source: string, vars?: Record<string, string | number>) => string;
 
-function preview(bot: Bot, t: Translate): string {
+function previewFromLast(bot: Bot, last: Message | undefined, t: Translate): string {
   if (bot.activity === "waiting-on-you") return t("Waiting for you…");
   if (bot.busy) return t("Working…");
-  // the visible branch's tail — bot.messages holds every fork, so its last
-  // entry can belong to a version the user switched away from
-  const last = visibleMessages(bot).at(-1);
   if (!last) return "";
   if (last.kind === "options" && last.card) return last.card.title;
   if (last.kind === "activity" && last.tool) return last.tool.name;
   if (last.kind === "screen") return t("Screen frame");
   if (last.kind === "page" && last.page) return last.page.title;
   return last.text ?? "";
+}
+
+function preview(bot: Bot, t: Translate): string {
+  // the visible branch's tail — bot.messages holds every fork, so its last
+  // entry can belong to a version the user switched away from
+  return previewFromLast(bot, visibleMessages(bot).at(-1), t);
 }
 
 interface MenuState {
@@ -180,7 +193,7 @@ function StackedCrews({ members }: { members: Bot[] }) {
     return (
       <div className="flex size-14 shrink-0 items-center justify-center">
         {b ? (
-          <CrewAvatar color={b.color} shape={b.mascotShape} role={displayRole(b)} state="happy" size={56} />
+          <CrewAvatar color={b.color} shape={b.mascotShape} role={displayRole(b)} state="happy" size={56} animated={false} />
         ) : (
           <Users size={24} className="text-ink-secondary" />
         )}
@@ -193,7 +206,7 @@ function StackedCrews({ members }: { members: Bot[] }) {
     <div className="flex size-14 shrink-0 items-center justify-center">
       <div className="flex items-center -space-x-3">
         {shown.map((b) => (
-          <CrewAvatar key={b.id} color={b.color} shape={b.mascotShape} role={displayRole(b)} state="happy" size={30} />
+          <CrewAvatar key={b.id} color={b.color} shape={b.mascotShape} role={displayRole(b)} state="happy" size={30} animated={false} />
         ))}
         {extra > 0 && (
           <span className="z-10 flex size-[22px] items-center justify-center rounded-full border border-hairline/40 bg-raised text-[10px] font-medium text-ink-secondary">
@@ -352,7 +365,7 @@ function NewRoomPanel({ onClose }: { onClose: () => void }) {
               onClick={() => toggle(b.id)}
               className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-raised/50"
             >
-              <CrewAvatar color={b.color} shape={b.mascotShape} role={displayRole(b)} state="happy" size={28} />
+              <CrewAvatar color={b.color} shape={b.mascotShape} role={displayRole(b)} state="happy" size={28} animated={false} />
               <span className="min-w-0 flex-1 truncate text-[14px] text-ink">{b.name}</span>
               <span
                 className={cn(
@@ -540,23 +553,30 @@ function BotContextMenu({
   );
 }
 
-function BotListItem({
+const BotListItem = memo(function BotListItem({
   bot,
   onMenu,
+  selected,
+  mascotMotion,
+  dispatch,
   teamLeader = false,
 }: {
   bot: Bot;
   onMenu: (menu: MenuState) => void;
+  selected: boolean;
+  mascotMotion: AppState["mascotMotion"];
+  dispatch: (action: Action) => void;
   teamLeader?: boolean;
 }) {
-  const { state, dispatch } = useStore();
   const { t } = useI18n();
   const [renaming, setRenaming] = useState(false);
-  const selected = state.activeView === "chat" && state.selectedId === bot.id;
-  const mascotMotion = selected && state.mascotMotion?.botId === bot.id ? state.mascotMotion : null;
-  // the visible branch, so a version switch changes the row with the chat
-  const visible = visibleMessages(bot);
+  // The visible branch, so a version switch changes the row with the chat.
+  // Memoized on the bot object: a message event normally replaces one bot,
+  // and the other rows must not re-walk large transcripts on every event.
+  const visible = useMemo(() => visibleMessages(bot), [bot]);
   const last = visible.at(-1);
+  const previewText = useMemo(() => previewFromLast(bot, last, t), [bot, last, t]);
+  const avatarState = useMemo(() => stateForBot({ ...bot, messages: visible }), [bot, visible]);
   const rowClass = cn(
     "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left",
     bot.chiefOfStaff
@@ -573,10 +593,11 @@ function BotListItem({
         color={bot.color}
         shape={bot.mascotShape}
         role={displayRole(bot)}
-        state={stateForBot({ ...bot, messages: visible })}
+        state={avatarState}
         size={56}
         motion={mascotMotion?.kind ?? "none"}
         motionKey={mascotMotion?.nonce ?? 0}
+        animated={selected}
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
@@ -608,10 +629,10 @@ function BotListItem({
                 <Crown size={11} /> {t("Team leader")}
               </span>
             )}
-            {(bot.chiefOfStaff || teamLeader) && preview(bot, t) && (
+            {(bot.chiefOfStaff || teamLeader) && previewText && (
               <span className="shrink-0 text-ink-secondary/60">·</span>
             )}
-            <span className="truncate">{preview(bot, t)}</span>
+            <span className="truncate">{previewText}</span>
           </span>
           {bot.unread && (
             <span className="size-2 shrink-0 rounded-full bg-accent" />
@@ -652,7 +673,7 @@ function BotListItem({
       {body}
     </div>
   );
-}
+});
 
 function ArchivedBotsPanel({
   bots,
@@ -766,7 +787,7 @@ function ArchivedBotsPanel({
           <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
             {bots.map((bot) => (
               <div key={bot.id} className="flex min-h-[82px] items-center gap-3 border-b border-hairline/35 px-1 py-3">
-                <CrewAvatar color={bot.color} shape={bot.mascotShape} role={displayRole(bot)} state="happy" size={42} />
+                <CrewAvatar color={bot.color} shape={bot.mascotShape} role={displayRole(bot)} state="happy" size={42} animated={false} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[14px] font-medium text-ink">{bot.name}</div>
                   <div className="mt-0.5 truncate text-[12.5px] text-ink-secondary">{bot.title || t("Bot")}</div>
@@ -811,6 +832,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     restoreBot?: { id: string; name: string };
   } | null>(null);
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
 
   // Esc closes the drawer, mirroring ApiKeys.tsx:75-85. Bound only while the
   // drawer is open — on mobile, exactly when a bot/room context menu or the
@@ -1061,6 +1083,57 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         >
           <div className="relative">
             <button
+              onClick={() => {
+                setPlusOpen(false);
+                setSearchOpen((open) => !open);
+              }}
+              aria-label={t("Search bots and messages")}
+              aria-expanded={searchOpen}
+              className={cn(
+                "rounded-md p-1.5 hover:bg-raised hover:text-ink",
+                searchOpen || query ? "bg-raised text-accent" : "text-ink-secondary",
+              )}
+              title={t("Search bots and messages")}
+            >
+              <Search size={18} />
+            </button>
+            {searchOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onMouseDown={() => setSearchOpen(false)} />
+                <div className="absolute right-0 top-full z-40 mt-1 w-[280px] rounded-xl border border-hairline/50 bg-card p-2 shadow-2xl shadow-black/60">
+                  <div className="flex items-center gap-2 rounded-lg bg-inset px-2.5 py-1.5">
+                    <Search size={14} className="shrink-0 text-ink-secondary" />
+                    <input
+                      autoFocus
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Escape") return;
+                        e.stopPropagation();
+                        if (query) setQuery("");
+                        else setSearchOpen(false);
+                      }}
+                      placeholder={t("Search")}
+                      aria-label={t("Search bots and messages")}
+                      className="w-full bg-transparent text-[13px] text-ink placeholder:text-ink-secondary focus:outline-none"
+                    />
+                    <button
+                      onClick={() => {
+                        setQuery("");
+                        setSearchOpen(false);
+                      }}
+                      aria-label={t("Close search")}
+                      className="shrink-0 rounded p-0.5 text-ink-secondary hover:bg-raised hover:text-ink"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+          <div className="relative">
+            <button
               ref={importReturnRef}
               onClick={() => setPlusOpen((o) => !o)}
               aria-label={t("New or share")}
@@ -1167,21 +1240,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         </div>
       </div>
 
-      {/* Search */}
-      <div className="px-3 pt-2 pb-3">
-        <div className="flex items-center gap-2 rounded-lg bg-raised/70 px-3 py-2">
-          <Search size={16} className="text-ink-secondary" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Escape" && setQuery("")}
-            placeholder={t("Search")}
-            aria-label={t("Search bots and messages")}
-            className="w-full bg-transparent text-[14px] text-ink placeholder:text-ink-secondary focus:outline-none"
-          />
-        </div>
-      </div>
-
       {/* Bot list */}
       <div className="flex-1 overflow-y-auto px-2">
         <div className="flex flex-col gap-0.5">
@@ -1190,7 +1248,13 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           )}
           {chiefBot && showChiefAlone && (
             <div className="mb-1.5">
-              <BotListItem bot={chiefBot} onMenu={setMenu} />
+              <BotListItem
+                bot={chiefBot}
+                onMenu={setMenu}
+                selected={state.activeView === "chat" && state.selectedId === chiefBot.id}
+                mascotMotion={state.mascotMotion?.botId === chiefBot.id ? state.mascotMotion : null}
+                dispatch={dispatch}
+              />
             </div>
           )}
           {ungroupedGroups.map((g) => (
@@ -1198,7 +1262,14 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           ))}
           {!hasTeams ? (
             visibleBots.map((b) => (
-              <BotListItem key={b.id} bot={b} onMenu={setMenu} />
+              <BotListItem
+                key={b.id}
+                bot={b}
+                onMenu={setMenu}
+                selected={state.activeView === "chat" && state.selectedId === b.id}
+                mascotMotion={state.mascotMotion?.botId === b.id ? state.mascotMotion : null}
+                dispatch={dispatch}
+              />
             ))
           ) : (
             teamKeys.map((team) => {
@@ -1243,6 +1314,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                         key={b.id}
                         bot={b}
                         onMenu={setMenu}
+                        selected={state.activeView === "chat" && state.selectedId === b.id}
+                        mascotMotion={state.mascotMotion?.botId === b.id ? state.mascotMotion : null}
+                        dispatch={dispatch}
                         teamLeader={record?.leaderBotId === b.id}
                       />
                     ))}

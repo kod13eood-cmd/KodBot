@@ -1398,7 +1398,11 @@ export const CursorAvatar = React.forwardRef<CursorAvatarHandle, CursorAvatarPro
 
     useEffect(() => {
       selectExpression(expression ?? POOLS[state][0])
-    }, [state, expression])
+      // A paused avatar has no animation loop to walk `morph` to the target.
+      // Snap it instead, then let the one-shot draw below paint the resting
+      // face. Without this a static avatar keeps the previous expression.
+      if (paused) engine.current.morph = 1
+    }, [state, expression, paused])
 
     useEffect(() => {
       if (!autoExpression || expression !== undefined || paused) return
@@ -1531,13 +1535,24 @@ export const CursorAvatar = React.forwardRef<CursorAvatarHandle, CursorAvatarPro
         })
       }
 
+      // A static avatar must not keep a requestAnimationFrame loop alive.
+      // Sidebar rows can contain dozens of these; a paused loop would burn a
+      // frame callback per avatar forever while drawing nothing. Draw one
+      // resting frame synchronously instead — rAF is throttled in a hidden
+      // window, which would otherwise leave the eyes blank.
+      if (paused) {
+        const now = performance.now()
+        engine.current.last = now
+        draw(engine.current, now, 0)
+        return
+      }
+
       const step = (now: number) => {
         frame = requestAnimationFrame(step)
         const e = engine.current
         const p = e.props
         const dt = Math.min((now - e.last) / 1000, 0.1)
         e.last = now
-        if (p.paused) return
 
         const f = p.spring ?? 7
         e.velocity += (-2 * f * e.velocity - f * f * (e.morph - 1)) * dt
@@ -1559,7 +1574,7 @@ export const CursorAvatar = React.forwardRef<CursorAvatarHandle, CursorAvatarPro
 
       frame = requestAnimationFrame(step)
       return () => cancelAnimationFrame(frame)
-    }, [])
+    }, [paused, state, expression])
 
     const paint = `url(#${uid}-grad)`
     const paintRef = useRef(paint)

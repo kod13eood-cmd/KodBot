@@ -58,6 +58,7 @@ const BULGARIAN: Record<string, string> = {
   "Teams": "Екипи",
   "Archived bots": "Архивирани ботове",
   "Search bots and messages": "Търсене на ботове и съобщения",
+  "Close search": "Затвори търсенето",
   "Nothing matches “{query}”": "Няма съвпадения за „{query}“",
   "Automations": "Автоматизации",
   "Connected apps": "Свързани приложения",
