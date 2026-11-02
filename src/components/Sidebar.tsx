@@ -936,8 +936,15 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         preview(b, t).toLowerCase().includes(q),
     );
   const chiefBot = matchingBots.find((bot) => bot.chiefOfStaff);
+  const chiefTeam = chiefBot
+    ? state.teams.find((team) => team.memberIds.includes(chiefBot.id))
+    : undefined;
+  // A Chief of Staff without a team stays in the special top slot. Once the
+  // chief belongs to a team, it must appear inside that team like every other
+  // member — otherwise the team looks incomplete.
+  const showChiefAlone = Boolean(chiefBot && !chiefTeam);
   const visibleBots = matchingBots
-    .filter((bot) => !bot.chiefOfStaff)
+    .filter((bot) => !showChiefAlone || !bot.chiefOfStaff)
     .sort((a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false));
   const visibleGroups = state.groups.filter((g) => !q || g.name.toLowerCase().includes(q));
   const teamByBot = new Map<string, { id: string; name: string }>();
@@ -1103,7 +1110,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           {!chiefBot && visibleBots.length === 0 && visibleGroups.length === 0 && q && q.length < MIN_QUERY && (
             <div className="px-3 py-6 text-center text-[13px] text-ink-secondary">{t("Nothing matches “{query}”", { query })}</div>
           )}
-          {chiefBot && (
+          {chiefBot && showChiefAlone && (
             <div className="mb-1.5">
               <BotListItem
                 bot={chiefBot}

@@ -131,7 +131,8 @@ Secrets are write-only: the UI only ever sees "configured" flags.
   **Plus → Manage teams**, add/remove members, transfer leadership before the
   leader leaves, and optionally create a shared team room. An existing room
   whose members all belong to one team attaches automatically; ungrouped bots
-  stay under **Other bots**.
+  stay under **Other bots**. Each bot's settings also has a Team card for
+  Join/Leave/Manage, and a Chief of Staff is grouped inside its team.
 - **Ten body shapes** for bots — Orb, Bubble, Pill, Hex, Diamond, Star, Drop,
   Shield, Ghost, and Classic — with a Shape picker in Bot settings.
 - **Pages:** private HTML dashboards, checklists, and reports the bot builds.

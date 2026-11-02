@@ -15,6 +15,7 @@ import {
 } from "@/lib/mascot";
 import { ModelPicker } from "./ModelPicker";
 import { AutoModelPool } from "./AutoModelPool";
+import { TeamsPanel } from "./TeamsPanel";
 import { autoMascotShape, MASCOT_SHAPE_IDS, MASCOT_SHAPES, normalizeMascotShape } from "@/lib/mascot-shapes";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { cn } from "@/lib/cn";
@@ -685,6 +686,101 @@ function PagesCard({ bot }: { bot: Bot }) {
   );
 }
 
+function BotTeamCard({ bot }: { bot: Bot }) {
+  const { state, dispatch } = useStore();
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [teamsOpen, setTeamsOpen] = useState(false);
+  const team = state.teams.find((candidate) => candidate.memberIds.includes(bot.id));
+  const leader = team ? state.bots.find((candidate) => candidate.id === team.leaderBotId) : undefined;
+  const joinable = state.teams.filter((candidate) => !candidate.memberIds.includes(bot.id));
+
+  const join = async (teamId: string) => {
+    if (!teamId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { team: updated } = await api(`/api/teams/${teamId}/members`, {
+        method: "POST",
+        body: JSON.stringify({ botId: bot.id }),
+      });
+      dispatch({ type: "teamPatched", team: updated });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const leave = async () => {
+    if (!team || team.leaderBotId === bot.id) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { team: updated } = await api(`/api/teams/${team.id}/members/${bot.id}`, { method: "DELETE" });
+      dispatch({ type: "teamPatched", team: updated });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl bg-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[15px] font-medium text-ink">{t("Team")}</div>
+          <div className="mt-0.5 text-[13px] text-ink-secondary">
+            {team ? `${team.name}${leader ? ` · ${t("Leader")}: ${leader.name}` : ""}` : t("Not in a team")}
+          </div>
+        </div>
+        <button
+          onClick={() => setTeamsOpen(true)}
+          className="shrink-0 rounded-lg bg-raised px-2.5 py-1.5 text-[11.5px] text-ink hover:bg-raised-hover"
+        >
+          {t("Manage teams")}
+        </button>
+      </div>
+
+      {team ? (
+        <div className="mt-2.5 flex items-center justify-between gap-2 rounded-lg bg-inset px-2.5 py-2">
+          <span className="min-w-0 truncate text-[12px] text-ink-secondary">{team.name}</span>
+          <button
+            onClick={() => void leave()}
+            disabled={busy || team.leaderBotId === bot.id}
+            title={team.leaderBotId === bot.id ? t("Choose a new leader in Manage teams") : undefined}
+            className="shrink-0 rounded-md px-2 py-1 text-[11.5px] text-danger hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {t("Leave team")}
+          </button>
+        </div>
+      ) : joinable.length > 0 ? (
+        <select
+          value=""
+          disabled={busy}
+          onChange={(event) => void join(event.target.value)}
+          aria-label={t("Join a team")}
+          className="mt-2.5 w-full rounded-lg border border-hairline/40 bg-inset px-2.5 py-2 text-[12px] text-ink focus:outline-none"
+        >
+          <option value="">{t("Join a team…")}</option>
+          {joinable.map((candidate) => (
+            <option key={candidate.id} value={candidate.id}>{candidate.name}</option>
+          ))}
+        </select>
+      ) : (
+        <div className="mt-2.5 text-[11.5px] text-ink-secondary">
+          {t("Create a team from Manage teams.")}
+        </div>
+      )}
+
+      {error && <div className="mt-2 text-[11.5px] text-danger">{error}</div>}
+      {teamsOpen && <TeamsPanel onClose={() => setTeamsOpen(false)} />}
+    </div>
+  );
+}
+
 export function SettingsPanel({ bot }: { bot: Bot }) {
   const { state, dispatch } = useStore();
   const { t } = useI18n();
@@ -939,6 +1035,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
               onChange={(e) => patch({ name: e.target.value })}
             />
           </Field>
+          <BotTeamCard bot={bot} />
           <Field label={t("Title")}>
             <input
               className={inputCls}

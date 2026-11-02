@@ -873,6 +873,12 @@ const BULGARIAN: Record<string, string> = {
   "Choose a new leader first": "Първо изберете нов лидер",
   "Leave this team": "Напусни този екип",
   "Create a team with this bot as leader": "Създай екип с този бот като лидер",
+  "Team": "Екип",
+  "Not in a team": "Не е в екип",
+  "Join a team": "Присъедини се към екип",
+  "Join a team…": "Присъедини се към екип…",
+  "Choose a new leader in Manage teams": "Изберете нов лидер от Manage teams",
+  "Create a team from Manage teams.": "Създайте екип от Manage teams.",
 };
 
 function initialLocale(): Locale {

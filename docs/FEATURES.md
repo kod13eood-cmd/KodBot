@@ -83,7 +83,10 @@ ungrouped bots; members can leave. The leader must transfer leadership before
 leaving.
 
 Open **Plus → Manage teams** to create teams, add/remove members, transfer
-leadership, rename, or open/create the optional team room. New team imports
+leadership, rename, or open/create the optional team room. Each bot also has a
+**Team** card in **Bot settings**, showing its team/leader plus Join/Leave and
+Manage teams. A Chief of Staff who belongs to a team is shown inside that team
+section, not in a separate slot above it. New team imports
 create their team automatically. Existing rooms whose members all belong to one
 team are attached to that team automatically. Ungrouped bots stay under
 **Other bots**. Moving between teams is leave, then join the new team.
