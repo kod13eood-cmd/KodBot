@@ -274,6 +274,8 @@ A KodBot maintenance pass then restored the missing state:
 - `/home/paperclipi7/kodbot-backups/RESTORE.md` documents the restore process.
 - `kodbot-state-snapshot.timer` now snapshots `.kodbot` + `.kodbot-companion`
   and the live API every 15 minutes.
+- `kodbot-offsite-backup.timer` uploads a daily archive to `llm1:/home/llm1/backups/kodbot/`
+  at 03:30 Europe/Sofia (60-day retention, sha256-verified).
 
 Current state:
 
@@ -288,22 +290,24 @@ Current state:
 | `webhooks.json` | Yes | Current webhooks |
 | backups | Yes | `/home/paperclipi7/kodbot-backups` |
 
-### One remaining restart risk
+### Restart status (verified 2026-11-02 22:45 EET)
 
-The running process still reports **Composio configured**, but the current
-`config.json` does **not** contain a `composio.apiKey`. OpenCode Go and profile
-are persisted; Composio is memory-only.
+No key re-entry is needed. Composio runs in **managed** mode from
+`OC_COMPOSIO_BROKER_URL` / `OC_COMPOSIO_BROKER_TOKEN`, which live in
+`/etc/systemd/system/kodbot.service`'s `EnvironmentFile`
+(`~/.config/kodbot.env`) and are on disk — not memory-only. `config.json`
+persists the OpenCode Go key and profile; OpenCode Go was the only
+credential that existed solely in memory and it has been recovered.
 
-Before restarting `kodbot.service`, re-enter the Composio key in
-**Settings → Connections** (or restore it from the owner’s password manager),
-then take a fresh snapshot:
+Before any restart, take a fresh snapshot as usual:
 
 ```sh
 sudo systemctl start kodbot-state-snapshot.service
 ```
 
-Only then is a restart safe. The 15-minute timer and `RESTORE.md` are already in
-place, so this class of loss now has an automatic recovery path.
+The 15-minute timer and `RESTORE.md` cover local recovery, and
+`kodbot-offsite-backup.timer` uploads a daily archive at 03:30 Europe/Sofia to
+`llm1:/home/llm1/backups/kodbot/` (60-day retention, checksum-verified).
 
 The 19:50 handoff snapshot remains at
 `/home/paperclipi7/kodbot-handoff-20261102-1950.tgz` (mode `600`) for comparison;
