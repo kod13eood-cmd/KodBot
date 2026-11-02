@@ -1334,7 +1334,11 @@ export class Store {
   }
 
   /** A fresh context on the same bot: new thread, new session, same
-   * persona/tools/computer. Becomes the active task. */
+   * persona/tools/computer. A manual task becomes active; a routine task is
+   * normally detached so scheduled work cannot hijack the open chat. The one
+   * exception is an active task with no messages at all: there is nothing to
+   * protect, and leaving it visible while the routine runs makes the bot
+   * look empty. */
   createTask(botId: string, title?: string, activate = true): TaskRecord | null {
     const bot = this.bot(botId);
     if (!bot) return null;
@@ -1345,7 +1349,10 @@ export class Store {
       resumeCursors: {},
     };
     bot.tasks = [task, ...(bot.tasks ?? [])];
-    if (activate) {
+    // A cancelled webhook run can leave an empty task active. The next
+    // detached routine task is a better thing to show than a blank chat.
+    const activeIsEmpty = this.messagesFor(bot.threadId).length === 0;
+    if (activate || activeIsEmpty) {
       bot.threadId = task.threadId;
       bot.resumeCursors = {}; // legacy mirror follows the active task
     }

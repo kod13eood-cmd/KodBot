@@ -66,6 +66,19 @@ describe("tasks", () => {
     expect(store.activeTask(bot.id)?.resumeCursors.claude).toBeUndefined();
   });
 
+  it("adopts a routine task when the visible task is empty", async () => {
+    const { store } = await freshStore();
+    const bot = store.createBot();
+    // A cancelled webhook run can leave an empty task active. The next
+    // scheduled routine must not hide its work behind that blank task.
+    const empty = store.createTask(bot.id, "System alerts")!;
+    expect(store.messagesFor(empty.threadId)).toHaveLength(0);
+
+    const routine = store.createTask(bot.id, "Morning brief", false)!;
+    expect(store.bot(bot.id)!.threadId).toBe(routine.threadId);
+    expect(store.activeTask(bot.id)!.threadId).toBe(routine.threadId);
+  });
+
   it("keeps provider sessions apart — the whole point of a task", async () => {
     const { store } = await freshStore();
     const bot = store.createBot();

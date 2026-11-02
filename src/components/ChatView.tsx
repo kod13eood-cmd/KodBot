@@ -572,6 +572,10 @@ const MessagesList = memo(function MessagesList({
 }) {
   const { dispatch } = useStore();
   const { t } = useI18n();
+  // An empty task is not a lost conversation: the bot may have other tasks
+  // with transcripts. Show them here so nobody has to discover the task
+  // picker in the header while staring at a blank chat.
+  const otherTasks = (bot.tasks ?? []).filter((task) => task.threadId !== bot.threadId).slice(0, 6);
   return (
     <>
       {messages.length === 0 && !bot.busy && (
@@ -586,6 +590,27 @@ const MessagesList = memo(function MessagesList({
           <div className="max-w-[360px] text-[14px] text-ink-secondary">
             {bot.description || t("Send a message to start the conversation.")}
           </div>
+          {otherTasks.length > 0 && (
+            <div className="mt-2 w-full max-w-[420px] text-left">
+              <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-secondary">
+                {t("Other tasks")}
+              </div>
+              <div className="flex flex-col gap-1">
+                {otherTasks.map((task) => (
+                  <button
+                    key={task.threadId}
+                    type="button"
+                    onClick={() => dispatch({ type: "switchTask", botId: bot.id, threadId: task.threadId })}
+                    title={t("Open task")}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-hairline/40 bg-raised/40 px-3 py-2 text-left hover:bg-raised"
+                  >
+                    <span className="min-w-0 truncate text-[12.5px] text-ink">{task.title}</span>
+                    <span className="shrink-0 text-[11px] text-ink-secondary">{formatTime(task.createdAt)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
       {messages.map((m, i) => {
