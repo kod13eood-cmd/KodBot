@@ -125,6 +125,22 @@ Secrets are write-only: the UI only ever sees "configured" flags.
 </tr>
 </table>
 
+### ✨ What's new
+
+- **Ten body shapes** for bots — Orb, Bubble, Pill, Hex, Diamond, Star, Drop,
+  Shield, Ghost, and Classic — with a Shape picker in Bot settings.
+- **Pages:** private HTML dashboards, checklists, and reports the bot builds.
+- **Shopping cards:** product cards with image, price, store, rating, and a
+  merchant link, rendered from a `products` block in chat.
+- **Memory import:** bring context from ChatGPT, Claude, or another assistant.
+- **Auto model routing:** strongest model for complex work, fastest for simple asks.
+- **One shortcut sheet:** `Cmd/Ctrl+/`.
+- **Grok features hub:** real setup paths for 1Password, Stripe, Aircall,
+  AgentMail, All Images AI, and HeyGen in **Connected Apps → Grok features**.
+
+The factual, marketing-ready catalog is [docs/FEATURES.md](docs/FEATURES.md).
+Website and ad copy lives in [docs/marketing/product-page.md](docs/marketing/product-page.md).
+
 ### 🎧 Bots that talk back
 
 Press the speaker on any reply, or switch a bot to read its answers out as they land — so you can listen
