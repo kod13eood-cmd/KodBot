@@ -113,7 +113,7 @@ export function SearchDialog({
         role="dialog"
         aria-modal="true"
         aria-label={t("Search bots and messages")}
-        className="flex max-h-[min(720px,78vh)] w-full max-w-[700px] flex-col overflow-hidden rounded-2xl border border-hairline/60 bg-panel shadow-2xl shadow-black/50"
+        className="flex h-[min(720px,78vh)] w-full max-w-[700px] flex-col overflow-hidden rounded-2xl border border-hairline/60 bg-panel shadow-2xl shadow-black/50"
       >
         <div className="flex items-center gap-2.5 border-b border-hairline/40 px-4 py-3">
           <Search size={18} className="shrink-0 text-accent" />
