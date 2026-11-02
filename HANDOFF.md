@@ -50,7 +50,9 @@ Useful project docs:
 | Build tools | 35.0.0 (34/36 also installed) |
 
 The shell's default Node may be 22; always run `nvm use 24` before install,
-build, or tests.
+build, or tests. The `paperclipi7` host currently has Node 22.23.1, pnpm
+10.33.0, JDK 21, and the Android SDK. Install Node 24 and JDK 17 there before
+building the full project or Android app on that host.
 
 ```sh
 source ~/.nvm/nvm.sh
@@ -176,7 +178,11 @@ The owner’s working key is:
 | Fingerprint | `SHA256:LKPPfLUcYAzlw1vHUMiUVprztfWPfMN8gorRBGTEzmI` |
 | Remote authorized key | Same key is present in `paperclipi7:~/.ssh/authorized_keys` |
 
-The same key is used for GitHub and Gitea pushes. Verify with:
+The same private key is also present on `paperclipi7` at
+`/home/paperclipi7/.ssh/id_ed25519` (same public fingerprint). GitHub and Gitea
+authentication were verified from that host on 2026-11-02; GitHub's
+`known_hosts` entry was added after checking its published ED25519
+fingerprint. Verify with:
 
 ```sh
 ssh-keygen -lf ~/.ssh/id_ed25519.pub
