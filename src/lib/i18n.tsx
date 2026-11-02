@@ -764,6 +764,14 @@ const BULGARIAN: Record<string, string> = {
   "Close page": "Затвори страницата",
   "The browser blocked clipboard access; open the page and copy its URL.":
     "Браузърът блокира достъпа до клипборда; отворете страницата и копирайте URL адреса ѝ.",
+  "Copy from page": "Копиране от страница",
+  "The page asked to put this text on your clipboard.":
+    "Страницата поиска да постави този текст в клипборда ви.",
+  "Text from page": "Текст от страницата",
+  "Copy": "Копирай",
+  "Select all": "Избери всичко",
+  "The browser blocked the clipboard. The text is selected — press Ctrl+C or ⌘C.":
+    "Браузърът блокира клипборда. Текстът е избран — натиснете Ctrl+C или ⌘C.",
   // Auto model
   "Auto model": "Автоматичен модел",
   "Pick the best available model for each task. Complex work gets the strongest engine; short requests get the fastest one.":

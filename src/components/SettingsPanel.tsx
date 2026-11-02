@@ -675,7 +675,8 @@ function PagesCard({ bot }: { bot: Bot }) {
             <iframe
               src={pageUrl(selected.name)}
               title={selected.title}
-              sandbox="allow-scripts"
+              data-kodbot-page
+              sandbox="allow-scripts allow-downloads"
               referrerPolicy="no-referrer"
               className="min-h-0 flex-1 border-0 bg-white"
             />
