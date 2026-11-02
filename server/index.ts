@@ -2786,6 +2786,7 @@ const server = createServer(async (req, res) => {
               description: member.description,
               color: member.appearance.color,
               mascotExpression: member.appearance.mascotExpression,
+              team: manifest.team.name,
               modelSelection: selection,
             },
             { seedMessages: false },
@@ -3030,8 +3031,14 @@ const server = createServer(async (req, res) => {
         if (field === "name" && !value.trim()) return json(res, 400, { error: "name must not be empty" });
       }
       const patch: Record<string, unknown> = {};
-      for (const key of ["name", "title", "description", "notifications", "modelSelection", "unread", "computer", "color", "mascotExpression", "mascotShape", "role", "pinned", "hidden", "speakReplies", "voice"] as const) {
+      for (const key of ["name", "title", "description", "notifications", "modelSelection", "unread", "computer", "color", "mascotExpression", "mascotShape", "role", "team", "pinned", "hidden", "speakReplies", "voice"] as const) {
         if (body[key] !== undefined) patch[key] = body[key];
+      }
+      if (body.team !== undefined) {
+        if (body.team !== null && (typeof body.team !== "string" || body.team.trim().length > 80)) {
+          return json(res, 400, { error: "team must be a short name or null" });
+        }
+        patch.team = typeof body.team === "string" ? body.team.trim() || null : null;
       }
       if (body.autoModel !== undefined) {
         if (typeof body.autoModel !== "boolean") return json(res, 400, { error: "autoModel must be true or false" });

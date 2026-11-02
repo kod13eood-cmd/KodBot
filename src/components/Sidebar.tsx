@@ -8,6 +8,8 @@ import {
   Bot as BotIcon,
   CalendarDays,
   Check,
+  ChevronDown,
+  ChevronRight,
   ClipboardCopy,
   Copy,
   Crown,
@@ -452,10 +454,15 @@ function BotContextMenu({
             hint: !bot.chiefOfStaff && !canCoordinate ? t("Choose a Claude or ACP engine first") : undefined,
           },
         ),
-        item(<FolderPlus size={16} className="text-ink-secondary" />, t("Move to new section"), undefined, {
-          disabled: true,
-          hint: t("Coming soon"),
-        }),
+        item(<FolderPlus size={16} className="text-ink-secondary" />, t("Move to team"), () => {
+          const name = window.prompt(t("Team name"), bot.team ?? "");
+          if (name === null) return;
+          dispatch({
+            type: "updateBot",
+            botId: bot.id,
+            patch: { team: name.trim() || null },
+          });
+        }, { hint: t("Group bots in the sidebar") }),
         item(<BellDot size={16} className="text-ink-secondary" />, t("Mark as Unread"), () =>
           dispatch({ type: "markUnread", botId: bot.id }),
         ),
@@ -763,6 +770,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const [newRoom, setNewRoom] = useState(false);
   const [teamLibraryOpen, setTeamLibraryOpen] = useState(false);
   const [archivedBotsOpen, setArchivedBotsOpen] = useState(false);
+  const [collapsedTeams, setCollapsedTeams] = useState<Set<string>>(new Set());
   const [exportingTeam, setExportingTeam] = useState(false);
   const [teamFeedback, setTeamFeedback] = useState<{
     error: boolean;
@@ -910,6 +918,20 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     .filter((bot) => !bot.chiefOfStaff)
     .sort((a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false));
   const visibleGroups = state.groups.filter((g) => !q || g.name.toLowerCase().includes(q));
+  const teamBuckets = new Map<string, Bot[]>();
+  for (const bot of visibleBots) {
+    const key = bot.team?.trim() ?? "";
+    const bucket = teamBuckets.get(key) ?? [];
+    bucket.push(bot);
+    teamBuckets.set(key, bucket);
+  }
+  const teamKeys = [...teamBuckets.keys()].sort((a, b) => {
+    if (a === b) return 0;
+    if (a === "") return 1;
+    if (b === "") return -1;
+    return a.localeCompare(b);
+  });
+  const hasTeams = teamKeys.some((key) => key !== "");
   const activeBotCount = state.bots.filter((bot) => !bot.hidden).length;
   const archivedBots = state.bots.filter((bot) => bot.hidden);
   const pendingTeamUndo = teamFeedback?.undo;
@@ -1056,15 +1078,55 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           {visibleGroups.map((g) => (
             <GroupListItem key={g.id} group={g} onMenu={setRoomMenu} />
           ))}
-          {visibleBots.map((b) => (
-            <BotListItem
-              key={b.id}
-              bot={b}
-              onMenu={setMenu}
-              onArchive={(bot) => void archiveBot(bot)}
-              archiveDisabled={activeBotCount <= 1}
-            />
-          ))}
+          {!hasTeams ? (
+            visibleBots.map((b) => (
+              <BotListItem
+                key={b.id}
+                bot={b}
+                onMenu={setMenu}
+                onArchive={(bot) => void archiveBot(bot)}
+                archiveDisabled={activeBotCount <= 1}
+              />
+            ))
+          ) : (
+            teamKeys.map((team) => {
+              const bots = teamBuckets.get(team) ?? [];
+              const collapseKey = team || "__ungrouped__";
+              const collapsed = !q && collapsedTeams.has(collapseKey);
+              return (
+                <div key={collapseKey} className="flex flex-col gap-0.5">
+                  <button
+                    onClick={() =>
+                      setCollapsedTeams((current) => {
+                        const next = new Set(current);
+                        if (next.has(collapseKey)) next.delete(collapseKey);
+                        else next.add(collapseKey);
+                        return next;
+                      })
+                    }
+                    aria-expanded={!collapsed}
+                    className="mt-1.5 flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1 text-left text-[10.5px] font-medium uppercase tracking-[0.08em] text-ink-secondary hover:bg-raised/50 hover:text-ink"
+                  >
+                    {collapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+                    <span className="truncate">{team || t("Other bots")}</span>
+                    <span className="ml-auto shrink-0 text-[10px] font-normal tracking-normal text-ink-secondary/70">
+                      {bots.length}
+                    </span>
+                  </button>
+                  {!collapsed &&
+                    bots.map((b) => (
+                      <BotListItem
+                        key={b.id}
+                        bot={b}
+                        onMenu={setMenu}
+                        onArchive={(bot) => void archiveBot(bot)}
+                        archiveDisabled={activeBotCount <= 1}
+                      />
+                    ))}
+                </div>
+              );
+            })
+          )}
           <SearchResults query={query} onLanded={() => setQuery("")} />
         </div>
       </div>

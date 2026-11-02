@@ -816,6 +816,13 @@ const BULGARIAN: Record<string, string> = {
   // Connected apps hover help
   "Connect this app to let bots use its tools.":
     "Свържете това приложение, за да могат ботовете да използват инструментите му.",
+  // Bot teams
+  "Move to team": "Премести в екип",
+  "Team name": "Име на екипа",
+  "Group bots in the sidebar": "Групирай ботовете в страничната лента",
+  "Team": "Екип",
+  "Ungrouped": "Без екип",
+  "Other bots": "Други ботове",
 };
 
 function initialLocale(): Locale {

@@ -150,6 +150,8 @@ export interface Bot {
   mascotShape?: string | null;
   /** Presentation archetype (coordinator, researcher, builder, …). */
   role?: string | null;
+  /** Sidebar team/section label. null = explicitly ungrouped. */
+  team?: string | null;
   unread: boolean;
   busy?: boolean;
   /** what the bot is doing, as the harness sees it; busy is derived from it */
@@ -407,6 +409,7 @@ export type Action =
           | "mascotExpression"
           | "mascotShape"
           | "role"
+          | "team"
           | "autoApprove"
           | "autoModel"
           | "speakReplies"
@@ -1110,6 +1113,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                   description: source.description,
                   notifications: source.notifications,
                   modelSelection: source.modelSelection,
+                  ...(source.team ? { team: source.team } : {}),
+                  ...(source.mascotShape ? { mascotShape: source.mascotShape } : {}),
+                  ...(source.role ? { role: source.role } : {}),
+                  color: source.color,
                   ...(source.computer ? { computer: source.computer } : {}),
                 }),
               }).then(({ bot: patched }) =>

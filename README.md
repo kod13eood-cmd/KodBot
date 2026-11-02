@@ -127,6 +127,9 @@ Secrets are write-only: the UI only ever sees "configured" flags.
 
 ### ✨ What's new
 
+- **Team sections in the sidebar:** bots are grouped under collapsible team
+  headers; imported teams keep their name, and ungrouped bots stay under
+  **Other bots**. Move a bot via its context menu or Bot settings → Team.
 - **Ten body shapes** for bots — Orb, Bubble, Pill, Hex, Diamond, Star, Drop,
   Shield, Ghost, and Classic — with a Shape picker in Bot settings.
 - **Pages:** private HTML dashboards, checklists, and reports the bot builds.

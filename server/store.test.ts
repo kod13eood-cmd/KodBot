@@ -61,6 +61,26 @@ describe("Store", () => {
     expect(reloaded.bot(bot.id)?.composio).toBe(false);
   });
 
+  it("groups an older imported batch into a team but leaves a lone bot ungrouped", () => {
+    const store = new Store(selection);
+    const first = store.createBot({ name: "Nova", title: "SEO Strategist" }, { seedMessages: false });
+    const second = store.createBot({ name: "Atlas", title: "Technical SEO Auditor" }, { seedMessages: false });
+    const lone = store.createBot({ name: "Solo", title: "General helper" }, { seedMessages: false });
+
+    const botsFile = join(DATA_DIR, "bots.json");
+    const saved = JSON.parse(readFileSync(botsFile, "utf8")) as BotRecord[];
+    for (const bot of saved) {
+      delete bot.team;
+      bot.createdAt = bot.id === lone.id ? 20_000 : 1_000;
+    }
+    writeFileSync(botsFile, JSON.stringify(saved));
+
+    const reloaded = new Store(selection);
+    expect(reloaded.bot(first.id)?.team).toBe("SEO Team");
+    expect(reloaded.bot(second.id)?.team).toBe("SEO Team");
+    expect(reloaded.bot(lone.id)?.team).toBeUndefined();
+  });
+
   it("rotates colors across created bots", () => {
     const store = new Store(selection);
     const first = store.createBot();

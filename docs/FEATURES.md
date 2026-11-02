@@ -71,6 +71,14 @@ or a `memory/<topic>.md` file.
 `Cmd/Ctrl+/` opens one sheet with every app-wide shortcut. It also has a
 visible row in **App Settings → Keyboard shortcuts**.
 
+### Team sections in the sidebar — Live
+
+Bots can carry a **team** label. The sidebar groups bots into collapsible team
+sections instead of one mixed list. Imported teams get the manifest's team name
+automatically; older imports are grouped by their creation batch. Move a bot
+from its context menu (**Move to team**) or edit **Bot settings → Team**.
+Ungrouped bots stay under **Other bots**.
+
 ### Connected Apps with readable identities — Live
 
 The Connected Apps marketplace now includes **1Password, Stripe, Aircall,

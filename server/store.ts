@@ -243,6 +243,8 @@ export interface BotRecord {
   mascotShape?: string | null;
   /** Presentation archetype; the UI falls back to an inferred role. */
   role?: string;
+  /** Sidebar team/section label. null = explicitly ungrouped. */
+  team?: string | null;
   unread: boolean;
   modelSelection: ModelSelection;
   /** provider-native continuation per instance (e.g. claude session id) */
@@ -327,6 +329,51 @@ function autoShapeFor(id: string, color: string): string {
     hash = Math.imul(hash, 16777619);
   }
   return AUTO_SHAPES[(hash >>> 0) % AUTO_SHAPES.length]!;
+}
+
+const TEAM_STOP_WORDS = new Set([
+  "the", "and", "for", "with", "from", "your", "their", "this", "that",
+  "team", "bot", "agent", "assistant", "work", "works", "working", "helps",
+  "help", "make", "makes", "turn", "turns", "find", "finds", "use", "uses",
+  "into", "about", "across", "over", "under", "when", "where", "what", "who",
+]);
+
+/** Name an old import batch from its shared title words. Team imports from
+ * now on carry their manifest name; this only repairs bots created before
+ * the team field existed. */
+function inferTeamName(batch: BotRecord[]): string {
+  const scores = new Map<string, number>();
+  const counts = new Map<string, number>();
+  const originals = new Map<string, string>();
+  for (const bot of batch) {
+    const titleTokens = bot.title?.match(/[A-Za-z][A-Za-z0-9+#.]{2,}/g) ?? [];
+    const bodyTokens = bot.description?.match(/[A-Za-z][A-Za-z0-9+#.]{2,}/g) ?? [];
+    const titleWords = new Set(titleTokens.map((word) => word.toLowerCase()));
+    const bodyWords = new Set(bodyTokens.map((word) => word.toLowerCase()));
+    for (const token of [...titleTokens, ...bodyTokens]) {
+      const key = token.toLowerCase();
+      if (!originals.has(key)) originals.set(key, token);
+    }
+    for (const word of new Set([...titleWords, ...bodyWords])) {
+      if (!TEAM_STOP_WORDS.has(word)) counts.set(word, (counts.get(word) ?? 0) + 1);
+    }
+    for (const word of titleWords) {
+      if (!TEAM_STOP_WORDS.has(word)) scores.set(word, (scores.get(word) ?? 0) + 3);
+    }
+    for (const word of bodyWords) {
+      if (!TEAM_STOP_WORDS.has(word)) scores.set(word, (scores.get(word) ?? 0) + 1);
+    }
+  }
+  const minimum = Math.ceil(batch.length / 2);
+  const best = [...scores.entries()]
+    .filter(([word]) => (counts.get(word) ?? 0) >= minimum)
+    .sort((a, b) => b[1] - a[1])[0]?.[0];
+  if (!best) return "Imported Team";
+  const original = originals.get(best) ?? best;
+  const display = original.length <= 5 && original === original.toUpperCase()
+    ? original
+    : `${original[0]!.toUpperCase()}${original.slice(1)}`;
+  return `${display} Team`;
 }
 
 /** Resolve @mentions in a message against a bot roster: `@` must start a
@@ -451,6 +498,28 @@ export class Store {
         botsMigrated = true;
       }
     }
+    // Bots created by an older team import have no team field. They were
+    // created in one batch, so cluster close creation times and name the
+    // batch from the words its members share. Single bots stay ungrouped.
+    const ungrouped = this.bots
+      .filter((b) => b.team === undefined)
+      .sort((a, b) => (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0));
+    let batch: BotRecord[] = [];
+    const flushBatch = () => {
+      if (batch.length >= 2) {
+        const name = inferTeamName(batch);
+        for (const member of batch) member.team = name;
+        botsMigrated = true;
+      }
+      batch = [];
+    };
+    for (const bot of ungrouped) {
+      const last = batch.at(-1);
+      if (last && (Number(bot.createdAt) || 0) - (Number(last.createdAt) || 0) > 5_000) flushBatch();
+      batch.push(bot);
+    }
+    flushBatch();
+
     for (const b of this.bots) {
       if (!b.chiefOfStaff) continue;
       if (!chiefSeen) {
@@ -759,7 +828,7 @@ export class Store {
     profile: Partial<
       Pick<
         BotRecord,
-        "name" | "title" | "description" | "color" | "mascotExpression" | "mascotShape" | "role" | "modelSelection"
+        "name" | "title" | "description" | "color" | "mascotExpression" | "mascotShape" | "role" | "team" | "modelSelection"
       >
     > = {},
     opts: {
@@ -780,6 +849,7 @@ export class Store {
       notifications: true,
       color,
       mascotShape: profile.mascotShape === undefined ? autoShapeFor(id, color) : profile.mascotShape,
+      team: profile.team ?? null,
       ...(profile.mascotExpression ? { mascotExpression: profile.mascotExpression } : {}),
       ...(profile.role ? { role: profile.role } : {}),
       unread: false,
