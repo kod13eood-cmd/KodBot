@@ -829,6 +829,32 @@ describe("harness HTTP API", () => {
     expect(res.status).toBe(404);
     expect(res.body.error).toContain("/api/definitely-not-a-route");
   });
+
+  it("serves bot pages under a download-capable sandbox CSP", async () => {
+    const bot = (await api("POST", "/api/bots")).body.bot;
+    try {
+      const put = await api("PUT", `/api/bots/${bot.id}/pages/report.html`, {
+        html: "<!doctype html><title>Report</title><h1>Q4</h1>",
+      });
+      expect(put.status).toBe(200);
+
+      const page = await fetch(`${BASE}/api/bots/${bot.id}/pages/report.html`);
+      expect(page.status).toBe(200);
+      expect(await page.text()).toContain("<h1>Q4</h1>");
+
+      // Pinned so a drive-by edit cannot silently drop allow-downloads
+      // (pages cannot save generated files) or widen the sandbox with
+      // allow-same-origin (the page would read the app's session).
+      const csp = page.headers.get("content-security-policy") ?? "";
+      expect(csp).toBe(
+        "sandbox allow-scripts allow-downloads; default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src https: data:; connect-src 'none'; base-uri 'none'; form-action 'none'",
+      );
+      expect(csp).not.toContain("allow-same-origin");
+      expect(csp).toContain("connect-src 'none'");
+    } finally {
+      await api("DELETE", `/api/bots/${bot.id}`);
+    }
+  });
 });
 
 // The memory routes expose plain files in the bot's workspace. The
