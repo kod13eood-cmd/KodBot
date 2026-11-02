@@ -15,12 +15,14 @@ function setup() {
   const otherWindow = {} as PageBridgeSource;
   const onCopy = vi.fn();
   const onDownload = vi.fn();
+  const onSend = vi.fn();
   const handler = createPageBridgeHandler({
-    frames: () => [{ contentWindow: pageWindow }, null],
+    frames: () => [{ contentWindow: pageWindow, botId: "bot-1" }, null],
     onCopy,
     onDownload,
+    onSend,
   });
-  return { pageWindow, otherWindow, onCopy, onDownload, handler };
+  return { pageWindow, otherWindow, onCopy, onDownload, onSend, handler };
 }
 
 describe("page bridge message guard", () => {
@@ -48,6 +50,27 @@ describe("page bridge message guard", () => {
     expect(onDownload).not.toHaveBeenCalled();
   });
 
+  it("sends page text to the bot that owns the iframe", () => {
+    const { pageWindow, onSend, handler } = setup();
+
+    handler({ source: pageWindow, data: { type: "kodbot:send", text: "1 Да\n2 Да" } });
+    expect(onSend).toHaveBeenCalledWith("1 Да\n2 Да", "bot-1");
+  });
+
+  it("never sends when the iframe has no bot id", () => {
+    const pageWindow = {} as PageBridgeSource;
+    const onSend = vi.fn();
+    const handler = createPageBridgeHandler({
+      frames: () => [{ contentWindow: pageWindow }],
+      onCopy: vi.fn(),
+      onDownload: vi.fn(),
+      onSend,
+    });
+
+    handler({ source: pageWindow, data: { type: "kodbot:send", text: "nope" } });
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
   it("rejects oversized text and oversized downloads", () => {
     const { pageWindow, onCopy, onDownload, handler } = setup();
     const tooBig = "x".repeat(PAGE_BRIDGE_MAX_CHARS + 1);
@@ -61,6 +84,7 @@ describe("page bridge message guard", () => {
     expect(onCopy).not.toHaveBeenCalled();
     expect(onDownload).not.toHaveBeenCalled();
     expect(parsePageBridgeMessage({ type: "kodbot:copy", text: tooBig })).toBeNull();
+    expect(parsePageBridgeMessage({ type: "kodbot:send", text: tooBig })).toBeNull();
   });
 
   it("rejects unknown types and malformed payloads", () => {

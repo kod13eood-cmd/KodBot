@@ -676,6 +676,7 @@ function PagesCard({ bot }: { bot: Bot }) {
               src={pageUrl(selected.name)}
               title={selected.title}
               data-kodbot-page
+              data-kodbot-bot={bot.id}
               sandbox="allow-scripts allow-downloads"
               referrerPolicy="no-referrer"
               className="min-h-0 flex-1 border-0 bg-white"

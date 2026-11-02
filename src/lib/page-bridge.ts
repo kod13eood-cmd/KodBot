@@ -8,8 +8,12 @@ import { z } from "zod";
  * validates that request and the PageBridge component performs it at the
  * top level, where the user's click permission applies.
  *
+ * `kodbot:send` is the zero-copy path: the app posts the text to the bot whose
+ * page asked, so answers typed into a page arrive in the chat without any
+ * clipboard step.
+ *
  * The guards are deliberately strict: only a window that belongs to one of
- * our own page iframes may ask, only two message types exist, and text is
+ * our own page iframes may ask, only three message types exist, and text is
  * capped so a page cannot exhaust memory on the app side.
  */
 
@@ -18,13 +22,16 @@ const MAX_FILENAME_CHARS = 120;
 
 export type PageBridgeRequest =
   | { type: "kodbot:copy"; text: string }
-  | { type: "kodbot:download"; filename: string; text: string };
+  | { type: "kodbot:download"; filename: string; text: string }
+  | { type: "kodbot:send"; text: string };
 
 /** The only windows a page request may come from: a real framed document. */
 export type PageBridgeSource = MessageEventSource | null | undefined;
 
-interface PageFrame {
+/** A page iframe plus the bot it belongs to (`data-kodbot-bot`). */
+export interface PageFrame {
   contentWindow: PageBridgeSource;
+  botId?: string;
 }
 
 const bridgeRequestSchema = z.discriminatedUnion("type", [
@@ -36,6 +43,10 @@ const bridgeRequestSchema = z.discriminatedUnion("type", [
     type: z.literal("kodbot:download"),
     filename: z.string().trim().min(1),
     text: z.string().max(PAGE_BRIDGE_MAX_CHARS),
+  }),
+  z.object({
+    type: z.literal("kodbot:send"),
+    text: z.string().trim().min(1).max(PAGE_BRIDGE_MAX_CHARS),
   }),
 ]);
 
@@ -60,12 +71,26 @@ export function sanitizePageFilename(filename: string): string {
 }
 
 /** Returns a validated request, or null when the payload is not exactly one
- * of the two shapes a page is allowed to send. */
+ * of the shapes a page is allowed to send. */
 export function parsePageBridgeMessage(data: MessageEvent["data"]): PageBridgeRequest | null {
   const parsed = bridgeRequestSchema.safeParse(data);
   if (!parsed.success) return null;
-  if (parsed.data.type === "kodbot:copy") return parsed.data;
-  return { ...parsed.data, filename: sanitizePageFilename(parsed.data.filename) };
+  if (parsed.data.type === "kodbot:download") {
+    return { ...parsed.data, filename: sanitizePageFilename(parsed.data.filename) };
+  }
+  return parsed.data;
+}
+
+/** The frame a message came from, or null when it is not one of ours. */
+export function findPageFrame(
+  source: PageBridgeSource,
+  frames: Iterable<PageFrame | null | undefined>,
+): PageFrame | null {
+  if (!source) return null;
+  for (const frame of frames) {
+    if (frame && frame.contentWindow === source) return frame;
+  }
+  return null;
 }
 
 /** True only when `source` is the contentWindow of one of the page iframes.
@@ -74,42 +99,47 @@ export function isPageFrameSource(
   source: PageBridgeSource,
   frames: Iterable<PageFrame | null | undefined>,
 ): boolean {
-  if (!source) return false;
-  for (const frame of frames) {
-    if (frame && frame.contentWindow === source) return true;
-  }
-  return false;
+  return findPageFrame(source, frames) !== null;
 }
 
 export interface PageBridgeHandlers {
   frames: () => Iterable<PageFrame | null | undefined>;
   onCopy: (text: string) => void;
   onDownload: (filename: string, text: string) => void;
+  onSend?: (text: string, botId: string) => void;
 }
 
 /** The message guard as a pure function, so tests can exercise rejection
  * without a DOM. `installPageBridge` is the thin browser wrapper. */
 export function createPageBridgeHandler(handlers: PageBridgeHandlers) {
   return (event: { source: PageBridgeSource; data: MessageEvent["data"] }): void => {
-    if (!isPageFrameSource(event.source, handlers.frames())) return;
+    const frame = findPageFrame(event.source, handlers.frames());
+    if (!frame) return;
     const request = parsePageBridgeMessage(event.data);
     if (!request) return;
     if (request.type === "kodbot:copy") handlers.onCopy(request.text);
-    else handlers.onDownload(request.filename, request.text);
+    else if (request.type === "kodbot:download") handlers.onDownload(request.filename, request.text);
+    else if (request.type === "kodbot:send" && frame.botId && handlers.onSend) {
+      handlers.onSend(request.text, frame.botId);
+    }
   };
 }
 
 /** Accepts bridge messages from any page iframe currently in the document.
- * Call once at app level; page iframes opt in with `data-kodbot-page`. */
+ * Call once at app level; page iframes opt in with `data-kodbot-page` and
+ * carry `data-kodbot-bot` so the app knows which conversation to post to. */
 export function installPageBridge(
-  handlers: Pick<PageBridgeHandlers, "onCopy" | "onDownload">,
+  handlers: Pick<PageBridgeHandlers, "onCopy" | "onDownload" | "onSend">,
   doc: Document,
   win: Window,
 ): () => void {
   const handler = createPageBridgeHandler({
     ...handlers,
     frames: () =>
-      Array.from(doc.querySelectorAll<HTMLIFrameElement>("iframe[data-kodbot-page]")),
+      Array.from(doc.querySelectorAll<HTMLIFrameElement>("iframe[data-kodbot-page]")).map((frame) => ({
+        contentWindow: frame.contentWindow,
+        botId: frame.dataset.kodbotBot,
+      })),
   });
   const listener = (event: MessageEvent) => handler(event);
   win.addEventListener("message", listener);
