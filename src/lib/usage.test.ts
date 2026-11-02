@@ -14,6 +14,10 @@ describe("usage formatting", () => {
     expect(formatUsd(0)).toBe("$0");
     expect(formatUsd(0.004)).toBe("$0.004");
     expect(formatUsd(0.31)).toBe("$0.31");
+    // legacy task records can omit the field entirely
+    expect(formatUsd(undefined)).toBe("—");
+    expect(formatUsd(null)).toBe("—");
+    expect(formatUsd(Number.NaN)).toBe("—");
   });
 
   it("builds the chip: tokens always, cost only when known, nothing when unused", () => {

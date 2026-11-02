@@ -71,13 +71,13 @@ function BotUsageCard({ bot }: { bot: Bot }) {
         </div>
         <div>
           <div className="text-[11.5px] uppercase tracking-wide text-ink-secondary">{t("Cost")}</div>
-          <div className="mt-0.5 tabular-nums text-ink">{usage.costUsd === null ? "—" : formatUsd(usage.costUsd)}</div>
+          <div className="mt-0.5 tabular-nums text-ink">{formatUsd(usage.costUsd)}</div>
         </div>
       </div>
       <div className="mt-2 text-[12px] text-ink-secondary">
-        {usage.costUsd === null
-          ? t("This engine doesn't report a price; tokens are counted.")
-          : t("Cost {caption}.", { caption: costCaption(instance?.snapshot.billing) })}
+        {typeof usage.costUsd === "number"
+          ? t("Cost {caption}.", { caption: costCaption(instance?.snapshot.billing) })
+          : t("This engine doesn't report a price; tokens are counted.")}
       </div>
     </div>
   );

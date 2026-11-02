@@ -29,8 +29,11 @@ export function formatTokens(n: number): string {
 }
 const trim = (x: number) => (x >= 100 ? Math.round(x).toString() : x.toFixed(1).replace(/\.0$/, ""));
 
-/** Dollars, with enough precision that a cheap turn isn't "$0.00". */
-export function formatUsd(usd: number): string {
+/** Dollars, with enough precision that a cheap turn isn't "$0.00". Older
+ * task records can omit `costUsd` entirely, so a missing value is rendered
+ * as an em dash rather than reaching `.toFixed()`. */
+export function formatUsd(usd: number | null | undefined): string {
+  if (typeof usd !== "number" || !Number.isFinite(usd)) return "—";
   if (usd === 0) return "$0";
   if (usd < 0.01) return `$${usd.toFixed(3)}`;
   return `$${usd.toFixed(2)}`;
