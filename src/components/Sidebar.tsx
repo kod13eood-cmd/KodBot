@@ -33,6 +33,7 @@ import { api, useStore, formatTime, visibleMessages, type Bot, type Group } from
 import { CrewAvatar, InitialsAvatar } from "./Avatar";
 import { displayRole, stateForBot } from "@/lib/mascot";
 import { useUpdaterState } from "@/lib/updater";
+import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/cn";
 import { downloadAllBots } from "@/lib/team-files";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
@@ -248,6 +249,7 @@ function RoomContextMenu({
 }) {
   const { state, dispatch } = useStore();
   const { t } = useI18n();
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const group = state.groups.find((g) => g.id === menu.groupId);
 
   useEffect(() => {
@@ -276,13 +278,16 @@ function RoomContextMenu({
     >
       <button
         onClick={() => {
-          void navigator.clipboard?.writeText(group.threadId);
-          onClose();
+          void copyText(group.threadId).then((ok) => {
+            setCopyState(ok ? "copied" : "failed");
+            window.setTimeout(() => setCopyState("idle"), 1600);
+          });
         }}
+        title={t("Identifies this transcript in logs and API requests. It is not a share link.")}
         className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-[14px] text-ink hover:bg-raised/70"
       >
-        <ClipboardCopy size={16} className="text-ink-secondary" />
-        {t("Copy conversation ID")}
+        <ClipboardCopy size={16} className={cn("shrink-0", copyState === "failed" ? "text-danger" : "text-ink-secondary")} />
+        {copyState === "copied" ? t("Copied") : copyState === "failed" ? t("Copy failed") : t("Copy conversation ID")}
       </button>
       <button
         onClick={() => {
@@ -383,6 +388,7 @@ function BotContextMenu({
 }) {
   const { state, dispatch } = useStore();
   const { t } = useI18n();
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const bot = state.bots.find((b) => b.id === menu.botId);
   const botTeam = bot ? state.teams.find((team) => team.memberIds.includes(bot.id)) : undefined;
 
@@ -419,14 +425,14 @@ function BotContextMenu({
     icon: React.ReactNode,
     label: string,
     onClick?: () => void,
-    opts?: { danger?: boolean; disabled?: boolean; hint?: string },
+    opts?: { danger?: boolean; disabled?: boolean; hint?: string; keepOpen?: boolean },
   ) => (
     <button
       key={label}
       disabled={opts?.disabled}
       onClick={() => {
         onClick?.();
-        onClose();
+        if (!opts?.keepOpen) onClose();
       }}
       title={opts?.hint}
       className={cn(
@@ -502,9 +508,20 @@ function BotContextMenu({
           dispatch({ type: "duplicateBot", botId: bot.id }),
         ),
         divider("d2"),
-        item(<ClipboardCopy size={16} className="text-ink-secondary" />, t("Copy conversation ID"), () => {
-          void navigator.clipboard?.writeText(bot.threadId);
-        }),
+        item(
+          <ClipboardCopy size={16} className="text-ink-secondary" />,
+          copyState === "copied" ? t("Copied") : copyState === "failed" ? t("Copy failed") : t("Copy conversation ID"),
+          () => {
+            void copyText(bot.threadId).then((ok) => {
+              setCopyState(ok ? "copied" : "failed");
+              window.setTimeout(() => setCopyState("idle"), 1600);
+            });
+          },
+          {
+            keepOpen: true,
+            hint: t("Identifies this transcript in logs and API requests. It is not a share link."),
+          },
+        ),
         divider("d3"),
         item(
           <Archive size={16} className="text-ink-secondary" />,
@@ -526,14 +543,10 @@ function BotContextMenu({
 function BotListItem({
   bot,
   onMenu,
-  onArchive,
-  archiveDisabled,
   teamLeader = false,
 }: {
   bot: Bot;
   onMenu: (menu: MenuState) => void;
-  onArchive: (bot: Bot) => void;
-  archiveDisabled: boolean;
   teamLeader?: boolean;
 }) {
   const { state, dispatch } = useStore();
@@ -545,7 +558,7 @@ function BotListItem({
   const visible = visibleMessages(bot);
   const last = visible.at(-1);
   const rowClass = cn(
-    "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 pr-10 text-left",
+    "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left",
     bot.chiefOfStaff
       ? selected
         ? "border-accent/40 bg-accent/15"
@@ -578,7 +591,7 @@ function BotListItem({
             />
           </span>
           {selected && last && !renaming && (
-            <span className="shrink-0 text-xs text-ink-secondary transition-opacity group-hover:opacity-0 group-focus-within:opacity-0">
+            <span className="shrink-0 text-xs text-ink-secondary">
               {formatTime(last.at)}
             </span>
           )}
@@ -623,38 +636,20 @@ function BotListItem({
   }
 
   return (
-    <div className="group relative">
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => dispatch({ type: "select", id: bot.id })}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            dispatch({ type: "select", id: bot.id });
-          }
-        }}
-        onContextMenu={onContextMenu}
-        className={rowClass}
-      >
-        {body}
-      </div>
-      <button
-        type="button"
-        disabled={archiveDisabled}
-        onClick={() => onArchive(bot)}
-        aria-label={t("Archive {name}", { name: bot.name })}
-        title={
-          bot.chiefOfStaff
-            ? t("Choose another Chief of Staff first")
-            : archiveDisabled
-              ? t("Keep at least one active bot")
-              : t("Archive {name}", { name: bot.name })
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => dispatch({ type: "select", id: bot.id })}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          dispatch({ type: "select", id: bot.id });
         }
-        className="absolute right-2 top-2.5 flex size-7 items-center justify-center rounded-lg bg-card/90 text-ink-secondary opacity-0 shadow-sm transition hover:bg-raised hover:text-ink focus:opacity-100 disabled:cursor-default disabled:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100"
-      >
-        <Archive size={14} />
-      </button>
+      }}
+      onContextMenu={onContextMenu}
+      className={rowClass}
+    >
+      {body}
     </div>
   );
 }
@@ -1026,7 +1021,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       ungroupedGroups.push(group);
     }
   }
-  const activeBotCount = state.bots.filter((bot) => !bot.hidden).length;
   const archivedBots = state.bots.filter((bot) => bot.hidden);
   const pendingTeamUndo = teamFeedback?.undo;
   const pendingBotUndo = teamFeedback?.restoreBot;
@@ -1196,12 +1190,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           )}
           {chiefBot && showChiefAlone && (
             <div className="mb-1.5">
-              <BotListItem
-                bot={chiefBot}
-                onMenu={setMenu}
-                onArchive={(bot) => void archiveBot(bot)}
-                archiveDisabled
-              />
+              <BotListItem bot={chiefBot} onMenu={setMenu} />
             </div>
           )}
           {ungroupedGroups.map((g) => (
@@ -1209,13 +1198,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           ))}
           {!hasTeams ? (
             visibleBots.map((b) => (
-              <BotListItem
-                key={b.id}
-                bot={b}
-                onMenu={setMenu}
-                onArchive={(bot) => void archiveBot(bot)}
-                archiveDisabled={activeBotCount <= 1}
-              />
+              <BotListItem key={b.id} bot={b} onMenu={setMenu} />
             ))
           ) : (
             teamKeys.map((team) => {
@@ -1260,8 +1243,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                         key={b.id}
                         bot={b}
                         onMenu={setMenu}
-                        onArchive={(bot) => void archiveBot(bot)}
-                        archiveDisabled={activeBotCount <= 1}
                         teamLeader={record?.leaderBotId === b.id}
                       />
                     ))}

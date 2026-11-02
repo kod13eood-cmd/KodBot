@@ -75,6 +75,9 @@ const BULGARIAN: Record<string, string> = {
   "Conversations are kept until you choose to delete a bot.":
     "Разговорите се запазват, докато не изберете да изтриете бот.",
   "Copy conversation ID": "Копирай ID на разговора",
+  "Copy failed": "Копирането не успя",
+  "Identifies this transcript in logs and API requests. It is not a share link.":
+    "Идентифицира този разговор в логовете и API заявките. Това не е линк за споделяне.",
   "Delete Room": "Изтрий стаята",
   "Room name (optional)": "Име на стаята (по избор)",
   "Create a bot first — rooms are made of bots.": "Първо създайте бот — стаите са съставени от ботове.",
