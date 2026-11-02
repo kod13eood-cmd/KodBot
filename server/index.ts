@@ -3477,8 +3477,10 @@ const server = createServer(async (req, res) => {
           "referrer-policy": "no-referrer",
           // No same-origin: the document can run its own inline scripts but
           // cannot read cookies, localStorage or the parent app.
+          // allow-downloads lets a page save a generated file; it does not
+          // grant the document access to the app's origin.
           "content-security-policy":
-            "sandbox allow-scripts; default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src https: data:; connect-src 'none'; base-uri 'none'; form-action 'none'",
+            "sandbox allow-scripts allow-downloads; default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src https: data:; connect-src 'none'; base-uri 'none'; form-action 'none'",
         });
         return res.end(page.html);
       }
