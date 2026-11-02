@@ -58,8 +58,13 @@ const BULGARIAN: Record<string, string> = {
   "Teams": "Екипи",
   "Archived bots": "Архивирани ботове",
   "Search bots and messages": "Търсене на ботове и съобщения",
+  "Search everything": "Търсене навсякъде",
+  "Bots, rooms, teams, automations, connected apps, settings and messages":
+    "Ботове, стаи, екипи, автоматизации, свързани приложения, настройки и съобщения",
   "Search bots, rooms and messages": "Търсене на ботове, стаи и съобщения",
   "Search bots, rooms and message history": "Търсене на ботове, стаи и история на съобщенията",
+  "bots": "бота",
+  "Disabled": "Изключено",
   "Type at least two characters to search messages": "Въведете поне два символа за търсене в съобщенията",
   "No bots or rooms match “{query}”": "Няма ботове или стаи за „{query}“",
   "Clear search": "Изчисти търсенето",
@@ -642,6 +647,7 @@ const BULGARIAN: Record<string, string> = {
   "Close connected apps": "Затвори свързаните приложения",
   "Connected apps view": "Изглед на свързаните приложения",
   "Marketplace": "Пазар",
+  "Marketplace and accounts": "Пазар и акаунти",
   "Connected tab": "Свързани",
   "Search apps": "Търсене на приложения",
   "Connected apps are temporarily unavailable. You can retry after restarting, or configure your own connection service.":

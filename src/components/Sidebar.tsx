@@ -1325,7 +1325,14 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         </div>
       </div>
 
-      {searchOpen && <SearchDialog query={query} onQuery={setQuery} onClose={closeSearch} />}
+      {searchOpen && (
+        <SearchDialog
+          query={query}
+          onQuery={setQuery}
+          onClose={closeSearch}
+          onOpenTeams={() => setTeamsPanelOpen(true)}
+        />
+      )}
       {menu && <BotContextMenu menu={menu} onClose={() => setMenu(null)} onArchive={(bot) => void archiveBot(bot)} />}
       {roomMenu && (
         <RoomContextMenu

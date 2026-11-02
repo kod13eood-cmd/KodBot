@@ -308,6 +308,8 @@ export interface AppState {
   webhookIngress: WebhookIngressStatus | null;
   settingsOpen: boolean;
   pluginsOpen: boolean;
+  /** Optional catalog filter when search opens Connected Apps. */
+  pluginsQuery: string;
   computerOpen: boolean;
   /** the per-thread event inspector (runtime stream + native protocol tee) */
   inspectorOpen: boolean;
@@ -402,7 +404,7 @@ export type Action =
   | { type: "connected"; value: boolean }
   | { type: "error"; message: string | null }
   | { type: "toggleSettings"; open?: boolean }
-  | { type: "togglePlugins"; open?: boolean }
+  | { type: "togglePlugins"; open?: boolean; query?: string }
   | { type: "toggleComputer"; open?: boolean }
   | { type: "toggleInspector"; open?: boolean }
   | { type: "focusMessage"; threadId: string; messageId: string }
@@ -494,6 +496,7 @@ export function reducer(state: AppState, action: Action): AppState {
         inspectorOpen: false,
         appSettingsOpen: false,
         pluginsOpen: false,
+        pluginsQuery: "",
       };
     case "routinesHydrated":
       return { ...state, routines: action.routines, routineRuns: action.runs };
@@ -750,8 +753,16 @@ export function reducer(state: AppState, action: Action): AppState {
         appSettingsOpen: open ? false : state.appSettingsOpen,
       };
     }
-    case "togglePlugins":
-      return { ...state, pluginsOpen: action.open ?? !state.pluginsOpen };
+    case "togglePlugins": {
+      const open = action.open ?? !state.pluginsOpen;
+      return {
+        ...state,
+        pluginsOpen: open,
+        // Opening from global search carries the app name; an ordinary open
+        // starts with a clean catalog filter.
+        pluginsQuery: open ? (action.query ?? "") : state.pluginsQuery,
+      };
+    }
     case "focusMessage":
       return {
         ...state,
@@ -904,6 +915,7 @@ export const initialState: AppState = {
   webhookIngress: null,
   settingsOpen: false,
   pluginsOpen: false,
+  pluginsQuery: "",
   computerOpen: false,
   inspectorOpen: false,
   appSettingsOpen: false,

@@ -454,7 +454,7 @@ function ServiceDetails({
 }
 
 export function PluginsPanel() {
-  const { dispatch } = useStore();
+  const { state, dispatch } = useStore();
   const { t } = useI18n();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [cards, setCards] = useState<ToolkitCard[] | null>(null);
@@ -466,13 +466,18 @@ export function PluginsPanel() {
   const [busySlug, setBusySlug] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(state.pluginsQuery);
   const [tab, setTab] = useState<"marketplace" | "connected">("marketplace");
   const [detailsSlug, setDetailsSlug] = useState<string | null>(null);
   const [hoveredCard, setHoveredCard] = useState<{ card: ToolkitCard; x: number; y: number } | null>(null);
 
   const pollTimers = useRef(new Map<string, ReturnType<typeof setInterval>>());
   const statusGenerations = useRef(new Map<string, number>());
+
+  // Global search opens this panel with the chosen app name.
+  useEffect(() => {
+    if (state.pluginsQuery) setSearch(state.pluginsQuery);
+  }, [state.pluginsQuery]);
 
   const refreshStatus = useCallback((slugs: string[]): Promise<Record<string, ConnectorStatus>> => {
     if (!slugs.length) return Promise.resolve({});
