@@ -249,41 +249,65 @@ This file is secret. If phone pairing must survive a host move, copy it
 securely; otherwise revoke the old pairing and pair the phone again. Never put
 it in git.
 
-## 6. Critical live-data warning
+## 6. Live-data status and what happened
 
-As of **2026-11-02 19:49 UTC**, the live data directory on `paperclipi7`
-contained `bots.json`, `messages.db`, `events`, `native`, `webhooks.json`, and
-`workspaces`, but **no `config.json`**, `teams.json`, `groups.json`,
-`routines.json`, or `backups` directory.
+At about **2026-11-02 19:32 UTC** the live data directory on `paperclipi7` was
+partially recreated. `messages.db` and the directory were fresh, while
+`bots.json`, `events`, `native`, and `workspaces` were repopulated over the
+next ~15 minutes. `config.json`, `teams.json`, `groups.json`, `routines.json`,
+and the old `backups` directory disappeared.
 
-The running process still reports Composio and OpenCode Go as configured, and
-the HTTP API still lists teams, rooms, and routines that are not present in the
-files above. That means **some live state is in memory only**.
+The exact deleting command is **not in the systemd journal or shell history**.
+The running server only rewrites those files on changes; it does not delete
+them. The evidence is consistent with a manual or agent-driven partial restore
+or cleanup, not a normal code path.
 
-Before restarting `kodbot.service`:
+Because the server was already running, it kept teams, routines, groups, and
+provider credentials in memory even though the files were gone. That is why the
+HTTP API still listed them.
 
-1. Make a fresh snapshot of `/home/paperclipi7/.kodbot` and
-   `/home/paperclipi7/.kodbot-companion`.
-2. Snapshot the API state:
-   `curl /api/teams`, `/api/routines`, `/api/webhooks`, and `/api/bots?messages=0`.
-3. Recover or re-enter `config.json` from the owner’s password manager.
-4. Only then restart.
+A KodBot maintenance pass then restored the missing state:
 
-A read-only handoff snapshot was taken on 2026-11-02 19:50 UTC at:
+- `config.json`, `teams.json`, and `routines.json` were written back at
+  ~20:22 UTC.
+- `groups.json` was written at ~20:26 UTC.
+- `/home/paperclipi7/kodbot-backups/RESTORE.md` documents the restore process.
+- `kodbot-state-snapshot.timer` now snapshots `.kodbot` + `.kodbot-companion`
+  and the live API every 15 minutes.
 
-`/home/paperclipi7/kodbot-handoff-20261102-1950.tgz` (mode `600`)
+Current state:
 
-It contains the current `bots.json`, `messages.db`, `webhooks.json`, and API
-snapshots of bots, teams, routines, webhooks, and config flags. It does not
-contain `config.json` because that file is missing.
+| File | Present | Notes |
+| --- | --- | --- |
+| `config.json` | Yes | Contains OpenCode Go + profile only |
+| `teams.json` | Yes | Restored |
+| `groups.json` | Yes | Restored |
+| `routines.json` | Yes | Restored |
+| `bots.json` | Yes | Current fleet |
+| `messages.db` | Yes | Current transcript DB |
+| `webhooks.json` | Yes | Current webhooks |
+| backups | Yes | `/home/paperclipi7/kodbot-backups` |
 
-The previous restore directory
-`/home/paperclipi7/kodbot-restore-backup-20261101-133846/` contains an older
-`bots.json`, `groups.json`, `messages.db`, `routines.json`, and
-`webhooks.json`, but **no config.json**.
+### One remaining restart risk
 
-Current data is not a reliable source of truth for teams or credentials until
-this is resolved. The product code is safe; the live host state is the risk.
+The running process still reports **Composio configured**, but the current
+`config.json` does **not** contain a `composio.apiKey`. OpenCode Go and profile
+are persisted; Composio is memory-only.
+
+Before restarting `kodbot.service`, re-enter the Composio key in
+**Settings → Connections** (or restore it from the owner’s password manager),
+then take a fresh snapshot:
+
+```sh
+sudo systemctl start kodbot-state-snapshot.service
+```
+
+Only then is a restart safe. The 15-minute timer and `RESTORE.md` are already in
+place, so this class of loss now has an automatic recovery path.
+
+The 19:50 handoff snapshot remains at
+`/home/paperclipi7/kodbot-handoff-20261102-1950.tgz` (mode `600`) for comparison;
+it predates the restoration and should not replace the newer backups.
 
 ## 7. Agent operating rules
 
