@@ -1,4 +1,5 @@
 import { Component, memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   ArrowDown,
@@ -511,52 +512,111 @@ function ScreenFrame({ png, mime }: { png: string; mime?: string }) {
  * chat around it. */
 function PageArtifactCard({ page }: { page: NonNullable<Message["page"]> }) {
   const { t } = useI18n();
+  const [previewOpen, setPreviewOpen] = useState(false);
   const url = `${window.location.origin}/api/bots/${encodeURIComponent(page.botId)}/pages/${encodeURIComponent(page.name)}`;
   const size = page.bytes < 1024 ? `${page.bytes} B` : `${Math.round(page.bytes / 102.4) / 10} KB`;
-  const open = () => window.open(url, "_blank", "noopener,noreferrer");
+  const openInBrowser = () => window.open(url, "_blank", "noopener,noreferrer");
+
+  useEffect(() => {
+    if (!previewOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPreviewOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [previewOpen]);
+
   return (
-    <div className="flex w-full justify-start">
-      <div className="w-full max-w-[680px] overflow-hidden rounded-2xl border border-hairline/40 bg-card">
-        <div className="flex items-center gap-2.5 border-b border-hairline/40 px-4 py-2.5">
-          <FileCode2 size={16} className="shrink-0 text-accent" />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[13px] font-semibold text-ink">{page.title}</div>
-            <div className="truncate font-mono text-[10.5px] text-ink-secondary/80">
-              {page.name} · {size} · {formatTime(page.updatedAt)}
+    <>
+      <div className="flex w-full justify-start">
+        <div className="w-full max-w-[680px] overflow-hidden rounded-2xl border border-hairline/40 bg-card">
+          <div className="flex items-center gap-2.5 border-b border-hairline/40 px-4 py-2.5">
+            <FileCode2 size={16} className="shrink-0 text-accent" />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[13px] font-semibold text-ink">{page.title}</div>
+              <div className="truncate font-mono text-[10.5px] text-ink-secondary/80">
+                {page.name} · {size} · {formatTime(page.updatedAt)}
+              </div>
             </div>
+            <button
+              onClick={openInBrowser}
+              aria-label={t("Open in a new window")}
+              title={t("Open in a new window")}
+              className="shrink-0 rounded-lg p-1.5 text-ink-secondary hover:bg-raised hover:text-ink"
+            >
+              <ExternalLink size={14} />
+            </button>
           </div>
-          <button
-            onClick={open}
-            aria-label={t("Open page")}
-            title={t("Open page")}
-            className="shrink-0 rounded-lg p-1.5 text-ink-secondary hover:bg-raised hover:text-ink"
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => setPreviewOpen(true)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" && event.key !== " ") return;
+              event.preventDefault();
+              setPreviewOpen(true);
+            }}
+            aria-label={t("Open in KodBot")}
+            title={t("Open in KodBot")}
+            className="group relative block h-[220px] cursor-zoom-in overflow-hidden bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
           >
-            <ExternalLink size={14} />
-          </button>
-        </div>
-        <div className="h-[220px] bg-white">
-          <iframe
-            src={url}
-            title={page.title}
-            sandbox="allow-scripts"
-            referrerPolicy="no-referrer"
-            loading="lazy"
-            className="pointer-events-none h-full w-full border-0 bg-white"
-          />
-        </div>
-        <div className="flex items-center justify-between gap-3 px-4 py-2">
-          <span className="min-w-0 truncate text-[11px] text-ink-secondary/80">
-            {t("Private page")} · {t("Pages run in a sandbox and cannot read your chat or credentials.")}
-          </span>
-          <button
-            onClick={open}
-            className="shrink-0 rounded-lg bg-raised px-2.5 py-1.5 text-[11.5px] font-medium text-ink hover:bg-raised-hover"
-          >
-            {t("Open page")}
-          </button>
+            <iframe
+              src={url}
+              title={page.title}
+              sandbox="allow-scripts"
+              referrerPolicy="no-referrer"
+              loading="lazy"
+              tabIndex={-1}
+              className="pointer-events-none h-full w-full border-0 bg-white"
+            />
+            <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-opacity group-hover:bg-black/20 group-hover:opacity-100 group-focus-visible:bg-black/20 group-focus-visible:opacity-100">
+              <span className="rounded-full bg-card/95 px-3 py-1.5 text-[12px] font-medium text-ink shadow-lg">
+                {t("Open in KodBot")}
+              </span>
+            </span>
+          </div>
         </div>
       </div>
-    </div>
+
+      {previewOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
+            onMouseDown={(event) => event.target === event.currentTarget && setPreviewOpen(false)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={page.title}
+              className="flex h-[min(860px,90vh)] w-full max-w-[1100px] flex-col overflow-hidden rounded-2xl border border-hairline/60 bg-panel shadow-2xl"
+            >
+              <header className="flex items-center gap-3 border-b border-hairline/40 px-4 py-3">
+                <FileCode2 size={16} className="shrink-0 text-accent" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[14px] font-semibold text-ink">{page.title}</div>
+                  <div className="truncate font-mono text-[10.5px] text-ink-secondary">{page.name}</div>
+                </div>
+                <button
+                  onClick={() => setPreviewOpen(false)}
+                  className="rounded-lg p-2 text-ink-secondary hover:bg-raised hover:text-ink"
+                  aria-label={t("Close page")}
+                  title={t("Close page")}
+                >
+                  <X size={17} />
+                </button>
+              </header>
+              <iframe
+                src={url}
+                title={page.title}
+                sandbox="allow-scripts"
+                referrerPolicy="no-referrer"
+                className="min-h-0 flex-1 border-0 bg-white"
+              />
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
 

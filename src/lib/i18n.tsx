@@ -734,6 +734,7 @@ const BULGARIAN: Record<string, string> = {
   // Pages
   "Pages": "Страници",
   "Open page": "Отвори страницата",
+  "Open in KodBot": "Отвори в KodBot",
   "Private page": "Частна страница",
   "Dashboards, checklists, and reports the bot builds as private web pages.":
     "Табла, списъци и отчети, които ботът създава като частни уеб страници.",
