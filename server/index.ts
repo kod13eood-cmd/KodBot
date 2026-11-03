@@ -68,6 +68,7 @@ import {
   memorySystemPrompt,
   readMemoryFile,
   readMemoryTopic,
+  workspaceDir,
   writeMemoryFile,
   writeMemoryTopic,
   MEMORY_FILE_MAX_BYTES,
@@ -92,6 +93,7 @@ import {
   listPages,
   PAGE_MAX_BYTES,
   PAGE_NAME,
+  pageExcerpt,
   pageSnapshot,
   readPage,
   writePage,
@@ -864,9 +866,15 @@ bus.subscribe((event: RuntimeEvent) => {
       turnPageSnapshots.delete(event.threadId);
       if (pageBot && pagesBefore) {
         for (const page of changedPages(pagesBefore, listPages(pageBot.id))) {
+          const html = readPage(pageBot.id, page.name)?.html ?? "";
+          const pagePath = join(workspaceDir(pageBot.id), "pages", page.name);
           pushMessage({
             role: "bot",
             kind: "page",
+            // A page is a file artifact, but replaying providers need its
+            // substance in the transcript. Keep the file as the source of
+            // truth and carry a bounded text view beside it.
+            text: `Created page "${page.title}" at ${pagePath}.\n\n${pageExcerpt(html)}`,
             page: {
               botId: pageBot.id,
               name: page.name,
@@ -1311,7 +1319,7 @@ async function startTurn(
   // branch only — abandoned forks never reach the model
   const transcript = store
     .activePath(threadId)
-    .filter((m) => m.kind === "text" && m.text && m.id !== userMessage.id)
+    .filter((m) => (m.kind === "text" || m.kind === "page") && m.text && m.id !== userMessage.id)
     .slice(-40)
     .map((m) => ({ role: m.role === "user" ? ("user" as const) : ("assistant" as const), text: m.text! }));
 
@@ -1658,7 +1666,7 @@ const MAX_GROUP_HOPS = 1;
 function serializeRoomContext(threadId: string, userName: string): string {
   return store
     .messagesFor(threadId)
-    .filter((m) => m.kind === "text" && m.text)
+    .filter((m) => (m.kind === "text" || m.kind === "page") && m.text)
     .slice(-GROUP_CONTEXT_MESSAGES)
     .map((m) => `${m.role === "user" ? userName : (m.from?.name ?? "Bot")}: ${m.text}`)
     .join("\n");

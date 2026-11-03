@@ -9,6 +9,7 @@ import {
   deletePage,
   listPages,
   PAGE_MAX_BYTES,
+  pageExcerpt,
   pageSnapshot,
   readPage,
   writePage,
@@ -37,6 +38,13 @@ describe("pages", () => {
     expect(deletePage(BOT, "orders.html")).toBe(true);
     expect(readPage(BOT, "orders.html")).toBeNull();
     expect(existsSync(join(workspaceDir(BOT), "pages"))).toBe(true);
+  });
+
+  it("turns a page into bounded text for the conversation transcript", () => {
+    expect(pageExcerpt("<html><style>.x{}</style><script>alert(1)</script><h1>Orders</h1><p>Two open</p></html>")).toBe(
+      "Orders Two open",
+    );
+    expect(pageExcerpt("<p>" + "x".repeat(5000) + "</p>", 20)).toHaveLength(20);
   });
 
   it("falls back to a readable title when the HTML has none", () => {

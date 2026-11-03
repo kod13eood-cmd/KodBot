@@ -33,6 +33,12 @@ function mentionQueryAt(text: string, caret: number): { start: number; query: st
 }
 
 type MentionChoice = { id: string; name: string; bot?: Bot };
+type QueuedPrompt = { id: number; text: string };
+
+// Kept outside the component so switching chats (which unmounts the composer)
+// does not silently forget a queue the user built while a bot was busy.
+const pendingQueues = new Map<string, QueuedPrompt[]>();
+let queuedSequence = 0;
 
 export function Composer({
   bot,
@@ -151,19 +157,30 @@ export function Composer({
     });
   };
 
-  // Rooms hold one message client-side while a member speaks; it auto-sends
-  // the moment the room settles. 1:1 sends go straight to the server even
-  // mid-turn — the harness queues them (steer-queue), so the message shows
-  // in the transcript immediately with a queued affordance.
-  const [queued, setQueued] = useState<string | null>(null);
+  // While a target is busy, sends wait in a client-side queue above the
+  // composer. They are not written into the transcript until they actually
+  // start, so a queued prompt never sits in the chat as a stale bubble.
+  const queueKey = group ? `group:${group.id}` : `bot:${bot?.id ?? ""}`;
+  const [queued, setQueued] = useState<QueuedPrompt[]>(() => pendingQueues.get(queueKey) ?? []);
+  const setQueuedPrompts = useCallback(
+    (update: (current: QueuedPrompt[]) => QueuedPrompt[]) => {
+      setQueued((current) => {
+        const next = update(current);
+        if (next.length) pendingQueues.set(queueKey, next);
+        else pendingQueues.delete(queueKey);
+        return next;
+      });
+    },
+    [queueKey],
+  );
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   // a chip on its own is a message: the send control has to appear for it
   const hasContent = Boolean(text.trim()) || attachments.length > 0;
   const submit = (composed: string) => {
     if (!composed) return;
-    if (busy && group) {
-      setQueued(composed);
+    if (busy) {
+      setQueuedPrompts((current) => [...current, { id: ++queuedSequence, text: composed }]);
       setText("");
       setAttachments([]);
       return;
@@ -173,7 +190,7 @@ export function Composer({
       track("message_sent", { room: true });
     } else if (bot) {
       dispatch({ type: "send", botId: bot.id, text: composed });
-      track("message_sent", { driver: bot.modelSelection?.instanceId, queued: busy });
+      track("message_sent", { driver: bot.modelSelection?.instanceId });
     }
     setText("");
     setAttachments([]);
@@ -199,13 +216,26 @@ export function Composer({
       .catch((error) => setUploadError(error instanceof Error ? error.message : String(error)))
       .finally(() => setUploading(false));
   };
+  // Drain one queued prompt on each busy → idle transition. One at a time is
+  // deliberate: the next prompt starts only after the previous turn finishes.
+  const wasBusy = useRef(busy || queued.length > 0);
   useEffect(() => {
-    if (!busy && queued && group) {
-      dispatch({ type: "sendGroup", groupId: group.id, text: queued });
-      track("message_sent", { room: true, queued: true });
-      setQueued(null);
+    if (busy) {
+      wasBusy.current = true;
+      return;
     }
-  }, [busy, queued, group, dispatch]);
+    if (!wasBusy.current || queued.length === 0) return;
+    const next = queued[0]!;
+    wasBusy.current = false;
+    setQueuedPrompts((current) => current.filter((item) => item.id !== next.id));
+    if (group) {
+      dispatch({ type: "sendGroup", groupId: group.id, text: next.text });
+      track("message_sent", { room: true, queued: true });
+    } else if (bot) {
+      dispatch({ type: "send", botId: bot.id, text: next.text });
+      track("message_sent", { driver: bot.modelSelection?.instanceId, queued: true });
+    }
+  }, [busy, queued, group, bot, dispatch, setQueuedPrompts]);
 
   // native dictation: partials stream into the input while the Swift
   // helper runs; the final transcript stays in the box, ready to edit/send
@@ -270,19 +300,38 @@ export function Composer({
         </div>
       )}
       <div className="relative mx-auto max-w-[900px]">
-        {queued && (
-          <div className="mb-2 flex items-center gap-2 rounded-lg border border-hairline/40 bg-panel px-3 py-2 text-[12.5px] text-ink-secondary">
-            <Clock size={13} className="shrink-0" />
-            <span className="min-w-0 flex-1 truncate">
-              {t("Queued — sends when {name} finishes: “{text}”", { name: busyName, text: queued })}
-            </span>
-            <button
-              onClick={() => setQueued(null)}
-              aria-label={t("Discard queued message")}
-              className="rounded p-0.5 hover:bg-raised hover:text-ink"
-            >
-              <X size={13} />
-            </button>
+        {queued.length > 0 && (
+          <div className="absolute bottom-full left-0 right-0 z-20 mb-2 overflow-hidden rounded-xl border border-hairline/50 bg-panel shadow-2xl shadow-black/40">
+            <div className="flex items-center gap-2 border-b border-hairline/40 px-3 py-2 text-[11px] font-medium text-ink-secondary">
+              <Clock size={12} className="shrink-0" />
+              <span className="min-w-0 flex-1 truncate">
+                {t("Queued")} · {queued.length} · {busyName}
+              </span>
+            </div>
+            <div className="max-h-40 overflow-y-auto">
+              {queued.map((item, index) => (
+                <div
+                  key={item.id}
+                  className="flex items-start gap-2 border-b border-hairline/25 px-3 py-2 last:border-b-0"
+                >
+                  <span className="mt-px w-4 shrink-0 text-right font-mono text-[10.5px] text-ink-secondary/70">
+                    {index + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 whitespace-pre-wrap break-words text-[12px] leading-snug text-ink line-clamp-2">
+                    {item.text}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setQueuedPrompts((current) => current.filter((queuedItem) => queuedItem.id !== item.id))}
+                    aria-label={t("Discard queued message")}
+                    title={t("Discard queued message")}
+                    className="shrink-0 rounded p-0.5 text-ink-secondary hover:bg-raised hover:text-ink"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
         {pickerOpen && (

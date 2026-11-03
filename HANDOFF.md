@@ -287,27 +287,20 @@ Current state:
 | `messages.db` | Yes | Current transcript DB |
 | `webhooks.json` | Yes | Current webhooks |
 | backups | Yes | `/home/paperclipi7/kodbot-backups` |
+| `~/.config/kodbot.env` | Yes | Managed Composio broker URL/token and companion name |
 
-### One remaining restart risk
+### Why restarting is safe now
 
-The running process still reports **Composio configured**, but the current
-`config.json` does **not** contain a `composio.apiKey`. OpenCode Go and profile
-are persisted; Composio is memory-only.
+Composio is **managed** and its broker credentials are in
+`/home/paperclipi7/.config/kodbot.env` (`OC_COMPOSIO_BROKER_URL` and
+`OC_COMPOSIO_BROKER_TOKEN`), loaded by `kodbot.service` through
+`EnvironmentFile=`. The empty `composio` section in `config.json` is therefore
+not a missing credential. OpenCode Go and profile live in `config.json`.
 
-Before restarting `kodbot.service`, re-enter the Composio key in
-**Settings → Connections** (or restore it from the owner’s password manager),
-then take a fresh snapshot:
-
-```sh
-sudo systemctl start kodbot-state-snapshot.service
-```
-
-Only then is a restart safe. The 15-minute timer and `RESTORE.md` are already in
-place, so this class of loss now has an automatic recovery path.
-
-The 19:50 handoff snapshot remains at
-`/home/paperclipi7/kodbot-handoff-20261102-1950.tgz` (mode `600`) for comparison;
-it predates the restoration and should not replace the newer backups.
+After the restoration, `kodbot.service` was restarted and `/api/config` still
+reported `composio.mode: "managed"`. The 19:50 handoff snapshot remains at
+`/home/paperclipi7/kodbot-handoff-20261102-1950.tgz` for comparison; the newer
+`~/kodbot-backups/hot-*` snapshots are the current recovery path.
 
 ## 7. Agent operating rules
 

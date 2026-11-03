@@ -115,6 +115,25 @@ export function writePage(botId: string, name: string, html: string): PageSummar
   return { name, title: titleOf(html, name), bytes: stat.size, updatedAt: stat.mtimeMs };
 }
 
+/** A bounded plain-text view of a page for the model's transcript. The
+ * page itself stays a file; this is only enough context for a driver that
+ * replays the conversation to know what it wrote. */
+export function pageExcerpt(html: string, max = 4000): string {
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
+}
+
 export function deletePage(botId: string, name: string): boolean {
   if (!PAGE_NAME.test(name)) return false;
   try {

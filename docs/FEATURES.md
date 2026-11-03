@@ -56,7 +56,10 @@ report, or visual comparison. Pages live in the bot's workspace, open in a
 sandbox that cannot read the chat or credentials, and appear in the chat as a
 preview card as soon as the turn that wrote them finishes. Clicking the preview
 opens the page in an in-app viewer; the small top-right icon opens it in the
-normal browser. The same list remains under **Bot settings → Pages**.
+normal browser. The same list remains under **Bot settings → Pages**. The bot
+also receives the page title, file path, and a bounded text excerpt in its
+conversation context, so a later turn can continue from what it built without
+re-reading the file.
 
 ### Shopping cards — Live
 
