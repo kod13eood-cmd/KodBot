@@ -8,6 +8,7 @@ import { finishSpeech, startSpeech, stopSpeech } from "./speech.mjs";
 import { openBlankTerminal } from "./terminal-launch.mjs";
 import { startUpdater, registerUpdaterIpc } from "./updater.mjs";
 import { relaunchCommand } from "./relaunch.mjs";
+import { probeErrorMessage, probeHarness } from "./probe.mjs";
 import capabilitiesModule from "./capabilities.cjs";
 
 const { desktopCapabilities } = capabilitiesModule;
@@ -86,17 +87,6 @@ function writeServerConnection(connection) {
   const temporary = `${SERVER_CONNECTION_FILE}.${process.pid}.tmp`;
   fs.writeFileSync(temporary, JSON.stringify(connection, null, 2), { mode: 0o600 });
   fs.renameSync(temporary, SERVER_CONNECTION_FILE);
-}
-
-async function probeRemote(url) {
-  try {
-    const response = await fetch(`${url}/api/health`, { signal: AbortSignal.timeout(4_000) });
-    if (!response.ok) return false;
-    const body = await response.json().catch(() => null);
-    return body?.app === "kodbot" || body?.app === "opencrew";
-  } catch {
-    return false;
-  }
 }
 
 /** Restart the app after a connection change.
@@ -646,7 +636,10 @@ ipcMain.handle("server:set-connection", async (_event, value) => {
   }
   if (value.mode === "remote") {
     const url = normalizeRemoteUrl(value.url);
-    if (!(await probeRemote(url))) throw new Error(`No KodBot server answered at ${url}.`);
+    const probe = await probeHarness(url);
+    // Refuse before writing: a saved port that only answers /api/health (the
+    // phone companion) would relaunch into a window where every call is 401.
+    if (!probe.ok) throw new Error(probeErrorMessage(url, probe));
     writeServerConnection({ mode: "remote", url });
   } else {
     writeServerConnection({ mode: "local" });
@@ -735,9 +728,10 @@ app.whenReady().then(async () => {
   if (process.platform === "darwin") app.dock.setIcon(APP_ICON);
   remoteConnection = readServerConnection();
   if (remoteConnection.mode === "remote") {
-    remoteMode = await probeRemote(remoteConnection.url);
+    const probe = await probeHarness(remoteConnection.url);
+    remoteMode = probe.ok;
     if (!remoteMode) {
-      console.error(`[remote] ${remoteConnection.url} did not answer; starting the local server instead`);
+      console.error(`[remote] ${probeErrorMessage(remoteConnection.url, probe)} Starting the local server instead.`);
     }
   }
   // A headless process is the server, not a client: never let a saved remote

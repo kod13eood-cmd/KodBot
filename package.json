@@ -1,7 +1,7 @@
 {
   "name": "kodbot",
   "private": true,
-  "version": "0.1.30",
+  "version": "0.1.31",
   "description": "KodBot — a local-first chat app for running a team of AI agents.",
   "homepage": "https://github.com/kod13eood-cmd/KodBot",
   "repository": {
@@ -33,7 +33,7 @@
     "build": "tsc -b && tsc -p tsconfig.server.json && vite build",
     "typecheck": "tsc -b && tsc -p tsconfig.server.json",
     "test": "vitest run && pnpm broker:test && pnpm test:updater && pnpm test:packaged-server",
-    "test:updater": "node --test electron/updater-coordinator.node-test.mjs electron/relaunch.node-test.mjs",
+    "test:updater": "node --test electron/updater-coordinator.node-test.mjs electron/relaunch.node-test.mjs electron/probe.node-test.mjs",
     "bench:observation": "node --experimental-strip-types scripts/bench-observation.ts",
     "test:watch": "vitest",
     "test:cua": "pnpm build:cua && node scripts/smoke-cua.mjs",
