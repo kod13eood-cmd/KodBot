@@ -1,11 +1,13 @@
 import { app, BrowserWindow, clipboard, desktopCapturer, dialog, ipcMain, Menu, MenuItem, safeStorage, session, shell, systemPreferences, utilityProcess } from "electron";
 import fs from "node:fs";
 import path from "node:path";
+import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { startCua, stopCua, registerCuaIpc } from "./cua.mjs";
 import { finishSpeech, startSpeech, stopSpeech } from "./speech.mjs";
 import { openBlankTerminal } from "./terminal-launch.mjs";
 import { startUpdater, registerUpdaterIpc } from "./updater.mjs";
+import { relaunchCommand } from "./relaunch.mjs";
 import capabilitiesModule from "./capabilities.cjs";
 
 const { desktopCapabilities } = capabilitiesModule;
@@ -95,6 +97,25 @@ async function probeRemote(url) {
   } catch {
     return false;
   }
+}
+
+/** Restart the app after a connection change.
+ *
+ * On Linux the AppImage may run in extract-and-run mode (FUSE unavailable),
+ * where process.execPath points into a temp directory the AppImage runtime
+ * deletes on exit. Electron's own relaunch would race that cleanup; start the
+ * real AppImage (KODBOT_APPIMAGE) on a short delay instead. */
+function relaunchApp() {
+  const command = relaunchCommand({ platform: process.platform, appImage: process.env.KODBOT_APPIMAGE });
+  if (!command) {
+    app.relaunch();
+    app.exit(0);
+    return;
+  }
+  // Detached and stdio-free so the child outlives this process; the env is
+  // inherited so the AppImage keeps APPIMAGE_EXTRACT_AND_RUN and the session.
+  spawn(command.command, command.args, { detached: true, stdio: "ignore", env: process.env }).unref();
+  app.exit(0);
 }
 
 let remoteConnection = { mode: "local" };
@@ -632,10 +653,7 @@ ipcMain.handle("server:set-connection", async (_event, value) => {
   }
   // Relaunch so every window, server child, and companion decision starts
   // from the new mode rather than half-applying it to a live process.
-  setTimeout(() => {
-    app.relaunch();
-    app.exit(0);
-  }, 150);
+  setTimeout(relaunchApp, 150);
   return { ok: true };
 });
 ipcMain.handle("companion:state", () =>

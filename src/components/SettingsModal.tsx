@@ -16,6 +16,7 @@ import { VoiceSettings } from "./VoiceSettings";
 import { openShortcutsSheet, SHORTCUTS_KEY_LABEL } from "./ShortcutsSheet";
 import { cn } from "@/lib/cn";
 import { LOCALE_OPTIONS, useI18n } from "@/lib/i18n";
+import { remoteSwitchAvailable } from "@/lib/server-switch";
 import type { ServerConnectionState } from "@/types/ogb";
 
 const SECTIONS: Array<{ id: AppSettingsSection; label: string; icon: typeof User }> = [
@@ -160,7 +161,6 @@ function ServerCard() {
     }
   };
 
-  const remote = state?.mode === "remote";
   return (
     <Card
       title={t("Server")}
@@ -187,7 +187,7 @@ function ServerCard() {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => void choose("remote")}
-            disabled={busy !== null || !url.trim() || (remote && !state?.fallback)}
+            disabled={busy !== null || !remoteSwitchAvailable(url, state)}
             className="rounded-lg border border-hairline/40 px-3 py-1.5 text-[13px] text-ink hover:bg-raised disabled:opacity-40"
           >
             {busy === "remote" ? t("Connecting…") : t("Connect to remote server")}
