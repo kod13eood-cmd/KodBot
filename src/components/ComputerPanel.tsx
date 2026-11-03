@@ -53,14 +53,24 @@ function routineScheduleLabel(routine: Routine) {
     });
   }
   const days = routine.schedule.weekdays;
-  const cadence =
+  const daysLabel =
     days.length === 7
       ? "Every day"
       : days.join(",") === "1,2,3,4,5"
         ? "Weekdays"
         : days.map((day) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][day]).join(", ");
+  if (routine.schedule.type === "interval") {
+    const every = routine.schedule.everyMinutes;
+    const cadence =
+      every === 60 ? "Every hour" : every > 60 && every % 60 === 0 ? `Every ${every / 60} hours` : `Every ${every} min`;
+    const window =
+      routine.schedule.startTime && routine.schedule.endTime
+        ? ` · ${routine.schedule.startTime}–${routine.schedule.endTime}`
+        : "";
+    return `${cadence}${window}${days.length === 7 ? "" : ` · ${daysLabel}`}`;
+  }
   const [hour, minute] = routine.schedule.time.split(":").map(Number);
-  return `${cadence} · ${new Date(2000, 0, 1, hour, minute).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+  return `${daysLabel} · ${new Date(2000, 0, 1, hour, minute).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
 }
 
 function nextRunLabel(at: number | null) {

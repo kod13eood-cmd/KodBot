@@ -7,7 +7,16 @@ import type { RuntimeEvent } from "./contracts.ts";
 
 export type RoutineSchedule =
   | { type: "once"; at: number }
-  | { type: "daily"; time: string; weekdays: number[] };
+  | { type: "daily"; time: string; weekdays: number[] }
+  | {
+      type: "interval";
+      /** minutes between runs, 5…1440 */
+      everyMinutes: number;
+      /** optional wall-clock window; both absent = all day */
+      startTime?: string;
+      endTime?: string;
+      weekdays: number[];
+    };
 
 /** `cloud` runs the agent itself inside the bot's Box VM. `crew` keeps
  * using the provider selected on the CREW and only borrows its configured
@@ -111,6 +120,14 @@ function cleanDays(days: unknown): number[] {
   return out.length ? out : ALL_DAYS;
 }
 
+/** `HH:MM` → minutes from midnight. */
+function timeToMinutes(time: string): number {
+  const [hour, minute] = time.split(":").map(Number);
+  return hour * 60 + minute;
+}
+
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 function cleanSchedule(schedule: RoutineSchedule): RoutineSchedule {
   if (schedule?.type === "once") {
     const at = Number(schedule.at);
@@ -119,15 +136,66 @@ function cleanSchedule(schedule: RoutineSchedule): RoutineSchedule {
   }
   if (schedule?.type === "daily") {
     const time = String(schedule.time ?? "");
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error("Time must use HH:MM");
+    if (!TIME_PATTERN.test(time)) throw new Error("Time must use HH:MM");
     return { type: "daily", time, weekdays: cleanDays(schedule.weekdays) };
   }
+  if (schedule?.type === "interval") {
+    const everyMinutes = Math.round(Number(schedule.everyMinutes));
+    if (!Number.isFinite(everyMinutes) || everyMinutes < 5 || everyMinutes > 24 * 60) {
+      throw new Error("The interval must be between 5 minutes and 24 hours");
+    }
+    const startTime = schedule.startTime == null ? undefined : String(schedule.startTime);
+    const endTime = schedule.endTime == null ? undefined : String(schedule.endTime);
+    if ((startTime === undefined) !== (endTime === undefined)) {
+      throw new Error("Choose both a start and an end time, or leave the window off");
+    }
+    if (startTime && endTime) {
+      if (!TIME_PATTERN.test(startTime) || !TIME_PATTERN.test(endTime)) throw new Error("Times must use HH:MM");
+      if (timeToMinutes(endTime) <= timeToMinutes(startTime)) {
+        throw new Error("The window must end after it starts");
+      }
+    }
+    return {
+      type: "interval",
+      everyMinutes,
+      ...(startTime && endTime ? { startTime, endTime } : {}),
+      weekdays: cleanDays(schedule.weekdays),
+    };
+  }
   throw new Error("Choose a supported schedule");
+}
+
+/** The first slot strictly after `after`, inside the day's window and the
+ * selected weekdays. Slots are anchored at the window start, so 09:00–18:00
+ * every 15 minutes is 09:00, 09:15 … 17:45 — not a rolling timer that drifts
+ * with the process. */
+function nextIntervalOccurrence(
+  schedule: Extract<RoutineSchedule, { type: "interval" }>,
+  after: number,
+): number | null {
+  const every = schedule.everyMinutes * 60_000;
+  const startMinutes = schedule.startTime ? timeToMinutes(schedule.startTime) : 0;
+  const endMinutes = schedule.endTime ? timeToMinutes(schedule.endTime) : 24 * 60;
+  const weekdays = new Set(cleanDays(schedule.weekdays));
+  if (endMinutes <= startMinutes) return null;
+  for (let offset = 0; offset <= 8; offset++) {
+    const day = new Date(after);
+    day.setDate(day.getDate() + offset);
+    day.setHours(0, 0, 0, 0);
+    if (!weekdays.has(day.getDay())) continue;
+    const start = day.getTime() + startMinutes * 60_000;
+    const end = day.getTime() + endMinutes * 60_000;
+    let slot = start;
+    if (slot <= after) slot = start + (Math.floor((after - start) / every) + 1) * every;
+    if (slot < end) return slot;
+  }
+  return null;
 }
 
 /** Next wall-clock occurrence in this computer's timezone, strictly after `after`. */
 export function nextOccurrence(schedule: RoutineSchedule, after: number): number | null {
   if (schedule.type === "once") return schedule.at > after ? schedule.at : null;
+  if (schedule.type === "interval") return nextIntervalOccurrence(schedule, after);
   const [hour, minute] = schedule.time.split(":").map(Number);
   const weekdays = new Set(cleanDays(schedule.weekdays));
   for (let offset = 0; offset <= 8; offset++) {
@@ -419,6 +487,21 @@ export class RoutineManager {
       for (const routine of this.routines) {
         if (!routine.enabled || routine.nextRunAt == null || routine.nextRunAt > now) continue;
         const scheduledFor = routine.nextRunAt;
+        // An interval can come due again before a slow turn ends. Never stack
+        // unattended runs for the same routine: advance to the next future
+        // slot and let the current run finish.
+        const active = this.runs.some(
+          (run) =>
+            run.routineId === routine.id &&
+            ["queued", "running", "waiting"].includes(run.status),
+        );
+        if (active) {
+          routine.nextRunAt = nextOccurrence(routine.schedule, Math.max(now, scheduledFor));
+          routine.updatedAt = now;
+          this.emitRoutine(routine);
+          changed = true;
+          continue;
+        }
         const late = now - scheduledFor;
         if (late > CATCH_UP_MS) {
           const missed = this.newRun(routine, scheduledFor, false);

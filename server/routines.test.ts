@@ -69,6 +69,38 @@ describe("nextOccurrence", () => {
     expect(nextOccurrence({ type: "once", at: 200 }, 100)).toBe(200);
     expect(nextOccurrence({ type: "once", at: 100 }, 100)).toBeNull();
   });
+
+  it("finds the next interval slot inside a working-hours window", () => {
+    const monday = new Date(2026, 7, 17, 9, 7, 0).getTime();
+    const next = nextOccurrence(
+      { type: "interval", everyMinutes: 15, startTime: "09:00", endTime: "18:00", weekdays: [1] },
+      monday,
+    )!;
+    const d = new Date(next);
+    expect(d.getDay()).toBe(1);
+    expect([d.getHours(), d.getMinutes()]).toEqual([9, 15]);
+  });
+
+  it("rolls an interval to the next selected day after the window closes", () => {
+    const mondayEvening = new Date(2026, 7, 17, 18, 0, 0).getTime();
+    const next = nextOccurrence(
+      { type: "interval", everyMinutes: 30, startTime: "09:00", endTime: "18:00", weekdays: [1, 2] },
+      mondayEvening,
+    )!;
+    const d = new Date(next);
+    expect(d.getDay()).toBe(2);
+    expect([d.getHours(), d.getMinutes()]).toEqual([9, 0]);
+  });
+
+  it("runs an interval all day when no window is set", () => {
+    const at = new Date(2026, 7, 17, 10, 7, 0).getTime();
+    const next = nextOccurrence(
+      { type: "interval", everyMinutes: 60, weekdays: [0, 1, 2, 3, 4, 5, 6] },
+      at,
+    )!;
+    const d = new Date(next);
+    expect([d.getHours(), d.getMinutes()]).toEqual([11, 0]);
+  });
 });
 
 describe("RoutineManager", () => {
@@ -259,6 +291,43 @@ describe("RoutineManager", () => {
 
     expect(h.manager.listRuns()).toHaveLength(1);
     expect(h.manager.listRoutines()[0]!.nextRunAt).toBeGreaterThan(routine.nextRunAt!);
+  });
+
+  it("runs an interval routine inside its window and advances to the next slot", async () => {
+    const h = harness();
+    const routine = h.manager.create({
+      name: "Every 15 minutes",
+      prompt: "Check it",
+      botId: "crew-interval",
+      schedule: { type: "interval", everyMinutes: 15, startTime: "08:00", endTime: "09:00", weekdays: [1] },
+    });
+    expect(routine.nextRunAt).toBe(new Date(2026, 7, 17, 8, 15).getTime());
+
+    h.setNow(routine.nextRunAt!);
+    await h.manager.tick();
+
+    expect(h.started).toHaveLength(1);
+    expect(h.manager.listRuns()[0]).toMatchObject({ status: "running", scheduledFor: routine.nextRunAt });
+    expect(h.manager.listRoutines()[0]!.nextRunAt).toBe(new Date(2026, 7, 17, 8, 30).getTime());
+  });
+
+  it("does not stack interval runs while the previous turn is still active", async () => {
+    const h = harness();
+    const routine = h.manager.create({
+      name: "Every 15 minutes",
+      prompt: "Check it",
+      botId: "crew-overlap",
+      schedule: { type: "interval", everyMinutes: 15, startTime: "08:00", endTime: "09:00", weekdays: [1] },
+    });
+    h.setNow(routine.nextRunAt!);
+    await h.manager.tick();
+
+    h.setNow(new Date(2026, 7, 17, 8, 30).getTime());
+    await h.manager.tick();
+
+    expect(h.started).toHaveLength(1);
+    expect(h.manager.listRuns()).toHaveLength(1);
+    expect(h.manager.listRoutines()[0]!.nextRunAt).toBe(new Date(2026, 7, 17, 8, 45).getTime());
   });
 
   it("records a missed receipt instead of launching very stale work", async () => {

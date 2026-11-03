@@ -34,6 +34,10 @@ function localeTag(locale: Locale) {
   return locale === "bg" ? "bg-BG" : "en-US";
 }
 
+/** Preset intervals for the editor. 60 is labelled "Every hour" and longer
+ * whole-hour values read as hours; the server accepts 5…1440. */
+const INTERVAL_OPTIONS = [5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 360, 720];
+
 /** A stable Sunday-first reference week, so weekday labels can follow the UI
  * language without depending on the user's system locale. */
 function weekdayShort(day: number, locale: Locale) {
@@ -96,14 +100,44 @@ function scheduleLabel(routine: Routine, locale: Locale, t: Translate) {
     return `${niceDate(routine.schedule.at, locale)}, ${niceTime(routine.schedule.at, locale)}`;
   }
   const days = routine.schedule.weekdays;
+  const daysLabel =
+    days.length === 7
+      ? ""
+      : days.join(",") === "1,2,3,4,5"
+        ? t(", weekdays")
+        : t(", {days}", { days: days.map((day) => weekdayShort(day, locale)).join(", ") });
+  if (routine.schedule.type === "interval") {
+    const every = intervalLabel(routine.schedule.everyMinutes, t);
+    const window =
+      routine.schedule.startTime && routine.schedule.endTime
+        ? t(", {start}–{end}", {
+            start: niceTime(atLocalTime(Date.now(), routine.schedule.startTime), locale),
+            end: niceTime(atLocalTime(Date.now(), routine.schedule.endTime), locale),
+          })
+        : "";
+    return `${every}${window}${daysLabel}`;
+  }
   const time = niceTime(atLocalTime(Date.now(), routine.schedule.time), locale);
   if (days.length === 7) return t("Every day at {time}", { time });
   if (days.join(",") === "1,2,3,4,5") return t("Weekdays at {time}", { time });
   return t("{days} at {time}", { days: days.map((day) => weekdayShort(day, locale)).join(", "), time });
 }
 
+/** "Every 15 minutes", "Every hour", "Every 2 hours" — shared by the editor
+ * preset list and the calendar labels. */
+function intervalLabel(minutes: number, t: Translate): string {
+  if (minutes === 60) return t("Every hour");
+  if (minutes > 60 && minutes % 60 === 0) return t("Every {count} hours", { count: minutes / 60 });
+  return t("Every {count} min", { count: minutes });
+}
+
+function timeToMinutes(time: string): number {
+  const [hour, minute] = time.split(":").map(Number);
+  return hour * 60 + minute;
+}
+
 function canToggleRoutine(routine: Routine) {
-  return routine.schedule.type === "daily" || routine.schedule.at > Date.now();
+  return routine.schedule.type !== "once" || routine.schedule.at > Date.now();
 }
 
 function statusState(status: RoutineRunStatus): CrewState {
@@ -191,6 +225,26 @@ function projectedItems(routines: Routine[], runs: RoutineRun[], from: number, t
       const at = routine.schedule.at;
       if (at >= from && at < to && !hasReceipt(routine.id, at)) {
         items.push({ id: `next-${routine.id}-${at}`, at, routine, run: null });
+      }
+      continue;
+    }
+    if (routine.schedule.type === "interval") {
+      const every = routine.schedule.everyMinutes * 60_000;
+      const startMinutes = routine.schedule.startTime ? timeToMinutes(routine.schedule.startTime) : 0;
+      const endMinutes = routine.schedule.endTime ? timeToMinutes(routine.schedule.endTime) : 24 * 60;
+      // A 15-minute schedule would otherwise paint hundreds of cards over a
+      // week; show the first few and let the run receipts carry the history.
+      let shown = 0;
+      for (let day = startOfDay(from); day < to && shown < 6; day = addDays(day, 1)) {
+        if (!routine.schedule.weekdays.includes(new Date(day).getDay())) continue;
+        const start = day + startMinutes * 60_000;
+        const end = day + endMinutes * 60_000;
+        for (let at = start; at < end && shown < 6; at += every) {
+          if (at < from || at >= to || at < routine.createdAt) continue;
+          if (hasReceipt(routine.id, at)) continue;
+          items.push({ id: `next-${routine.id}-${at}`, at, routine, run: null });
+          shown += 1;
+        }
       }
       continue;
     }
@@ -352,19 +406,35 @@ export function RoutineEditor({
   const [prompt, setPrompt] = useState(routine?.prompt ?? "");
   const [botId, setBotId] = useState(lockedBotId ?? routine?.botId ?? bots[0]?.id ?? "");
   const [runOn, setRunOn] = useState<RoutineRunOn>(routine?.runOn ?? defaultRunOn ?? "crew");
-  const [kind, setKind] = useState<"once" | "daily">(routine?.schedule.type ?? "daily");
+  const initialSchedule = routine?.schedule;
+  const [kind, setKind] = useState<"once" | "daily" | "interval">(initialSchedule?.type ?? "daily");
   const [at, setAt] = useState(
-    toInputDateTime(routine?.schedule.type === "once" ? routine.schedule.at : nextHour()),
+    toInputDateTime(initialSchedule?.type === "once" ? initialSchedule.at : nextHour()),
   );
-  const [time, setTime] = useState(routine?.schedule.type === "daily" ? routine.schedule.time : "09:00");
+  const [time, setTime] = useState(initialSchedule?.type === "daily" ? initialSchedule.time : "09:00");
+  const [intervalMinutes, setIntervalMinutes] = useState(
+    initialSchedule?.type === "interval" ? initialSchedule.everyMinutes : 15,
+  );
+  const [limitWindow, setLimitWindow] = useState(
+    initialSchedule?.type === "interval" && Boolean(initialSchedule.startTime),
+  );
+  const [startTime, setStartTime] = useState(
+    initialSchedule?.type === "interval" ? (initialSchedule.startTime ?? "09:00") : "09:00",
+  );
+  const [endTime, setEndTime] = useState(
+    initialSchedule?.type === "interval" ? (initialSchedule.endTime ?? "18:00") : "18:00",
+  );
   const [weekdays, setWeekdays] = useState(
-    routine?.schedule.type === "daily" ? routine.schedule.weekdays : [1, 2, 3, 4, 5],
+    initialSchedule?.type === "daily" || initialSchedule?.type === "interval"
+      ? initialSchedule.weekdays
+      : [1, 2, 3, 4, 5],
   );
   const [durationMinutes, setDurationMinutes] = useState(routine?.durationMinutes ?? 30);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const cloudInstance = state.instances.find((instance) => instance.driverKind === "boxAgent");
   const cloudReady = Boolean(state.config?.box.configured && cloudInstance?.snapshot.state === "available");
+  const intervalOptions = Array.from(new Set([...INTERVAL_OPTIONS, intervalMinutes])).sort((a, b) => a - b);
 
   const save = async () => {
     const input: RoutineInput = {
@@ -377,7 +447,14 @@ export function RoutineEditor({
       schedule:
         kind === "once"
           ? { type: "once", at: new Date(at).getTime() }
-          : { type: "daily", time, weekdays },
+          : kind === "interval"
+            ? {
+                type: "interval",
+                everyMinutes: intervalMinutes,
+                ...(limitWindow ? { startTime, endTime } : {}),
+                weekdays,
+              }
+            : { type: "daily", time, weekdays },
     };
     setSaving(true);
     setError("");
@@ -464,15 +541,57 @@ export function RoutineEditor({
           <div>
             <div className="mb-2 text-[12px] font-medium text-ink-secondary">{t("When?")}</div>
             <div className="mb-3 inline-flex rounded-xl bg-inset p-1">
-              {(["once", "daily"] as const).map((value) => (
-                <button key={value} onClick={() => setKind(value)} className={cn("rounded-lg px-4 py-1.5 text-[13px]", kind === value ? "bg-raised text-ink shadow" : "text-ink-secondary hover:text-ink")}>{value === "daily" ? t("Repeating") : t("Once")}</button>
+              {(["once", "daily", "interval"] as const).map((value) => (
+                <button
+                  key={value}
+                  onClick={() => setKind(value)}
+                  className={cn(
+                    "rounded-lg px-4 py-1.5 text-[13px]",
+                    kind === value ? "bg-raised text-ink shadow" : "text-ink-secondary hover:text-ink",
+                  )}
+                >
+                  {value === "once" ? t("Once") : value === "daily" ? t("Daily") : t("Interval")}
+                </button>
               ))}
             </div>
             {kind === "once" ? (
               <input type="datetime-local" value={at} onChange={(event) => setAt(event.target.value)} className="block rounded-xl border border-hairline/60 bg-inset px-3.5 py-2.5 text-[14px] text-ink outline-none focus:border-accent/70 [color-scheme:dark]" />
             ) : (
               <div className="space-y-3">
-                <input type="time" value={time} onChange={(event) => setTime(event.target.value)} className="rounded-xl border border-hairline/60 bg-inset px-3.5 py-2.5 text-[14px] text-ink outline-none focus:border-accent/70 [color-scheme:dark]" />
+                {kind === "interval" ? (
+                  <>
+                    <label className="flex flex-wrap items-center gap-2 text-[13px] text-ink">
+                      <span>{t("Repeat every")}</span>
+                      <select
+                        value={intervalMinutes}
+                        onChange={(event) => setIntervalMinutes(Number(event.target.value))}
+                        className="rounded-xl border border-hairline/60 bg-inset px-3.5 py-2 text-[14px] text-ink outline-none focus:border-accent/70"
+                      >
+                        {intervalOptions.map((minutes) => (
+                          <option key={minutes} value={minutes}>{intervalLabel(minutes, t)}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-2 text-[13px] text-ink">
+                      <input
+                        type="checkbox"
+                        checked={limitWindow}
+                        onChange={(event) => setLimitWindow(event.target.checked)}
+                        className="size-4 rounded border-hairline/60 accent-[var(--color-accent)]"
+                      />
+                      {t("Only between certain hours")}
+                    </label>
+                    {limitWindow && (
+                      <div className="flex items-center gap-2">
+                        <input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} className="rounded-xl border border-hairline/60 bg-inset px-3.5 py-2 text-[14px] text-ink outline-none focus:border-accent/70 [color-scheme:dark]" />
+                        <span className="text-ink-secondary">–</span>
+                        <input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} className="rounded-xl border border-hairline/60 bg-inset px-3.5 py-2 text-[14px] text-ink outline-none focus:border-accent/70 [color-scheme:dark]" />
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <input type="time" value={time} onChange={(event) => setTime(event.target.value)} className="rounded-xl border border-hairline/60 bg-inset px-3.5 py-2.5 text-[14px] text-ink outline-none focus:border-accent/70 [color-scheme:dark]" />
+                )}
                 <div className="flex flex-wrap gap-1.5">
                   {Array.from({ length: 7 }, (_, day) => (
                     <button key={day} type="button" onClick={() => setWeekdays((current) => current.includes(day) ? (current.length === 1 ? current : current.filter((value) => value !== day)) : [...current, day].sort())} className={cn("size-10 rounded-xl border text-[11px] font-medium", weekdays.includes(day) ? "border-accent bg-accent text-white" : "border-hairline/50 bg-inset text-ink-secondary hover:text-ink")}>{weekdayShort(day, locale).slice(0, 2)}</button>

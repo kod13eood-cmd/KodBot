@@ -1,6 +1,13 @@
 export type RoutineSchedule =
   | { type: "once"; at: number }
-  | { type: "daily"; time: string; weekdays: number[] };
+  | { type: "daily"; time: string; weekdays: number[] }
+  | {
+      type: "interval";
+      everyMinutes: number;
+      startTime?: string;
+      endTime?: string;
+      weekdays: number[];
+    };
 
 export type RoutineRunOn = "crew" | "cloud";
 

@@ -92,6 +92,13 @@ does not open it, while **Ctrl+R** reloads, **Ctrl+Shift+R** force-reloads
 (useful after a server UI update), and **Ctrl+Shift+I** opens the developer
 tools.
 
+### Flexible schedules — Live
+
+Automations can run once, daily at a chosen time, or **on an interval** — every
+5 minutes up to once a day — optionally only inside a time window (for
+example 09:00–18:00) and on selected weekdays. A slow turn never stacks runs:
+the next slot waits for the current one to finish.
+
 ### Notifications — Live
 
 A bot that cannot continue — a command or file approval, a question — raises a
