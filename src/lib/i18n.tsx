@@ -196,6 +196,8 @@ const BULGARIAN: Record<string, string> = {
     "Копирането не успя — маркирай текста и натисни Ctrl+C",
   "The browser blocked clipboard access — select the command and copy it manually.":
     "Браузърът блокира достъпа до клипборда — маркирай командата и я копирай ръчно.",
+  "The browser blocked clipboard access — select the link and copy it manually.":
+    "Браузърът блокира достъпа до клипборда — маркирай линка и го копирай ръчно.",
   "needs approval": "иска одобрение",
   "has a question": "има въпрос",
   "is waiting for you": "чака те",

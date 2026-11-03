@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { api, useStore } from "@/state/store";
 import { cn } from "@/lib/cn";
+import { copyText } from "@/lib/clipboard";
 import { useI18n } from "@/lib/i18n";
 
 interface ToolkitCard {
@@ -463,6 +464,7 @@ export function PluginsPanel() {
   const [mode, setMode] = useState<"managed" | "self-hosted" | "unavailable">("unavailable");
   const [status, setStatus] = useState<Record<string, ConnectorStatus>>({});
   const [pendingUrls, setPendingUrls] = useState<Record<string, string>>({});
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [busySlug, setBusySlug] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -822,18 +824,43 @@ export function PluginsPanel() {
                         </span>
                       )}
                     </div>
-                    <div className="mt-0.5 truncate text-[12.5px] text-ink-secondary">
-                      {pending
-                        ? t("Finish setup in your browser")
-                        : failed
-                          ? t("Authorization expired — open details")
-                          : connected
-                            ? t("{count} active account(s)", {
-                                count: accounts.filter((account) => /^active$/i.test(account.status ?? "")).length || 1,
-                              })
-                            : hasAccounts
-                              ? t("Accounts need attention — open details")
-                              : card.blurb}
+                    <div className="mt-0.5 flex min-w-0 items-center gap-2 text-[12.5px] text-ink-secondary">
+                      <span className="min-w-0 truncate">
+                        {pending
+                          ? t("Finish setup in your browser")
+                          : failed
+                            ? t("Authorization expired — open details")
+                            : connected
+                              ? t("{count} active account(s)", {
+                                  count: accounts.filter((account) => /^active$/i.test(account.status ?? "")).length || 1,
+                                })
+                              : hasAccounts
+                                ? t("Accounts need attention — open details")
+                                : card.blurb}
+                      </span>
+                      {pending && pendingUrls[card.slug] && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = pendingUrls[card.slug];
+                            if (!url) return;
+                            void copyText(url).then((ok) => {
+                              if (!ok) {
+                                setError(t("The browser blocked clipboard access — select the link and copy it manually."));
+                                return;
+                              }
+                              setCopiedLink(card.slug);
+                              window.setTimeout(
+                                () => setCopiedLink((current) => (current === card.slug ? null : current)),
+                                1500,
+                              );
+                            });
+                          }}
+                          className="shrink-0 font-medium text-accent hover:underline"
+                        >
+                          {copiedLink === card.slug ? t("Copied") : t("Copy link")}
+                        </button>
+                      )}
                     </div>
                   </div>
                   <button
