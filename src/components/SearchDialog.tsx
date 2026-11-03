@@ -324,26 +324,28 @@ export function SearchDialog({
         aria-label={t("Search everything")}
         className="flex h-[min(720px,78vh)] w-full max-w-[700px] flex-col overflow-hidden rounded-2xl border border-hairline/60 bg-panel shadow-2xl shadow-black/50"
       >
-        <div className="flex items-center gap-2.5 border-b border-hairline/40 px-4 py-3">
-          <Search size={18} className="shrink-0 text-accent" />
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(event) => onQuery(event.target.value)}
-            placeholder={t("Search everything")}
-            aria-label={t("Search everything")}
-            className="min-w-0 flex-1 bg-transparent text-[15px] text-ink placeholder:text-ink-secondary focus:outline-none"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => onQuery("")}
-              aria-label={t("Clear search")}
-              className="rounded-md p-1 text-ink-secondary hover:bg-raised hover:text-ink"
-            >
-              <X size={15} />
-            </button>
-          )}
+        <div className="flex items-center gap-2 border-b border-hairline/40 px-3 py-2.5">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-hairline/40 bg-inset px-3 py-2 transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/20">
+            <Search size={17} className="shrink-0 text-accent" />
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={(event) => onQuery(event.target.value)}
+              placeholder={t("Search everything")}
+              aria-label={t("Search everything")}
+              className="field-input min-w-0 flex-1 bg-transparent text-[15px] text-ink placeholder:text-ink-secondary focus:outline-none"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => onQuery("")}
+                aria-label={t("Clear search")}
+                className="rounded-md p-1 text-ink-secondary hover:bg-raised hover:text-ink"
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}

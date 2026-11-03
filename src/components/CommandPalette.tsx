@@ -157,18 +157,20 @@ export function CommandPalette() {
         aria-label={t("Command palette")}
         className="flex max-h-[min(480px,70vh)] w-full max-w-[560px] flex-col overflow-hidden rounded-xl border border-hairline/50 bg-card shadow-2xl shadow-black/60"
       >
-        <div className="flex items-center gap-3 border-b border-hairline/40 px-4 py-3">
-          <Search size={16} className="shrink-0 text-ink-secondary" />
-          <input
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("Search bots, rooms, messages…")}
-            className="w-full bg-transparent text-[14px] text-ink placeholder:text-ink-secondary focus:outline-none"
-          />
-          <kbd className="shrink-0 rounded-md border border-hairline/40 px-1.5 py-0.5 text-[11px] text-ink-secondary">
-            esc
-          </kbd>
+        <div className="border-b border-hairline/40 px-3 py-2.5">
+          <div className="flex items-center gap-3 rounded-xl border border-hairline/40 bg-inset px-3 py-2 transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/20">
+            <Search size={16} className="shrink-0 text-ink-secondary" />
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("Search bots, rooms, messages…")}
+              className="field-input w-full bg-transparent text-[14px] text-ink placeholder:text-ink-secondary focus:outline-none"
+            />
+            <kbd className="shrink-0 rounded-md border border-hairline/40 px-1.5 py-0.5 text-[11px] text-ink-secondary">
+              esc
+            </kbd>
+          </div>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {entries.length === 0 && (

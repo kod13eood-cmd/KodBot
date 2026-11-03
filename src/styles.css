@@ -66,8 +66,10 @@ body {
 /* The prompt paints focus on its surrounding pill instead. The global inset
    outline sits inside the textarea's zero-width padding and clips the first
    glyph of every line; the frame keeps the same keyboard affordance without
-   covering the text. */
-.composer-textarea:focus {
+   covering the text. Search fields do the same: their wrapper draws an outer
+   ring so the text keeps its breathing room. */
+.composer-textarea:focus,
+.field-input:focus {
   outline: none;
 }
 
