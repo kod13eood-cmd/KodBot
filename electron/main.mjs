@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, desktopCapturer, dialog, ipcMain, Menu, MenuItem, safeStorage, session, shell, systemPreferences, utilityProcess } from "electron";
+import { app, BrowserWindow, clipboard, desktopCapturer, dialog, ipcMain, Menu, MenuItem, nativeImage, safeStorage, session, shell, systemPreferences, Tray, utilityProcess } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -416,9 +416,45 @@ function installContextMenu(win) {
   });
 }
 
+// ── system tray ────────────────────────────────────────────────────────
+// Linux shows this through StatusNotifier/AppIndicator (the Ubuntu GNOME
+// extension is enabled), Windows in the notification area, macOS in the menu
+// bar. One icon for the app, not one per bot: the window already lists them.
+let tray = null;
+
+function createTray() {
+  if (tray) return tray;
+  const icon = nativeImage.createFromPath(APP_ICON);
+  const size = process.platform === "darwin" ? 18 : 22;
+  tray = new Tray(icon.isEmpty() ? APP_ICON : icon.resize({ width: size, height: size }));
+  tray.setToolTip(`KodBot ${app.getVersion()}`);
+
+  const showWindow = () => {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (!win) {
+      createWindow(remoteMode ? remoteConnection.url : null);
+      return;
+    }
+    if (win.isMinimized()) win.restore();
+    win.show();
+    win.focus();
+  };
+
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: "Open KodBot", click: showWindow },
+      { type: "separator" },
+      { label: "Quit KodBot", click: () => app.quit() },
+    ]),
+  );
+  // Windows and some Linux desktops deliver a plain click; AppIndicator
+  // opens the context menu instead, so both paths lead to the same window.
+  tray.on("click", showWindow);
+  return tray;
+}
+
 function createWindow(remoteUrl = null) {
-  const isMac = process.platform === "darwin";
-  const win = new BrowserWindow({
+  const isMac = process.platform === "darwin";  const win = new BrowserWindow({
     width: 1440,
     height: 920,
     minWidth: 900,
@@ -726,6 +762,10 @@ ipcMain.handle("credential:set", async (_event, name, value) => {
 
 app.whenReady().then(async () => {
   if (process.platform === "darwin") app.dock.setIcon(APP_ICON);
+  // No application menu on Linux/Windows: Alt must not drop a File/Edit/View
+  // bar over the custom title strip. macOS keeps its menu — Cmd+Q and the
+  // standard edit commands live there.
+  if (process.platform !== "darwin") Menu.setApplicationMenu(null);
   remoteConnection = readServerConnection();
   if (remoteConnection.mode === "remote") {
     const probe = await probeHarness(remoteConnection.url);
@@ -812,6 +852,7 @@ app.whenReady().then(async () => {
   // in-app auto-update (packaged only) — checks GitHub releases, downloads on
   // the user's click, installs on "Restart to update"
   startUpdater(win);
+  createTray();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(remoteMode ? remoteConnection.url : null);
   });
