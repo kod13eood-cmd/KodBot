@@ -563,7 +563,9 @@ function PageArtifactCard({ page }: { page: NonNullable<Message["page"]> }) {
             <iframe
               src={url}
               title={page.title}
-              sandbox="allow-scripts"
+              data-kodbot-page
+              data-kodbot-bot={page.botId}
+              sandbox="allow-scripts allow-downloads"
               referrerPolicy="no-referrer"
               loading="lazy"
               tabIndex={-1}
@@ -608,7 +610,9 @@ function PageArtifactCard({ page }: { page: NonNullable<Message["page"]> }) {
               <iframe
                 src={url}
                 title={page.title}
-                sandbox="allow-scripts"
+                data-kodbot-page
+                data-kodbot-bot={page.botId}
+                sandbox="allow-scripts allow-downloads"
                 referrerPolicy="no-referrer"
                 className="min-h-0 flex-1 border-0 bg-white"
               />

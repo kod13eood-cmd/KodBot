@@ -274,6 +274,8 @@ A KodBot maintenance pass then restored the missing state:
 - `/home/paperclipi7/kodbot-backups/RESTORE.md` documents the restore process.
 - `kodbot-state-snapshot.timer` now snapshots `.kodbot` + `.kodbot-companion`
   and the live API every 15 minutes.
+- `kodbot-offsite-backup.timer` uploads a daily archive to `llm1:/home/llm1/backups/kodbot/`
+  at 03:30 Europe/Sofia (60-day retention, sha256-verified).
 
 Current state:
 
@@ -289,18 +291,27 @@ Current state:
 | backups | Yes | `/home/paperclipi7/kodbot-backups` |
 | `~/.config/kodbot.env` | Yes | Managed Composio broker URL/token and companion name |
 
-### Why restarting is safe now
+### Restart status (verified)
 
-Composio is **managed** and its broker credentials are in
-`/home/paperclipi7/.config/kodbot.env` (`OC_COMPOSIO_BROKER_URL` and
-`OC_COMPOSIO_BROKER_TOKEN`), loaded by `kodbot.service` through
-`EnvironmentFile=`. The empty `composio` section in `config.json` is therefore
-not a missing credential. OpenCode Go and profile live in `config.json`.
+No key re-entry is needed. Composio runs in **managed** mode from
+`OC_COMPOSIO_BROKER_URL` / `OC_COMPOSIO_BROKER_TOKEN`, which live in
+`/etc/systemd/system/kodbot.service`'s `EnvironmentFile`
+(`~/.config/kodbot.env`) and are on disk, not memory-only. `config.json`
+persists the OpenCode Go key and profile.
 
-After the restoration, `kodbot.service` was restarted and `/api/config` still
-reported `composio.mode: "managed"`. The 19:50 handoff snapshot remains at
-`/home/paperclipi7/kodbot-handoff-20261102-1950.tgz` for comparison; the newer
-`~/kodbot-backups/hot-*` snapshots are the current recovery path.
+Before any restart, take a fresh snapshot as usual:
+
+```sh
+sudo systemctl start kodbot-state-snapshot.service
+```
+
+The 15-minute timer and `RESTORE.md` cover local recovery. A daily archive at
+03:30 Europe/Sofia is uploaded to `llm1:/home/llm1/backups/kodbot/`
+(60-day retention, checksum-verified).
+
+The 19:50 handoff snapshot remains at
+`/home/paperclipi7/kodbot-handoff-20261102-1950.tgz` (mode `600`) for comparison;
+it predates the restoration and should not replace the newer backups.
 
 ## 7. Agent operating rules
 
