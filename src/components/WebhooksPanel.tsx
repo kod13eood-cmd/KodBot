@@ -21,6 +21,7 @@ import {
 import { CrewAvatar } from "@/components/Avatar";
 import { displayRole } from "@/lib/mascot";
 import { cn } from "@/lib/cn";
+import { copyText } from "@/lib/clipboard";
 import type { RoutineRun, RoutineRunOn } from "@/lib/routines";
 import {
   loadWebhookCredentials,
@@ -234,7 +235,9 @@ export function WebhooksPanel({ bots }: { bots: Bot[] }) {
         saveWebhookCredential(webhookCredentialStore(), webhook.id, credential!);
       }
       if (!credential) throw new Error(t("Could not create a terminal command"));
-      await navigator.clipboard.writeText(terminalCommand(credential));
+      if (!(await copyText(terminalCommand(credential)))) {
+        throw new Error(t("The browser blocked clipboard access — select the command and copy it manually."));
+      }
       setCopiedId(webhook.id);
       setTimeout(() => setCopiedId((current) => current === webhook.id ? null : current), 1_800);
     } catch (cause) {

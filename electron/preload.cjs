@@ -114,4 +114,9 @@ contextBridge.exposeInMainWorld("ogb", {
       return () => ipcRenderer.removeListener("notify:open", handler);
     },
   },
+  /** Main-process clipboard. The remote UI is plain HTTP, where the Web
+   * Clipboard API is unavailable; this works regardless of context. */
+  clipboard: {
+    writeText: (text) => ipcRenderer.invoke("clipboard:write", text),
+  },
 });

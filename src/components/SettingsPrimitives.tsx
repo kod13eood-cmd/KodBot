@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
+import { copyText } from "@/lib/clipboard";
 
 export function Card({
   title,
@@ -32,14 +33,10 @@ export function CommandLine({ command }: { command: string }) {
   );
 
   const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(command);
-      setCopied(true);
-      if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
-      resetTimer.current = window.setTimeout(() => setCopied(false), 1200);
-    } catch {
-      /* clipboard permission can be denied; leave the button unchanged */
-    }
+    if (!(await copyText(command))) return;
+    setCopied(true);
+    if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
+    resetTimer.current = window.setTimeout(() => setCopied(false), 1200);
   };
 
   return (

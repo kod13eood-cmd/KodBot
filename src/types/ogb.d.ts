@@ -100,6 +100,10 @@ declare global {
         }): Promise<{ shown: boolean }>;
         onOpen(cb: (payload: { botId: string; threadId?: string }) => void): () => void;
       };
+      /** Main-process clipboard, for the non-secure remote UI. */
+      clipboard?: {
+        writeText(text: string): Promise<boolean>;
+      };
     };
   }
 }

@@ -19,6 +19,7 @@ import { TeamsPanel } from "./TeamsPanel";
 import { autoMascotShape, MASCOT_SHAPE_IDS, MASCOT_SHAPES, normalizeMascotShape } from "@/lib/mascot-shapes";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { cn } from "@/lib/cn";
+import { copyText } from "@/lib/clipboard";
 import { requestNotificationPermission } from "@/lib/notify";
 import { botUsage, costCaption, formatTokens, formatUsd } from "@/lib/usage";
 import { shortPath } from "@/lib/short-path";
@@ -289,13 +290,12 @@ function MemoryCard({ bot }: { bot: Bot }) {
   };
 
   const copyImportPrompt = async () => {
-    try {
-      await navigator.clipboard.writeText(importPrompt);
-      setPromptCopied(true);
-      window.setTimeout(() => setPromptCopied(false), 1800);
-    } catch {
+    if (!(await copyText(importPrompt))) {
       setImportError(t("The browser blocked clipboard access. Select the prompt and copy it manually."));
+      return;
     }
+    setPromptCopied(true);
+    window.setTimeout(() => setPromptCopied(false), 1800);
   };
 
   return (
@@ -529,13 +529,12 @@ function PagesCard({ bot }: { bot: Bot }) {
   };
 
   const copy = async (page: PageSummary) => {
-    try {
-      await navigator.clipboard.writeText(pageUrl(page.name));
-      setCopied(page.name);
-      window.setTimeout(() => setCopied((current) => (current === page.name ? null : current)), 1800);
-    } catch {
+    if (!(await copyText(pageUrl(page.name)))) {
       setError(t("The browser blocked clipboard access; open the page and copy its URL."));
+      return;
     }
+    setCopied(page.name);
+    window.setTimeout(() => setCopied((current) => (current === page.name ? null : current)), 1800);
   };
 
   const remove = async (page: PageSummary) => {

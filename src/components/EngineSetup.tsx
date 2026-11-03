@@ -6,6 +6,7 @@ import { Check, Copy, Download, ExternalLink, LogIn, TerminalSquare } from "luci
 import { useDesktopCapabilities } from "@/components/DesktopCapabilities";
 import type { EngineInstall, InstanceInfo } from "@/state/store";
 import { cn } from "@/lib/cn";
+import { copyText } from "@/lib/clipboard";
 
 type Platform = "darwin" | "win32" | "linux";
 
@@ -45,12 +46,8 @@ function CommandRow({ command, actionLabel, remote = false }: { command: string;
   };
 
   const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(command);
-      settle("copied");
-    } catch {
-      // The command remains selectable when clipboard access is blocked.
-    }
+    if (await copyText(command)) settle("copied");
+    // The command remains selectable when clipboard access is blocked.
   };
 
   const openTerminal = async () => {

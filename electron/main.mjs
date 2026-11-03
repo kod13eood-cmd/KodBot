@@ -726,6 +726,15 @@ ipcMain.handle("window:toggle-maximize", (event) => {
 ipcMain.handle("window:close", (event) => windowFrom(event)?.close());
 ipcMain.handle("window:is-maximized", (event) => windowFrom(event)?.isMaximized() ?? false);
 
+// Clipboard writes go through the main process in the desktop app: the
+// remote UI is plain HTTP, where the renderer's navigator.clipboard is
+// unavailable, and the legacy execCommand fallback is not reliable there.
+ipcMain.handle("clipboard:write", (_event, text) => {
+  if (typeof text !== "string") return false;
+  clipboard.writeText(text.slice(0, 5_000_000));
+  return true;
+});
+
 // Native notifications. The remote UI is served over plain HTTP, which is not
 // a secure context, so the renderer's Web Notification permission is denied;
 // Electron's main-process Notification works regardless and uses the desktop

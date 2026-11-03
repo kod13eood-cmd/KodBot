@@ -11,6 +11,8 @@ import { memo, useEffect, useState, type ReactNode } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Check, Copy } from "lucide-react";
+import { copyText } from "@/lib/clipboard";
+import { useI18n } from "@/lib/i18n";
 import { parseProductCards } from "@/lib/product-cards";
 import { ProductCards } from "./ProductCards";
 
@@ -35,8 +37,9 @@ const hash = (s: string) => {
 };
 
 function CodeBlock({ code, lang, streaming }: { code: string; lang: string; streaming: boolean }) {
+  const { t } = useI18n();
   const [html, setHtml] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
   useEffect(() => {
     const key = `${lang}:${hash(code)}`;
@@ -81,10 +84,10 @@ function CodeBlock({ code, lang, streaming }: { code: string; lang: string; stre
     };
   }, [code, lang, streaming]);
 
-  const copy = () => {
-    void navigator.clipboard?.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1200);
+  const copy = async () => {
+    const ok = await copyText(code);
+    setCopyState(ok ? "copied" : "failed");
+    setTimeout(() => setCopyState("idle"), ok ? 1200 : 3000);
   };
 
   return (
@@ -92,11 +95,16 @@ function CodeBlock({ code, lang, streaming }: { code: string; lang: string; stre
       <div className="flex items-center justify-between border-b border-hairline/30 px-3 py-1">
         <span className="text-[11px] uppercase tracking-wide text-ink-secondary">{lang || "code"}</span>
         <button
-          onClick={copy}
+          onClick={() => void copy()}
+          aria-label={t("Copy code")}
           className="rounded p-1 text-ink-secondary hover:bg-raised hover:text-ink"
-          title="Copy code"
+          title={
+            copyState === "failed"
+              ? t("Copy failed — select the text and press Ctrl+C")
+              : t("Copy code")
+          }
         >
-          {copied ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+          {copyState === "copied" ? <Check size={13} className="text-success" /> : <Copy size={13} />}
         </button>
       </div>
       {html ? (

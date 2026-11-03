@@ -55,6 +55,7 @@ import { useFocusMessage } from "@/lib/focus-message";
 import { webhookMessageView } from "@/lib/webhook-message";
 import { BOTTOM_FOLLOW_THRESHOLD, shouldResumeBottomFollow } from "@/lib/bottom-follow";
 import { useI18n } from "@/lib/i18n";
+import { copyText } from "@/lib/clipboard";
 import { useDeveloperMode } from "@/lib/dev-mode";
 import {
   TRANSCRIPT_WINDOW_SIZE,
@@ -96,22 +97,23 @@ function DaySeparator({ at }: { at: number }) {
 /** Hover/focus-revealed copy control shared by user + bot bubbles. */
 function CopyButton({ text, className }: { text: string; className?: string }) {
   const { t } = useI18n();
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const copy = async () => {
+    const ok = await copyText(text);
+    setCopyState(ok ? "copied" : "failed");
+    setTimeout(() => setCopyState("idle"), ok ? 1200 : 3000);
+  };
   return (
     <button
-      onClick={() => {
-        void navigator.clipboard?.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1200);
-      }}
+      onClick={() => void copy()}
       aria-label={t("Copy message")}
-      title={t("Copy message")}
+      title={copyState === "failed" ? t("Copy failed — select the text and press Ctrl+C") : t("Copy message")}
       className={cn(
         "rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100",
         className,
       )}
     >
-      {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
+      {copyState === "copied" ? <Check size={14} className="text-success" /> : <Copy size={14} />}
     </button>
   );
 }

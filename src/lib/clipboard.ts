@@ -1,11 +1,23 @@
 /** Copy text from an ordinary click.
  *
- * `navigator.clipboard` is unavailable in a non-secure context — a KodBot
- * window opened over plain HTTP on the LAN, for example — and Electron can
- * deny it as well. The selection fallback still works there because it runs
- * inside the user's click, which is the permission browsers actually check.
+ * The remote UI is served over plain HTTP, which is not a secure context:
+ * `navigator.clipboard` is unavailable there, and Electron's renderer can deny
+ * it as well. The desktop app therefore exposes the main-process clipboard
+ * (which has no secure-context restriction); the browser fallbacks remain for
+ * the web build. The selection fallback runs inside the user's click, which is
+ * the permission browsers actually check.
  */
 export async function copyText(text: string): Promise<boolean> {
+  const native = window.ogb?.clipboard;
+  if (native) {
+    try {
+      await native.writeText(text);
+      return true;
+    } catch {
+      // fall through to the browser paths
+    }
+  }
+
   try {
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
@@ -15,7 +27,10 @@ export async function copyText(text: string): Promise<boolean> {
     // Permission denied or no secure context — try the click-driven fallback.
   }
 
-  const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const active =
+    typeof HTMLElement !== "undefined" && document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
   let area: HTMLTextAreaElement | null = null;
   try {
     area = document.createElement("textarea");
