@@ -83,6 +83,15 @@ The desktop app keeps a KodBot icon in the system tray with **Open KodBot** and
 **Quit KodBot**. The application menu is removed on Linux and Windows, so
 pressing Alt no longer drops a File/Edit/View bar over the window.
 
+### Window chrome — Live
+
+On Linux the desktop window is frameless: minimize, restore, and close float in
+the top-right corner over the app instead of sitting in a system title bar. The
+header strips are the drag handle. The application menu stays removed, so Alt
+does not open it, while **Ctrl+R** reloads, **Ctrl+Shift+R** force-reloads
+(useful after a server UI update), and **Ctrl+Shift+I** opens the developer
+tools.
+
 ### Shopping cards — Live
 
 A bot can emit a `products` block and KodBot renders real product cards with an

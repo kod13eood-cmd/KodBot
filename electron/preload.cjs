@@ -86,4 +86,21 @@ contextBridge.exposeInMainWorld("ogb", {
     get: () => ipcRenderer.invoke("server:get-connection"),
     set: (value) => ipcRenderer.invoke("server:set-connection", value),
   },
+  /** Floating minimize/restore/close for the frameless Linux window. Absent
+   * on macOS (native traffic lights) and Windows (native title-bar overlay). */
+  ...(process.platform === "linux"
+    ? {
+        windowControls: {
+          minimize: () => ipcRenderer.invoke("window:minimize"),
+          toggleMaximize: () => ipcRenderer.invoke("window:toggle-maximize"),
+          close: () => ipcRenderer.invoke("window:close"),
+          isMaximized: () => ipcRenderer.invoke("window:is-maximized"),
+          onMaximizedChange: (cb) => {
+            const handler = (_event, value) => cb(Boolean(value));
+            ipcRenderer.on("window:maximized", handler);
+            return () => ipcRenderer.removeListener("window:maximized", handler);
+          },
+        },
+      }
+    : {}),
 });

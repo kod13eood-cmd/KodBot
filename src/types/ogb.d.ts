@@ -81,6 +81,14 @@ declare global {
         get(): Promise<ServerConnectionState>;
         set(value: { mode: "local" | "remote"; url?: string }): Promise<{ ok: true }>;
       };
+      /** Floating window controls for the frameless Linux window. */
+      windowControls?: {
+        minimize(): Promise<void>;
+        toggleMaximize(): Promise<boolean>;
+        close(): Promise<void>;
+        isMaximized(): Promise<boolean>;
+        onMaximizedChange(cb: (maximized: boolean) => void): () => void;
+      };
     };
   }
 }

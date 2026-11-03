@@ -671,6 +671,8 @@ export function RoutinesPage() {
           "shrink-0 px-5 pb-4 pt-4",
           // Room for the drawer button, which overlays this corner below md.
           "pl-11 md:pl-5",
+          // Floating window controls sit over this corner in the frameless app.
+          window.ogb?.windowControls && "pr-[148px]",
         )}
       >
         <div className="flex flex-wrap items-start justify-between gap-3">

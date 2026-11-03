@@ -955,6 +955,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 
   const macInset = capabilities.windowChrome === "mac-inset";
   const browser = capabilities.host.label === "Browser";
+  // Frameless chrome (macOS inset traffic lights, Linux custom controls) needs
+  // a drag strip in the header; the buttons inside it opt out.
+  const customChrome = macInset || Boolean(window.ogb?.windowControls);
 
   const q = query.trim().toLowerCase();
 
@@ -1067,10 +1070,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         open ? "max-md:translate-x-0" : "max-md:-translate-x-full",
       )}
     >
-      {/* macOS owns inset traffic lights; Linux/Windows use native chrome. */}
+      {/* macOS owns inset traffic lights; Linux draws its own controls at the
+          top-right of the window, so the header stays a drag strip. */}
       <div
         className="flex items-center justify-between px-4 pt-3.5 pb-1"
-        style={macInset ? ({ WebkitAppRegion: "drag" } as React.CSSProperties) : undefined}
+        style={customChrome ? ({ WebkitAppRegion: "drag" } as React.CSSProperties) : undefined}
       >
         {macInset ? (
           <div className="w-14" />
@@ -1094,7 +1098,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         )}
         <div
           className="flex items-center gap-0.5"
-          style={macInset ? ({ WebkitAppRegion: "no-drag" } as React.CSSProperties) : undefined}
+          style={customChrome ? ({ WebkitAppRegion: "no-drag" } as React.CSSProperties) : undefined}
         >
           <button
             onClick={() => {

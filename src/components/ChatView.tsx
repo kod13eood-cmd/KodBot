@@ -959,11 +959,11 @@ export function ChatView({ bot }: { bot: Bot }) {
     });
   };
 
-  // on Windows the frameless window's min/max/close overlay sits at the
-  // top-right: the header becomes the drag strip and clears room for it
-  const isWin = window.ogb?.platform === "win32";
-  const drag = isWin ? ({ WebkitAppRegion: "drag" } as React.CSSProperties) : undefined;
-  const noDrag = isWin ? ({ WebkitAppRegion: "no-drag" } as React.CSSProperties) : undefined;
+  // Frameless windows (Windows overlay, Linux custom controls) use the
+  // header as the drag strip: clear room at the top-right for the buttons.
+  const customChrome = window.ogb?.platform === "win32" || Boolean(window.ogb?.windowControls);
+  const drag = customChrome ? ({ WebkitAppRegion: "drag" } as React.CSSProperties) : undefined;
+  const noDrag = customChrome ? ({ WebkitAppRegion: "no-drag" } as React.CSSProperties) : undefined;
 
   return (
     <main className="relative flex h-full min-w-0 flex-1 flex-col bg-app">
@@ -975,7 +975,7 @@ export function ChatView({ bot }: { bot: Bot }) {
           "flex items-center justify-between px-5 py-3",
           // Room for the drawer button, which overlays this corner below md.
           "pl-11 md:pl-5",
-          isWin && "pr-[148px]",
+          customChrome && "pr-[148px]",
         )}
         style={drag}
       >

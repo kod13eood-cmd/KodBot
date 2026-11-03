@@ -454,7 +454,9 @@ function createTray() {
 }
 
 function createWindow(remoteUrl = null) {
-  const isMac = process.platform === "darwin";  const win = new BrowserWindow({
+  const isMac = process.platform === "darwin";
+  const isLinux = process.platform === "linux";
+  const win = new BrowserWindow({
     width: 1440,
     height: 920,
     minWidth: 900,
@@ -462,8 +464,9 @@ function createWindow(remoteUrl = null) {
     icon: APP_ICON,
     backgroundColor: "#070707",
     autoHideMenuBar: process.platform !== "darwin",
-    // macOS keeps inset traffic lights, Windows keeps its custom overlay,
-    // and Linux uses the native desktop title bar and window controls.
+    // macOS keeps inset traffic lights, Windows keeps its custom overlay, and
+    // Linux is frameless: the window controls are drawn by the app at the
+    // top-right (components/WindowControls) instead of a system title bar.
     ...(isMac
       ? { titleBarStyle: "hiddenInset", trafficLightPosition: { x: 16, y: 16 } }
       : process.platform === "win32"
@@ -475,7 +478,9 @@ function createWindow(remoteUrl = null) {
             // them and anything taller overhangs the header.
             titleBarOverlay: { color: "#070707", symbolColor: "#b5b5b5", height: 60 },
           }
-        : {}),
+        : isLinux
+          ? { frame: false }
+          : {}),
     webPreferences: {
       contextIsolation: true,
       preload: path.join(__dirname, "preload.cjs"),
@@ -484,6 +489,29 @@ function createWindow(remoteUrl = null) {
   });
 
   installContextMenu(win);
+
+  // The application menu is gone on Linux and Windows, which also removed
+  // its built-in accelerators. Keep the three people actually use: reload,
+  // force reload, and the devtools toggle.
+  if (process.platform !== "darwin") {
+    win.webContents.on("before-input-event", (event, input) => {
+      if (input.type !== "keyDown" || !(input.control || input.meta) || input.alt) return;
+      const key = input.key.toLowerCase();
+      if (key === "r") {
+        event.preventDefault();
+        if (input.shift) win.webContents.reloadIgnoringCache();
+        else win.webContents.reload();
+      } else if (key === "i" && input.shift) {
+        event.preventDefault();
+        win.webContents.toggleDevTools();
+      }
+    });
+  }
+
+  // The frameless Linux window draws its own controls; the renderer needs to
+  // know when a maximize turns into a restore.
+  win.on("maximize", () => win.webContents.send("window:maximized", true));
+  win.on("unmaximize", () => win.webContents.send("window:maximized", false));
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -685,10 +713,22 @@ ipcMain.handle("server:set-connection", async (_event, value) => {
   setTimeout(relaunchApp, 150);
   return { ok: true };
 });
+// Frameless Linux window: the renderer's floating controls call these.
+const windowFrom = (event) => BrowserWindow.fromWebContents(event.sender);
+ipcMain.handle("window:minimize", (event) => windowFrom(event)?.minimize());
+ipcMain.handle("window:toggle-maximize", (event) => {
+  const win = windowFrom(event);
+  if (!win) return false;
+  if (win.isMaximized()) win.unmaximize();
+  else win.maximize();
+  return win.isMaximized();
+});
+ipcMain.handle("window:close", (event) => windowFrom(event)?.close());
+ipcMain.handle("window:is-maximized", (event) => windowFrom(event)?.isMaximized() ?? false);
+
 ipcMain.handle("companion:state", () =>
   remoteMode ? remoteCompanion("/state") : companionState(),
-);
-ipcMain.handle("companion:start", async () => {
+);ipcMain.handle("companion:start", async () => {
   if (remoteMode) return remoteCompanion("/start", "POST");
   const state = await startCompanion({
     resourcesPath: process.resourcesPath,
