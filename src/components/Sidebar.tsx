@@ -52,6 +52,7 @@ import { TeamLibraryPanel, type TeamImportResult } from "./TeamLibraryPanel";
 import { TeamsPanel } from "./TeamsPanel";
 import { RenameTitle } from "./RenameTitle";
 import { useI18n } from "@/lib/i18n";
+import { useShowGroupChats } from "@/lib/show-groups";
 
 /** "Milind Soni" → "MS", "milind" → "M", "you@x.dev" → "Y", unset → "?" */
 function profileInitials(profile?: { name?: string; email?: string }): string {
@@ -815,6 +816,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const { state, dispatch } = useStore();
   const { t } = useI18n();
   const { capabilities } = useDesktopCapabilities();
+  const showGroupChats = useShowGroupChats();
   const importReturnRef = useRef<HTMLButtonElement>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [roomMenu, setRoomMenu] = useState<{ groupId: string; x: number; y: number } | null>(null);
@@ -837,6 +839,10 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     setSearchOpen(false);
     setQuery("");
   }, []);
+
+  useEffect(() => {
+    if (!showGroupChats) setNewRoom(false);
+  }, [showGroupChats]);
 
   // Esc closes the drawer, mirroring ApiKeys.tsx:75-85. Bound only while the
   // drawer is open — on mobile, exactly when a bot/room context menu or the
@@ -985,7 +991,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const visibleBots = matchingBots
     .filter((bot) => !showChiefAlone || !bot.chiefOfStaff)
     .sort((a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false));
-  const visibleGroups = state.groups.filter((g) => !q || g.name.toLowerCase().includes(q));
+  const visibleGroups = showGroupChats
+    ? state.groups.filter((g) => !q || g.name.toLowerCase().includes(q))
+    : [];
   const teamById = new Map(state.teams.map((team) => [team.id, team]));
   const botById = new Map(state.bots.map((bot) => [bot.id, bot]));
   const teamByBot = new Map<string, { id: string; name: string }>();
@@ -1140,16 +1148,18 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                   <BotIcon size={16} className="text-ink-secondary" />
                   {t("New Bot")}
                 </button>
-                <button
-                  onClick={() => {
-                    setPlusOpen(false);
-                    setNewRoom(true);
-                  }}
-                  className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-[14px] text-ink hover:bg-raised/70"
-                >
-                  <Users size={16} className="text-ink-secondary" />
-                  {t("New Room")}
-                </button>
+                {showGroupChats && (
+                  <button
+                    onClick={() => {
+                      setPlusOpen(false);
+                      setNewRoom(true);
+                    }}
+                    className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-[14px] text-ink hover:bg-raised/70"
+                  >
+                    <Users size={16} className="text-ink-secondary" />
+                    {t("New Room")}
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setPlusOpen(false);

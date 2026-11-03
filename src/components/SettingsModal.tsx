@@ -17,6 +17,7 @@ import { openShortcutsSheet, SHORTCUTS_KEY_LABEL } from "./ShortcutsSheet";
 import { cn } from "@/lib/cn";
 import { LOCALE_OPTIONS, useI18n } from "@/lib/i18n";
 import { setDeveloperMode, useDeveloperMode } from "@/lib/dev-mode";
+import { setShowGroupChats, useShowGroupChats } from "@/lib/show-groups";
 import { remoteSwitchAvailable } from "@/lib/server-switch";
 import type { ServerConnectionState } from "@/types/ogb";
 
@@ -282,6 +283,40 @@ function DeveloperCard() {
   );
 }
 
+function GroupChatsCard() {
+  const { t } = useI18n();
+  const showGroups = useShowGroupChats();
+  return (
+    <Card
+      title={t("Group chats")}
+      subtitle={t("Show rooms and team conversations in the sidebar.")}
+    >
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-inset px-3 py-2.5">
+        <span className="text-[13px] text-ink-secondary">
+          {showGroups ? t("Group chats are visible.") : t("Group chats are hidden.")}
+        </span>
+        <button
+          role="switch"
+          aria-checked={showGroups}
+          aria-label={t("Show group chats")}
+          onClick={() => setShowGroupChats(!showGroups)}
+          className={cn(
+            "relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors",
+            showGroups ? "bg-accent" : "bg-raised",
+          )}
+        >
+          <span
+            className={cn(
+              "absolute top-[3px] size-5 rounded-full bg-white transition-all",
+              showGroups ? "left-[21px]" : "left-[3px]",
+            )}
+          />
+        </button>
+      </div>
+    </Card>
+  );
+}
+
 export function SettingsModal() {
   const { state, dispatch } = useStore();
   const { t } = useI18n();
@@ -399,6 +434,7 @@ export function SettingsModal() {
                 </Card>
                 <ServerCard />
                 <DeveloperCard />
+                <GroupChatsCard />
                 <ShortcutsRow />
                 <LanguageCard />
                 <UpdatesRow />

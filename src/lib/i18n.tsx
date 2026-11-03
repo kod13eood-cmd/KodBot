@@ -177,6 +177,13 @@ const BULGARIAN: Record<string, string> = {
     "Показва броячи на токени, API ключове, работни папки и Inspector.",
   "Technical details are visible.": "Техническите детайли са видими.",
   "Technical details are hidden.": "Техническите детайли са скрити.",
+  "Interface": "Интерфейс",
+  "Group chats": "Групови чатове",
+  "Show group chats": "Показвай груповите чатове",
+  "Show rooms and team conversations in the sidebar.":
+    "Показвай стаите и разговорите на екипите в страничната лента.",
+  "Group chats are visible.": "Груповите чатове са видими.",
+  "Group chats are hidden.": "Груповите чатове са скрити.",
   "Engines": "Двигатели",
   "Companion": "Компаньон",
   "Managed on the remote server": "Управлява се от отдалечения сървър",

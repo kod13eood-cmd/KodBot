@@ -23,7 +23,8 @@ import { requestNotificationPermission } from "@/lib/notify";
 import { botUsage, costCaption, formatTokens, formatUsd } from "@/lib/usage";
 import { shortPath } from "@/lib/short-path";
 import { useI18n } from "@/lib/i18n";
-import { useDeveloperMode } from "@/lib/dev-mode";
+import { useDeveloperMode, setDeveloperMode } from "@/lib/dev-mode";
+import { setShowGroupChats, useShowGroupChats } from "@/lib/show-groups";
 
 function Field({
   label,
@@ -788,6 +789,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
   const { state, dispatch } = useStore();
   const { t } = useI18n();
   const devMode = useDeveloperMode();
+  const showGroups = useShowGroupChats();
   const [voices, setVoices] = useState<Array<{ id: string; label: string; description?: string }>>([]);
   const [voicesLoading, setVoicesLoading] = useState(false);
   const [poolOpen, setPoolOpen] = useState(false);
@@ -1413,9 +1415,71 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
               />
             </button>
           </div>
+
+          <div className="mt-4">
+            <div className="mb-2 px-1 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-secondary">
+              {t("Interface")}
+            </div>
+            <div className="flex flex-col gap-2">
+              <PrefSwitch
+                label={t("Developer mode")}
+                description={t("Show token counts, API keys, working folders, and the Inspector.")}
+                checked={devMode}
+                onChange={() => {
+                  const next = !devMode;
+                  setDeveloperMode(next);
+                  if (!next && state.inspectorOpen) dispatch({ type: "toggleInspector" });
+                }}
+              />
+              <PrefSwitch
+                label={t("Show group chats")}
+                description={t("Show rooms and team conversations in the sidebar.")}
+                checked={showGroups}
+                onChange={() => setShowGroupChats(!showGroups)}
+              />
+            </div>
+          </div>
         </div>
       </div>
       {poolOpen && <AutoModelPool bot={bot} onClose={() => setPoolOpen(false)} />}
     </aside>
+  );
+}
+
+function PrefSwitch({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-xl bg-card p-4">
+      <div>
+        <div className="text-[15px] font-medium text-ink">{label}</div>
+        <div className="mt-0.5 text-[13px] text-ink-secondary">{description}</div>
+      </div>
+      <button
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        onClick={onChange}
+        className={cn(
+          "relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors",
+          checked ? "bg-accent" : "bg-raised",
+        )}
+      >
+        <span
+          className={cn(
+            "absolute top-[3px] size-5 rounded-full bg-white transition-all",
+            checked ? "left-[21px]" : "left-[3px]",
+          )}
+        />
+      </button>
+    </div>
   );
 }
