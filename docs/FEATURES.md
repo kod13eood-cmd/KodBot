@@ -92,6 +92,16 @@ does not open it, while **Ctrl+R** reloads, **Ctrl+Shift+R** force-reloads
 (useful after a server UI update), and **Ctrl+Shift+I** opens the developer
 tools.
 
+### Notifications — Live
+
+A bot that cannot continue — a command or file approval, a question — raises a
+native desktop notification that stays on screen until it is answered, plus a
+persistent **needs you** strip at the top of the app. A finished reply notifies
+too when the window is on another chat or in the background. Clicking a
+notification opens the bot or room that asked; the app title and badge count the
+blocked conversations. Each bot's **Notifications** switch still gates its own
+notifications.
+
 ### Shopping cards — Live
 
 A bot can emit a `products` block and KodBot renders real product cards with an

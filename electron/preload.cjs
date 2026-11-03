@@ -103,4 +103,15 @@ contextBridge.exposeInMainWorld("ogb", {
         },
       }
     : {}),
+  /** Native desktop notifications. Preferred over the Web Notification API:
+   * the remote UI is served over plain HTTP, where notification permission is
+   * denied, while Electron's main process has no such restriction. */
+  notifications: {
+    show: (payload) => ipcRenderer.invoke("notify:show", payload),
+    onOpen: (cb) => {
+      const handler = (_event, payload) => cb(payload ?? {});
+      ipcRenderer.on("notify:open", handler);
+      return () => ipcRenderer.removeListener("notify:open", handler);
+    },
+  },
 });

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, desktopCapturer, dialog, ipcMain, Menu, MenuItem, nativeImage, safeStorage, session, shell, systemPreferences, Tray, utilityProcess } from "electron";
+import { app, BrowserWindow, clipboard, desktopCapturer, dialog, ipcMain, Menu, MenuItem, nativeImage, Notification, safeStorage, session, shell, systemPreferences, Tray, utilityProcess } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -725,6 +725,42 @@ ipcMain.handle("window:toggle-maximize", (event) => {
 });
 ipcMain.handle("window:close", (event) => windowFrom(event)?.close());
 ipcMain.handle("window:is-maximized", (event) => windowFrom(event)?.isMaximized() ?? false);
+
+// Native notifications. The remote UI is served over plain HTTP, which is not
+// a secure context, so the renderer's Web Notification permission is denied;
+// Electron's main-process Notification works regardless and uses the desktop
+// notification daemon (including its sound).
+const liveNotifications = new Set();
+ipcMain.handle("notify:show", (event, payload) => {
+  if (!Notification.isSupported()) return { shown: false };
+  const title = typeof payload?.title === "string" ? payload.title.slice(0, 160) : "";
+  const body = typeof payload?.body === "string" ? payload.body.slice(0, 500) : "";
+  if (!title) return { shown: false };
+  const kind = typeof payload?.kind === "string" ? payload.kind : "done";
+  const botId = typeof payload?.botId === "string" ? payload.botId : "";
+  const threadId = typeof payload?.threadId === "string" ? payload.threadId : "";
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const note = new Notification({
+    title,
+    body,
+    icon: APP_ICON,
+    // A blocked turn is worth keeping on screen; a finished reply is not.
+    urgency: kind === "done" ? "normal" : "critical",
+    timeoutType: kind === "done" ? "default" : "never",
+  });
+  liveNotifications.add(note);
+  note.on("close", () => liveNotifications.delete(note));
+  note.on("click", () => {
+    const target = win ?? BrowserWindow.getAllWindows()[0];
+    if (!target) return;
+    if (target.isMinimized()) target.restore();
+    target.show();
+    target.focus();
+    target.webContents.send("notify:open", { botId, threadId });
+  });
+  note.show();
+  return { shown: true };
+});
 
 ipcMain.handle("companion:state", () =>
   remoteMode ? remoteCompanion("/state") : companionState(),

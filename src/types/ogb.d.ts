@@ -89,6 +89,17 @@ declare global {
         isMaximized(): Promise<boolean>;
         onMaximizedChange(cb: (maximized: boolean) => void): () => void;
       };
+      /** Native desktop notifications (main-process Notification). */
+      notifications?: {
+        show(payload: {
+          kind: string;
+          botId: string;
+          threadId: string;
+          title: string;
+          body: string;
+        }): Promise<{ shown: boolean }>;
+        onOpen(cb: (payload: { botId: string; threadId?: string }) => void): () => void;
+      };
     };
   }
 }

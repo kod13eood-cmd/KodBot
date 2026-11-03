@@ -178,6 +178,10 @@ const BULGARIAN: Record<string, string> = {
   "Technical details are visible.": "Техническите детайли са видими.",
   "Technical details are hidden.": "Техническите детайли са скрити.",
   "Interface": "Интерфейс",
+  "needs approval": "иска одобрение",
+  "has a question": "има въпрос",
+  "is waiting for you": "чака те",
+  "Open": "Отвори",
   "Group chats": "Групови чатове",
   "Show group chats": "Показвай груповите чатове",
   "Show rooms and team conversations in the sidebar.":

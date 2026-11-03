@@ -1396,14 +1396,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
         // the harness decided this was worth interrupting for; the toggle
         // in each bot's settings is what gates it, server-side
-        case "notify":
-          // the wrapped dispatch, not rawDispatch: `select` clears the badge
-          // in local state either way, but only the wrapper PATCHes
-          // unread:false back. Opening a bot from its own notification and
-          // watching the badge return on the next hydration is exactly the
-          // bug that makes notifications feel broken.
-          showNotification(frame.notification, (botId) => dispatch({ type: "select", id: botId }));
+        case "notify": {
+          const notification = frame.notification;
+          const current = stateRef.current;
+          const activeBot = current.bots.find((bot) => bot.id === current.selectedId);
+          const activeGroup = current.groups.find((group) => group.id === current.selectedId);
+          // The wrapped dispatch, not rawDispatch: opening a bot from its own
+          // notification must also clear the unread badge server-side.
+          showNotification(
+            notification,
+            () => {
+              const room = stateRef.current.groups.find((group) => group.threadId === notification.threadId);
+              dispatch({ type: "select", id: room?.id ?? notification.botId });
+            },
+            { activeThreadId: activeBot?.threadId ?? activeGroup?.threadId },
+          );
           break;
+        }
         case "group.deleted":
           rawDispatch({ type: "groupDeleted", groupId: frame.groupId });
           break;

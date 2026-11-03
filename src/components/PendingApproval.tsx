@@ -8,35 +8,14 @@
 // (it scrolls instead), and the buttons ordered least-destructive-last so
 // the primary action sits under your thumb.
 import { memo } from "react";
-import { useStore, type Bot, type Message } from "@/state/store";
+import { useStore, type Bot } from "@/state/store";
 import { cn } from "@/lib/cn";
+import type { Pending } from "@/lib/approvals";
+
+export { pendingApprovals, type Pending } from "@/lib/approvals";
 
 interface ApprovalLabels {
   [tool: string]: string;
-}
-
-export interface Pending {
-  message: Message;
-  requestId: string;
-  tool: string;
-  /** the narrow grant "always allow" writes, computed server-side */
-  allowKey?: string;
-  detail: string;
-  held?: string;
-}
-
-/** Open approvals on a thread, oldest first — answered/dismissed drop out. */
-export function pendingApprovals(messages: Message[]): Pending[] {
-  return messages
-    .filter((m) => m.kind === "options" && m.card?.requestId && m.card.tool && !m.card.answered && !m.card.dismissed)
-    .map((m) => ({
-      message: m,
-      requestId: m.card!.requestId!,
-      tool: m.card!.tool!,
-      allowKey: m.card!.allowKey,
-      detail: m.card!.subtitle,
-      held: m.card!.held,
-    }));
 }
 
 function label(tool: string): string {

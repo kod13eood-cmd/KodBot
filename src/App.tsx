@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Menu } from "lucide-react";
-import { StoreProvider, useStore } from "@/state/store";
+import { StoreProvider, useStore, visibleMessages } from "@/state/store";
 import { Onboarding } from "@/components/Onboarding";
 import { emailGateDone, initAnalytics } from "@/lib/analytics";
 import { Sidebar } from "@/components/Sidebar";
@@ -20,6 +20,8 @@ import { RoutinesPage } from "@/components/RoutinesPage";
 import { NoEngines } from "@/components/NoEngines";
 import { CommandPalette } from "@/components/CommandPalette";
 import { ShortcutsSheet } from "@/components/ShortcutsSheet";
+import { NeedsYouBar } from "@/components/NeedsYouBar";
+import { collectNeedsYou } from "@/lib/needs-you";
 import { useI18n } from "@/lib/i18n";
 
 function Shell() {
@@ -34,6 +36,50 @@ function Shell() {
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const group = state.groups.find((g) => g.id === state.selectedId);
   const bot = group ? undefined : (state.bots.find((b) => b.id === state.selectedId) ?? state.bots[0]);
+
+  // Who cannot continue without an answer or an approval. Drives the persistent
+  // strip, the tab title, and the app badge.
+  const needsYou = useMemo(
+    () =>
+      collectNeedsYou(
+        state.bots.map((entry) => ({
+          kind: "bot" as const,
+          id: entry.id,
+          name: entry.name,
+          messages: visibleMessages(entry),
+          activity: entry.activity,
+          hidden: entry.hidden,
+        })),
+        state.groups.map((entry) => ({
+          kind: "group" as const,
+          id: entry.id,
+          name: entry.name,
+          messages: entry.messages,
+        })),
+      ),
+    [state.bots, state.groups],
+  );
+
+  useEffect(() => {
+    document.title = needsYou.length ? `(${needsYou.length}) KodBot` : "KodBot";
+    const nav = navigator as Navigator & {
+      setAppBadge?: (count: number) => Promise<void>;
+      clearAppBadge?: () => Promise<void>;
+    };
+    if (needsYou.length) void nav.setAppBadge?.(needsYou.length).catch(() => {});
+    else void nav.clearAppBadge?.().catch(() => {});
+  }, [needsYou.length]);
+
+  // A native notification click names the thread that asked; a room request
+  // opens the room, not the member's private chat.
+  useEffect(() => {
+    const bridge = window.ogb?.notifications;
+    if (!bridge) return;
+    return bridge.onOpen(({ botId, threadId }) => {
+      const room = state.groups.find((entry) => entry.threadId === threadId);
+      dispatch({ type: "select", id: room?.id ?? botId });
+    });
+  }, [state.groups, dispatch]);
 
   // Nothing on this machine can run a bot. A missing cloud login does not
   // count — that CLI can still host a local model. Wait for the first
@@ -87,6 +133,7 @@ function Shell() {
     <div className="flex h-full flex-col">
       {/* fixed-position popup, bottom-left — outside the layout flow */}
       <UpdateBanner />
+      <NeedsYouBar items={needsYou} />
       <div className="relative flex min-h-0 flex-1">
       <button
         type="button"
