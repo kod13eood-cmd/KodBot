@@ -57,6 +57,13 @@ describe("prompt queue", () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the reply target attached to a queued prompt", () => {
+    const queue = createPromptQueue();
+    const replyTo = { id: "m1", role: "bot" as const, text: "Orders are open", name: "Mochi" };
+    queue.enqueue(key, "which ones?", replyTo);
+    expect(queue.next(key, false)?.replyTo).toEqual(replyTo);
+  });
+
   it("maps queue keys back to their target", () => {
     expect(parseQueueKey(queueKeyForBot("b"))).toEqual({ botId: "b" });
     expect(parseQueueKey(queueKeyForGroup("g"))).toEqual({ groupId: "g" });

@@ -19,7 +19,8 @@
 // stop-then-steer (queue a correction, hit Stop, the correction runs) is
 // the feature.
 
-import type { BotRecord, Message } from "./store.ts";
+import type { BotRecord, Message, MessageReply } from "./store.ts";
+import { replyContext } from "./reply.ts";
 
 /** The slice of Store this module needs — narrow so tests can fake it. */
 export interface SteerStore {
@@ -33,7 +34,7 @@ interface QueueEntry {
    * happen on a DIFFERENT thread (a room turn) — drain matches on "this
    * queue's bot is idle now", which needs the bot, not the settling thread. */
   botId: string;
-  items: Array<{ messageId: string; text: string }>;
+  items: Array<{ messageId: string; text: string; replyTo?: MessageReply }>;
 }
 
 const queues = new Map<string, QueueEntry>(); // threadId → waiting sends
@@ -41,11 +42,22 @@ const queues = new Map<string, QueueEntry>(); // threadId → waiting sends
 /** Land a message in the busy bot's active thread now; it auto-sends when
  * the turn settles. The `queued` flag is the transcript's "will send when
  * this turn finishes" affordance — drain clears it when consumed. */
-export function queueSteeredMessage(store: SteerStore, bot: BotRecord, text: string): Message {
+export function queueSteeredMessage(
+  store: SteerStore,
+  bot: BotRecord,
+  text: string,
+  replyTo?: MessageReply,
+): Message {
   const threadId = bot.threadId;
-  const message = store.appendMessage(threadId, { role: "user", kind: "text", text, queued: true });
+  const message = store.appendMessage(threadId, {
+    role: "user",
+    kind: "text",
+    text,
+    queued: true,
+    ...(replyTo ? { replyTo } : {}),
+  });
   const entry = queues.get(threadId) ?? { botId: bot.id, items: [] };
-  entry.items.push({ messageId: message.id, text });
+  entry.items.push({ messageId: message.id, text, ...(replyTo ? { replyTo } : {}) });
   queues.set(threadId, entry);
   return message;
 }
@@ -80,7 +92,9 @@ export function drainSteeredMessages(
     // every queued message gone from the store = the thread itself was
     // deleted out from under the queue; there is nothing to run against
     if (!last) continue;
-    const prompt = entry.items.map((item) => item.text).join("\n");
+    const prompt = entry.items
+      .map((item) => (item.replyTo ? `${replyContext(item.replyTo)}\n\n${item.text}` : item.text))
+      .join("\n");
     void run(entry.botId, threadId, prompt, last);
   }
 }

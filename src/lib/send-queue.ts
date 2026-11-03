@@ -10,9 +10,19 @@
  * first turn.
  */
 
+export interface QueuedReply {
+  id: string;
+  role: "user" | "bot";
+  text: string;
+  /** Display name of the quoted author ("Mochi" or "You"). */
+  name: string;
+}
+
 export interface QueuedPrompt {
   id: number;
   text: string;
+  /** The message this prompt answers, when the user picked one. */
+  replyTo?: QueuedReply;
 }
 
 export interface PromptQueue {
@@ -20,7 +30,7 @@ export interface PromptQueue {
   prompts(key: string): readonly QueuedPrompt[];
   /** Keys that currently hold at least one prompt. */
   keys(): string[];
-  enqueue(key: string, text: string): void;
+  enqueue(key: string, text: string, replyTo?: QueuedReply): void;
   /** Drop one prompt — the discard button on a queued card. */
   drop(key: string, id: number): void;
   /** The next prompt to send, or null when the target must wait. Consumes
@@ -65,10 +75,10 @@ export function createPromptQueue(): PromptQueue {
     keys() {
       return [...queues.keys()];
     },
-    enqueue(key, text) {
+    enqueue(key, text, replyTo) {
       if (!text.trim()) return;
       const list = queues.get(key) ?? [];
-      queues.set(key, [...list, { id: ++sequence, text }]);
+      queues.set(key, [...list, { id: ++sequence, text, ...(replyTo ? { replyTo } : {}) }]);
       notify();
     },
     drop(key, id) {

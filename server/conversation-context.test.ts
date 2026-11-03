@@ -48,6 +48,20 @@ describe("conversation context", () => {
     expect(transcriptTurns(many, undefined, 2).map((turn) => turn.text)).toEqual(["turn 3", "turn 4"]);
   });
 
+  it("replays an earlier reply with the quote it answered", () => {
+    const reply = message({
+      id: "m-reply",
+      role: "user",
+      kind: "text",
+      text: "which ones?",
+      replyTo: { id: "m-page", role: "bot", text: "Orders Two open" },
+    });
+    const turns = transcriptTurns([page, reply]);
+    const turn = turns[1]!;
+    expect(turn.text).toContain('Replying to the assistant\'s earlier message: "Orders Two open"');
+    expect(turn.text).toContain("which ones?");
+  });
+
   it("attributes room lines to the member that spoke, pages included", () => {
     const context = roomContext(
       [

@@ -1,7 +1,7 @@
 import { track } from "@/lib/analytics";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, Clock, Loader2, Mic, Paperclip, Square, Users, X } from "lucide-react";
-import { useStore, visibleMessages, type Bot, type Group } from "@/state/store";
+import { ArrowUp, Clock, Loader2, Mic, Paperclip, Reply, Square, Users, X } from "lucide-react";
+import { useStore, visibleMessages, type Bot, type Group, type Message } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { useComposerDraft } from "@/lib/drafts";
 import { CrewAvatar } from "./Avatar";
@@ -40,11 +40,16 @@ export function Composer({
   group,
   members,
   onEditLast,
+  replyTo,
+  onClearReply,
 }: {
   bot?: Bot;
   group?: Group;
   members?: Bot[];
   onEditLast?: () => void;
+  /** The message the next send answers; shown as a quote above the input. */
+  replyTo?: Message | null;
+  onClearReply?: () => void;
 }) {
   const { state, dispatch } = useStore();
   const { t } = useI18n();
@@ -137,6 +142,11 @@ export function Composer({
     el.style.height = `${el.scrollHeight}px`;
   }, [text]);
 
+  // Picking "reply" on a message should land the caret in the composer.
+  useEffect(() => {
+    if (replyTo) inputRef.current?.focus();
+  }, [replyTo]);
+
   const pickMention = (peer: MentionChoice) => {
     if (!mention) return;
     const after = text.slice(caret);
@@ -169,21 +179,37 @@ export function Composer({
   const hasContent = Boolean(text.trim()) || attachments.length > 0;
   const submit = (composed: string) => {
     if (!composed) return;
+    const replyToId = replyTo?.id;
     if (busy) {
-      promptQueue.enqueue(queueKey, composed);
+      promptQueue.enqueue(
+        queueKey,
+        composed,
+        replyTo
+          ? {
+              id: replyTo.id,
+              role: replyTo.role,
+              text: replyTo.text ?? "",
+              name:
+                replyTo.from?.name ??
+                (replyTo.role === "bot" ? (bot?.name ?? t("A bot")) : t("You")),
+            }
+          : undefined,
+      );
       setText("");
       setAttachments([]);
+      onClearReply?.();
       return;
     }
     if (group) {
-      dispatch({ type: "sendGroup", groupId: group.id, text: composed });
+      dispatch({ type: "sendGroup", groupId: group.id, text: composed, replyTo: replyToId });
       track("message_sent", { room: true });
     } else if (bot) {
-      dispatch({ type: "send", botId: bot.id, text: composed });
+      dispatch({ type: "send", botId: bot.id, text: composed, replyTo: replyToId });
       track("message_sent", { driver: bot.modelSelection?.instanceId });
     }
     setText("");
     setAttachments([]);
+    onClearReply?.();
   };
   const send = () => {
     if (uploading) return;
@@ -290,8 +316,15 @@ export function Composer({
                   <span className="mt-px w-4 shrink-0 text-right font-mono text-[10.5px] text-ink-secondary/70">
                     {index + 1}
                   </span>
-                  <span className="min-w-0 flex-1 whitespace-pre-wrap break-words text-[12px] leading-snug text-ink line-clamp-2">
-                    {item.text}
+                  <span className="min-w-0 flex-1">
+                    <span className="block whitespace-pre-wrap break-words text-[12px] leading-snug text-ink line-clamp-2">
+                      {item.text}
+                    </span>
+                    {item.replyTo && (
+                      <span className="mt-0.5 block truncate text-[10.5px] text-ink-secondary/70">
+                        ↪ {item.replyTo.name}: {item.replyTo.text}
+                      </span>
+                    )}
                   </span>
                   <button
                     type="button"
@@ -365,6 +398,28 @@ export function Composer({
           onAdd={addAttachments}
           onRemove={removeAttachment}
         />
+        {replyTo && (
+          <div className="mb-2 flex items-start gap-2 rounded-xl border border-hairline/40 bg-raised/60 px-3 py-2">
+            <Reply size={13} className="mt-0.5 shrink-0 text-accent" />
+            <div className="min-w-0 flex-1">
+              <div className="text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-secondary">
+                {replyTo.from?.name ?? (replyTo.role === "bot" ? (bot?.name ?? t("A bot")) : t("You"))}
+              </div>
+              <div className="line-clamp-2 whitespace-pre-wrap text-[12px] leading-snug text-ink-secondary">
+                {replyTo.text}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClearReply}
+              aria-label={t("Cancel reply")}
+              title={t("Cancel reply")}
+              className="shrink-0 rounded p-0.5 text-ink-secondary hover:bg-raised hover:text-ink"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        )}
         <div className="composer-frame flex items-end gap-2 rounded-3xl border border-hairline/40 bg-raised/60 py-2 pl-3 pr-2 transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/20">
         <button
           type="button"

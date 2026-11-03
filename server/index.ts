@@ -55,12 +55,14 @@ import {
   type BotRecord,
   type GroupDefaultResponder,
   type Message,
+  type MessageReply,
   type TaskRecord,
 } from "./store.ts";
 import * as tts from "./tts/index.ts";
 import { narrateTool, toUtterances } from "./tts/speech-text.ts";
 import { buildTurnContext, engineIsFresh } from "./turn-context.ts";
 import { roomContext, transcriptTurns } from "./conversation-context.ts";
+import { replyContext, replyExcerpt } from "./reply.ts";
 import { TurnWatchdog } from "./turn-watchdog.ts";
 import {
   ensureWorkspace,
@@ -518,6 +520,21 @@ async function answerRequest(
 
 function requestBehavior(value: unknown): "allow" | "deny" | "answer" | null {
   return value === "allow" || value === "deny" || value === "answer" ? value : null;
+}
+
+/** Resolve the message a reply points at, with a bounded quote. An id from
+ * another thread (or a deleted message) is not silently ignored — the route
+ * refuses it. */
+function resolveReply(threadId: string, value: unknown): MessageReply | undefined {
+  if (typeof value !== "string" || !value) return undefined;
+  const source = store.messagesFor(threadId).find((message) => message.id === value);
+  if (!source) return undefined;
+  return {
+    id: source.id,
+    role: source.role,
+    text: replyExcerpt(source.text ?? ""),
+    ...(source.from?.name ? { fromName: source.from.name } : {}),
+  };
 }
 // the last settled assistant text per thread, so a "finished" notification
 // can carry what the bot actually said
@@ -1215,6 +1232,9 @@ async function startTurn(
      * The prompt is control-plane context: it reaches the provider without
      * masquerading as another message authored by the user. */
     connectorContinuation?: boolean;
+    /** The user is answering a specific earlier message; the quote travels
+     * in front of this turn's text and on the stored user message. */
+    replyTo?: MessageReply;
     onDispatchError?: (message: string) => void;
   },
 ) {
@@ -1313,8 +1333,17 @@ async function startTurn(
   if (!userMessage) {
     userMessage = opts?.connectorContinuation
       ? { id: `connector-${randomUUID()}`, at: Date.now(), role: "user", kind: "text", text }
-      : store.appendMessage(threadId, { role: "user", kind: "text", text });
+      : store.appendMessage(threadId, {
+          role: "user",
+          kind: "text",
+          text,
+          ...(opts?.replyTo ? { replyTo: opts.replyTo } : {}),
+        });
   }
+
+  // The current reply's quote reaches the driver in the turn text; earlier
+  // replies reach it through the transcript (conversation-context).
+  const driverText = opts?.replyTo ? `${replyContext(opts.replyTo)}\n\n${text}` : text;
 
   // transcript for API-backed drivers: settled text turns and page
   // announcements on the ACTIVE branch only — abandoned forks never reach the
@@ -1337,7 +1366,7 @@ async function startTurn(
     !rewound &&
     engineIsFresh({ instanceId, lastInstanceId: task.lastInstanceId, resumeCursors: task.resumeCursors, transcript });
   const { turnText, resume } = buildTurnContext({
-    text,
+    text: driverText,
     transcript,
     rewound,
     fresh,
@@ -1860,10 +1889,15 @@ async function runGroupMemberTurn(
   return true;
 }
 
-function startGroupTurn(groupId: string, text: string) {
+function startGroupTurn(groupId: string, text: string, replyTo?: MessageReply) {
   const group = store.group(groupId);
   if (!group) throw Object.assign(new Error("no such group"), { status: 404 });
-  store.appendMessage(group.threadId, { role: "user", kind: "text", text });
+  store.appendMessage(group.threadId, {
+    role: "user",
+    kind: "text",
+    text,
+    ...(replyTo ? { replyTo } : {}),
+  });
 
   const members = group.memberIds
     .map((id) => store.bot(id))
@@ -3018,7 +3052,11 @@ const server = createServer(async (req, res) => {
       const body = await readBody(req);
       const text = String(body.text ?? "").trim();
       if (!text) return json(res, 400, { error: "text required" });
-      startGroupTurn(m[1], text);
+      const group = store.group(m[1]);
+      if (!group) return json(res, 404, { error: "no such group" });
+      const replyTo = resolveReply(group.threadId, body.replyTo);
+      if (body.replyTo && !replyTo) return json(res, 400, { error: "no such message to reply to" });
+      startGroupTurn(m[1], text, replyTo);
       return json(res, 202, { ok: true });
     }
     m = path.match(/^\/api\/groups\/([\w-]+)\/interrupt$/);
@@ -3518,15 +3556,17 @@ const server = createServer(async (req, res) => {
       if (!text) return json(res, 400, { error: "text required" });
       const bot = store.bot(m[1]);
       if (!bot) return json(res, 404, { error: "no such bot" });
+      const replyTo = resolveReply(bot.threadId, body.replyTo);
+      if (body.replyTo && !replyTo) return json(res, 400, { error: "no such message to reply to" });
       // A busy bot no longer refuses the message: it lands in the thread
       // now (marked queued) and auto-sends when the turn settles — see the
       // steer-queue drain above. Synchronous from the busy check to the
       // queue insert, so a settle can't slip between them and strand it.
       if (bot.busy) {
-        const message = queueSteeredMessage(store, bot, text);
+        const message = queueSteeredMessage(store, bot, text, replyTo);
         return json(res, 202, { ok: true, queued: true, messageId: message.id });
       }
-      await startTurn(bot.id, text);
+      await startTurn(bot.id, text, { replyTo });
       return json(res, 202, { ok: true });
     }
 

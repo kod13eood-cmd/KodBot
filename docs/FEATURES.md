@@ -92,6 +92,14 @@ does not open it, while **Ctrl+R** reloads, **Ctrl+Shift+R** force-reloads
 (useful after a server UI update), and **Ctrl+Shift+I** opens the developer
 tools.
 
+### Reply to a message — Live
+
+Hover a message and press the reply arrow. The composer shows a quote card, and
+sending carries a bounded excerpt of that message with the new prompt — so the
+bot knows which answer you mean even after the next turn has already started. A
+reply queued while the bot is busy keeps its quote and goes out with the queued
+prompt.
+
 ### Flexible schedules — Live
 
 Automations can run once, daily at a chosen time, or **on an interval** — every

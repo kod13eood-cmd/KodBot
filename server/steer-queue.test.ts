@@ -110,6 +110,23 @@ describe("steer-queue module", () => {
     expect(run).not.toHaveBeenCalled();
   });
 
+  it("carries a reply quote into the drained turn and keeps it on the message", () => {
+    const bot = fakeBot("bot-r", "thread-r", true);
+    const store = fakeStore([bot]);
+    const replyTo = { id: "earlier", role: "bot" as const, text: "Orders are open" };
+    const message = queueSteeredMessage(store, bot, "which ones?", replyTo);
+    expect(message.replyTo).toEqual(replyTo);
+
+    bot.busy = false;
+    const run = vi.fn();
+    drainSteeredMessages(store, run);
+
+    const [, , prompt, userMessage] = run.mock.calls[0];
+    expect(prompt).toContain('Replying to the assistant\'s earlier message: "Orders are open"');
+    expect(prompt).toContain("which ones?");
+    expect(userMessage.replyTo).toEqual(replyTo);
+  });
+
   it("drops the queue of a deleted bot without running it", () => {
     const bot = fakeBot("bot-d", "thread-d", true);
     const store = fakeStore([bot]);

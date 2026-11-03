@@ -3,6 +3,7 @@
 // so a replaying provider can build on what it wrote instead of asking the
 // user to paste the page back into the chat.
 import type { Message } from "./store.ts";
+import { replyContext } from "./reply.ts";
 
 export const TRANSCRIPT_TURNS = 40;
 export const ROOM_CONTEXT_MESSAGES = 30;
@@ -14,6 +15,12 @@ export type TranscriptTurn = { role: "user" | "assistant"; text: string };
  * them would spend context on things the model never wrote as prose. */
 function replays(m: Message): m is Message & { text: string } {
   return (m.kind === "text" || m.kind === "page") && Boolean(m.text);
+}
+
+/** A user reply carries the quote in front of its own words, for every
+ * driver — transcript replay and the live turn alike. */
+function replayText(m: Message & { text: string }): string {
+  return m.role === "user" && m.replyTo ? `${replyContext(m.replyTo)}\n\n${m.text}` : m.text;
 }
 
 /** The transcript for an API-backed driver: settled turns on the active
@@ -28,7 +35,7 @@ export function transcriptTurns(
     .filter((m) => m.id !== excludeId)
     .filter(replays)
     .slice(-limit)
-    .map((m) => ({ role: m.role === "user" ? ("user" as const) : ("assistant" as const), text: m.text }));
+    .map((m) => ({ role: m.role === "user" ? ("user" as const) : ("assistant" as const), text: replayText(m) }));
 }
 
 /** Recent room history as plain lines, for a member turn that starts on a
@@ -38,6 +45,6 @@ export function roomContext(messages: Message[], userName: string, limit = ROOM_
   return messages
     .filter(replays)
     .slice(-limit)
-    .map((m) => `${m.role === "user" ? userName : (m.from?.name ?? "Bot")}: ${m.text}`)
+    .map((m) => `${m.role === "user" ? userName : (m.from?.name ?? "Bot")}: ${replayText(m)}`)
     .join("\n");
 }

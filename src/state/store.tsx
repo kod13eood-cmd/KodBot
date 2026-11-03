@@ -55,6 +55,9 @@ export interface Message {
   role: "bot" | "user";
   kind: "text" | "options" | "activity" | "screen" | "connector" | "page";
   text?: string;
+  /** A user message can point at the message it answers. `text` is a
+   * server-bounded excerpt, not a copy of the whole message. */
+  replyTo?: { id: string; role: "bot" | "user"; text: string; fromName?: string };
   card?: OptionCardData;
   connector?: ConnectorCardData;
   /** page messages: a self-contained HTML artifact the bot wrote this turn. */
@@ -355,7 +358,7 @@ export type Action =
   | { type: "teamPatched"; team: Team }
   | { type: "teamDeleted"; teamId: string }
   | { type: "createGroup"; memberIds: string[]; name?: string }
-  | { type: "sendGroup"; groupId: string; text: string }
+  | { type: "sendGroup"; groupId: string; text: string; replyTo?: string }
   | {
       type: "patchGroup";
       groupId: string;
@@ -367,7 +370,7 @@ export type Action =
   | { type: "instances"; instances: InstanceInfo[] }
   | { type: "configStatus"; config: ConfigStatus }
   | { type: "select"; id: string }
-  | { type: "send"; botId: string; text: string }
+  | { type: "send"; botId: string; text: string; replyTo?: string }
   | { type: "editMessage"; botId: string; messageId: string; text: string }
   | { type: "switchBranch"; botId: string; messageId: string }
   | { type: "threadActive"; threadId: string; activeLeafId: string }
@@ -1053,7 +1056,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         case "send":
           api(`/api/bots/${action.botId}/messages`, {
             method: "POST",
-            body: JSON.stringify({ text: action.text }),
+            body: JSON.stringify({ text: action.text, ...(action.replyTo ? { replyTo: action.replyTo } : {}) }),
           }).catch(showError);
           break;
         case "editMessage":
@@ -1197,7 +1200,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         case "sendGroup":
           api(`/api/groups/${action.groupId}/messages`, {
             method: "POST",
-            body: JSON.stringify({ text: action.text }),
+            body: JSON.stringify({ text: action.text, ...(action.replyTo ? { replyTo: action.replyTo } : {}) }),
           }).catch(showError);
           break;
         case "patchGroup":

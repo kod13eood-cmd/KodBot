@@ -29,10 +29,10 @@ export function SendQueueDrainer() {
       const next = promptQueue.next(key, busy);
       if (!next) continue;
       if (group) {
-        dispatch({ type: "sendGroup", groupId: group.id, text: next.text });
+        dispatch({ type: "sendGroup", groupId: group.id, text: next.text, replyTo: next.replyTo?.id });
         track("message_sent", { room: true, queued: true });
       } else if (bot) {
-        dispatch({ type: "send", botId: bot.id, text: next.text });
+        dispatch({ type: "send", botId: bot.id, text: next.text, replyTo: next.replyTo?.id });
         track("message_sent", { driver: bot.modelSelection?.instanceId, queued: true });
       }
     }

@@ -19,6 +19,7 @@ import {
   Monitor,
   Pencil,
   RefreshCw,
+  Reply,
   Square,
   Webhook,
   X,
@@ -277,6 +278,22 @@ function BubbleEditor({
   );
 }
 
+/** The message a reply answers, quoted above it. The excerpt is produced and
+ * bounded by the server, so this never grows into a second copy. */
+function ReplyQuote({ reply, author }: { reply: NonNullable<Message["replyTo"]>; author: string }) {
+  const { t } = useI18n();
+  return (
+    <div className="mb-2 rounded-lg border-l-2 border-accent/60 bg-black/15 px-2.5 py-1.5">
+      <div className="truncate text-[10.5px] font-semibold text-accent">
+        {reply.role === "bot" ? author : t("You")}
+      </div>
+      <div className="line-clamp-3 whitespace-pre-wrap text-[12px] leading-snug text-ink/80">
+        {reply.text || t("Message")}
+      </div>
+    </div>
+  );
+}
+
 function Bubble({
   bot,
   message,
@@ -286,6 +303,7 @@ function Bubble({
   onCancelEdit,
   onSubmitEdit,
   onRegenerate,
+  onReply,
 }: {
   bot: Bot;
   message: Message;
@@ -295,6 +313,7 @@ function Bubble({
   onCancelEdit: () => void;
   onSubmitEdit: (text: string) => void;
   onRegenerate?: () => void;
+  onReply: (message: Message) => void;
 }) {
   const { dispatch } = useStore();
   const { t } = useI18n();
@@ -305,6 +324,7 @@ function Bubble({
   const visibleText = webhookView?.task ?? text;
   const collapsible =
     user && !webhookView && !expanded && (visibleText.length > USER_COLLAPSE_CHARS || visibleText.split("\n").length > USER_COLLAPSE_LINES);
+  const canReply = message.kind === "text" && Boolean(text.trim()) && !webhookView;
 
   if (user && editing && !webhookView) {
     return (
@@ -336,6 +356,16 @@ function Bubble({
             <Pencil size={14} />
           </button>
         )}
+        {canReply && (
+          <button
+            onClick={() => onReply(message)}
+            aria-label={t("Reply to message")}
+            title={t("Reply to message")}
+            className="rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+          >
+            <Reply size={14} />
+          </button>
+        )}
         {user && message.kind === "text" && <ReactionBar threadId={bot.threadId} message={message} />}
         {user && <CopyButton text={visibleText} />}
         <div
@@ -365,6 +395,7 @@ function Bubble({
             </div>
           ) : user ? (
             <>
+              {message.replyTo && <ReplyQuote reply={message.replyTo} author={message.replyTo.fromName ?? bot.name} />}
               <div
                 className={cn(collapsible && "max-h-40 overflow-hidden [mask-image:linear-gradient(to_bottom,black_60%,transparent)]")}
               >
@@ -382,13 +413,26 @@ function Bubble({
               )}
             </>
           ) : (
-            <MessageBoundary fallbackText={text}>
-              <ChatMarkdown text={text} />
-            </MessageBoundary>
+            <>
+              {message.replyTo && <ReplyQuote reply={message.replyTo} author={message.replyTo.fromName ?? bot.name} />}
+              <MessageBoundary fallbackText={text}>
+                <ChatMarkdown text={text} />
+              </MessageBoundary>
+            </>
           )}
         </div>
         {!user && (
           <div className="flex flex-col gap-0.5 self-end pb-0.5">
+            {canReply && (
+              <button
+                onClick={() => onReply(message)}
+                aria-label={t("Reply to message")}
+                title={t("Reply to message")}
+                className="rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                <Reply size={14} />
+              </button>
+            )}
             <CopyButton text={text} />
             {message.kind === "text" && (
               <SpeakButton text={text} botId={bot.id} messageId={message.id} voiceId={bot.voice} />
@@ -689,6 +733,7 @@ const MessagesList = memo(function MessagesList({
   onCancelEdit,
   onSubmitEdit,
   onRegenerate,
+  onReply,
 }: {
   bot: Bot;
   messages: Message[];
@@ -701,6 +746,7 @@ const MessagesList = memo(function MessagesList({
   onCancelEdit: () => void;
   onSubmitEdit: (id: string, text: string) => void;
   onRegenerate: () => void;
+  onReply: (message: Message) => void;
 }) {
   const { dispatch } = useStore();
   const { t } = useI18n();
@@ -786,6 +832,7 @@ const MessagesList = memo(function MessagesList({
                   onCancelEdit={onCancelEdit}
                   onSubmitEdit={(text) => onSubmitEdit(m.id, text)}
                   onRegenerate={onRegenerate}
+                  onReply={onReply}
                 />
               );
           }
@@ -854,6 +901,9 @@ export function ChatView({ bot }: { bot: Bot }) {
   // one message at a time may be in edit mode
   const [editingId, setEditingId] = useState<string | null>(null);
   useEffect(() => setEditingId(null), [bot.id]);
+  // The message the next send answers. A task switch starts a new context.
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  useEffect(() => setReplyTo(null), [bot.id, bot.threadId]);
   // stable handler identities — MessagesList is memo'd on them
   const startEdit = useCallback((id: string) => setEditingId(id), []);
   const cancelEdit = useCallback(() => setEditingId(null), []);
@@ -1126,6 +1176,7 @@ export function ChatView({ bot }: { bot: Bot }) {
             onCancelEdit={cancelEdit}
             onSubmitEdit={submitEdit}
             onRegenerate={regenerate}
+            onReply={setReplyTo}
           />
           {laterCount > 0 && (
             <div className="flex justify-center">
@@ -1184,6 +1235,8 @@ export function ChatView({ bot }: { bot: Bot }) {
       <Composer
         key={bot.id}
         bot={bot}
+        replyTo={replyTo}
+        onClearReply={() => setReplyTo(null)}
         onEditLast={lastUserMessage && !bot.busy ? () => setEditingId(lastUserMessage.id) : undefined}
       />
 

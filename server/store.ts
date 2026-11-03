@@ -63,11 +63,23 @@ export interface ConnectorCardData {
   resumed?: boolean;
 }
 
+export interface MessageReply {
+  /** The message being answered; kept for jump-to and audit. */
+  id: string;
+  role: "user" | "bot";
+  /** Bounded plain-text excerpt, resolved and stored by the server. */
+  text: string;
+  /** group threads: the member that wrote the quoted message */
+  fromName?: string;
+}
+
 export interface Message {
   id: string;
   role: "bot" | "user";
   kind: "text" | "options" | "activity" | "screen" | "connector" | "page";
   text?: string;
+  /** A user message can point at the message it answers. */
+  replyTo?: MessageReply;
   card?: OptionCardData;
   connector?: ConnectorCardData;
   /** page messages: a self-contained HTML artifact the bot wrote this turn. */
