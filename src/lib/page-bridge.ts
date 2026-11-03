@@ -10,10 +10,12 @@ import { z } from "zod";
  *
  * `kodbot:send` is the zero-copy path: the app posts the text to the bot whose
  * page asked, so answers typed into a page arrive in the chat without any
- * clipboard step.
+ * clipboard step. `kodbot:close` lets the page dismiss the viewer it was
+ * submitted from — a page opened in a normal browser tab has no parent to
+ * close, so this only happens inside KodBot.
  *
  * The guards are deliberately strict: only a window that belongs to one of
- * our own page iframes may ask, only three message types exist, and text is
+ * our own page iframes may ask, only four message types exist, and text is
  * capped so a page cannot exhaust memory on the app side.
  */
 
@@ -23,7 +25,8 @@ const MAX_FILENAME_CHARS = 120;
 export type PageBridgeRequest =
   | { type: "kodbot:copy"; text: string }
   | { type: "kodbot:download"; filename: string; text: string }
-  | { type: "kodbot:send"; text: string };
+  | { type: "kodbot:send"; text: string }
+  | { type: "kodbot:close" };
 
 /** The only windows a page request may come from: a real framed document. */
 export type PageBridgeSource = MessageEventSource | null | undefined;
@@ -47,6 +50,9 @@ const bridgeRequestSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("kodbot:send"),
     text: z.string().trim().min(1).max(PAGE_BRIDGE_MAX_CHARS),
+  }),
+  z.object({
+    type: z.literal("kodbot:close"),
   }),
 ]);
 
@@ -107,6 +113,8 @@ export interface PageBridgeHandlers {
   onCopy: (text: string) => void;
   onDownload: (filename: string, text: string) => void;
   onSend?: (text: string, botId: string) => void;
+  /** The page asked to dismiss the viewer it was submitted from. */
+  onClose?: (botId: string) => void;
 }
 
 /** The message guard as a pure function, so tests can exercise rejection
@@ -121,6 +129,8 @@ export function createPageBridgeHandler(handlers: PageBridgeHandlers) {
     else if (request.type === "kodbot:download") handlers.onDownload(request.filename, request.text);
     else if (request.type === "kodbot:send" && frame.botId && handlers.onSend) {
       handlers.onSend(request.text, frame.botId);
+    } else if (request.type === "kodbot:close" && frame.botId && handlers.onClose) {
+      handlers.onClose(frame.botId);
     }
   };
 }
@@ -129,7 +139,7 @@ export function createPageBridgeHandler(handlers: PageBridgeHandlers) {
  * Call once at app level; page iframes opt in with `data-kodbot-page` and
  * carry `data-kodbot-bot` so the app knows which conversation to post to. */
 export function installPageBridge(
-  handlers: Pick<PageBridgeHandlers, "onCopy" | "onDownload" | "onSend">,
+  handlers: Pick<PageBridgeHandlers, "onCopy" | "onDownload" | "onSend" | "onClose">,
   doc: Document,
   win: Window,
 ): () => void {

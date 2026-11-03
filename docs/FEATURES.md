@@ -59,15 +59,15 @@ opens the page in an in-app viewer; the small top-right icon opens it in the
 normal browser. The same list remains under **Bot settings → Pages**. The bot
 also receives the page title, file path, and a bounded text excerpt in its
 conversation context, so a later turn can continue from what it built without
-re-reading the file.
+re-reading the file. A page can submit a form back to its bot: the answers
+arrive as a user message in that bot's chat and the in-app viewer closes.
 
 ### Queued prompts — Live
 
 Sending while a bot or room is busy no longer drops a stale bubble into the
 chat. The prompt waits in a floating queue above the composer, where it can be
 discarded, and it is sent one at a time as each turn finishes. The queue lives
-outside the chat, so switching bots or rooms does not lose it, and answers sent
-from a bot's page join the same queue.
+outside the chat, so switching bots or rooms does not lose it.
 
 ### Developer mode — Live
 

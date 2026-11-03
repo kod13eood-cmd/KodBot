@@ -16,13 +16,15 @@ function setup() {
   const onCopy = vi.fn();
   const onDownload = vi.fn();
   const onSend = vi.fn();
+  const onClose = vi.fn();
   const handler = createPageBridgeHandler({
     frames: () => [{ contentWindow: pageWindow, botId: "bot-1" }, null],
     onCopy,
     onDownload,
     onSend,
+    onClose,
   });
-  return { pageWindow, otherWindow, onCopy, onDownload, onSend, handler };
+  return { pageWindow, otherWindow, onCopy, onDownload, onSend, onClose, handler };
 }
 
 describe("page bridge message guard", () => {
@@ -69,6 +71,20 @@ describe("page bridge message guard", () => {
 
     handler({ source: pageWindow, data: { type: "kodbot:send", text: "nope" } });
     expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it("lets a page close its viewer, and only from its own frame", () => {
+    const { pageWindow, otherWindow, onClose, handler } = setup();
+
+    handler({ source: pageWindow, data: { type: "kodbot:close" } });
+    expect(onClose).toHaveBeenCalledWith("bot-1");
+
+    onClose.mockClear();
+    handler({ source: otherWindow, data: { type: "kodbot:close" } });
+    handler({ source: null, data: { type: "kodbot:close" } });
+    expect(onClose).not.toHaveBeenCalled();
+
+    expect(parsePageBridgeMessage({ type: "kodbot:close" })).toEqual({ type: "kodbot:close" });
   });
 
   it("rejects oversized text and oversized downloads", () => {

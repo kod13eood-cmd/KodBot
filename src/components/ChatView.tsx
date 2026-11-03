@@ -527,6 +527,17 @@ function PageArtifactCard({ page }: { page: NonNullable<Message["page"]> }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [previewOpen]);
 
+  // A page that submits its form asks to be dismissed; the preview it was
+  // opened in is the only surface that can act on that.
+  useEffect(() => {
+    const onClose = (event: Event) => {
+      const detail = (event as CustomEvent<{ botId?: string }>).detail;
+      if (detail?.botId === page.botId) setPreviewOpen(false);
+    };
+    window.addEventListener("kodbot:page-close", onClose);
+    return () => window.removeEventListener("kodbot:page-close", onClose);
+  }, [page.botId]);
+
   return (
     <>
       <div className="flex w-full justify-start">

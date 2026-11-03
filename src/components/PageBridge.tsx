@@ -4,7 +4,7 @@ import { Check, Copy, X } from "lucide-react";
 
 import { copyText } from "@/lib/clipboard";
 import { useI18n } from "@/lib/i18n";
-import { queueKeyForBot, promptQueue } from "@/lib/send-queue";
+import { useStore } from "@/state/store";
 import { downloadPageText, installPageBridge } from "@/lib/page-bridge";
 
 type CopyStatus = "idle" | "copied" | "blocked";
@@ -18,6 +18,7 @@ type CopyStatus = "idle" | "copied" | "blocked";
  * the write; when it refuses, the text is still selected for a manual copy. */
 export function PageBridge() {
   const { t } = useI18n();
+  const { dispatch } = useStore();
   const [copyTextValue, setCopyTextValue] = useState<string | null>(null);
   const [status, setStatus] = useState<CopyStatus>("idle");
   const areaRef = useRef<HTMLTextAreaElement>(null);
@@ -33,10 +34,15 @@ export function PageBridge() {
         onDownload: (filename, text) => downloadPageText(filename, text),
         onSend: (text, botId) => {
           // Zero-copy path: answers typed into a page go straight to that
-          // bot's conversation. While the bot is busy the text joins the same
-          // floating queue as a prompt typed above the composer, so a page
-          // answer never cuts into a running turn.
-          promptQueue.enqueue(queueKeyForBot(botId), text);
+          // bot's conversation. This is an explicit submission, not a draft:
+          // the server's steer-queue holds it if the bot is mid-turn, and the
+          // page closes itself right after.
+          dispatch({ type: "send", botId, text });
+        },
+        onClose: (botId) => {
+          // PageArtifactCard owns the viewer; a page message cannot close a
+          // React portal directly, so announce it on the window.
+          window.dispatchEvent(new CustomEvent("kodbot:page-close", { detail: { botId } }));
         },
       },
       document,
