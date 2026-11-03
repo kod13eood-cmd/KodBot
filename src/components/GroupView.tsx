@@ -29,6 +29,7 @@ import { useFocusMessage } from "@/lib/focus-message";
 import { shortPath } from "@/lib/short-path";
 import { BOTTOM_FOLLOW_THRESHOLD, shouldResumeBottomFollow } from "@/lib/bottom-follow";
 import { showWorkingDots } from "@/lib/turn-tail";
+import { useDeveloperMode } from "@/lib/dev-mode";
 import {
   TRANSCRIPT_WINDOW_SIZE,
   expandWindowStart,
@@ -330,6 +331,7 @@ function RoomWorkingFolderChip({ group, onToggle }: { group: Group; onToggle: ()
 
 export function GroupView({ group }: { group: Group }) {
   const { state, dispatch } = useStore();
+  const devMode = useDeveloperMode();
   const stream = useStreaming();
   const streaming = stream.streaming[group.threadId];
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -466,7 +468,9 @@ export function GroupView({ group }: { group: Group }) {
         <span className="text-[15px] font-semibold text-ink">{group.name}</span>
         <div className="flex items-center gap-1.5" style={noDrag}>
           <GroupCallButton group={group} members={members} />
-          {!group.dm && <RoomWorkingFolderChip group={group} onToggle={() => setFolderOpen((open) => !open)} />}
+          {!group.dm && devMode && (
+            <RoomWorkingFolderChip group={group} onToggle={() => setFolderOpen((open) => !open)} />
+          )}
           {!group.dm && <DefaultResponderSelect group={group} members={members} />}
           {members.map((b) => (
             <span
@@ -529,7 +533,7 @@ export function GroupView({ group }: { group: Group }) {
       </div>
 
       {/* Working folder card — the chip in the header toggles it */}
-      {folderOpen && !group.dm && (
+      {folderOpen && !group.dm && devMode && (
         <div className="mx-auto w-full max-w-[900px] px-5">
           <div className="mb-1">
             <RoomWorkingFolder group={group} />

@@ -69,6 +69,20 @@ discarded, and it is sent one at a time as each turn finishes. The queue lives
 outside the chat, so switching bots or rooms does not lose it, and answers sent
 from a bot's page join the same queue.
 
+### Developer mode — Live
+
+**Settings → General → Developer mode** hides the technical surfaces for
+everyday use: token counts, the API keys in **Connections**, the bot and room
+working-folder paths, the per-turn usage chip, and the **Inspector** button. It
+is a per-client preference and starts off, so a fresh window is clean; turn it
+on when you need to inspect a driver or manage keys.
+
+### System tray — Live
+
+The desktop app keeps a KodBot icon in the system tray with **Open KodBot** and
+**Quit KodBot**. The application menu is removed on Linux and Windows, so
+pressing Alt no longer drops a File/Edit/View bar over the window.
+
 ### Shopping cards — Live
 
 A bot can emit a `products` block and KodBot renders real product cards with an

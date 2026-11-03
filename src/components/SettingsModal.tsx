@@ -16,6 +16,7 @@ import { VoiceSettings } from "./VoiceSettings";
 import { openShortcutsSheet, SHORTCUTS_KEY_LABEL } from "./ShortcutsSheet";
 import { cn } from "@/lib/cn";
 import { LOCALE_OPTIONS, useI18n } from "@/lib/i18n";
+import { setDeveloperMode, useDeveloperMode } from "@/lib/dev-mode";
 import { remoteSwitchAvailable } from "@/lib/server-switch";
 import type { ServerConnectionState } from "@/types/ogb";
 
@@ -240,11 +241,64 @@ function LanguageCard() {
   );
 }
 
+function DeveloperCard() {
+  const { state, dispatch } = useStore();
+  const { t } = useI18n();
+  const devMode = useDeveloperMode();
+  return (
+    <Card
+      title={t("Developer mode")}
+      subtitle={t("Show token counts, API keys, working folders, and the Inspector.")}
+    >
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-inset px-3 py-2.5">
+        <span className="text-[13px] text-ink-secondary">
+          {devMode ? t("Technical details are visible.") : t("Technical details are hidden.")}
+        </span>
+        <button
+          role="switch"
+          aria-checked={devMode}
+          aria-label={t("Developer mode")}
+          onClick={() => {
+            const next = !devMode;
+            setDeveloperMode(next);
+            // The Inspector has no button to close it while developer mode is
+            // off; close the panel with the setting, not just the icon.
+            if (!next && state.inspectorOpen) dispatch({ type: "toggleInspector" });
+          }}
+          className={cn(
+            "relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors",
+            devMode ? "bg-accent" : "bg-raised",
+          )}
+        >
+          <span
+            className={cn(
+              "absolute top-[3px] size-5 rounded-full bg-white transition-all",
+              devMode ? "left-[21px]" : "left-[3px]",
+            )}
+          />
+        </button>
+      </div>
+    </Card>
+  );
+}
+
 export function SettingsModal() {
   const { state, dispatch } = useStore();
   const { t } = useI18n();
+  const devMode = useDeveloperMode();
   const section = state.appSettingsSection;
   const dialogRef = useRef<HTMLDivElement>(null);
+  // Connections and Usage are developer surfaces: API keys and token counts
+  // disappear with the mode, and a section left open falls back to General.
+  const sections = SECTIONS.filter(
+    (entry) => devMode || (entry.id !== "connections" && entry.id !== "usage"),
+  );
+
+  useEffect(() => {
+    if (!devMode && (section === "connections" || section === "usage")) {
+      dispatch({ type: "toggleAppSettings", open: true, section: "general" });
+    }
+  }, [devMode, section, dispatch]);
 
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -307,7 +361,7 @@ export function SettingsModal() {
           <div id="app-settings-title" className="px-2 pb-2 pt-1 text-[15px] font-semibold text-ink">
             {t("Settings")}
           </div>
-          {SECTIONS.map(({ id, label, icon: Icon }) => (
+          {sections.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => dispatch({ type: "toggleAppSettings", open: true, section: id })}
@@ -326,7 +380,7 @@ export function SettingsModal() {
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center justify-between px-5 py-3">
             <span className="text-[15px] font-semibold text-ink">
-              {t(SECTIONS.find((s) => s.id === section)?.label ?? "")}
+              {t(sections.find((s) => s.id === section)?.label ?? "")}
             </span>
             <button
               onClick={() => dispatch({ type: "toggleAppSettings", open: false })}
@@ -344,6 +398,7 @@ export function SettingsModal() {
                   <ProfileFields />
                 </Card>
                 <ServerCard />
+                <DeveloperCard />
                 <ShortcutsRow />
                 <LanguageCard />
                 <UpdatesRow />

@@ -23,6 +23,7 @@ import { requestNotificationPermission } from "@/lib/notify";
 import { botUsage, costCaption, formatTokens, formatUsd } from "@/lib/usage";
 import { shortPath } from "@/lib/short-path";
 import { useI18n } from "@/lib/i18n";
+import { useDeveloperMode } from "@/lib/dev-mode";
 
 function Field({
   label,
@@ -786,6 +787,7 @@ function BotTeamCard({ bot }: { bot: Bot }) {
 export function SettingsPanel({ bot }: { bot: Bot }) {
   const { state, dispatch } = useStore();
   const { t } = useI18n();
+  const devMode = useDeveloperMode();
   const [voices, setVoices] = useState<Array<{ id: string; label: string; description?: string }>>([]);
   const [voicesLoading, setVoicesLoading] = useState(false);
   const [poolOpen, setPoolOpen] = useState(false);
@@ -1294,8 +1296,8 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
             </div>
           </div>
 
-          <BotUsageCard bot={bot} />
-          <WorkingFolder bot={bot} />
+          {devMode && <BotUsageCard bot={bot} />}
+          {devMode && <WorkingFolder bot={bot} />}
 
           {/* keyed so switching bots never shows one bot's notes under another's name */}
           <MemoryCard key={bot.id} bot={bot} />

@@ -172,6 +172,11 @@ const BULGARIAN: Record<string, string> = {
   // App settings
   "General": "Общи",
   "Connections": "Връзки",
+  "Developer mode": "Режим за разработчици",
+  "Show token counts, API keys, working folders, and the Inspector.":
+    "Показва броячи на токени, API ключове, работни папки и Inspector.",
+  "Technical details are visible.": "Техническите детайли са видими.",
+  "Technical details are hidden.": "Техническите детайли са скрити.",
   "Engines": "Двигатели",
   "Companion": "Компаньон",
   "Managed on the remote server": "Управлява се от отдалечения сървър",

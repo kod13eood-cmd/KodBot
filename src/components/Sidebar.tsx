@@ -1080,7 +1080,18 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             <span className="size-3 rounded-full bg-[#febc2e]" />
             <span className="size-3 rounded-full bg-[#28c840]" />
           </div>
-        ) : <div />}
+        ) : (
+          // The app's own top-left mark. GNOME's top panel cannot host an
+          // application icon (the tray lives on the right), so the brand sits
+          // where the window chrome leaves space.
+          <img
+            src="/app-icon.svg"
+            alt="KodBot"
+            title="KodBot"
+            draggable={false}
+            className="size-7 rounded-lg max-md:hidden"
+          />
+        )}
         <div
           className="flex items-center gap-0.5"
           style={macInset ? ({ WebkitAppRegion: "no-drag" } as React.CSSProperties) : undefined}

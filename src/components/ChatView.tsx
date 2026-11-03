@@ -54,6 +54,7 @@ import { useFocusMessage } from "@/lib/focus-message";
 import { webhookMessageView } from "@/lib/webhook-message";
 import { BOTTOM_FOLLOW_THRESHOLD, shouldResumeBottomFollow } from "@/lib/bottom-follow";
 import { useI18n } from "@/lib/i18n";
+import { useDeveloperMode } from "@/lib/dev-mode";
 import {
   TRANSCRIPT_WINDOW_SIZE,
   expandWindowStart,
@@ -793,6 +794,7 @@ const MessagesList = memo(function MessagesList({
 export function ChatView({ bot }: { bot: Bot }) {
   const { state, dispatch } = useStore();
   const { t } = useI18n();
+  const devMode = useDeveloperMode();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const stream = useStreaming();
@@ -1018,8 +1020,8 @@ export function ChatView({ bot }: { bot: Bot }) {
             </button>
           )}
           <TaskPicker bot={bot} />
-          <UsageChip bot={bot} />
-          <WorkingFolderChip bot={bot} />
+          {devMode && <UsageChip bot={bot} />}
+          {devMode && <WorkingFolderChip bot={bot} />}
           <ModelPicker bot={bot} />
           <CallButton bot={bot} />
           <button
@@ -1032,18 +1034,20 @@ export function ChatView({ bot }: { bot: Bot }) {
           >
             <Monitor size={18} />
           </button>
-          <button
-            onClick={() => dispatch({ type: "toggleInspector" })}
-            aria-label="Inspector"
-            aria-pressed={state.inspectorOpen}
-            className={cn(
-              "rounded-md p-1.5 hover:bg-raised",
-              state.inspectorOpen ? "text-accent" : "text-ink-secondary hover:text-ink",
-            )}
-            title="Inspector — runtime events and raw protocol for this thread"
-          >
-            <Bug size={18} />
-          </button>
+          {devMode && (
+            <button
+              onClick={() => dispatch({ type: "toggleInspector" })}
+              aria-label="Inspector"
+              aria-pressed={state.inspectorOpen}
+              className={cn(
+                "rounded-md p-1.5 hover:bg-raised",
+                state.inspectorOpen ? "text-accent" : "text-ink-secondary hover:text-ink",
+              )}
+              title="Inspector — runtime events and raw protocol for this thread"
+            >
+              <Bug size={18} />
+            </button>
+          )}
         </div>
       </div>
 
