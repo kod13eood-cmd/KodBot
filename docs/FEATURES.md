@@ -61,6 +61,14 @@ also receives the page title, file path, and a bounded text excerpt in its
 conversation context, so a later turn can continue from what it built without
 re-reading the file.
 
+### Queued prompts — Live
+
+Sending while a bot or room is busy no longer drops a stale bubble into the
+chat. The prompt waits in a floating queue above the composer, where it can be
+discarded, and it is sent one at a time as each turn finishes. The queue lives
+outside the chat, so switching bots or rooms does not lose it, and answers sent
+from a bot's page join the same queue.
+
 ### Shopping cards — Live
 
 A bot can emit a `products` block and KodBot renders real product cards with an

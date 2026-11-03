@@ -13,6 +13,7 @@ import { InspectorPanel } from "@/components/InspectorPanel";
 import { SettingsModal } from "@/components/SettingsModal";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { PageBridge } from "@/components/PageBridge";
+import { SendQueueDrainer } from "@/components/SendQueueDrainer";
 import { DesktopCapabilitiesProvider } from "@/components/DesktopCapabilities";
 import { RoutinesPage } from "@/components/RoutinesPage";
 import { NoEngines } from "@/components/NoEngines";
@@ -156,6 +157,7 @@ export default function App() {
       <StoreProvider>
         <Shell />
         <PageBridge />
+        <SendQueueDrainer />
         {gated && <Onboarding onDone={() => setGated(false)} />}
       </StoreProvider>
     </DesktopCapabilitiesProvider>

@@ -19,6 +19,7 @@ import { groupComposerHint } from "@/lib/group-routing";
 import { PendingApprovalActions, PendingApprovalPanel, pendingApprovals } from "./PendingApproval";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { useI18n } from "@/lib/i18n";
+import { promptQueue, queueKeyForBot, queueKeyForGroup } from "@/lib/send-queue";
 
 /** The active @mention query at the caret: the text between an `@` that
  * starts a word and the caret. null = no mention being typed. */
@@ -33,12 +34,6 @@ function mentionQueryAt(text: string, caret: number): { start: number; query: st
 }
 
 type MentionChoice = { id: string; name: string; bot?: Bot };
-type QueuedPrompt = { id: number; text: string };
-
-// Kept outside the component so switching chats (which unmounts the composer)
-// does not silently forget a queue the user built while a bot was busy.
-const pendingQueues = new Map<string, QueuedPrompt[]>();
-let queuedSequence = 0;
 
 export function Composer({
   bot,
@@ -157,22 +152,17 @@ export function Composer({
     });
   };
 
-  // While a target is busy, sends wait in a client-side queue above the
-  // composer. They are not written into the transcript until they actually
-  // start, so a queued prompt never sits in the chat as a stale bubble.
-  const queueKey = group ? `group:${group.id}` : `bot:${bot?.id ?? ""}`;
-  const [queued, setQueued] = useState<QueuedPrompt[]>(() => pendingQueues.get(queueKey) ?? []);
-  const setQueuedPrompts = useCallback(
-    (update: (current: QueuedPrompt[]) => QueuedPrompt[]) => {
-      setQueued((current) => {
-        const next = update(current);
-        if (next.length) pendingQueues.set(queueKey, next);
-        else pendingQueues.delete(queueKey);
-        return next;
-      });
-    },
-    [queueKey],
-  );
+  // While a target is busy, sends wait in the app-wide queue above the
+  // composer (see lib/send-queue). They are not written into the transcript
+  // until they actually start, so a queued prompt never sits in the chat as a
+  // stale bubble. The drainer lives outside this component: switching chats
+  // unmounts the composer but a queued backlog must still go out.
+  const queueKey = group ? queueKeyForGroup(group.id) : queueKeyForBot(bot?.id ?? "");
+  const [queued, setQueued] = useState(() => promptQueue.prompts(queueKey));
+  useEffect(() => {
+    setQueued(promptQueue.prompts(queueKey));
+    return promptQueue.subscribe(() => setQueued(promptQueue.prompts(queueKey)));
+  }, [queueKey]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   // a chip on its own is a message: the send control has to appear for it
@@ -180,7 +170,7 @@ export function Composer({
   const submit = (composed: string) => {
     if (!composed) return;
     if (busy) {
-      setQueuedPrompts((current) => [...current, { id: ++queuedSequence, text: composed }]);
+      promptQueue.enqueue(queueKey, composed);
       setText("");
       setAttachments([]);
       return;
@@ -216,26 +206,9 @@ export function Composer({
       .catch((error) => setUploadError(error instanceof Error ? error.message : String(error)))
       .finally(() => setUploading(false));
   };
-  // Drain one queued prompt on each busy → idle transition. One at a time is
-  // deliberate: the next prompt starts only after the previous turn finishes.
-  const wasBusy = useRef(busy || queued.length > 0);
-  useEffect(() => {
-    if (busy) {
-      wasBusy.current = true;
-      return;
-    }
-    if (!wasBusy.current || queued.length === 0) return;
-    const next = queued[0]!;
-    wasBusy.current = false;
-    setQueuedPrompts((current) => current.filter((item) => item.id !== next.id));
-    if (group) {
-      dispatch({ type: "sendGroup", groupId: group.id, text: next.text });
-      track("message_sent", { room: true, queued: true });
-    } else if (bot) {
-      dispatch({ type: "send", botId: bot.id, text: next.text });
-      track("message_sent", { driver: bot.modelSelection?.instanceId, queued: true });
-    }
-  }, [busy, queued, group, bot, dispatch, setQueuedPrompts]);
+  // The app-wide drainer sends one queued prompt per busy → idle transition
+  // (see components/SendQueueDrainer), so this component only shows the
+  // backlog and adds to it.
 
   // native dictation: partials stream into the input while the Swift
   // helper runs; the final transcript stays in the box, ready to edit/send
@@ -322,7 +295,7 @@ export function Composer({
                   </span>
                   <button
                     type="button"
-                    onClick={() => setQueuedPrompts((current) => current.filter((queuedItem) => queuedItem.id !== item.id))}
+                    onClick={() => promptQueue.drop(queueKey, item.id)}
                     aria-label={t("Discard queued message")}
                     title={t("Discard queued message")}
                     className="shrink-0 rounded p-0.5 text-ink-secondary hover:bg-raised hover:text-ink"

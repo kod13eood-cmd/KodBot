@@ -75,5 +75,13 @@ describe("pages", () => {
     const prompt = pagesSystemPrompt(BOT);
     expect(prompt).toContain(JSON.stringify(join(workspaceDir(BOT), "pages")));
     expect(prompt).toContain("never put API keys");
+    expect(prompt).not.toContain("Existing pages");
+  });
+
+  it("names the pages that already exist so a new session can reuse them", () => {
+    const prompt = pagesSystemPrompt(BOT);
+    expect(prompt).not.toContain("Existing pages");
+    writePage(BOT, "orders.html", "<title>Open orders</title><p>x</p>");
+    expect(pagesSystemPrompt(BOT)).toContain('"Open orders" (orders.html');
   });
 });

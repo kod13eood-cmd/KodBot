@@ -147,8 +147,16 @@ export function deletePage(botId: string, name: string): boolean {
 /** The prompt block that tells an agent pages exist and where to write them.
  * The path is quoted because workspace paths can contain spaces. */
 export function pagesSystemPrompt(botId: string): string {
-  const dir = join(pageDir(botId));
+  const dir = pageDir(botId);
+  // Name the pages that already exist so a fresh session can say "I already
+  // have a dashboard" or update it instead of writing a near-duplicate.
+  const existing = listPages(botId)
+    .slice(0, 20)
+    .map((page) => `${JSON.stringify(page.title)} (${page.name}, ${page.bytes} bytes)`)
+    .join(", ");
   return ` You can build private web pages for the user. Write complete self-contained HTML files into ${JSON.stringify(
     dir,
-  )}; they appear in this bot's Pages tab and as a preview card in the chat, and the user can open or share them. Use a page instead of a wall of chat when a dashboard, checklist, report, or visual comparison would be clearer. Keep CSS and JavaScript inline and never put API keys or other secrets in a page. Tell the user the page title when you finish.`;
+  )}; they appear in this bot's Pages tab and as a preview card in the chat, and the user can open or share them. Use a page instead of a wall of chat when a dashboard, checklist, report, or visual comparison would be clearer. Keep CSS and JavaScript inline and never put API keys or other secrets in a page. Tell the user the page title when you finish.${
+    existing ? ` Existing pages in this bot's workspace: ${existing}. Read the file if you need the full contents.` : ""
+  }`;
 }

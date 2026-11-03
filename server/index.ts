@@ -60,6 +60,7 @@ import {
 import * as tts from "./tts/index.ts";
 import { narrateTool, toUtterances } from "./tts/speech-text.ts";
 import { buildTurnContext, engineIsFresh } from "./turn-context.ts";
+import { roomContext, transcriptTurns } from "./conversation-context.ts";
 import { TurnWatchdog } from "./turn-watchdog.ts";
 import {
   ensureWorkspace,
@@ -1315,13 +1316,10 @@ async function startTurn(
       : store.appendMessage(threadId, { role: "user", kind: "text", text });
   }
 
-  // transcript for API-backed drivers: settled text turns on the ACTIVE
-  // branch only — abandoned forks never reach the model
-  const transcript = store
-    .activePath(threadId)
-    .filter((m) => (m.kind === "text" || m.kind === "page") && m.text && m.id !== userMessage.id)
-    .slice(-40)
-    .map((m) => ({ role: m.role === "user" ? ("user" as const) : ("assistant" as const), text: m.text! }));
+  // transcript for API-backed drivers: settled text turns and page
+  // announcements on the ACTIVE branch only — abandoned forks never reach the
+  // model
+  const transcript = transcriptTurns(store.activePath(threadId), userMessage.id);
 
   // After a rewind (edit / branch switch) the provider's native session
   // still contains the abandoned branch: start a fresh session instead of
@@ -1660,16 +1658,10 @@ const webhookIngressStatus = () => ({
 // fresh session with recent room context. A member's reply may @mention
 // teammates; those get one chained turn (hop 1), never deeper.
 const groupQueues = new Map<string, Promise<void>>();
-const GROUP_CONTEXT_MESSAGES = 30;
 const MAX_GROUP_HOPS = 1;
 
 function serializeRoomContext(threadId: string, userName: string): string {
-  return store
-    .messagesFor(threadId)
-    .filter((m) => (m.kind === "text" || m.kind === "page") && m.text)
-    .slice(-GROUP_CONTEXT_MESSAGES)
-    .map((m) => `${m.role === "user" ? userName : (m.from?.name ?? "Bot")}: ${m.text}`)
-    .join("\n");
+  return roomContext(store.messagesFor(threadId), userName);
 }
 
 
