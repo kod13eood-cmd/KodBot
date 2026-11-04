@@ -3,18 +3,20 @@
 // a bot's own reactions render with its name in the tooltip.
 import { useStore, type Bot, type Message } from "@/state/store";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n";
 
 export const REACTION_SET = ["👍", "❤️", "😂", "🎉", "👀"] as const;
 
 export function ReactionBar({ threadId, message }: { threadId: string; message: Message }) {
   const { dispatch } = useStore();
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-0.5 rounded-full border border-hairline/40 bg-panel px-1 py-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
       {REACTION_SET.map((emoji) => (
         <button
           key={emoji}
           onClick={() => dispatch({ type: "toggleReaction", threadId, messageId: message.id, emoji })}
-          aria-label={`React ${emoji}`}
+          aria-label={t("React {emoji}", { emoji })}
           className="rounded-full px-1 py-0.5 text-[13px] leading-none hover:bg-raised"
         >
           {emoji}
@@ -36,13 +38,14 @@ export function ReactionChips({
   align?: "left" | "right";
 }) {
   const { dispatch } = useStore();
+  const { t } = useI18n();
   const reactions = message.reactions ?? [];
   if (!reactions.length) return null;
   // group identical emoji into one chip with a count
   const grouped = new Map<string, string[]>();
   for (const r of reactions) grouped.set(r.emoji, [...(grouped.get(r.emoji) ?? []), r.by]);
   const nameOf = (by: string) =>
-    by === "user" ? "You" : (members?.find((b) => b.id === by)?.name ?? "Bot");
+    by === "user" ? t("You") : (members?.find((b) => b.id === by)?.name ?? t("Bot"));
   return (
     <div className={cn("mt-1 flex flex-wrap gap-1", align === "right" ? "justify-end" : "justify-start")}>
       {[...grouped].map(([emoji, bys]) => (

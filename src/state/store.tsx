@@ -318,6 +318,8 @@ export interface AppState {
   inspectorOpen: boolean;
   appSettingsOpen: boolean;
   appSettingsSection: AppSettingsSection;
+  /** the bilingual user guide modal */
+  helpOpen: boolean;
   /** latest live frame of a bot's computer, per botId */
   screens: Record<string, { png: string; mime: string }>;
   /** bots whose cloud computer is being provisioned */
@@ -413,6 +415,7 @@ export type Action =
   | { type: "focusMessage"; threadId: string; messageId: string }
   | { type: "focusMessageConsumed"; nonce: number }
   | { type: "toggleAppSettings"; open?: boolean; section?: AppSettingsSection }
+  | { type: "toggleHelp"; open?: boolean }
   | {
       type: "updateBot";
       botId: string;
@@ -500,6 +503,7 @@ export function reducer(state: AppState, action: Action): AppState {
         appSettingsOpen: false,
         pluginsOpen: false,
         pluginsQuery: "",
+        helpOpen: false,
       };
     case "routinesHydrated":
       return { ...state, routines: action.routines, routineRuns: action.runs };
@@ -754,6 +758,7 @@ export function reducer(state: AppState, action: Action): AppState {
         computerOpen: open ? false : state.computerOpen,
         inspectorOpen: open ? false : state.inspectorOpen,
         appSettingsOpen: open ? false : state.appSettingsOpen,
+        helpOpen: open ? false : state.helpOpen,
       };
     }
     case "togglePlugins": {
@@ -761,6 +766,7 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         pluginsOpen: open,
+        helpOpen: open ? false : state.helpOpen,
         // Opening from global search carries the app name; an ordinary open
         // starts with a clean catalog filter.
         pluginsQuery: open ? (action.query ?? "") : state.pluginsQuery,
@@ -787,6 +793,7 @@ export function reducer(state: AppState, action: Action): AppState {
         settingsOpen: open ? false : state.settingsOpen,
         inspectorOpen: open ? false : state.inspectorOpen,
         appSettingsOpen: open ? false : state.appSettingsOpen,
+        helpOpen: open ? false : state.helpOpen,
       };
     }
     case "toggleInspector": {
@@ -797,6 +804,7 @@ export function reducer(state: AppState, action: Action): AppState {
         settingsOpen: open ? false : state.settingsOpen,
         computerOpen: open ? false : state.computerOpen,
         appSettingsOpen: open ? false : state.appSettingsOpen,
+        helpOpen: open ? false : state.helpOpen,
       };
     }
     case "toggleAppSettings": {
@@ -808,6 +816,19 @@ export function reducer(state: AppState, action: Action): AppState {
         settingsOpen: open ? false : state.settingsOpen,
         computerOpen: open ? false : state.computerOpen,
         inspectorOpen: open ? false : state.inspectorOpen,
+        pluginsOpen: open ? false : state.pluginsOpen,
+        helpOpen: open ? false : state.helpOpen,
+      };
+    }
+    case "toggleHelp": {
+      const open = action.open ?? !state.helpOpen;
+      return {
+        ...state,
+        helpOpen: open,
+        settingsOpen: open ? false : state.settingsOpen,
+        computerOpen: open ? false : state.computerOpen,
+        inspectorOpen: open ? false : state.inspectorOpen,
+        appSettingsOpen: open ? false : state.appSettingsOpen,
         pluginsOpen: open ? false : state.pluginsOpen,
       };
     }
@@ -922,6 +943,7 @@ export const initialState: AppState = {
   computerOpen: false,
   inspectorOpen: false,
   appSettingsOpen: false,
+  helpOpen: false,
   appSettingsSection: "general",
   screens: {},
   provisioning: {},

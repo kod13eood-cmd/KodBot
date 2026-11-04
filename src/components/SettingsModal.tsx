@@ -283,6 +283,24 @@ function DeveloperCard() {
   );
 }
 
+function HelpCard() {
+  const { dispatch } = useStore();
+  const { t } = useI18n();
+  return (
+    <Card
+      title={t("Help and guide")}
+      subtitle={t("A bilingual guide to bots, tasks, rooms, automations, pages, and troubleshooting.")}
+    >
+      <button
+        onClick={() => dispatch({ type: "toggleHelp", open: true })}
+        className="rounded-lg border border-hairline/40 px-3 py-1.5 text-[13px] text-ink hover:bg-raised"
+      >
+        {t("Open guide")}
+      </button>
+    </Card>
+  );
+}
+
 function GroupChatsCard() {
   const { t } = useI18n();
   const showGroups = useShowGroupChats();
@@ -435,6 +453,7 @@ export function SettingsModal() {
                 <ServerCard />
                 <DeveloperCard />
                 <GroupChatsCard />
+                <HelpCard />
                 <ShortcutsRow />
                 <LanguageCard />
                 <UpdatesRow />

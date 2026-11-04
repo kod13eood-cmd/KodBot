@@ -13,6 +13,7 @@ import { InspectorPanel } from "@/components/InspectorPanel";
 import { SettingsModal } from "@/components/SettingsModal";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { PageBridge } from "@/components/PageBridge";
+import { HelpPanel } from "@/components/HelpPanel";
 import { WindowControls } from "@/components/WindowControls";
 import { SendQueueDrainer } from "@/components/SendQueueDrainer";
 import { DesktopCapabilitiesProvider } from "@/components/DesktopCapabilities";
@@ -184,6 +185,7 @@ function Shell() {
       {state.computerOpen && bot && <ComputerPanel bot={bot} />}
       {state.inspectorOpen && bot && <InspectorPanel bot={bot} />}
       {state.appSettingsOpen && <SettingsModal />}
+      {state.helpOpen && <HelpPanel />}
       {state.pluginsOpen && <PluginsPanel />}
       {/* mounted after the modals: same z-50 tier, so DOM order keeps the
           palette on top when one of them is open underneath */}

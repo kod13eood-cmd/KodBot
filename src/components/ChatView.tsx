@@ -1076,10 +1076,10 @@ export function ChatView({ bot }: { bot: Bot }) {
             <button
               onClick={() => dispatch({ type: "interrupt", botId: bot.id })}
               className="flex items-center gap-1.5 rounded-full border border-hairline/40 bg-raised/60 px-2.5 py-1 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink"
-              title="Stop this turn"
+              title={t("Stop this turn")}
             >
               <Square size={12} className="fill-current" />
-              Stop
+              {t("Stop")}
             </button>
           )}
           <TaskPicker bot={bot} />
@@ -1093,7 +1093,7 @@ export function ChatView({ bot }: { bot: Bot }) {
               "rounded-md p-1.5 hover:bg-raised",
               state.computerOpen ? "text-accent" : "text-ink-secondary hover:text-ink",
             )}
-            title="Bot's computer"
+            title={t("Bot's computer")}
           >
             <Monitor size={18} />
           </button>

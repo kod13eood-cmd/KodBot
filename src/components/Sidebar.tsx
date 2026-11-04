@@ -5,6 +5,7 @@ import {
   Archive,
   ArrowDownToLine,
   BellDot,
+  BookOpen,
   Bot as BotIcon,
   CalendarDays,
   Check,
@@ -1340,6 +1341,14 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             </span>
           </button>
           <UpdateButton />
+          <button
+            onClick={() => dispatch({ type: "toggleHelp" })}
+            className="rounded-md p-2 text-ink-secondary hover:bg-raised hover:text-ink"
+            title={t("Help and guide")}
+            aria-label={t("Help and guide")}
+          >
+            <BookOpen size={18} />
+          </button>
           <button
             onClick={() => dispatch({ type: "toggleAppSettings" })}
             className="rounded-md p-2 text-ink-secondary hover:bg-raised hover:text-ink"
