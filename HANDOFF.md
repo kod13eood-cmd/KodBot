@@ -309,6 +309,28 @@ The 15-minute timer and `RESTORE.md` cover local recovery. A daily archive at
 03:30 Europe/Sofia is uploaded to `llm1:/home/llm1/backups/kodbot/`
 (60-day retention, checksum-verified).
 
+### 2026-11-04 disk-full incident (resolved)
+
+The 217 GB root disk filled to 100%. The hot snapshot script kept **seven
+days** of 15-minute archives, each ~2 GB because the hot tar included bot
+workspaces; 117 snapshots occupied 75 GB. SQLite could not write its WAL and
+the harness entered a crash loop with `Error: disk I/O error` on
+`PRAGMA journal_mode = WAL`, so the app showed no bots, teams, or messages.
+
+The live state was intact. Old hot snapshots were deleted (the newest two were
+kept), `~/.kodbot` was copied to
+`/home/paperclipi7/kodbot-rescue-20261104-0200` (7 MB, mode 600), and
+`PRAGMA integrity_check` returned `ok` with 2,946 messages. The hot-snapshot
+retention is now **count-based: the newest 8 archives** (~2 hours), while full
+daily archives keep the previous 14 days. The harness was restarted with 19
+bots, 7 rooms, 5 teams, and 2,948 messages.
+
+Launch the desktop app from the desktop session (or `systemd-run --user`), not
+from the agent's sandboxed shell: that shell runs with `NoNewPrivs=1`, which
+stops `snap-confine` from launching the Chromium/Firefox snaps, so external
+auth links appear to do nothing. The currently running app is
+`kodbot-desktop.service` under the user manager.
+
 The 19:50 handoff snapshot remains at
 `/home/paperclipi7/kodbot-handoff-20261102-1950.tgz` (mode `600`) for comparison;
 it predates the restoration and should not replace the newer backups.
