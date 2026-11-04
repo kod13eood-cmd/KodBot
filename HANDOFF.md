@@ -321,8 +321,9 @@ The live state was intact. Old hot snapshots were deleted (the newest two were
 kept), `~/.kodbot` was copied to
 `/home/paperclipi7/kodbot-rescue-20261104-0200` (7 MB, mode 600), and
 `PRAGMA integrity_check` returned `ok` with 2,946 messages. The hot-snapshot
-retention is now **count-based: the newest 8 archives** (~2 hours), while full
-daily archives keep the previous 14 days. The harness was restarted with 19
+retention is now **count-based: the newest 2 archives** (~30 minutes), while
+full archives keep 2 days and offsite archives keep 2 copies. The harness was
+restarted with 19
 bots, 7 rooms, 5 teams, and 2,948 messages.
 
 Launch the desktop app from the desktop session (or `systemd-run --user`), not

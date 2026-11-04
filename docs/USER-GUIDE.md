@@ -173,7 +173,7 @@ The rest of this guide is organized by topic.
 ## Data, backups and recovery
 
 - State lives in `~/.kodbot`: `bots.json`, `teams.json`, `groups.json`, `routines.json`, `config.json`, `webhooks.json`, and `messages.db`.
-- Automatic hot snapshots run every 15 minutes and keep the newest 8 (about two hours); the daily full archive keeps 14 days, and an offsite copy is uploaded once a day.
+- Automatic hot snapshots run every 15 minutes and keep the newest 2 (about 30 minutes); the daily full archive keeps 2 days, and 2 offsite copies are kept, one per day.
 - If the disk fills, SQLite cannot write and the harness stops; free space and restart the service. The app shows no data while the harness is down — the files are still there.
 - Use **Settings → General → Updates** for app updates; the harness and UI update separately.
 
@@ -332,7 +332,7 @@ KodBot е local-first chat приложение за екип от AI агент
 ## Данни, backup и възстановяване
 
 - Състоянието е в `~/.kodbot`: `bots.json`, `teams.json`, `groups.json`, `routines.json`, `config.json`, `webhooks.json` и `messages.db`.
-- Автоматичните hot snapshot-и вървят на всеки 15 минути и пазят последните 8 (около два часа); дневният full архив пази 14 дни, а offsite копие се качва веднъж дневно.
+- Автоматичните hot snapshot-и вървят на всеки 15 минути и пазят последните 2 (около 30 минути); дневният full архив пази 2 дни, а offsite копията са 2, по едно на ден.
 - Ако дискът се напълни, SQLite не може да пише и harness-ът спира; освободи място и рестартирай услугата. App-ът не показва данни, докато harness-ът е спрян — файловете са там.
 - Използвай **Settings → General → Updates** за обновяване на app-а; harness-ът и UI-ът се обновяват отделно.
 
