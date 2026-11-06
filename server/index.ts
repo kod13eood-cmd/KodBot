@@ -106,6 +106,7 @@ import {
 } from "./pages.ts";
 import { productCardsSystemPrompt } from "./product-cards.ts";
 import { chooseAutoModel } from "./model-routing.ts";
+import { createAutoModelCatalog } from "./auto-model-catalog.ts";
 
 const PORT = Number(process.env.OC_PORT || 8799);
 const HOST = process.env.OC_HOST || "127.0.0.1";
@@ -172,6 +173,13 @@ ensureGuideCopy(DATA_DIR);
 const cfg = loadConfig();
 const registry = new ProviderRegistry(BUILT_IN_DRIVERS);
 await registry.load(instanceConfigs(cfg));
+
+// Auto-model routing wants the live model catalog, but `registry.describe()`
+// can spend seconds refreshing providers. The catalog helper caches a
+// successful snapshot and caps how long a send waits; the probe keeps running
+// and warms the next turn.
+type DescribedInstances = Awaited<ReturnType<ProviderRegistry["describe"]>>;
+const autoModelInstances = createAutoModelCatalog<DescribedInstances>(() => registry.describe());
 
 const bus = new EventBus();
 bus.attach(registry.instances());
@@ -1253,87 +1261,11 @@ async function startTurn(
   else if (opts?.automationSource === undefined && !opts?.commsDepth && !opts?.connectorContinuation) clearUnattended(bot.id);
   const task = store.taskByThread(bot.id, threadId);
   if (!task) throw Object.assign(new Error("no such task"), { status: 404 });
-  // Auto mode is a per-turn decision. It persists the routed picker value so
-  // the UI and usage receipts show the model that actually ran, then routes
-  // again on the next task instead of freezing one model forever.
-  if (bot.autoModel && opts?.runOn !== "cloud") {
-    try {
-      const described = await registry.describe();
-      const usable = described.filter(
-        (entry) => entry.snapshot.state === "available" && entry.snapshot.authenticated !== false,
-      );
-      const pool = bot.autoModelPool ?? [];
-      // A non-empty pool is explicit consent to cross engines. Without one,
-      // stay on the engine the user chose so a prompt never silently reaches
-      // a different provider.
-      const options = pool.length
-        ? usable.flatMap((instance) =>
-            instance.models.options
-              .filter((option) => pool.some((entry) => entry.instanceId === instance.instanceId && entry.model === option.id))
-              .map((option) => ({
-                instanceId: instance.instanceId,
-                model: option.id,
-                label: option.label,
-                free: option.free,
-                group: option.group,
-              })),
-          )
-        : usable
-            .filter((entry) => entry.instanceId === bot.modelSelection.instanceId)
-            .flatMap((instance) =>
-              instance.models.options.map((option) => ({
-                instanceId: instance.instanceId,
-                model: option.id,
-                label: option.label,
-                free: option.free,
-                group: option.group,
-              })),
-            );
-      const choice = pool.length
-        ? options.length
-          ? chooseAutoModel(text, options)
-          : null
-        : chooseAutoModel(text, options, bot.modelSelection);
-      if (choice && (choice.instanceId !== bot.modelSelection.instanceId || choice.model !== bot.modelSelection.model)) {
-        store.patchBot(bot.id, { modelSelection: choice });
-      }
-    } catch {
-      // A catalog probe failure must not block the turn; the persisted
-      // selection remains a valid fallback.
-    }
-  }
-  const commsDepth = opts?.commsDepth ?? 0;
-  // a task takes its name from the first thing you asked it to do
-  if (text.trim() && !opts?.connectorContinuation) store.titleTaskFromFirstMessage(bot.id, text, threadId);
 
-  const instance = opts?.runOn === "cloud"
-    ? registry.instances().find((candidate) => candidate.driverKind === "boxAgent") ?? null
-    : registry.get(bot.modelSelection.instanceId);
-  if (!instance) {
-    throw Object.assign(
-      new Error(
-        opts?.runOn === "cloud"
-          ? "the Cloud VM runner is unavailable — configure Box in App Settings"
-          : `provider instance "${bot.modelSelection.instanceId}" is unavailable — pick another model in settings`,
-      ),
-      { status: 409 },
-    );
-  }
-  const instanceId = instance.instanceId;
-  const model = opts?.runOn === "cloud" ? instance.models.default : bot.modelSelection.model;
-  // a cloud routine borrows the instance default model, so it borrows no
-  // per-bot effort either
-  const effort = opts?.runOn === "cloud" ? undefined : bot.modelSelection.effort;
-  // A selection can be persisted while its engine is offline. Re-check when
-  // the engine returns so an old or unsupported value never reaches a CLI.
-  if (effort && !instance.adapter.capabilities.effortLevels?.includes(effort)) {
-    throw Object.assign(
-      new Error(`effort "${effort}" is not offered by this bot's engine — choose another level in settings`),
-      { status: 409 },
-    );
-  }
-
-  // an edit hands us its already-branched user message; a plain send appends
+  // Append and broadcast the user's message before any model-catalog probe.
+  // Auto-model routing can take seconds; the transcript must show the message
+  // immediately and a second send must see the bot as busy, not start a
+  // second turn in the gap.
   let userMessage = opts?.userMessage;
   if (!userMessage) {
     userMessage = opts?.connectorContinuation
@@ -1345,6 +1277,102 @@ async function startTurn(
           ...(opts?.replyTo ? { replyTo: opts.replyTo } : {}),
         });
   }
+  store.setActivity(bot.id, "working");
+  store.patchBot(bot.id, { unread: false });
+  turnUsage.delete(threadId);
+
+  // Auto mode is a per-turn decision. It persists the routed picker value so
+  // the UI and usage receipts show the model that actually ran, then routes
+  // again on the next task instead of freezing one model forever.
+  if (bot.autoModel && opts?.runOn !== "cloud") {
+    try {
+      const described = await autoModelInstances();
+      if (described) {
+        const usable = described.filter(
+          (entry) => entry.snapshot.state === "available" && entry.snapshot.authenticated !== false,
+        );
+        const pool = bot.autoModelPool ?? [];
+        // A non-empty pool is explicit consent to cross engines. Without one,
+        // stay on the engine the user chose so a prompt never silently reaches
+        // a different provider.
+        const options = pool.length
+          ? usable.flatMap((instance) =>
+              instance.models.options
+                .filter((option) => pool.some((entry) => entry.instanceId === instance.instanceId && entry.model === option.id))
+                .map((option) => ({
+                  instanceId: instance.instanceId,
+                  model: option.id,
+                  label: option.label,
+                  free: option.free,
+                  group: option.group,
+                })),
+            )
+          : usable
+              .filter((entry) => entry.instanceId === bot.modelSelection.instanceId)
+              .flatMap((instance) =>
+                instance.models.options.map((option) => ({
+                  instanceId: instance.instanceId,
+                  model: option.id,
+                  label: option.label,
+                  free: option.free,
+                  group: option.group,
+                })),
+              );
+        const choice = pool.length
+          ? options.length
+            ? chooseAutoModel(text, options)
+            : null
+          : chooseAutoModel(text, options, bot.modelSelection);
+        if (choice && (choice.instanceId !== bot.modelSelection.instanceId || choice.model !== bot.modelSelection.model)) {
+          store.patchBot(bot.id, { modelSelection: choice });
+        }
+      }
+    } catch {
+      // A catalog probe failure must not block the turn; the persisted
+      // selection remains a valid fallback.
+    }
+  }
+  const commsDepth = opts?.commsDepth ?? 0;
+  // Resolve the provider and validate its effort before dispatching. If this
+  // setup fails, release the busy flag we took before the model probe.
+  const setup = (() => {
+    try {
+      // a task takes its name from the first thing you asked it to do
+      if (text.trim() && !opts?.connectorContinuation) store.titleTaskFromFirstMessage(bot.id, text, threadId);
+
+      const instance = opts?.runOn === "cloud"
+        ? registry.instances().find((candidate) => candidate.driverKind === "boxAgent") ?? null
+        : registry.get(bot.modelSelection.instanceId);
+      if (!instance) {
+        throw Object.assign(
+          new Error(
+            opts?.runOn === "cloud"
+              ? "the Cloud VM runner is unavailable — configure Box in App Settings"
+              : `provider instance "${bot.modelSelection.instanceId}" is unavailable — pick another model in settings`,
+          ),
+          { status: 409 },
+        );
+      }
+      const instanceId = instance.instanceId;
+      const model = opts?.runOn === "cloud" ? instance.models.default : bot.modelSelection.model;
+      // a cloud routine borrows the instance default model, so it borrows no
+      // per-bot effort either
+      const effort = opts?.runOn === "cloud" ? undefined : bot.modelSelection.effort;
+      // A selection can be persisted while its engine is offline. Re-check when
+      // the engine returns so an old or unsupported value never reaches a CLI.
+      if (effort && !instance.adapter.capabilities.effortLevels?.includes(effort)) {
+        throw Object.assign(
+          new Error(`effort "${effort}" is not offered by this bot's engine — choose another level in settings`),
+          { status: 409 },
+        );
+      }
+      return { instance, instanceId, model, effort };
+    } catch (error) {
+      store.setActivity(bot.id, "idle");
+      throw error;
+    }
+  })();
+  const { instance, instanceId, model, effort } = setup;
 
   // The current reply's quote reaches the driver in the turn text; earlier
   // replies reach it through the transcript (conversation-context).
@@ -1386,13 +1414,9 @@ async function startTurn(
     .filter(Boolean)
     .join(" ");
 
-  // busy flips immediately so the composer locks; the dispatch itself runs
+  // busy already flipped before the model probe; the dispatch itself runs
   // in the background — box provisioning can take ~90s and must never
   // hang the HTTP request
-  store.setActivity(bot.id, "working");
-  store.patchBot(bot.id, { unread: false });
-  turnUsage.delete(threadId);
-
   void (async () => {
     try {
       const integrations: NonNullable<Parameters<typeof instance.adapter.sendTurn>[0]["integrations"]> = {};
