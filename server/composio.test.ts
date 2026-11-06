@@ -15,6 +15,7 @@ let base = "";
 const calls: Array<{ method: string; path: string; query: string; body: any }> = [];
 let malformedConnectedAccounts = false;
 let githubRemoved = false;
+let linearRemoved = false;
 
 beforeAll(async () => {
   api = createServer(async (req, res) => {
@@ -52,6 +53,9 @@ beforeAll(async () => {
           githubRemoved ? { slug: "github" } : { slug: "github", connected_account: { id: "ca_github", status: "ACTIVE" } },
           { slug: "gmail", is_no_auth: true },
           { slug: "slack" },
+          // The Session exposes the expired account while the lifecycle
+          // endpoint below carries the active sibling.
+          { slug: "alpaca", connected_account: { id: "ca_alpaca_expired", status: "EXPIRED" } },
         ],
       }));
     }
@@ -76,9 +80,22 @@ beforeAll(async () => {
           {
             id: "ca_linear_primary",
             toolkit: { slug: "linear" },
-            status: "EXPIRED",
+            status: linearRemoved ? "DELETED" : "EXPIRED",
             alias: "old-workspace",
             updated_at: "2026-08-17T08:02:00Z",
+          },
+          {
+            id: "ca_alpaca_expired",
+            toolkit: { slug: "alpaca" },
+            status: "EXPIRED",
+            updated_at: "2026-08-17T08:03:00Z",
+          },
+          {
+            id: "ca_alpaca_active",
+            toolkit: { slug: "alpaca" },
+            status: "ACTIVE",
+            alias: "kodbot-alpaca-test",
+            updated_at: "2026-08-17T08:04:00Z",
           },
         ],
       }));
@@ -87,8 +104,18 @@ beforeAll(async () => {
       res.writeHead(201, { "content-type": "application/json" });
       return res.end(JSON.stringify({ redirect_url: `https://connect.composio.dev/link/${body.toolkit}` }));
     }
+    if (req.method === "DELETE" && url.pathname === "/api/v3.1/connected_accounts/ca_github_primary") {
+      githubRemoved = true;
+      res.writeHead(200, { "content-type": "application/json" });
+      return res.end(JSON.stringify({ success: true }));
+    }
     if (req.method === "DELETE" && url.pathname === "/api/v3.1/connected_accounts/ca_github") {
       githubRemoved = true;
+      res.writeHead(200, { "content-type": "application/json" });
+      return res.end(JSON.stringify({ success: true }));
+    }
+    if (req.method === "DELETE" && url.pathname === "/api/v3.1/connected_accounts/ca_linear_primary") {
+      linearRemoved = true;
       res.writeHead(200, { "content-type": "application/json" });
       return res.end(JSON.stringify({ success: true }));
     }
@@ -192,7 +219,7 @@ describe.sequential("Composio Sessions", () => {
     await expect(removeService(cfg, "github")).resolves.toEqual({ removed: 1 });
     expect(calls.some(
       (call) => call.method === "DELETE"
-        && call.path.endsWith("/connected_accounts/ca_github")
+        && call.path.endsWith("/connected_accounts/ca_github_primary")
         && call.query === "?revoke_on_delete=true",
     )).toBe(true);
   });
@@ -213,5 +240,62 @@ describe.sequential("Composio Sessions", () => {
     } finally {
       malformedConnectedAccounts = false;
     }
+  });
+
+  it("prefers an active account over an expired sibling", async () => {
+    const cfg: AppConfig = {
+      composio: { apiKey: "ak_test", userId: "opencrew_existing", sessionId: "trs_test" },
+    };
+    await expect(connectionStatus(cfg, ["alpaca"])).resolves.toEqual({
+      alpaca: {
+        connected: true,
+        pending: false,
+        status: "ACTIVE",
+        accounts: [
+          { id: "ca_alpaca_expired", status: "EXPIRED", alias: undefined },
+          { id: "ca_alpaca_active", status: "ACTIVE", alias: "kodbot-alpaca-test" },
+        ],
+      },
+    });
+  });
+
+  it("removes expired accounts too when disconnecting a service", async () => {
+    const cfg: AppConfig = {
+      composio: { apiKey: "ak_test", userId: "opencrew_existing", sessionId: "trs_test" },
+    };
+    calls.length = 0;
+    linearRemoved = false;
+    await expect(removeService(cfg, "linear")).resolves.toEqual({ removed: 1 });
+    expect(linearRemoved).toBe(true);
+    expect(calls.some(
+      (call) => call.method === "DELETE"
+        && call.path.endsWith("/connected_accounts/ca_linear_primary")
+        && call.query === "?revoke_on_delete=true",
+    )).toBe(true);
+  });
+
+  it("splits a large catalog status request into broker-sized chunks", async () => {
+    const cfg: AppConfig = {
+      composio: { apiKey: "ak_test", userId: "opencrew_existing", sessionId: "trs_test" },
+    };
+    calls.length = 0;
+    const slugs = Array.from({ length: 60 }, (_, index) => `toolkit_${index}`);
+    const result = await connectionStatus(cfg, slugs);
+    expect(Object.keys(result)).toHaveLength(60);
+    const statusCalls = calls.filter(
+      (call) => call.method === "GET" && call.path.endsWith("/toolkits") && call.query.includes("toolkits="),
+    );
+    expect(statusCalls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("does not mint another account link when the app is already connected", async () => {
+    const cfg: AppConfig = {
+      composio: { apiKey: "ak_test", userId: "opencrew_existing", sessionId: "trs_test" },
+    };
+    calls.length = 0;
+    await expect(
+      authorizeService(cfg, "github", undefined, { guardExisting: true }),
+    ).resolves.toEqual({ alreadyConnected: true, status: "ACTIVE" });
+    expect(calls.some((call) => call.method === "POST" && call.path.endsWith("/link"))).toBe(false);
   });
 });

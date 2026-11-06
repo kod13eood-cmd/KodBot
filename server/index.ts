@@ -4136,7 +4136,19 @@ const server = createServer(async (req, res) => {
       return json(res, 200, result);
     }
     m = path.match(/^\/api\/connectors\/([\w-]+)\/authorize$/);
-    if (m && method === "POST") return json(res, 200, await composio.authorizeService(cfg, m[1]));
+    if (m && method === "POST") {
+      const body = await readBody(req);
+      return json(
+        res,
+        200,
+        await composio.authorizeService(
+          cfg,
+          m[1],
+          typeof body.alias === "string" ? body.alias : undefined,
+          { guardExisting: body.add !== true },
+        ),
+      );
+    }
     m = path.match(/^\/api\/connectors\/([\w-]+)$/);
     if (m && method === "DELETE") return json(res, 200, await composio.removeService(cfg, m[1]));
 

@@ -707,6 +707,17 @@ const BULGARIAN: Record<string, string> = {
   "Connect the apps your bots can use.":
     "Свържете приложенията, които ботовете ви могат да използват.",
   "Refresh connection status": "Обнови състоянието на връзките",
+  "Check status": "Провери състоянието",
+  "Check connection status": "Провери състоянието на връзката",
+  "Could not read connection status. Check that the server is reachable, then retry.":
+    "Състоянието на връзките не може да бъде прочетено. Проверете дали сървърът е достъпен и опитайте отново.",
+  "Retry status": "Провери отново",
+  "{count} bot(s) cannot use connected apps yet.":
+    "{count} бота още нямат достъп до свързаните приложения.",
+  "Connected apps are granted per bot. This turns them on for every bot that supports them.":
+    "Свързаните приложения се разрешават за всеки бот поотделно. Това ги включва за всеки бот, който ги поддържа.",
+  "Allow for all bots": "Разреши за всички ботове",
+  "Allowing…": "Разрешаване…",
   "Close connected apps": "Затвори свързаните приложения",
   "Connected apps view": "Изглед на свързаните приложения",
   "Marketplace": "Пазар",
@@ -720,6 +731,7 @@ const BULGARIAN: Record<string, string> = {
   "Update your Composio key": "Актуализирайте ключа си за Composio",
   "for the full catalog.": "за пълния каталог.",
   "Loading catalog…": "Зареждане на каталога…",
+  "Checking connections…": "Проверка на връзките…",
   "Your connections": "Вашите връзки",
   "Search results": "Резултати от търсенето",
   "Available apps": "Налични приложения",
@@ -734,6 +746,23 @@ const BULGARIAN: Record<string, string> = {
   "Try a different search.": "Опитайте с друго търсене.",
   "Your browser blocked the connection page. Click Continue to open it.":
     "Браузърът ви блокира страницата за свързване. Натиснете Продължи, за да я отворите.",
+  "Your browser blocked the connection page. Allow pop-ups, then try again.":
+    "Браузърът ви блокира страницата за свързване. Разрешете изскачащи прозорци и опитайте отново.",
+  "Connected securely. Your bot is continuing the task.":
+    "Свързано сигурно. Ботът продължава задачата.",
+  "Connected securely. Continue the paused task when you're ready.":
+    "Свързано сигурно. Продължете спряната задача, когато сте готови.",
+  "Sign in or enter the app key on the secure connection page — never in chat.":
+    "Влезте или въведете ключа за приложението на сигурната страница за свързване — никога в чата.",
+  "Not now": "Не сега",
+  "Waiting for sign-in…": "Чакане на вход…",
+  "Ready to use": "Готово за използване",
+  "Requested by your bot": "Заявено от вашия бот",
+  "Open again": "Отвори отново",
+  "Try again": "Опитай отново",
+  "Connect securely": "Свържи сигурно",
+  "Continue task": "Продължи задачата",
+  "Continuing": "Продължава",
   "Details": "Детайли",
   "View account details": "Виж детайлите на акаунта",
   "{count} active account(s)": "{count} активни акаунта",
@@ -869,8 +898,8 @@ const BULGARIAN: Record<string, string> = {
     "Неуспешно прикачване на {names}. Изберете файл, записан на този компютър.",
   // Connected-app account details
   "About connected accounts": "Относно свързаните акаунти",
-  "Each row is one connected account. Active means KodBot can use it. Expired means the sign-in has ended — remove that row, then connect the account again. Waiting for sign-in means the Google page is still open or unfinished. When the address is hidden, Google will reveal it after the account is active again.":
-    "Всеки ред е един свързан акаунт. „Активен“ означава, че KodBot може да го използва. „Изтекъл“ означава, че входът е приключил — премахнете реда и свържете акаунта отново. „Чака вход“ означава, че страницата на Google е още отворена или незавършена. Когато адресът е скрит, Google ще го покаже, след като акаунтът отново стане активен.",
+  "Each row is one connected account. Active means KodBot can use it. Expired means the sign-in has ended — remove that row, then connect the account again. Waiting for sign-in means the provider page is still open or unfinished. When the address is hidden, the provider will reveal it after the account is active again.":
+    "Всеки ред е един свързан акаунт. „Активен“ означава, че KodBot може да го използва. „Изтекъл“ означава, че входът е приключил — премахнете реда и свържете акаунта отново. „Чака вход“ означава, че страницата на доставчика е още отворена или незавършена. Когато адресът е скрит, доставчикът ще го покаже, след като акаунтът отново стане активен.",
   "Expired — sign in again": "Изтекъл — влезте отново",
   "Waiting for sign-in": "Чака вход",
   "Checking the signed-in address…": "Проверка на адреса за вход…",
@@ -885,8 +914,8 @@ const BULGARIAN: Record<string, string> = {
   "Remove": "Премахни",
   "Remove the {service} account “{name}”? KodBot will lose access to it. You can connect it again later.":
     "Да се премахне ли {service} акаунтът „{name}“? KodBot ще загуби достъп до него. Можете да го свържете отново по-късно.",
-  "Labels are stored only in KodBot. Removing a row revokes KodBot's access to that connection; it does not delete the Google account.":
-    "Етикетите се пазят само в KodBot. Премахването на ред отнема достъпа на KodBot до тази връзка; не изтрива Google акаунта.",
+  "Labels are stored only in KodBot. Removing a row revokes KodBot's access to that connection; it does not delete the account with the provider.":
+    "Етикетите се пазят само в KodBot. Премахването на ред отнема достъпа на KodBot до тази връзка; не изтрива акаунта при доставчика.",
   // Mascot body shapes
   "Shape": "Форма",
   "Use the shape suggested by this bot's role": "Използвай формата, подсказана от ролята на бота",

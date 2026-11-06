@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { parseSession, sha256 } from "./index";
+import { parseSession, sanitizeAlias, sha256 } from "./index";
 
 describe("connected-apps broker boundaries", () => {
+  it("normalizes optional account aliases", () => {
+    expect(sanitizeAlias("  work  ")).toBe("work");
+    expect(sanitizeAlias(42)).toBe("");
+    expect(sanitizeAlias("x".repeat(200))).toHaveLength(80);
+  });
+
   it("accepts only HTTPS Composio MCP endpoints", () => {
     expect(parseSession({
       session_id: "session-1",

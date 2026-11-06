@@ -52,6 +52,12 @@ function parseSession(value: unknown): ComposioSession {
   return { sessionId: value.session_id, url: url.toString(), headers };
 }
 
+/** Normalize the optional alias sent with a Connect request. It is only an
+ * account label, never a credential, and Composio caps it at 255 characters. */
+export function sanitizeAlias(value: unknown) {
+  return typeof value === "string" ? value.trim().slice(0, 80) : "";
+}
+
 async function upstreamError(response: Response, fallback: string) {
   const text = await response.text().catch(() => "");
   try {
@@ -225,26 +231,47 @@ async function connectionStatus(url: URL, installation: InstallationRow, env: En
   return json({ services: Object.fromEntries(slugs.map((slug) => {
     const item = items.get(slug);
     const accounts = accountsBySlug.get(slug) ?? [];
-    const status = item?.connected_account?.status ?? (item?.is_no_auth ? "ACTIVE" : accounts[0]?.status ?? "not_connected");
+    const active = accounts.find((account) => /^active$/i.test(account.status ?? ""));
+    const pendingAccount = accounts.find((account) =>
+      /^(initiated|initializing|pending)$/i.test(account.status ?? ""),
+    );
+    const failed = accounts.find((account) =>
+      /^(expired|failed|revoked|error)$/i.test(account.status ?? ""),
+    );
+    const sessionActive = /^active$/i.test(item?.connected_account?.status ?? "");
+    const status = active
+      ? "ACTIVE"
+      : item?.is_no_auth
+        ? "ACTIVE"
+        : sessionActive
+          ? item?.connected_account?.status ?? "ACTIVE"
+          : pendingAccount
+            ? pendingAccount.status ?? "INITIATED"
+            : failed
+              ? failed.status ?? "EXPIRED"
+              : item?.connected_account?.status ?? accounts[0]?.status ?? "not_connected";
+    const connected = item?.is_no_auth === true || Boolean(active) || sessionActive;
     return [slug, {
-      connected: item?.is_no_auth === true || /^active$/i.test(status),
-      pending: /^(initiated|initializing|pending)$/i.test(status),
+      connected,
+      pending: !connected && /^(initiated|initializing|pending)$/i.test(status),
       status,
       accounts: accounts.map((account) => ({ id: account.id, status: account.status, alias: account.alias })),
     }];
   })) });
 }
 
-async function authorize(slug: string, installation: InstallationRow, env: Env, ctx: ExecutionContext) {
+async function authorize(request: Request, slug: string, installation: InstallationRow, env: Env, ctx: ExecutionContext) {
+  const body = await request.json().catch(() => null) as { alias?: unknown } | null;
+  const alias = sanitizeAlias(body?.alias);
   const session = await ensureSession(installation, env, ctx);
   const response = await composioRequest(env, `/tool_router/session/${encodeURIComponent(session.sessionId)}/link`, {
     method: "POST",
-    body: JSON.stringify({ toolkit: slug }),
+    body: JSON.stringify({ toolkit: slug, ...(alias ? { alias } : {}) }),
   });
   if (!response.ok) return json({ error: await upstreamError(response, "Authorization unavailable") }, 502);
-  const body = await response.json() as { redirect_url?: string };
-  if (!body.redirect_url) return json({ error: "Composio returned no authorization link" }, 502);
-  const redirect = new URL(body.redirect_url);
+  const result = await response.json() as { redirect_url?: string };
+  if (!result.redirect_url) return json({ error: "Composio returned no authorization link" }, 502);
+  const redirect = new URL(result.redirect_url);
   if (redirect.protocol !== "https:" || (redirect.hostname !== "composio.dev" && !redirect.hostname.endsWith(".composio.dev"))) {
     return json({ error: "Composio returned an untrusted authorization link" }, 502);
   }
@@ -279,17 +306,54 @@ async function disconnectAccount(slug: string, accountId: string, installation: 
 
 async function disconnect(slug: string, installation: InstallationRow, env: Env, ctx: ExecutionContext) {
   const session = await ensureSession(installation, env, ctx);
+  // Read the account lifecycle rather than only the Session's usable account.
+  // Expired rows stay in the list and must not survive "Disconnect app".
   const list = await composioRequest(
     env,
-    `/tool_router/session/${encodeURIComponent(session.sessionId)}/toolkits?${new URLSearchParams({ limit: "50", toolkits: slug })}`,
+    `/connected_accounts?${new URLSearchParams({
+      limit: "50",
+      user_ids: installation.composio_user_id,
+      toolkits: slug,
+    })}`,
   );
   if (!list.ok) return json({ error: await upstreamError(list, "Connection lookup unavailable") }, 502);
-  const body = await list.json() as { items?: Array<{ slug?: string; connected_account?: { id?: string } }> };
-  const id = body.items?.find((item) => item.slug?.toLowerCase() === slug)?.connected_account?.id;
-  if (!id) return json({ removed: 0 });
-  const response = await composioRequest(env, `/connected_accounts/${encodeURIComponent(id)}?revoke_on_delete=true`, { method: "DELETE" });
-  if (!response.ok) return json({ error: await upstreamError(response, "Disconnect failed") }, 502);
-  return json({ removed: 1 });
+  const body = await list.json() as { items?: Array<{ id?: string; toolkit?: { slug?: string } }> };
+  let removed = 0;
+  for (const account of body.items ?? []) {
+    if (!account.id || account.toolkit?.slug?.toLowerCase() !== slug.toLowerCase()) continue;
+    const response = await composioRequest(
+      env,
+      `/connected_accounts/${encodeURIComponent(account.id)}?revoke_on_delete=true`,
+      { method: "DELETE" },
+    );
+    if (response.status === 404) continue;
+    if (!response.ok) return json({ error: await upstreamError(response, "Disconnect failed") }, 502);
+    removed += 1;
+  }
+  // A scoped key may not allow reading connected accounts. Fall back to the
+  // Session-visible account so the route still works in that configuration.
+  if (!removed) {
+    const visible = await composioRequest(
+      env,
+      `/tool_router/session/${encodeURIComponent(session.sessionId)}/toolkits?${new URLSearchParams({ limit: "50", toolkits: slug })}`,
+    );
+    if (!visible.ok) return json({ error: await upstreamError(visible, "Connection lookup unavailable") }, 502);
+    const visibleBody = await visible.json() as {
+      items?: Array<{ slug?: string; connected_account?: { id?: string } }>;
+    };
+    const id = visibleBody.items?.find((item) => item.slug?.toLowerCase() === slug.toLowerCase())
+      ?.connected_account?.id;
+    if (id) {
+      const response = await composioRequest(
+        env,
+        `/connected_accounts/${encodeURIComponent(id)}?revoke_on_delete=true`,
+        { method: "DELETE" },
+      );
+      if (!response.ok) return json({ error: await upstreamError(response, "Disconnect failed") }, 502);
+      removed = 1;
+    }
+  }
+  return json({ removed });
 }
 
 async function route(request: Request, env: Env, ctx: ExecutionContext) {
@@ -308,7 +372,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext) {
     return disconnectAccount(accountMatch[1], accountMatch[2], installation, env);
   }
   const match = url.pathname.match(/^\/v1\/connectors\/([a-z0-9][a-z0-9_-]{0,80})(?:\/(authorize))?$/);
-  if (match?.[2] && request.method === "POST") return authorize(match[1], installation, env, ctx);
+  if (match?.[2] && request.method === "POST") return authorize(request, match[1], installation, env, ctx);
   if (match && !match[2] && request.method === "DELETE") return disconnect(match[1], installation, env, ctx);
   return json({ error: "not found" }, 404);
 }

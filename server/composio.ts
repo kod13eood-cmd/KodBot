@@ -223,23 +223,103 @@ export async function relayMcp(
   };
 }
 
+type ConnectorAccountState = { id?: string; status?: string; alias?: string };
+
+type RawServiceStatus = {
+  connected?: boolean;
+  pending?: boolean;
+  status?: string;
+  accounts?: ConnectorAccountState[];
+};
+
+export interface ServiceConnectionStatus {
+  connected: boolean;
+  pending: boolean;
+  status: string;
+  accounts: ConnectorAccountState[];
+}
+
+/** The broker and the self-hosted Composio API both cap a status request at
+ * 50 toolkits. The catalog can hold hundreds, so callers get one complete
+ * answer — the split stays here instead of leaking into every UI view. */
+const STATUS_CHUNK = 50;
+
+function chunked<T>(items: readonly T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
+/** A service can have several accounts. The session endpoint exposes only one
+ * of them, so a connected active account must win over an expired sibling and
+ * an expired first row must not hide an active second one. */
+function normalizeServiceStatus(raw: RawServiceStatus): ServiceConnectionStatus {
+  const accounts = Array.isArray(raw.accounts) ? raw.accounts : [];
+  const active = accounts.find((account) => /^active$/i.test(account.status ?? ""));
+  const pendingAccount = accounts.find((account) =>
+    /^(initiated|initializing|pending)$/i.test(account.status ?? ""),
+  );
+  const failed = accounts.find((account) =>
+    /^(expired|failed|revoked|error)$/i.test(account.status ?? ""),
+  );
+  const rawStatus = raw.status ?? "";
+  const connected = raw.connected === true || Boolean(active) || /^active$/i.test(rawStatus);
+  const status = active
+    ? "ACTIVE"
+    : raw.connected === true
+      ? rawStatus || "ACTIVE"
+      : pendingAccount
+        ? pendingAccount.status ?? "INITIATED"
+        : failed
+          ? failed.status ?? "EXPIRED"
+          : raw.pending === true
+            ? "INITIATED"
+            : rawStatus || accounts[0]?.status || "not_connected";
+  return {
+    connected,
+    pending: !connected && (raw.pending === true || /^(initiated|initializing|pending)$/i.test(status)),
+    status,
+    accounts: accounts.map((account) => ({
+      id: account.id,
+      status: account.status,
+      alias: account.alias,
+    })),
+  };
+}
+
 /** Connection status per service slug: { slack: { connected, status, accounts } }. */
-export async function connectionStatus(cfg: AppConfig, slugs: string[]) {
+export async function connectionStatus(
+  cfg: AppConfig,
+  slugs: string[],
+): Promise<Record<string, ServiceConnectionStatus>> {
+  const requested = [
+    ...new Map(
+      slugs
+        .map((slug) => slug.trim())
+        .filter(Boolean)
+        .map((slug) => [slug.toLowerCase(), slug]),
+    ).values(),
+  ];
+  if (!requested.length) return {};
+  const parts = await Promise.all(
+    chunked(requested, STATUS_CHUNK).map((chunk) => connectionStatusChunk(cfg, chunk)),
+  );
+  return Object.assign({}, ...parts);
+}
+
+async function connectionStatusChunk(
+  cfg: AppConfig,
+  slugs: string[],
+): Promise<Record<string, ServiceConnectionStatus>> {
   if (brokerAccess() || !cfg.composio?.apiKey) {
     const response = await brokerRequest(`/v1/connectors?${new URLSearchParams({ services: slugs.join(",") })}`);
     if (!response.ok) throw new Error(await responseError(response, `Connected apps: HTTP ${response.status}`));
-    const body = (await response.json()) as {
-      services?: Record<
-        string,
-        {
-          connected: boolean;
-          pending?: boolean;
-          status?: string;
-          accounts?: Array<{ id?: string; status?: string; alias?: string }>;
-        }
-      >;
-    };
-    return body.services ?? {};
+    const body = (await response.json()) as { services?: Record<string, RawServiceStatus> };
+    return Object.fromEntries(
+      Object.entries(body.services ?? {}).map(([slug, state]) => [slug, normalizeServiceStatus(state)]),
+    );
   }
   const session = await ensureProjectSession(cfg);
   const params = new URLSearchParams({ limit: "50" });
@@ -281,10 +361,7 @@ export async function connectionStatus(cfg: AppConfig, slugs: string[]) {
     items?: Array<{ slug?: string; is_no_auth?: boolean; connected_account?: { id?: string; status?: string } }>;
   };
   const bySlug = new Map((body.items ?? []).map((item) => [item.slug?.toLowerCase(), item]));
-  const accountsBySlug = new Map<
-    string,
-    Array<{ id?: string; status?: string; alias?: string; updated_at?: string }>
-  >();
+  const accountsBySlug = new Map<string, ConnectorAccountState[]>();
   for (const account of accounts) {
     const slug = account.toolkit?.slug?.toLowerCase();
     if (!slug || !slugs.some((candidate) => candidate.toLowerCase() === slug)) continue;
@@ -296,21 +373,15 @@ export async function connectionStatus(cfg: AppConfig, slugs: string[]) {
     slugs.map((slug) => {
       const item = bySlug.get(slug.toLowerCase());
       const serviceAccounts = accountsBySlug.get(slug.toLowerCase()) ?? [];
-      const state =
-        item?.connected_account?.status
-        ?? (item?.is_no_auth ? "ACTIVE" : serviceAccounts[0]?.status ?? "not_connected");
+      const sessionStatus = item?.connected_account?.status;
+      const noAuth = item?.is_no_auth === true;
       return [
         slug,
-        {
-          connected: item?.is_no_auth === true || /^active$/i.test(state),
-          pending: /^(initiated|initializing|pending)$/i.test(state),
-          status: state,
-          accounts: serviceAccounts.map((account) => ({
-            id: account.id,
-            status: account.status,
-            alias: account.alias,
-          })),
-        },
+        normalizeServiceStatus({
+          connected: noAuth || /^active$/i.test(sessionStatus ?? ""),
+          status: noAuth ? "ACTIVE" : sessionStatus,
+          accounts: serviceAccounts,
+        }),
       ];
     }),
   );
@@ -450,16 +521,46 @@ export async function removeAccount(cfg: AppConfig, slug: string, accountId: str
   return { removed: 1 };
 }
 
-/** Disconnect a service: remove every connected account for the slug. The
- * managed broker deletes one account per call, so keep going until none are
- * left. The cap is a safety net, not an expected account count. */
+/** Disconnect a service: remove every connected account for the slug.
+ *
+ * The broker's per-service delete only sees the account exposed by the
+ * Session, which excludes expired rows. Walk the account list first so an
+ * expired connection does not survive "Disconnect app"; then fall back to the
+ * session route for accounts a scoped key cannot enumerate. */
 export async function removeService(cfg: AppConfig, slug: string) {
   let removed = 0;
+  const accountFailures: unknown[] = [];
+  let statusFailure: unknown = null;
+  try {
+    const current = (await connectionStatus(cfg, [slug]))[slug];
+    const ids = [
+      ...new Set(
+        (current?.accounts ?? [])
+          .map((account) => account.id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    for (const id of ids) {
+      try {
+        const result = await removeAccount(cfg, slug, id);
+        removed += result.removed;
+      } catch (error) {
+        accountFailures.push(error);
+      }
+    }
+  } catch (error) {
+    statusFailure = error;
+  }
   for (let attempt = 0; attempt < 50; attempt += 1) {
     const result = await removeServiceOnce(cfg, slug);
     if (!result.removed) break;
     removed += result.removed;
   }
+  if (accountFailures.length) {
+    const remaining = await connectionStatus(cfg, [slug]).catch(() => null);
+    if (!remaining || (remaining[slug]?.accounts?.length ?? 0) > 0) throw accountFailures[0];
+  }
+  if (!removed && statusFailure) throw statusFailure;
   return { removed };
 }
 
@@ -527,7 +628,7 @@ function findEmail(value: unknown, depth = 0): string | null {
  * instead of another opaque id. */
 export async function accountIdentity(cfg: AppConfig, slug: string, accountId: string) {
   const tool = PROFILE_TOOLS[slug.toLowerCase()];
-  if (!tool) return { identity: null, reason: "This app does not expose a profile address." };
+  if (!tool) return { identity: null };
   try {
     const payload = (await managedTool(cfg, "COMPOSIO_MULTI_EXECUTE_TOOL", {
       tools: [{ tool_slug: tool, arguments: { user_id: "me" }, account: accountId }],
@@ -555,19 +656,35 @@ export async function accountIdentity(cfg: AppConfig, slug: string, accountId: s
  * Composio refuses to open a second account without an alias because it would
  * otherwise replace the first one. When the service already has an account,
  * generate a unique alias for the new connection; the UI can still rename it
- * to the real mailbox address once it is active. */
-export async function authorizeService(cfg: AppConfig, slug: string, alias?: string) {
-  let accountAlias = alias?.trim();
-  if (!accountAlias) {
+ * to the real mailbox address once it is active.
+ *
+ * `guardExisting` is used by the main Connect button: a stale view must not
+ * create a second account for a service that is already connected. The
+ * explicit "Add another account" action omits the guard. */
+export async function authorizeService(
+  cfg: AppConfig,
+  slug: string,
+  alias?: string,
+  options?: { guardExisting?: boolean },
+) {
+  let current: Awaited<ReturnType<typeof connectionStatus>> | null = null;
+  if (options?.guardExisting || !alias?.trim()) {
     try {
-      const current = await connectionStatus(cfg, [slug]);
-      if ((current[slug]?.accounts?.length ?? 0) > 0) {
-        accountAlias = `kodbot-${slug}-${Date.now().toString(36)}`.slice(0, 80);
-      }
-    } catch {
-      // Status is only an optimization; let the provider explain if the
-      // connection state cannot be read.
+      current = await connectionStatus(cfg, [slug]);
+    } catch (error) {
+      // Without a status read the guard cannot prove the service is
+      // disconnected. Refuse rather than risk replacing an existing account.
+      if (options?.guardExisting) throw error;
+      // Status is only an optimization for alias generation; let the
+      // provider explain if the connection state cannot be read.
     }
+  }
+  if (options?.guardExisting && current?.[slug]?.connected) {
+    return { alreadyConnected: true as const, status: current[slug].status };
+  }
+  let accountAlias = alias?.trim();
+  if (!accountAlias && (current?.[slug]?.accounts?.length ?? 0) > 0) {
+    accountAlias = `kodbot-${slug}-${Date.now().toString(36)}`.slice(0, 80);
   }
   if (brokerAccess() || !cfg.composio?.apiKey) {
     const response = await brokerRequest(`/v1/connectors/${encodeURIComponent(slug)}/authorize`, {

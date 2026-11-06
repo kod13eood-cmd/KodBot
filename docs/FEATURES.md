@@ -174,6 +174,13 @@ AgentMail, All Images AI, and HeyGen** under their real names, alongside the
 rest of the catalog. Hover any app to read its full description before
 connecting. These are ordinary Connected Apps, not a separate “Grok” section.
 
+The panel checks the **whole catalog**, not only the first featured rows, so a
+connected app such as Alpaca appears under **Connected** and opens **Details**
+instead of offering a second connection. Accounts are sorted with active rows
+first, expired rows stay removable, and **Disconnect app** revokes every
+account, including expired ones. Access is still granted per bot; when some
+bots are switched off, the panel offers **Allow for all bots**.
+
 ## Grok Bot parity
 
 | Feature | Status | What the user gets | What it needs |

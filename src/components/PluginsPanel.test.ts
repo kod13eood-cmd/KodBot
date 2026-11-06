@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mergeCurrentConnectorStatus, type ConnectorStatus } from "./PluginsPanel";
+import { chunkSlugs, mergeCurrentConnectorStatus, type ConnectorStatus } from "./PluginsPanel";
 
 describe("connected-app status races", () => {
   it("does not let an older not_connected response erase a newer OAuth attempt", async () => {
@@ -37,5 +37,19 @@ describe("connected-app status races", () => {
     );
 
     expect(merged.gmail).toEqual({ connected: true, pending: false, status: "ACTIVE" });
+  });
+});
+
+describe("connected-app status batches", () => {
+  it("splits the full catalog below the broker's per-request cap", () => {
+    const slugs = Array.from({ length: 500 }, (_, index) => `app_${index}`);
+    const chunks = chunkSlugs(slugs);
+    expect(chunks).toHaveLength(13);
+    expect(chunks.every((chunk) => chunk.length <= 40)).toBe(true);
+    expect(new Set(chunks.flat()).size).toBe(500);
+  });
+
+  it("trims and removes duplicate services", () => {
+    expect(chunkSlugs([" gmail ", "gmail", "", "slack"])).toEqual([["gmail", "slack"]]);
   });
 });

@@ -1,20 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Loader2, PlugZap, RefreshCw, X } from "lucide-react";
 
+import { useI18n } from "@/lib/i18n";
 import { api, type Message } from "@/state/store";
 
-async function openConnectionPage(url: string) {
+async function openConnectionPage(url: string, blockedMessage: string) {
   if (window.ogb?.openExternal) {
     await window.ogb.openExternal(url);
     return;
   }
   const opened = window.open("", "_blank");
-  if (!opened) throw new Error("Your browser blocked the connection page. Allow pop-ups, then try again.");
+  if (!opened) throw new Error(blockedMessage);
   opened.opener = null;
   opened.location.replace(url);
 }
 
 export function ConnectorCard({ botId, threadId, message }: { botId: string; threadId: string; message: Message }) {
+  const { t } = useI18n();
   const connector = message.connector!;
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -61,7 +63,10 @@ export function ConnectorCard({ botId, threadId, message }: { botId: string; thr
         method: "POST",
         body: JSON.stringify({ threadId }),
       });
-      await openConnectionPage(String(result.url));
+      await openConnectionPage(
+        String(result.url),
+        t("Your browser blocked the connection page. Allow pop-ups, then try again."),
+      );
     } catch (error) {
       setLocalError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -101,26 +106,26 @@ export function ConnectorCard({ botId, threadId, message }: { botId: string; thr
               <span className="truncate text-[14px] font-semibold text-ink">{connector.label}</span>
               {connected && (
                 <span className="flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">
-                  <Check size={11} /> Connected
+                  <Check size={11} /> {t("Connected")}
                 </span>
               )}
             </div>
             <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-secondary">
               {connected
                 ? connector.resumed
-                  ? "Connected securely. Your bot is continuing the task."
-                  : "Connected securely. Continue the paused task when you're ready."
+                  ? t("Connected securely. Your bot is continuing the task.")
+                  : t("Connected securely. Continue the paused task when you're ready.")
                 : connector.description}
             </p>
             {!connected && (
               <p className="mt-1 text-[11.5px] text-ink-secondary/80">
-                Sign in or enter the app key on the secure connection page — never in chat.
+                {t("Sign in or enter the app key on the secure connection page — never in chat.")}
               </p>
             )}
             {error && <p className="mt-2 text-[12px] text-danger">{error}</p>}
           </div>
           {!connected && (
-            <button onClick={dismiss} aria-label="Not now" title="Not now" className="rounded-md p-1 text-ink-secondary hover:bg-raised hover:text-ink">
+            <button onClick={dismiss} aria-label={t("Not now")} title={t("Not now")} className="rounded-md p-1 text-ink-secondary hover:bg-raised hover:text-ink">
               <X size={15} />
             </button>
           )}
@@ -128,7 +133,7 @@ export function ConnectorCard({ botId, threadId, message }: { botId: string; thr
         <div className="flex items-center justify-between border-t border-hairline/40 bg-panel/40 px-4 py-2.5">
           <div className="flex items-center gap-1.5 text-[11.5px] text-ink-secondary">
             {authorizing ? <Loader2 size={12} className="animate-spin" /> : <PlugZap size={12} />}
-            {authorizing ? "Waiting for sign-in…" : connected ? "Ready to use" : "Requested by your bot"}
+            {authorizing ? t("Waiting for sign-in…") : connected ? t("Ready to use") : t("Requested by your bot")}
           </div>
           {!connected ? (
             <button
@@ -137,7 +142,7 @@ export function ConnectorCard({ botId, threadId, message }: { botId: string; thr
               className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[12.5px] font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
               {busy || authorizing ? <Loader2 size={13} className="animate-spin" /> : <PlugZap size={13} />}
-              {authorizing ? "Open again" : connector.status === "failed" ? "Try again" : "Connect securely"}
+              {authorizing ? t("Open again") : connector.status === "failed" ? t("Try again") : t("Connect securely")}
             </button>
           ) : !connector.resumed ? (
             <button
@@ -145,10 +150,10 @@ export function ConnectorCard({ botId, threadId, message }: { botId: string; thr
               disabled={busy}
               className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[12.5px] font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
-              {busy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Continue task
+              {busy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} {t("Continue task")}
             </button>
           ) : (
-            <span className="flex items-center gap-1 text-[12px] font-medium text-success"><Check size={13} /> Continuing</span>
+            <span className="flex items-center gap-1 text-[12px] font-medium text-success"><Check size={13} /> {t("Continuing")}</span>
           )}
         </div>
       </div>

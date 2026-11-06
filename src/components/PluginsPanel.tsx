@@ -48,6 +48,25 @@ export interface ConnectorStatus {
   accounts?: ConnectorAccount[];
 }
 
+/** The broker caps a status request at 50 services. Keep the UI below that
+ * so a full 500-app catalog is checked in several small, cache-friendly
+ * requests instead of one truncated answer. */
+const STATUS_BATCH = 40;
+
+export function chunkSlugs(slugs: string[], size = STATUS_BATCH): string[][] {
+  const unique = [...new Set(slugs.map((slug) => slug.trim()).filter(Boolean))];
+  const chunks: string[][] = [];
+  for (let index = 0; index < unique.length; index += size) {
+    chunks.push(unique.slice(index, index + size));
+  }
+  return chunks;
+}
+
+function cardMatches(card: ToolkitCard, search: string): boolean {
+  const term = search.toLowerCase();
+  return `${card.label} ${card.slug} ${card.blurb} ${card.description ?? ""}`.toLowerCase().includes(term);
+}
+
 
 
 export function mergeCurrentConnectorStatus(
@@ -92,6 +111,15 @@ function accountTone(status: string | undefined): string {
   if (/^(initializing|initiated|pending)$/i.test(status ?? "")) return "bg-warning/15 text-warning";
   if (/^(expired|failed|revoked|error)$/i.test(status ?? "")) return "bg-danger/15 text-danger";
   return "bg-raised text-ink-secondary";
+}
+
+/** Active accounts first, then sign-ins still in progress, then rows that
+ * need cleanup. Keeping the useful account at the top matters when one app
+ * has several connections. */
+function accountRank(status: string | undefined): number {
+  if (/^active$/i.test(status ?? "")) return 0;
+  if (/^(initializing|initiated|pending)$/i.test(status ?? "")) return 1;
+  return 2;
 }
 
 function accountStatusLabel(status: string | undefined, t: (source: string) => string): string {
@@ -275,7 +303,7 @@ function AccountsHelp() {
           className="absolute left-0 top-full z-20 mt-1.5 w-[320px] rounded-xl border border-hairline/60 bg-panel px-3 py-2.5 text-[11.5px] font-normal normal-case leading-relaxed tracking-normal text-ink-secondary shadow-2xl"
         >
           {t(
-            "Each row is one connected account. Active means KodBot can use it. Expired means the sign-in has ended — remove that row, then connect the account again. Waiting for sign-in means the Google page is still open or unfinished. When the address is hidden, Google will reveal it after the account is active again.",
+            "Each row is one connected account. Active means KodBot can use it. Expired means the sign-in has ended — remove that row, then connect the account again. Waiting for sign-in means the provider page is still open or unfinished. When the address is hidden, the provider will reveal it after the account is active again.",
           )}
         </span>
       )}
@@ -309,7 +337,7 @@ function ServiceDetails({
   onSaveLabel: (accountId: string, label: string) => Promise<void>;
 }) {
   const { t } = useI18n();
-  const accounts = service?.accounts ?? [];
+  const accounts = [...(service?.accounts ?? [])].sort((a, b) => accountRank(a.status) - accountRank(b.status));
   const [identities, setIdentities] = useState<Record<string, AccountIdentityState>>({});
   const attemptedIdentities = useRef(new Set<string>());
   const accountKey = accounts.map((account) => `${account.id}:${account.status ?? ""}`).join("|");
@@ -323,9 +351,15 @@ function ServiceDetails({
       void api(`/api/connectors/${encodeURIComponent(card.slug)}/accounts/${encodeURIComponent(account.id)}/identity`)
         .then((result: { identity?: string | null; reason?: string }) => {
           if (!alive) return;
+          // Older servers answer every app without a profile tool with this
+          // sentence. It is not a failure; Alpaca and the rest simply have no
+          // address to show.
+          const reason = /does not expose a profile address/i.test(result.reason ?? "")
+            ? undefined
+            : result.reason;
           setIdentities((current) => ({
             ...current,
-            [account.id]: { identity: result.identity ?? null, reason: result.reason },
+            [account.id]: { identity: result.identity ?? null, reason },
           }));
         })
         .catch((error) => {
@@ -363,7 +397,11 @@ function ServiceDetails({
             </h3>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-ink-secondary">
               <span className={cn("rounded-full px-2 py-0.5 font-medium", accountTone(service?.status))}>
-                {service?.status || (service?.connected ? t("Connected") : t("Not connected"))}
+                {service?.status
+                  ? accountStatusLabel(service.status, t)
+                  : service?.connected
+                    ? t("Connected")
+                    : t("Not connected")}
               </span>
               {accounts.length > 0 && <span>{t("{count} account(s)", { count: accounts.length })}</span>}
             </div>
@@ -420,7 +458,7 @@ function ServiceDetails({
             </div>
           )}
           <p className="mt-3 text-[11.5px] leading-relaxed text-ink-secondary/80">
-            {t("Labels are stored only in KodBot. Removing a row revokes KodBot's access to that connection; it does not delete the Google account.")}
+            {t("Labels are stored only in KodBot. Removing a row revokes KodBot's access to that connection; it does not delete the account with the provider.")}
           </p>
         </div>
 
@@ -468,6 +506,8 @@ export function PluginsPanel() {
   const [busySlug, setBusySlug] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [allowingAll, setAllowingAll] = useState(false);
   const [search, setSearch] = useState(state.pluginsQuery);
   const [tab, setTab] = useState<"marketplace" | "connected">("marketplace");
   const [detailsSlug, setDetailsSlug] = useState<string | null>(null);
@@ -475,6 +515,9 @@ export function PluginsPanel() {
 
   const pollTimers = useRef(new Map<string, ReturnType<typeof setInterval>>());
   const statusGenerations = useRef(new Map<string, number>());
+  const detailStatusRequests = useRef(new Set<string>());
+  const searchStatusRequests = useRef(new Set<string>());
+  const refreshDepth = useRef(0);
 
   // Global search opens this panel with the chosen app name.
   useEffect(() => {
@@ -482,34 +525,59 @@ export function PluginsPanel() {
   }, [state.pluginsQuery]);
 
   const refreshStatus = useCallback((slugs: string[]): Promise<Record<string, ConnectorStatus>> => {
-    if (!slugs.length) return Promise.resolve({});
-    const requestGenerations = new Map(slugs.map((slug) => [slug, statusGenerations.current.get(slug) ?? 0]));
+    const batches = chunkSlugs(slugs);
+    if (!batches.length) return Promise.resolve({});
+    const merged: Record<string, ConnectorStatus> = {};
+    let failure: string | null = null;
+    let next = 0;
+    refreshDepth.current += 1;
     setRefreshing(true);
-    return api(`/api/connectors?services=${slugs.join(",")}`)
-      .then((r) => {
-        const services: Record<string, ConnectorStatus> = r.services ?? {};
-        // A one-service OAuth poll must not erase every other app's state.
-        // A request that began before Connect must also not erase the newer
-        // local INITIATED state when its stale not_connected result arrives.
-        setStatus((current) => mergeCurrentConnectorStatus(
-          current,
-          services,
-          statusGenerations.current,
-          requestGenerations,
-        ));
-        for (const [slug, state] of Object.entries(services)) {
-          const isCurrent = (statusGenerations.current.get(slug) ?? 0) === (requestGenerations.get(slug) ?? 0);
-          if (isCurrent && state.connected) setPendingUrls((current) => {
-            if (!current[slug]) return current;
-            const next = { ...current };
-            delete next[slug];
-            return next;
-          });
+
+    const worker = async () => {
+      while (next < batches.length) {
+        const batch = batches[next++];
+        const requestGenerations = new Map(
+          batch.map((slug) => [slug, statusGenerations.current.get(slug) ?? 0]),
+        );
+        try {
+          const r = await api(`/api/connectors?services=${batch.map(encodeURIComponent).join(",")}`);
+          const services: Record<string, ConnectorStatus> = r.services ?? {};
+          Object.assign(merged, services);
+          // A one-service OAuth poll must not erase every other app's state.
+          // A request that began before Connect must also not erase the newer
+          // local INITIATED state when its stale not_connected result arrives.
+          setStatus((current) => mergeCurrentConnectorStatus(
+            current,
+            services,
+            statusGenerations.current,
+            requestGenerations,
+          ));
+          for (const [slug, service] of Object.entries(services)) {
+            const isCurrent = (statusGenerations.current.get(slug) ?? 0) === (requestGenerations.get(slug) ?? 0);
+            if (isCurrent && service.connected) setPendingUrls((current) => {
+              if (!current[slug]) return current;
+              const nextUrls = { ...current };
+              delete nextUrls[slug];
+              return nextUrls;
+            });
+          }
+        } catch (e) {
+          failure = e instanceof Error ? e.message : String(e);
         }
-        return services;
+      }
+    };
+
+    return Promise.all(
+      Array.from({ length: Math.min(3, batches.length) }, () => worker()),
+    )
+      .then(() => {
+        setStatusError(failure);
+        return merged;
       })
-      .catch(() => ({}))
-      .finally(() => setRefreshing(false));
+      .finally(() => {
+        refreshDepth.current = Math.max(0, refreshDepth.current - 1);
+        if (refreshDepth.current === 0) setRefreshing(false);
+      });
   }, []);
 
   useEffect(() => () => {
@@ -526,13 +594,42 @@ export function PluginsPanel() {
         setSource(r.source ?? "curated");
         setConfigured(Boolean(r.configured));
         setMode(r.mode ?? "unavailable");
-        if (r.configured) void refreshStatus((r.cards ?? []).map((c: ToolkitCard) => c.slug).slice(0, 40));
+        if (r.configured) void refreshStatus((r.cards ?? []).map((c: ToolkitCard) => c.slug));
       })
-      .catch((e) => alive && setError(e.message));
+      .catch((e) => {
+        if (!alive) return;
+        setCards([]);
+        setError(e.message);
+      });
     return () => {
       alive = false;
     };
   }, [refreshStatus]);
+
+  // A Details row can open from a deep link before its batch has landed. Do
+  // not leave the account list blank while the rest of the catalog loads.
+  useEffect(() => {
+    if (!detailsSlug || status[detailsSlug] || detailStatusRequests.current.has(detailsSlug)) return;
+    detailStatusRequests.current.add(detailsSlug);
+    void refreshStatus([detailsSlug]);
+  }, [detailsSlug, status, refreshStatus]);
+
+  // Searching for a specific app should not wait for the whole catalog. Ask
+  // for the matches first, once per slug; the card's Check status button is
+  // the explicit retry if that request fails.
+  useEffect(() => {
+    const term = search.trim();
+    if (!cards?.length || !term) return;
+    const timer = window.setTimeout(() => {
+      const missing = cards
+        .filter((card) => cardMatches(card, term) && !status[card.slug] && !searchStatusRequests.current.has(card.slug))
+        .map((card) => card.slug);
+      if (!missing.length) return;
+      for (const slug of missing) searchStatusRequests.current.add(slug);
+      void refreshStatus(missing);
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [cards, search, status, refreshStatus]);
 
   useEffect(() => {
     const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -612,12 +709,24 @@ export function PluginsPanel() {
     pollTimers.current.set(slug, timer);
   };
 
-  const connect = async (slug: string) => {
+  const connect = async (slug: string, addAccount = false) => {
     statusGenerations.current.set(slug, (statusGenerations.current.get(slug) ?? 0) + 1);
     setBusySlug(slug);
     setError(null);
     try {
-      const { url } = await api(`/api/connectors/${slug}/authorize`, { method: "POST" });
+      const result = await api(`/api/connectors/${slug}/authorize`, {
+        method: "POST",
+        body: JSON.stringify({ add: addAccount }),
+      });
+      // The server refuses to mint a second link for an app that is already
+      // connected. A stale card must refresh into Details, not create a
+      // duplicate account.
+      if (!result?.url) {
+        await refreshStatus([slug]);
+        setDetailsSlug(slug);
+        return;
+      }
+      const url = String(result.url);
       setPendingUrls((current) => ({ ...current, [slug]: url }));
       setStatus((current) => ({ ...current, [slug]: { connected: false, pending: true, status: "INITIATED" } }));
       startPolling(slug);
@@ -634,6 +743,12 @@ export function PluginsPanel() {
     api(`/api/connectors/${slug}`, { method: "DELETE" })
       .then(() => {
         setDetailsSlug(null);
+        setPendingUrls((current) => {
+          if (!current[slug]) return current;
+          const next = { ...current };
+          delete next[slug];
+          return next;
+        });
         return refreshStatus([slug]);
       })
       .catch((e) => setError(e.message))
@@ -665,9 +780,7 @@ export function PluginsPanel() {
     }));
   };
 
-  const matching = (cards ?? []).filter(
-    (c) => !search || `${c.label} ${c.slug} ${c.blurb}`.toLowerCase().includes(search.toLowerCase()),
-  );
+  const matching = (cards ?? []).filter((card) => !search || cardMatches(card, search));
   const visible = matching.filter(
     (card) =>
       tab === "marketplace" ||
@@ -675,6 +788,19 @@ export function PluginsPanel() {
       (status[card.slug]?.accounts?.length ?? 0) > 0,
   );
   const connectedCount = Object.values(status).filter((service) => service.connected).length;
+  const blockedBots = state.bots.filter((bot) => {
+    if (bot.composio !== false) return false;
+    const engine = state.instances.find((instance) => instance.instanceId === bot.modelSelection.instanceId);
+    return engine?.capabilities?.composioMcp !== false;
+  });
+  const allowAll = () => {
+    if (!blockedBots.length || allowingAll) return;
+    setAllowingAll(true);
+    for (const bot of blockedBots) {
+      dispatch({ type: "updateBot", botId: bot.id, patch: { composio: true } });
+    }
+    window.setTimeout(() => setAllowingAll(false), 700);
+  };
   const detailsCard = detailsSlug ? (cards ?? []).find((card) => card.slug === detailsSlug) : undefined;
   const detailsStatus = detailsSlug ? status[detailsSlug] : undefined;
   const close = () => dispatch({ type: "togglePlugins", open: false });
@@ -699,8 +825,9 @@ export function PluginsPanel() {
           </div>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => refreshStatus(matching.map((c) => c.slug).slice(0, 40))}
-              className="rounded-lg p-2 text-ink-secondary hover:bg-raised hover:text-ink"
+              onClick={() => void refreshStatus((cards ?? []).map((card) => card.slug))}
+              disabled={refreshing}
+              className="rounded-lg p-2 text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-50"
               title={t("Refresh connection status")}
             >
               <RefreshCw size={17} className={cn(refreshing && "animate-spin")} />
@@ -782,6 +909,41 @@ export function PluginsPanel() {
           </div>
         )}
         {error && <div role="alert" className="mx-6 mt-2 rounded-lg bg-danger/10 px-3 py-2 text-[12px] text-danger sm:mx-8">{error}</div>}
+        {statusError && (
+          <div role="alert" className="mx-6 mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-warning/10 px-3 py-2 text-[12px] text-warning sm:mx-8">
+            <span className="min-w-0 flex-1">
+              {t("Could not read connection status. Check that the server is reachable, then retry.")}
+            </span>
+            <button
+              className="font-medium underline underline-offset-2"
+              onClick={() => void refreshStatus((cards ?? []).map((card) => card.slug))}
+            >
+              {t("Retry status")}
+            </button>
+          </div>
+        )}
+        {configured && blockedBots.length > 0 && (
+          <div className="mx-6 mt-2 flex flex-col gap-2 rounded-xl bg-accent/10 px-4 py-3 text-[12.5px] text-ink-secondary sm:mx-8 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <div className="font-medium text-ink">
+                {t("{count} bot(s) cannot use connected apps yet.", { count: blockedBots.length })}
+              </div>
+              <div className="mt-0.5">
+                {t("Connected apps are granted per bot. This turns them on for every bot that supports them.")}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={allowAll}
+              disabled={allowingAll}
+              title={blockedBots.map((bot) => bot.name).join(", ")}
+              className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-accent px-3 py-2 font-medium text-white hover:opacity-90 disabled:opacity-60"
+            >
+              {allowingAll ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+              {allowingAll ? t("Allowing…") : t("Allow for all bots")}
+            </button>
+          </div>
+        )}
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-7 pt-5 sm:px-8">
           {cards === null ? (
@@ -796,6 +958,7 @@ export function PluginsPanel() {
               <div className="grid grid-cols-1 gap-x-10 md:grid-cols-2">
               {visible.map((card) => {
               const serviceStatus = status[card.slug];
+              const known = Boolean(serviceStatus);
               const connected = serviceStatus?.connected;
               const pending = serviceStatus?.pending;
               const failed = serviceStatus?.status && /^(expired|failed)$/i.test(serviceStatus.status);
@@ -803,6 +966,7 @@ export function PluginsPanel() {
               const hasAccounts = accounts.length > 0;
               const showDetails = Boolean(connected || hasAccounts);
               const busy = busySlug === card.slug;
+              const checking = !known && refreshing;
               return (
                 <div
                   key={card.slug}
@@ -864,8 +1028,12 @@ export function PluginsPanel() {
                     </div>
                   </div>
                   <button
-                    disabled={!configured || busy}
+                    disabled={!configured || busy || checking}
                     onClick={() => {
+                      if (!known) {
+                        void refreshStatus([card.slug]);
+                        return;
+                      }
                       if (showDetails) setDetailsSlug(card.slug);
                       else if (pending && pendingUrls[card.slug]) {
                         setError(null);
@@ -878,10 +1046,12 @@ export function PluginsPanel() {
                         ? "bg-raised text-ink hover:bg-raised-hover"
                         : "bg-accent text-white hover:brightness-110",
                     )}
-                    title={showDetails ? t("View account details") : undefined}
+                    title={showDetails ? t("View account details") : !known ? t("Check connection status") : undefined}
                   >
-                    {busy ? (
+                    {busy || checking ? (
                       <Loader2 size={13} className="mx-auto animate-spin" />
+                    ) : !known ? (
+                      <><RefreshCw size={13} /> {t("Check status")}</>
                     ) : showDetails ? (
                       <><Info size={14} /> {t("Details")} <ChevronRight size={13} /></>
                     ) : pending ? (
@@ -899,14 +1069,22 @@ export function PluginsPanel() {
             </div>
           )}
           {cards !== null && visible.length === 0 && (
-            <div className="flex min-h-56 flex-col items-center justify-center text-center">
-              <div className="text-[14px] font-medium text-ink">
-                {tab === "connected" ? t("No connected apps yet") : t("No apps found")}
+            tab === "connected" && refreshing ? (
+              <div className="flex min-h-56 flex-col items-center justify-center text-center">
+                <div className="flex items-center gap-2 text-[13px] text-ink-secondary">
+                  <Loader2 size={14} className="animate-spin" /> {t("Checking connections…")}
+                </div>
               </div>
-              <div className="mt-1 text-[12.5px] text-ink-secondary">
-                {tab === "connected" ? t("Connect an app from Marketplace and it will appear here.") : t("Try a different search.")}
+            ) : (
+              <div className="flex min-h-56 flex-col items-center justify-center text-center">
+                <div className="text-[14px] font-medium text-ink">
+                  {tab === "connected" ? t("No connected apps yet") : t("No apps found")}
+                </div>
+                <div className="mt-1 text-[12.5px] text-ink-secondary">
+                  {tab === "connected" ? t("Connect an app from Marketplace and it will appear here.") : t("Try a different search.")}
+                </div>
               </div>
-            </div>
+            )
           )}
         </div>
       </div>
@@ -919,7 +1097,7 @@ export function PluginsPanel() {
           busy={busySlug === detailsCard.slug}
           error={error}
           onClose={() => setDetailsSlug(null)}
-          onConnect={() => void connect(detailsCard.slug)}
+          onConnect={() => void connect(detailsCard.slug, true)}
           onDisconnect={() => {
             if (window.confirm(t("Disconnect every account for {name}?", { name: detailsCard.label }))) {
               disconnect(detailsCard.slug);
