@@ -205,7 +205,7 @@ KodBot е local-first chat приложение за екип от AI агент
 - Click **Connect** and complete the provider page in your browser. If the browser does not open, use **Copy link** next to “Finish setup in your browser” and paste it into a browser.
 - Open **Details** to see accounts, rename them, remove one account, or disconnect the app. Expired accounts stay listed until you remove them.
 - The panel checks the whole catalog, not only the featured apps, so a connected app appears under **Connected** even when it is far down the marketplace.
-- A bot only gets the apps you granted it (Bot settings → Connected apps). If a bot says it has no access, open **Connected apps** and use **Allow for all bots**, or turn the app access on for that bot individually.`,
+- A bot only gets the apps you granted it (Bot settings → Connected apps). If a bot says it has no access, open **Connected apps** and use **Allow for all bots**, or turn the app access on for that bot individually. Bots are told about this switch, so they will point you to the exact place instead of claiming the app is not connected.`,
       bg: `## Свързани приложения
 
 - **Connected apps** (странична лента → иконата puzzle) свързва Gmail, Google Drive, Slack, GitHub, Notion и много други през Composio.
@@ -213,7 +213,7 @@ KodBot е local-first chat приложение за екип от AI агент
 - Натисни **Connect** и завърши страницата на доставчика в браузъра. Ако браузърът не се отвори, използвай **Copy link** до „Finish setup in your browser“ и го постави в браузър.
 - Отвори **Details**, за да видиш акаунтите, да ги преименуваш, да махнеш акаунт или да disconnect-неш приложението. Изтеклите акаунти остават в списъка, докато не ги премахнеш.
 - Панелът проверява целия каталог, не само препоръчаните приложения, така че свързано приложение се показва в **Connected** дори когато е далеч надолу в пазара.
-- Ботът получава само приложенията, които си му разрешил (Bot settings → Connected apps). Ако бот каже, че няма достъп, отвори **Connected apps** и използвай **Allow for all bots**, или включи достъпа за конкретния бот поотделно.`,
+- Ботът получава само приложенията, които си му разрешил (Bot settings → Connected apps). Ако бот каже, че няма достъп, отвори **Connected apps** и използвай **Allow for all bots**, или включи достъпа за конкретния бот поотделно. Ботовете знаят за този превключвател и ще те насочат точно където трябва, вместо да твърдят, че приложението не е свързано.`,
     },
   },
   {

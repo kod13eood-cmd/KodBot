@@ -12,6 +12,7 @@ import { z } from "zod";
 import { approvalKey, autoDecision } from "./auto-approve.ts";
 import { writeFileAtomic } from "./atomic.ts";
 import { validateBotCwd } from "./bot-cwd.ts";
+import { connectedAppsSystemPrompt } from "./connected-apps-prompt.ts";
 import { groupTurnCwd } from "./room-cwd.ts";
 import * as box from "./box.ts";
 import * as composio from "./composio.ts";
@@ -1543,6 +1544,13 @@ async function startTurn(
           ? "You can work with the user's other bots through the agents tools — list_bots shows who's available, ask_bot sends one of them a message and returns their reply. You can also inspect and manage your own team with team_status, create_team, add_team_member, remove_team_member, transfer_team_leadership, and leave_team; only a team leader may add, remove, or transfer."
           : "";
 
+      const connectedAppsPrompt = connectedAppsSystemPrompt({
+        mounted: Boolean(integrations.composio),
+        configured: composio.configured(cfg),
+        engineSupports: instance.adapter.capabilities.composioMcp === true,
+        botEnabled: bot.composio !== false,
+      });
+
       watchdog.watch(threadId, bot.id);
       await instance.adapter.sendTurn({
         threadId,
@@ -1567,10 +1575,10 @@ async function startTurn(
             ? " At a sign-in, password, MFA, CAPTCHA, or other protected-input step, stop and ask the user to complete it on the visible computer. Never type their password or ask them to paste a password or one-time code into chat."
             : "") +
           // gated on the integration, not the key: the hint only goes to a
-          // bot whose driver actually mounted the tools
-          (integrations.composio
-            ? " The user's connected apps (Gmail, Calendar, Slack, Notion, and the rest) are reachable through the composio tools — find the right one with COMPOSIO_SEARCH_TOOLS, read its arguments with COMPOSIO_GET_TOOL_SCHEMAS, then run it with COMPOSIO_MULTI_EXECUTE_TOOL. Reach for them before telling the user you have no access to a service."
-            : "") +
+          // bot whose driver actually mounted the tools — and a disabled bot
+          // gets the exact place to turn the grant back on instead of a
+          // misleading "not connected" answer.
+          (connectedAppsPrompt ? ` ${connectedAppsPrompt}` : "") +
           (integrations.jev
             ? " When you need a structured decision about text — triage, routing, classification, urgency, sentiment, or a rubric score — call the jev_decide tool instead of guessing. Jev returns typed answers with probabilities and is for decisions, not prose; use a preset or pass your own questions."
             : "") +
@@ -1811,9 +1819,20 @@ async function runGroupMemberTurn(
   // but must not decide the pin: the room's desk is a property of the
   // room, not of whichever member happened to speak first.
   const cwd = groupTurnCwd(workspace, () => store.pinGroupCwd(group.id));
-  const roomSystem = workspace
-    ? `${system}\n${memorySystemPrompt(bot.id).trim()}\n${pagesSystemPrompt(bot.id).trim()}\n${productCardsSystemPrompt().trim()}`
-    : system;
+  const connectedAppsPrompt = connectedAppsSystemPrompt({
+    mounted: Boolean(integrations.composio),
+    configured: composio.configured(cfg),
+    engineSupports: instance.adapter.capabilities.composioMcp === true,
+    botEnabled: bot.composio !== false,
+  });
+  const roomSystem = [
+    workspace
+      ? `${system}\n${memorySystemPrompt(bot.id).trim()}\n${pagesSystemPrompt(bot.id).trim()}\n${productCardsSystemPrompt().trim()}`
+      : system,
+    connectedAppsPrompt,
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   // run the turn and wait for it to settle, folding the reply text so a
   // chained @mention can be routed afterwards
