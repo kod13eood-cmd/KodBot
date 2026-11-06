@@ -327,7 +327,10 @@ export interface AppState {
   /** a search hit to scroll to once its thread is on screen; nonce lets the
    * same message be focused twice in a row */
   focusMessage: { threadId: string; messageId: string; nonce: number; consumed: boolean } | null;
+  /** SSE is connected (not necessarily hydrated yet). */
   connected: boolean;
+  /** The first REST snapshot has landed; the shell can leave its boot screen. */
+  hydrated: boolean;
   error: string | null;
   mascotMotion: {
     botId: string;
@@ -480,7 +483,7 @@ export function reducer(state: AppState, action: Action): AppState {
       const known = (id: string) => action.bots.some((b) => b.id === id) || action.groups.some((g) => g.id === id);
       const selectedId =
         state.selectedId && known(state.selectedId) ? state.selectedId : (action.bots[0]?.id ?? "");
-      return { ...state, bots: action.bots, groups: action.groups, teams: action.teams ?? [], selectedId };
+      return { ...state, bots: action.bots, groups: action.groups, teams: action.teams ?? [], selectedId, hydrated: true };
     }
     case "teamPatched": {
       const exists = state.teams.some((team) => team.id === action.team.id);
@@ -949,6 +952,7 @@ export const initialState: AppState = {
   provisioning: {},
   focusMessage: null,
   connected: false,
+  hydrated: false,
   error: null,
   mascotMotion: null,
 };

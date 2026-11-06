@@ -199,6 +199,12 @@ const BULGARIAN: Record<string, string> = {
   "The browser blocked clipboard access — select the link and copy it manually.":
     "Браузърът блокира достъпа до клипборда — маркирай линка и го копирай ръчно.",
   "Help and guide": "Помощ и ръководство",
+  "Loading your workspace…": "Зареждане на работното пространство…",
+  "Loading chat…": "Зареждане на чата…",
+  "The transcripts are large; this can take a few seconds.":
+    "Транскриптите са големи; това може да отнеме няколко секунди.",
+  "The server has not answered yet. Check that it is running and reachable.":
+    "Сървърът още не отговаря. Провери дали работи и е достъпен.",
   "A bilingual guide to bots, tasks, rooms, automations, pages, and troubleshooting.":
     "Двуезично ръководство за ботове, задачи, стаи, автоматизации, страници и проблеми.",
   "Open guide": "Отвори ръководството",

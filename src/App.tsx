@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useDeferredValue } from "react";
 import { Loader2, Menu } from "lucide-react";
 import { StoreProvider, useStore, visibleMessages } from "@/state/store";
 import { Onboarding } from "@/components/Onboarding";
@@ -14,6 +14,7 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { PageBridge } from "@/components/PageBridge";
 import { HelpPanel } from "@/components/HelpPanel";
+import { BootScreen, ChatLoadingSkeleton } from "@/components/LoadingScreens";
 import { WindowControls } from "@/components/WindowControls";
 import { SendQueueDrainer } from "@/components/SendQueueDrainer";
 import { DesktopCapabilitiesProvider } from "@/components/DesktopCapabilities";
@@ -35,8 +36,17 @@ function Shell() {
   // Sidebar.tsx's className comment).
   const [drawerOpen, setDrawerOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const group = state.groups.find((g) => g.id === state.selectedId);
-  const bot = group ? undefined : (state.bots.find((b) => b.id === state.selectedId) ?? state.bots[0]);
+  // Switching chats can involve a large transcript. Defer the expensive
+  // render so the lightweight skeleton paints first instead of the window
+  // looking frozen for a second.
+  const deferredSelectedId = useDeferredValue(state.selectedId);
+  const switching = deferredSelectedId !== state.selectedId;
+  const group = state.groups.find((g) => g.id === deferredSelectedId);
+  const bot = group ? undefined : (state.bots.find((b) => b.id === deferredSelectedId) ?? state.bots[0]);
+  const targetGroup = state.groups.find((g) => g.id === state.selectedId);
+  const targetBot = targetGroup
+    ? undefined
+    : (state.bots.find((b) => b.id === state.selectedId) ?? state.bots[0]);
 
   // Who cannot continue without an answer or an approval. Drives the persistent
   // strip, the tab title, and the app badge.
@@ -130,6 +140,10 @@ function Shell() {
     setDrawerOpen(false);
   }, [state.selectedId, state.activeView, state.pluginsOpen, state.settingsOpen]);
 
+  // The first REST snapshot can take a moment on a remote harness; show the
+  // branded boot screen instead of an empty shell that looks frozen.
+  if (!state.hydrated) return <BootScreen connected={state.connected} />;
+
   return (
     <div className="flex h-full flex-col">
       {/* fixed-position popup, bottom-left — outside the layout flow */}
@@ -164,6 +178,12 @@ function Shell() {
         <RoutinesPage />
       ) : noEngines ? (
         <NoEngines />
+      ) : switching ? (
+        <ChatLoadingSkeleton
+          name={targetGroup?.name ?? targetBot?.name ?? ""}
+          bot={targetBot}
+          group={Boolean(targetGroup)}
+        />
       ) : group ? (
         <GroupView key={group.id} group={group} />
       ) : bot ? (

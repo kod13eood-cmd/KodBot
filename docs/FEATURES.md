@@ -110,6 +110,13 @@ Automations can run once, daily at a chosen time, or **on an interval** — ever
 example 09:00–18:00) and on selected weekdays. A slow turn never stacks runs:
 the next slot waits for the current one to finish.
 
+### Loading feedback — Live
+
+A branded boot screen covers the first harness snapshot, and switching bots or
+rooms shows a chat-shaped skeleton with the target's name until the transcript
+paints. Large transcripts no longer make the window look frozen; the sidebar
+stays responsive while the chat catches up.
+
 ### Notifications — Live
 
 A bot that cannot continue — a command or file approval, a question — raises a
