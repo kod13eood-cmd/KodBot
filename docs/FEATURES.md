@@ -179,7 +179,10 @@ connected app such as Alpaca appears under **Connected** and opens **Details**
 instead of offering a second connection. Accounts are sorted with active rows
 first, expired rows stay removable, and **Disconnect app** revokes every
 account, including expired ones. Access is still granted per bot; when some
-bots are switched off, the panel offers **Allow for all bots**.
+bots are switched off, the panel offers **Allow for all bots**. Every bot is
+also told about this switch, so it points to **Bot settings → Connected apps**
+(or the panel's **Allow for all bots** button) instead of claiming the app is
+not connected.
 
 ## Grok Bot parity
 
