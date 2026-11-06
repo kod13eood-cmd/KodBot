@@ -1409,7 +1409,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           <div
             role="status"
             className={cn(
-              "fixed bottom-4 left-4 z-[60] max-w-[300px] rounded-xl border px-3.5 py-2.5 text-[13px] shadow-xl",
+              "fixed bottom-20 left-4 z-[60] max-w-[300px] rounded-xl border px-3.5 py-2.5 text-[13px] shadow-xl",
               teamFeedback.error
                 ? "border-danger/30 bg-card text-danger"
                 : "border-hairline/50 bg-card text-ink",

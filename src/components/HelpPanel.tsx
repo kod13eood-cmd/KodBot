@@ -20,8 +20,15 @@ export function HelpPanel() {
   const [guideLocale, setGuideLocale] = useState<GuideLocale>(locale);
   const [active, setActive] = useState(GUIDE_SECTIONS[0]!.id);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setGuideLocale(locale), [locale]);
+
+  // Switching topics should start at the top; otherwise a long section
+  // leaves the next one scrolled into its middle.
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0 });
+  }, [active, guideLocale]);
 
   useEffect(() => {
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -135,7 +142,7 @@ export function HelpPanel() {
             </div>
           </header>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+          <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
             <ChatMarkdown text={section.body[guideLocale]} />
           </div>
         </div>
