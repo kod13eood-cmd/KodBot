@@ -18,6 +18,7 @@
 // drivers/ nested; import.meta.url still resolves to the same location, so
 // that lookup is unaffected.
 import { build } from "esbuild";
+import { copyFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -48,3 +49,10 @@ await build({
   allowOverwrite: true,
   logLevel: "info",
 });
+
+// The server copies this next to each bot's MEMORY.md at runtime. It must ride
+// with the packaged harness, not only exist in the source docs directory.
+const guide = join(root, "docs", "USER-GUIDE.md");
+if (!existsSync(guide)) throw new Error("docs/USER-GUIDE.md is missing — run pnpm docs:guide");
+copyFileSync(guide, join(root, "dist-server", "USER-GUIDE.md"));
+console.log("dist-server/USER-GUIDE.md copied");

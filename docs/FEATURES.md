@@ -41,7 +41,8 @@ Status keys:
   Notion, Linear, Stripe, Aircall, AgentMail, and hundreds more.
 - **Bilingual in-app guide.** A book icon at the bottom of the sidebar opens
   the full user guide in English or Bulgarian; the same content lives in
-  `docs/USER-GUIDE.md`.
+  `docs/USER-GUIDE.md`. Every bot workspace also gets `KODBOT-GUIDE.md`, so
+  agents can read the same guide and answer how-to questions with exact steps.
 
 ## What's new in this build
 

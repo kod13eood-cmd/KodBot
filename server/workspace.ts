@@ -12,6 +12,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { join } from "node:path";
 
 import { DATA_DIR } from "./config.ts";
+import { ensureGuideCopy } from "./guide.ts";
 
 export const WORKSPACES_DIR = join(DATA_DIR, "workspaces");
 
@@ -37,6 +38,9 @@ export function ensureWorkspace(botId: string): string {
   mkdirSync(join(dir, "memory"), { recursive: true, mode: 0o700 });
   const memoryFile = join(dir, "MEMORY.md");
   if (!existsSync(memoryFile)) writeFileSync(memoryFile, MEMORY_SEED, { mode: 0o600 });
+  // The guide is generated with the build, not the bot's own file. Keep it
+  // next to MEMORY.md so every file-capable agent can look up UI steps.
+  ensureGuideCopy(dir);
   return dir;
 }
 

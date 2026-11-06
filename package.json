@@ -40,7 +40,7 @@
     "test:cua-container": "node scripts/smoke-cua-container.mjs",
     "check:electron": "node --check electron/main.mjs && node --check electron/companion.mjs && node --check electron/companion-entry.mjs && node --check electron/terminal-launch.mjs && node --check electron/preload.cjs && node --check electron/capabilities.cjs && node --check electron/cua-connection.cjs && node --check electron/cua.mjs && node --check electron/speech.mjs",    "preview": "vite preview",
     "docs:guide": "node scripts/build-user-guide.mjs",
-    "build:server": "tsc -p tsconfig.server.build.json && node scripts/bundle-server.mjs",
+    "build:server": "node scripts/build-user-guide.mjs && tsc -p tsconfig.server.build.json && node scripts/bundle-server.mjs",
     "build:companion": "tsc -p tsconfig.companion.build.json",
     "build:speech": "node electron/build-speech-helper.mjs",
     "build:cua": "node scripts/prepare-cua.mjs",

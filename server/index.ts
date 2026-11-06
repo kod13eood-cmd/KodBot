@@ -13,6 +13,7 @@ import { approvalKey, autoDecision } from "./auto-approve.ts";
 import { writeFileAtomic } from "./atomic.ts";
 import { validateBotCwd } from "./bot-cwd.ts";
 import { connectedAppsSystemPrompt } from "./connected-apps-prompt.ts";
+import { ensureGuideCopy, guideSystemPrompt } from "./guide.ts";
 import { groupTurnCwd } from "./room-cwd.ts";
 import * as box from "./box.ts";
 import * as composio from "./composio.ts";
@@ -165,6 +166,9 @@ const MIME: Record<string, string> = {
 };
 
 ensureDirs();
+// One stable copy beside the state files, in addition to each bot's workspace
+// copy. Helpful for support and for agents that prefer an absolute data path.
+ensureGuideCopy(DATA_DIR);
 const cfg = loadConfig();
 const registry = new ProviderRegistry(BUILT_IN_DRIVERS);
 await registry.load(instanceConfigs(cfg));
@@ -1550,6 +1554,7 @@ async function startTurn(
         engineSupports: instance.adapter.capabilities.composioMcp === true,
         botEnabled: bot.composio !== false,
       });
+      const guidePrompt = guideSystemPrompt(opts?.runOn === "cloud" ? null : privateWorkspace);
 
       watchdog.watch(threadId, bot.id);
       await instance.adapter.sendTurn({
@@ -1579,6 +1584,7 @@ async function startTurn(
           // gets the exact place to turn the grant back on instead of a
           // misleading "not connected" answer.
           (connectedAppsPrompt ? ` ${connectedAppsPrompt}` : "") +
+          (guidePrompt ? ` ${guidePrompt}` : "") +
           (integrations.jev
             ? " When you need a structured decision about text — triage, routing, classification, urgency, sentiment, or a rubric score — call the jev_decide tool instead of guessing. Jev returns typed answers with probabilities and is for decisions, not prose; use a preset or pass your own questions."
             : "") +
@@ -1830,6 +1836,7 @@ async function runGroupMemberTurn(
       ? `${system}\n${memorySystemPrompt(bot.id).trim()}\n${pagesSystemPrompt(bot.id).trim()}\n${productCardsSystemPrompt().trim()}`
       : system,
     connectedAppsPrompt,
+    guideSystemPrompt(workspace),
   ]
     .filter(Boolean)
     .join("\n");

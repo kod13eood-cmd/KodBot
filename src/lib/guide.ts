@@ -22,6 +22,7 @@ KodBot is a local-first chat app for running a team of AI agents on your own com
 - A **room** is a conversation with several bots; a **team** groups bots and can have a leader.
 - Chats, settings, and data stay in \`~/.kodbot\` on the machine that runs the harness.
 - Use the sidebar to switch between chats, rooms, and **Automations**.
+- The same guide is available to your bots as \`KODBOT-GUIDE.md\` in their workspace. Ask a bot how to do something and it can read the exact steps.
 
 The rest of this guide is organized by topic.`,
       bg: `# Добре дошли в KodBot
@@ -32,6 +33,7 @@ KodBot е local-first chat приложение за екип от AI агент
 - **Стая** е разговор с няколко бота; **екип** групира ботове и може да има лидер.
 - Чатовете, настройките и данните стоят в \`~/.kodbot\` на машината, която пуска harness-а.
 - От страничната лента сменяш чатове, стаи и **Automations**.
+- Същото ръководство е достъпно за ботовете като \`KODBOT-GUIDE.md\` в работната им папка. Попитай бот как се прави нещо и той може да прочете точните стъпки.
 
 Останалата част от ръководството е подредена по теми.`,
     },
