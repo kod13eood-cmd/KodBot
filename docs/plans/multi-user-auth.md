@@ -32,6 +32,24 @@ live host yet.
 The next implementation step is the Android login screen and HTTPS address
 support, then deployment on port 8780 behind TLS.
 
+### Live deployment (2026-11-08)
+
+- `kodbot-gateway.service` runs on `100.94.230.62:8780` and is reachable as
+  `http://paperclipi7.tail89d239.ts.net:8780`.
+- The owner account is proxied to the existing harness on 8799
+  (`OC_GATEWAY_OWNER_HARNESS_PORT=8799`), so the legacy fleet works without a
+  second process on `~/.kodbot`.
+- Control data: `~/.kodbot-gateway`; tenant root: `~/.kodbot-tenants`.
+- The shared `OPENCODE_API_KEY` is in
+  `~/.config/kodbot-gateway.env` (mode 600).
+- Bootstrap is enabled so the first registration becomes the owner. After
+  that, new accounts need invites.
+- TLS is pending because Tailscale Serve/HTTPS is not enabled on the tailnet.
+  The gateway is currently HTTP on the private tailnet; 8799 is still
+  directly reachable until it is bound to loopback or firewalled.
+- Backups for `~/.kodbot-gateway` and `~/.kodbot-tenants` are not part of the
+  existing 2/2/2 snapshot script yet; this must be fixed before real tenants.
+
 ## Why a gateway instead of making the harness multi-tenant
 
 The current harness is deliberately single-user. Its `Store`, `messages.db`,
