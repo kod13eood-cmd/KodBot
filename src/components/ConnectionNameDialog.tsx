@@ -80,7 +80,7 @@ export function ConnectionNameDialog({
             onChange={(event) => setName(event.target.value)}
             maxLength={80}
             placeholder={t("e.g. Work {service}", { service })}
-            className="w-full rounded-xl border border-hairline/60 bg-inset px-3.5 py-2.5 text-[14px] text-ink placeholder:text-ink-secondary focus:border-accent/60 focus:outline-none"
+            className="field-input w-full rounded-xl border border-hairline/60 bg-inset px-3.5 py-2.5 text-[14px] text-ink placeholder:text-ink-secondary focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/20"
           />
         </label>
         <div className="mt-5 flex justify-end gap-2">

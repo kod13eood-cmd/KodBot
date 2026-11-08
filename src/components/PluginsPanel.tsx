@@ -885,14 +885,14 @@ export function PluginsPanel() {
               {t("Connected tab")}{connectedCount > 0 ? ` ${connectedCount}` : ""}
             </button>
           </div>
-          <label className="flex h-11 w-full items-center gap-2.5 rounded-xl bg-raised/70 px-3.5 sm:w-[320px]">
+          <label className="flex h-11 w-full items-center gap-2.5 rounded-xl border border-hairline/40 bg-raised/70 px-3.5 transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/20 sm:w-[320px]">
             <Search size={17} className="shrink-0 text-ink-secondary" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t("Search apps")}
               aria-label={t("Search apps")}
-              className="min-w-0 flex-1 bg-transparent text-[14px] text-ink placeholder:text-ink-secondary focus:outline-none"
+              className="field-input min-w-0 flex-1 bg-transparent text-[14px] text-ink placeholder:text-ink-secondary focus:outline-none"
             />
           </label>
         </div>
