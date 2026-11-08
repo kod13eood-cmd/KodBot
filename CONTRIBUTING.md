@@ -26,7 +26,7 @@ agreed-upon work.
 
 Requirements: **Node 24+**, **pnpm**, and for actually chatting with a bot, at least one agent CLI
 ([`claude`](https://claude.com/claude-code) or [`codex`](https://github.com/openai/codex)) installed
-and logged in. macOS is the primary release platform and Ubuntu 24.04 x64 is the Linux desktop beta;
+and logged in. Releases target Windows, Linux (Ubuntu 24.04 x64, beta), and Android (companion app);
 the harness server itself is portable Node and the test suite runs on macOS, Linux, and Windows.
 
 ```sh
