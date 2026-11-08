@@ -121,6 +121,7 @@ The rest of this guide is organized by topic.
 - Interval slots are wall-clock anchored: 09:00, 09:15, 09:30… A slow turn never stacks runs; the next slot waits for it.
 - Every run creates a separate task with its own result; the calendar shows the schedule and the latest receipts.
 - A routine task is marked **Scheduled** in the task picker, so it is not confused with a chat you started.
+- **Activity** (sidebar) collects scheduled, webhook, delegated, and live jobs with status, bot, result, and error.
 - A run that fails or is missed raises a notification and stays in the **needs you** strip until you open it.
 - Pause/resume a schedule, or open a run to see its output. Webhooks are the event-driven sibling.
 
@@ -285,6 +286,7 @@ KodBot е local-first chat приложение за екип от AI агент
 - Интервалите са вързани за wall-clock: 09:00, 09:15, 09:30… Бавен ход не трупа опашка; следващият слот го изчаква.
 - Всеки run създава отделна задача с резултат; календарът показва графика и последните разписки.
 - Задача от routine е маркирана като **Scheduled** в task picker-а, за да не се бърка с чат, който си започнал.
+- **Activity** (страничната лента) събира scheduled, webhook, delegated и live задачи със статус, бот, резултат и грешка.
 - Run, който е failed или missed, вдига известие и остава в лентата **needs you**, докато не го отвориш.
 - Можеш да паузираш/пуснеш графика или да отвориш run, за да видиш изхода. Webhooks са event-driven варианта.
 

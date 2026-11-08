@@ -1,6 +1,6 @@
 # Jobs and Activity
 
-Status: Phase 1 implemented on `feat/jobs-activity-phase1`; Phases 2–3 are design only.
+Status: Phases 1–2 implemented on `feat/jobs-activity-phase2`; Phase 3 is design only.
 
 ## Problem
 
@@ -118,12 +118,27 @@ One policy, derived from Job state:
    existing `routine-failed` notification; routine failures join the in-app
    needs-you strip; delegation terminals write a result card into the source
    chat; scheduled tasks get an origin badge. No data is rewritten.
-2. **Phase 2 — Job projection.** Add an additive read model over routine runs,
-   delegations, and turns. `/api/jobs` and Activity read it. Existing files and
-   APIs keep working.
+2. **Phase 2 — Job projection (implemented).** Routine runs are projected on
+   the client; delegations get a durable `delegation-jobs.json`; live turns are
+   derived from busy bots. `GET /api/jobs` returns the delegation jobs, and the
+   Activity view combines all three. Existing files and APIs keep working.
 3. **Phase 3 — UI consolidation.** Automations becomes schedule management;
    TaskPicker and auto-created channels link to Jobs; advanced controls move
    behind Developer mode. Any destructive migration needs explicit approval.
+
+## Phase 2 acceptance criteria
+
+- `GET /api/jobs` returns delegation jobs and is available before any job
+  exists (empty list, not 404).
+- A queued delegation appears in Activity immediately, moves to running, and
+  ends completed or failed with the result/error.
+- A delegation that was running during a restart is marked failed on the next
+  boot instead of staying “running” forever.
+- Activity shows routine, webhook, delegation, and live-turn jobs, with
+  attention/running/done filters and a bot filter.
+- Opening a job goes to its task, shared channel, or source chat; a routine
+  with no task goes to Automations.
+- The Activity view does not rewrite or delete any existing data.
 
 ## Phase 1 acceptance criteria
 

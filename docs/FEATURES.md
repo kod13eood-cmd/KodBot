@@ -116,6 +116,14 @@ the next slot waits for the current one to finish. Routine-created tasks are
 marked **Scheduled** in the task picker, and a failed or missed run raises a
 notification and stays in the **needs you** strip until it is opened.
 
+### Activity — Live
+
+**Activity** in the sidebar collects scheduled, webhook, delegated, and live
+jobs in one place: needs attention, running, and done. Each row names the bot,
+shows the result or error, and links to the task or shared `A ⇄ B` channel.
+This is the single view for “what is running, who owns it, and how did it end?”
+without adding more panels to the chat.
+
 ### Loading feedback — Live
 
 A branded boot screen covers the first harness snapshot, and switching bots or
@@ -230,6 +238,7 @@ not connected.
 | Memory and import | Bot settings → Memory |
 | Auto model and model pool | Bot settings → Model → Auto model → Choose models |
 | Teams, leaders, membership, team rooms | Sidebar → Plus → Manage teams |
+| Scheduled, delegated, and live jobs | Sidebar → Activity |
 | Connected apps and provider setup | Sidebar → Connected apps (hover an app for its full description) |
 | Shortcuts | `Cmd/Ctrl+/` or App Settings → Keyboard shortcuts |
 | Remote server | App Settings → Server |

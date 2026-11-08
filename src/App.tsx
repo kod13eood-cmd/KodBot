@@ -19,6 +19,7 @@ import { WindowControls } from "@/components/WindowControls";
 import { SendQueueDrainer } from "@/components/SendQueueDrainer";
 import { DesktopCapabilitiesProvider } from "@/components/DesktopCapabilities";
 import { RoutinesPage } from "@/components/RoutinesPage";
+import { ActivityPage } from "@/components/ActivityPage";
 import { NoEngines } from "@/components/NoEngines";
 import { CommandPalette } from "@/components/CommandPalette";
 import { ShortcutsSheet } from "@/components/ShortcutsSheet";
@@ -176,7 +177,9 @@ function Shell() {
           menuButtonRef.current?.focus();
         }}
       />
-      {state.activeView === "routines" ? (
+      {state.activeView === "activity" ? (
+        <ActivityPage />
+      ) : state.activeView === "routines" ? (
         <RoutinesPage />
       ) : noEngines ? (
         <NoEngines />

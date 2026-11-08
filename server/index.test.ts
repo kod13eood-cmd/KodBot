@@ -212,6 +212,12 @@ describe("harness HTTP API", () => {
     expect((await fetch(`${BASE}/api/health`)).status).toBe(200);
   });
 
+  it("lists background jobs for the Activity view", async () => {
+    const { status, body } = await api("GET", "/api/jobs");
+    expect(status).toBe(200);
+    expect(body.jobs).toEqual([]);
+  });
+
   it("seeds one starter bot with its greeting", async () => {
     const { status, body } = await api("GET", "/api/bots");
     expect(status).toBe(200);

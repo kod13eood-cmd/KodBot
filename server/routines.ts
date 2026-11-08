@@ -170,6 +170,32 @@ function cleanSchedule(schedule: RoutineSchedule): RoutineSchedule {
   throw new Error("Choose a supported schedule");
 }
 
+/** Older or hand-edited routine files can predate the `weekdays` field (or
+ * carry an `anchorAt` field that no longer exists). Normalize on load so the
+ * scheduler and the calendar never read a missing array. This is an in-memory
+ * normalization; the file is left untouched until the user edits the routine. */
+function normalizeStoredSchedule(schedule: RoutineSchedule): RoutineSchedule {
+  if (schedule?.type === "daily") {
+    return {
+      type: "daily",
+      time: TIME_PATTERN.test(String(schedule.time ?? "")) ? schedule.time : "09:00",
+      weekdays: cleanDays(schedule.weekdays),
+    };
+  }
+  if (schedule?.type === "interval") {
+    const every = Math.round(Number(schedule.everyMinutes));
+    const startTime = schedule.startTime && TIME_PATTERN.test(schedule.startTime) ? schedule.startTime : undefined;
+    const endTime = schedule.endTime && TIME_PATTERN.test(schedule.endTime) ? schedule.endTime : undefined;
+    return {
+      type: "interval",
+      everyMinutes: Number.isFinite(every) && every >= 5 && every <= 24 * 60 ? every : 15,
+      ...(startTime && endTime && timeToMinutes(endTime) > timeToMinutes(startTime) ? { startTime, endTime } : {}),
+      weekdays: cleanDays(schedule.weekdays),
+    };
+  }
+  return schedule;
+}
+
 /** The first slot strictly after `after`, inside the day's window and the
  * selected weekdays. Slots are anchored at the window start, so 09:00–18:00
  * every 15 minutes is 09:00, 09:15 … 17:45 — not a rolling timer that drifts
@@ -248,7 +274,11 @@ export class RoutineManager {
     try {
       const disk = JSON.parse(readFileSync(this.file, "utf8")) as Partial<RoutineFile>;
       this.routines = Array.isArray(disk.routines)
-        ? disk.routines.map((routine) => ({ ...routine, runOn: routine.runOn ?? "crew" }))
+        ? disk.routines.map((routine) => ({
+            ...routine,
+            runOn: routine.runOn ?? "crew",
+            schedule: normalizeStoredSchedule(routine.schedule),
+          }))
         : [];
       this.runs = Array.isArray(disk.runs)
         ? disk.runs.map((run) => ({ ...run, runOn: run.runOn ?? "crew" }))

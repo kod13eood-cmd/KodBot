@@ -16,6 +16,7 @@ import {
 import type { EffortLevel } from "../../server/contracts.ts";
 import type { CrewColor, CrewMotion } from "@/lib/mascot";
 import type { Routine, RoutineInput, RoutineRun } from "@/lib/routines";
+import type { Job } from "@/lib/jobs";
 import type { WebhookAttempt, WebhookIngressStatus, WebhookTrigger } from "@/lib/webhooks";
 import { currentCall } from "@/lib/call";
 import { showNotification } from "@/lib/notify";
@@ -311,9 +312,10 @@ export interface AppState {
   authUser: AuthUser | null;
   /** selected chat — a bot id OR a group id */
   selectedId: string;
-  activeView: "chat" | "routines";
+  activeView: "chat" | "routines" | "activity";
   routines: Routine[];
   routineRuns: RoutineRun[];
+  delegationJobs: Job[];
   webhooks: WebhookTrigger[];
   webhookAttempts: WebhookAttempt[];
   webhookIngress: WebhookIngressStatus | null;
@@ -352,7 +354,10 @@ type BotAnnouncement = Omit<Bot, "messages"> & { messages?: Message[] };
 export type Action =
   | { type: "hydrate"; bots: Bot[]; groups: Group[]; teams?: Team[] }
   | { type: "showRoutines" }
+  | { type: "showActivity" }
   | { type: "routinesHydrated"; routines: Routine[]; runs: RoutineRun[] }
+  | { type: "jobsHydrated"; jobs: Job[] }
+  | { type: "jobPatched"; job: Job }
   | { type: "routinePatched"; routine: Routine }
   | { type: "routineDeleted"; routineId: string }
   | { type: "routineRunPatched"; run: RoutineRun }
@@ -517,8 +522,32 @@ export function reducer(state: AppState, action: Action): AppState {
         pluginsQuery: "",
         helpOpen: false,
       };
+    case "showActivity":
+      return {
+        ...state,
+        activeView: "activity",
+        settingsOpen: false,
+        computerOpen: false,
+        inspectorOpen: false,
+        appSettingsOpen: false,
+        pluginsOpen: false,
+        pluginsQuery: "",
+        helpOpen: false,
+      };
     case "routinesHydrated":
       return { ...state, routines: action.routines, routineRuns: action.runs };
+    case "jobsHydrated":
+      return { ...state, delegationJobs: action.jobs };
+    case "jobPatched": {
+      const exists = state.delegationJobs.some((job) => job.id === action.job.id);
+      return {
+        ...state,
+        delegationJobs: (exists
+          ? state.delegationJobs.map((job) => (job.id === action.job.id ? action.job : job))
+          : [action.job, ...state.delegationJobs]
+        ).sort((a, b) => (b.finishedAt ?? b.startedAt ?? b.createdAt) - (a.finishedAt ?? a.startedAt ?? a.createdAt)),
+      };
+    }
     case "routinePatched": {
       const exists = state.routines.some((routine) => routine.id === action.routine.id);
       return {
@@ -949,6 +978,7 @@ export const initialState: AppState = {
   activeView: "chat",
   routines: [],
   routineRuns: [],
+  delegationJobs: [],
   webhooks: [],
   webhookAttempts: [],
   webhookIngress: null,
@@ -1341,6 +1371,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         api("/api/routines")
           .then(({ routines, runs }) => alive && rawDispatch({ type: "routinesHydrated", routines, runs }))
           .catch(() => {}),
+        api("/api/jobs")
+          .then(({ jobs }) => alive && rawDispatch({ type: "jobsHydrated", jobs: jobs ?? [] }))
+          .catch(() => {}),
         api("/api/webhooks")
           .then(({ webhooks, attempts, ingress }) => alive && rawDispatch({ type: "webhooksHydrated", webhooks, attempts: attempts ?? [], ingress }))
           .catch(() => {}),
@@ -1484,6 +1517,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           break;
         case "routine":
           rawDispatch({ type: "routinePatched", routine: frame.routine });
+          break;
+        case "job":
+          rawDispatch({ type: "jobPatched", job: frame.job as Job });
           break;
         case "routine.deleted":
           rawDispatch({ type: "routineDeleted", routineId: frame.routineId });

@@ -45,7 +45,8 @@ import { isEffortLevel, type ModelSelection, type RequestOutcome, type RuntimeEv
 import { BUILT_IN_DRIVERS } from "./drivers/builtIn.ts";
 import { getOrCreateChannel, mirrorDelegationTerminal, mirrorExchange, mirrorReply, type CommsBus } from "./comms-visibility.ts";
 import { searchMessages } from "./message-db.ts";
-import { _loadPending, discardDelegations, drainDelegations, pendingThreads, queueDelegation, type QueueResult } from "./delegations.ts";
+import { _loadPending, discardDelegations, drainDelegations, pendingThreads, queueDelegation, type DelegationObserver, type QueueResult } from "./delegations.ts";
+import { DelegationJobStore, jobId as delegationJobId } from "./delegation-jobs.ts";
 import { drainSteeredMessages, queueSteeredMessage } from "./steer-queue.ts";
 import { EventBus } from "./harness/bus.ts";
 import { ProviderRegistry } from "./harness/registry.ts";
@@ -980,7 +981,7 @@ bus.subscribe((event: RuntimeEvent) => {
 // (target threadId → channel) lets the main fold mirror the delegated
 // turn's TERMINAL state into the A⇄B channel when it completes — the
 // channel stays the full record of the handoff, not just its request.
-const delegationWatch = new Map<string, { channelId?: string; toBotId: string; sourceThreadId?: string }>();
+const delegationWatch = new Map<string, { channelId?: string; toBotId: string; sourceThreadId?: string; itemId?: string }>();
 
 /** Consume one delegated-turn watch and mirror exactly one terminal state.
  * Some harness paths settle a busy bot without a provider turn.completed
@@ -997,6 +998,9 @@ function finalizeDelegationWatch(
   const target = store.bot(watched.toBotId);
   if (!target) return true;
   const channel = watched.channelId ? store.group(watched.channelId) : undefined;
+  if (watched.itemId) {
+    delegationJobs.finish(delegationJobId(watched.itemId), ok ? "completed" : "failed", reply, failureName);
+  }
   mirrorDelegationTerminal(commsBus, target, channel, watched.sourceThreadId, ok, reply, failureName);
   return true;
 }
@@ -1035,19 +1039,21 @@ bus.subscribe((event: RuntimeEvent) => {
 /** How a drained delegation becomes a real turn on the target. Shared by
  * the settle-time drain and the boot-time drain of what a previous process
  * left queued. */
-const runDelegatedTurn: Parameters<typeof drainDelegations>[3] = (toBotId, text, commsDepth, sourceThreadId, channel) => {
+const runDelegatedTurn: Parameters<typeof drainDelegations>[3] = (toBotId, text, commsDepth, sourceThreadId, channel, itemId) => {
     // startTurn REJECTS on an ordinary condition — busy target, deleted bot,
     // unavailable provider. Unhandled, that rejection is fatal to the
     // harness (Node's default), which in the packaged app kills the server
     // child. Every delegation failure has to land as a chip instead.
     const targetThreadId = store.bot(toBotId)?.threadId;
-    if (targetThreadId) delegationWatch.set(targetThreadId, { channelId: channel?.id, toBotId, sourceThreadId });
+    if (itemId) delegationJobs.started(delegationJobId(itemId), targetThreadId, channel?.id);
+    if (targetThreadId) delegationWatch.set(targetThreadId, { channelId: channel?.id, toBotId, sourceThreadId, itemId });
     let failureReported = false;
     const reportStartFailure = (error: unknown) => {
       if (failureReported) return;
       failureReported = true;
       const bot = store.bot(toBotId);
       const why = error instanceof Error ? error.message : String(error);
+      if (itemId) delegationJobs.finish(delegationJobId(itemId), "failed", undefined, why);
       if (targetThreadId) {
         finalizeDelegationWatch(
           targetThreadId,
@@ -1081,8 +1087,8 @@ bus.subscribe((event: RuntimeEvent) => {
   // A turn that failed or was interrupted drops its queue rather than
   // firing it later: the user who hit Stop does not expect the delegations
   // that turn queued to run anyway, minutes later, on an unrelated turn.
-  if (!event.ok) return void discardDelegations(commsBus, event.threadId);
-  drainDelegations(commsBus, approvalBus, event.threadId, runDelegatedTurn);
+  if (!event.ok) return void discardDelegations(commsBus, event.threadId, delegationObserver);
+  drainDelegations(commsBus, approvalBus, event.threadId, runDelegatedTurn, delegationObserver);
 });
 
 // ── steer-queue drain: messages sent while the bot was busy ────────────
@@ -1744,6 +1750,27 @@ function serializeRoomContext(threadId: string, userName: string): string {
 // shape every comms entry point uses (ask_bot, delegate_bot).
 const commsBus: CommsBus = { store, broadcast };
 
+const delegationJobs = new DelegationJobStore({ emit: broadcast });
+const delegationObserver: DelegationObserver = {
+  queued: (item, from, target, sourceThreadId) => {
+    const sourceTask = store.taskByThread(from.id, sourceThreadId);
+    delegationJobs.create({
+      itemId: item.id,
+      sourceBotId: from.id,
+      sourceBotName: from.name,
+      sourceThreadId,
+      ...(sourceTask?.title ? { sourceTaskTitle: sourceTask.title } : {}),
+      targetBotId: target.id,
+      targetBotName: target.name,
+      message: item.message,
+      ...(item.reason ? { reason: item.reason } : {}),
+    });
+  },
+  finished: (itemId, status, result, error) => {
+    delegationJobs.finish(delegationJobId(itemId), status, result, error);
+  },
+};
+
 // approval bus: peer-approval.ts only needs to push cards and broadcast
 // them — its pending map lives in the module so the two respond endpoints
 // can call resolvePeerComms without holding a reference back to here.
@@ -1765,7 +1792,7 @@ _loadPending();
 {
   const leftover = pendingThreads();
   if (leftover.length) console.log(`delegations: ${leftover.length} thread(s) with queued handoffs from a previous run — draining`);
-  for (const threadId of leftover) drainDelegations(commsBus, approvalBus, threadId, runDelegatedTurn);
+  for (const threadId of leftover) drainDelegations(commsBus, approvalBus, threadId, runDelegatedTurn, delegationObserver);
 }
 
 async function runGroupMemberTurn(
@@ -2556,6 +2583,7 @@ const server = createServer(async (req, res) => {
           { toBotId, message, reason, depth },
           MAX_COMMS_DEPTH,
           fromThreadId,
+          delegationObserver,
         );
         if (result !== "ok") {
           // the agent reads this string — a bare enum ("too_deep") tells it
@@ -2638,6 +2666,10 @@ const server = createServer(async (req, res) => {
         return json(res, 200, { messageIds });
       }
       return json(res, 404, { error: "unknown internal endpoint" });
+    }
+
+    if (method === "GET" && path === "/api/jobs") {
+      return json(res, 200, { jobs: delegationJobs.list() });
     }
 
     // ── routines calendar ────────────────────────────────────────────────
@@ -3468,7 +3500,7 @@ const server = createServer(async (req, res) => {
       // a peer approval naming this bot can never be meaningfully answered
       // now, and its caller would otherwise wait out the 15-minute timeout
       cancelPeerApprovalsFor(bot.id);
-      discardDelegations(commsBus, bot.threadId);
+      discardDelegations(commsBus, bot.threadId, delegationObserver);
       store.deleteBot(bot.id);
       for (const dir of [EVENTS_DIR, NATIVE_DIR]) {
         try {

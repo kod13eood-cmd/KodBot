@@ -2,6 +2,7 @@ import { track } from "@/lib/analytics";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
+  Activity as ActivityIcon,
   Archive,
   ArrowDownToLine,
   BellDot,
@@ -1212,6 +1213,17 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             </>
           )}
           </div>
+          <button
+            onClick={() => dispatch({ type: "showActivity" })}
+            aria-label={t("Activity")}
+            title={t("Activity")}
+            className={cn(
+              "rounded-md p-1.5 hover:bg-raised hover:text-ink",
+              state.activeView === "activity" ? "bg-raised text-accent" : "text-ink-secondary",
+            )}
+          >
+            <ActivityIcon size={18} />
+          </button>
           <button
             onClick={() => dispatch({ type: "showRoutines" })}
             aria-label={t("Automations")}

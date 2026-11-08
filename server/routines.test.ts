@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -348,6 +348,48 @@ describe("RoutineManager", () => {
     await h.manager.tick();
     expect(h.manager.listRuns()[0]).toMatchObject({ status: "missed" });
     expect(h.started).toHaveLength(0);
+  });
+
+  it("normalizes legacy schedules without a weekdays array", () => {
+    const h = harness();
+    writeFileSync(
+      h.options.file!,
+      JSON.stringify({
+        version: 1,
+        routines: [
+          {
+            id: "legacy-interval",
+            name: "Legacy interval",
+            prompt: "Check it",
+            botId: "crew-1",
+            runOn: "crew",
+            enabled: true,
+            schedule: { type: "interval", everyMinutes: 15, anchorAt: 123 },
+            createdAt: 1,
+            updatedAt: 1,
+            nextRunAt: null,
+          },
+          {
+            id: "legacy-daily",
+            name: "Legacy daily",
+            prompt: "Check it",
+            botId: "crew-1",
+            runOn: "crew",
+            enabled: true,
+            schedule: { type: "daily", time: "08:30" },
+            createdAt: 1,
+            updatedAt: 1,
+            nextRunAt: null,
+          },
+        ],
+        runs: [],
+      }),
+    );
+    const manager = new RoutineManager(h.options);
+    expect(manager.listRoutines().map((routine) => routine.schedule)).toEqual([
+      { type: "interval", everyMinutes: 15, weekdays: [0, 1, 2, 3, 4, 5, 6] },
+      { type: "daily", time: "08:30", weekdays: [0, 1, 2, 3, 4, 5, 6] },
+    ]);
   });
 
   it("reports a missed run once, even when the scheduler ticks again", async () => {
