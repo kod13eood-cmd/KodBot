@@ -12,12 +12,26 @@ android {
         applicationId = "com.kodbot.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 14
-        versionName = "0.1.13"
+        versionCode = 15
+        versionName = "0.1.14"
     }
 
     buildFeatures {
         compose = true
+    }
+
+    signingConfigs {
+        // CI can inject a stable keystore so every APK is signed by the same
+        // key. Without it, local builds keep using the default debug key.
+        getByName("debug") {
+            val stableKeystore = System.getenv("KODBOT_ANDROID_KEYSTORE")
+            if (!stableKeystore.isNullOrBlank()) {
+                storeFile = file(stableKeystore)
+                storePassword = System.getenv("KODBOT_ANDROID_KEYSTORE_PASSWORD") ?: "android"
+                keyAlias = System.getenv("KODBOT_ANDROID_KEY_ALIAS") ?: "androiddebugkey"
+                keyPassword = System.getenv("KODBOT_ANDROID_KEY_PASSWORD") ?: "android"
+            }
+        }
     }
 
     compileOptions {
