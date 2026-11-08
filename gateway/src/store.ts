@@ -1,7 +1,7 @@
 // Gateway control-plane persistence. Tenant transcripts and bot files do not
 // live here; this database only holds accounts, sessions, invites, devices,
 // and short-lived pairing windows.
-import { mkdirSync } from "node:fs";
+import { chmodSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
@@ -126,6 +126,15 @@ export class GatewayStore {
     this.db.exec("PRAGMA busy_timeout = 5000");
     this.db.exec(SCHEMA);
     this.pruneExpired(Date.now());
+    // Password hashes, session/device digests, invites. Keep the database and
+    // its WAL sidecars owner-only like the rest of the KodBot secrets.
+    for (const suffix of ["", "-wal", "-shm"]) {
+      try {
+        chmodSync(join(dataDir, `gateway.db${suffix}`), 0o600);
+      } catch {
+        /* sidecar not created yet */
+      }
+    }
   }
 
   close() {

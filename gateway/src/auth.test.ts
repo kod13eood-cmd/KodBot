@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -47,6 +47,7 @@ describe("gateway auth", () => {
     expect(issued.user.email).toBe("owner@example.com");
     expect(issued.token.startsWith("kbs_")).toBe(true);
     expect(store.findUserByEmail("owner@example.com")?.dataDir).toBe(config.ownerDataDir);
+    expect(statSync(join(config.dataDir, "gateway.db")).mode & 0o777).toBe(0o600);
   });
 
   it("requires an invite for every later account", async () => {
