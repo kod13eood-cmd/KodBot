@@ -39,6 +39,8 @@ phone. On this setup that is the development workstation's
 and would reintroduce the conflict.
 
 In `kod13eood-cmd/KodBot` → Settings → Secrets and variables → Actions:
+<https://github.com/kod13eood-cmd/KodBot/settings/secrets/actions>
+
 
 | Name | Value |
 | --- | --- |
@@ -50,14 +52,14 @@ In `kod13eood-cmd/KodBot` → Settings → Secrets and variables → Actions:
 Generate the base64 locally without printing it into chat:
 
 ```sh
-base64 -w0 ~/.android/debug.keystore > /tmp/kodbot-android.keystore.b64
+base64 -w0 ~/.android/debug.keystore > /tmp/opencode/kodbot-android.keystore.b64
 ```
 
-Open `/tmp/kodbot-android.keystore.b64`, copy its contents, and paste it into
+Open `/tmp/opencode/kodbot-android.keystore.b64`, copy its contents, and paste it into
 the GitHub secret. Delete the temporary file afterwards:
 
 ```sh
-rm -f /tmp/kodbot-android.keystore.b64
+rm -f /tmp/opencode/kodbot-android.keystore.b64
 ```
 
 Do not commit the keystore or the base64 file.
