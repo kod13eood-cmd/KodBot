@@ -11,8 +11,8 @@ rather than shipping one that cannot update existing installs.
 
 ## The key already used by the installed app
 
-The original debug builds (0.1.12 and the re-signed 0.1.13 fallback APK) use the
-debug keystore at:
+The original debug builds (0.1.12, the re-signed 0.1.13 fallback APK, and the
+current 0.1.14 APK) use the debug keystore at:
 
 ```
 ~/.android/debug.keystore
@@ -84,14 +84,15 @@ intend to update in place.
 
 ## Installing the current re-signed build
 
-The 0.1.13 fallback APK is signed with the key above and can install over the
-original 0.1.12 app without uninstalling:
+The 0.1.14 APK (`versionCode` 15) is signed with the key above and installs over
+the original 0.1.12 app and the re-signed 0.1.13 fallback without uninstalling:
 
-- <https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.13.apk>
+- <https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.14.apk>
 
 If a device already installed the GitHub-runner-signed 0.1.13 APK, uninstall
 that copy once before installing this one. All chats and bots live on the
-server; only the local pairing/login credential is lost.
+server; only the local pairing/login credential is lost. The app's own update
+check reads `android/latest.json` from `main`, which points at this 0.1.14 build.
 
 ## Why the GitHub release APK conflicted
 
