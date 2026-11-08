@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration for the Windows NSIS installer.
+
+  Upload this file to the SignPath project as the artifact configuration.
+  The workflow passes `version` as a signing-request parameter so the
+  product-version restriction matches the release being signed.
+
+  Only the installer is signed here. The application executable inside the
+  NSIS package is installed locally and is not re-signed; a two-stage
+  deep-signing pipeline can be added later if the installed exe also needs a
+  publisher signature.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <parameters>
+    <parameter name="version" description="KodBot version, for example 0.1.41" />
+  </parameters>
+  <pe-file-set>
+    <include
+      path="KodBot-*-setup.exe"
+      min-matches="1"
+      max-matches="1"
+      product-name="KodBot"
+      product-version="${version}"
+    />
+    <for-each>
+      <authenticode-sign
+        description="KodBot installer"
+        description-url="https://github.com/kod13eood-cmd/KodBot"
+      />
+    </for-each>
+  </pe-file-set>
+</artifact-configuration>
