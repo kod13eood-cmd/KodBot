@@ -72,7 +72,14 @@ In `kod13eood-cmd/KodBot` → Settings → Secrets and variables → Actions:
 
 The workflow is
 [`.github/workflows/package-win-signpath.yml`](../.github/workflows/package-win-signpath.yml).
-It is manual (`workflow_dispatch`) and does **not** publish a release. It:
+It is manual (`workflow_dispatch`) and does **not** publish a release.
+
+Its default source ref is `feat/multi-user` while the multi-user work is on
+that branch. After the branch is merged, change the workflow input default and
+the release workflow's `SOURCE_REF` to `main` so a signing request always
+builds the same public commit that was reviewed.
+
+It:
 
 1. builds the Windows installer with `pnpm package:win`;
 2. uploads the unsigned installer as a GitHub Actions artifact;
