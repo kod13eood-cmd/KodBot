@@ -87,23 +87,36 @@ $ANDROID_HOME/build-tools/35.0.0/apksigner verify --print-certs \
 The SHA-256 must match the certificate of the currently installed app when you
 intend to update in place.
 
-## Installing the current re-signed build
+## Installing the current stable build
 
 The 0.1.14 APK (`versionCode` 15) is signed with the key above and installs over
 the original 0.1.12 app and the re-signed 0.1.13 fallback without uninstalling:
 
+- <https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-android.apk>
 - <https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.14.apk>
 
-If a device already installed the GitHub-runner-signed 0.1.13 APK, uninstall
-that copy once before installing this one. All chats and bots live on the
-server; only the local pairing/login credential is lost. The app's own update
-check reads `android/latest.json` from `main`, which points at this 0.1.14 build.
+The GitHub release assets for v0.1.39 and v0.1.40 were replaced on 2026-11-08
+with builds signed by the stable key, so every download link now installs over
+the same app. The app's own update check reads `android/latest.json` from
+`main`, which points at the same 0.1.14 build.
 
-## Why the GitHub release APK conflicted
+**One-time uninstall:** if the phone installed any GitHub release APK published
+before that repair, uninstall it once before installing 0.1.14. All chats and
+bots live on the server; only the local pairing/login credential is lost. After
+0.1.14 is installed, future updates install in place.
 
-The 0.1.40 release job built the APK with the GitHub runner's ephemeral debug
-key. Its certificate (`4C:F3:5D:E7:...`) differs from the installed app's
-certificate (`0B:20:03:5E:...`), so Android returned
-`INSTALL_FAILED_UPDATE_INCOMPATIBLE`.
+## Why the GitHub release APKs conflicted
 
-The stable-key configuration above prevents a repeat.
+Each release was built on a fresh GitHub runner, so Android's debug signing used
+a different throwaway key each time:
+
+| Release | Certificate |
+| --- | --- |
+| v0.1.39 (0.1.13) | `4C:F3:5D:E7:...` |
+| v0.1.40 (0.1.13) | `B3:DF:5B:18:...` |
+| Installed app / `android-release` | `0B:20:03:5E:...` (stable) |
+
+Android returned `INSTALL_FAILED_UPDATE_INCOMPATIBLE` whenever the key changed.
+The release assets are now all stable-key builds, and the release workflow
+requires `ANDROID_KEYSTORE_BASE64` and verifies the built APK's certificate
+before uploading, so a new ephemeral key cannot be published again.
