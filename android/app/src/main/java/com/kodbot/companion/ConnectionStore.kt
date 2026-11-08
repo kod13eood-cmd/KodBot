@@ -24,7 +24,8 @@ class ConnectionStore(context: Context) {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, iv))
         val token = String(cipher.doFinal(encrypted), Charsets.UTF_8)
-        return CompanionConnection(baseUrl, serverName, token)
+        val kind = preferences.getString(KEY_KIND, "device") ?: "device"
+        return CompanionConnection(baseUrl, serverName, token, kind)
     }
 
     fun save(connection: CompanionConnection) {
@@ -34,6 +35,7 @@ class ConnectionStore(context: Context) {
         preferences.edit()
             .putString(KEY_BASE_URL, connection.baseUrl)
             .putString(KEY_SERVER_NAME, connection.serverName)
+            .putString(KEY_KIND, connection.kind)
             .putString(KEY_TOKEN_IV, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
             .putString(KEY_TOKEN, Base64.encodeToString(encrypted, Base64.NO_WRAP))
             .apply()
@@ -76,6 +78,7 @@ class ConnectionStore(context: Context) {
         const val KEY_ALIAS = "kodbot.companion.device-token"
         const val KEY_BASE_URL = "baseUrl"
         const val KEY_SERVER_NAME = "serverName"
+        const val KEY_KIND = "connectionKind"
         const val KEY_TOKEN_IV = "tokenIv"
         const val KEY_TOKEN = "tokenCiphertext"
         const val KEY_CURSOR = "streamCursor"

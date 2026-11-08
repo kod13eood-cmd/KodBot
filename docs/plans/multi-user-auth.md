@@ -14,6 +14,24 @@ Branch: `feat/multi-user`.
 | Phone pairing | QR/device token bound to the logged-in user |
 | Public signup | Not in the first release; invites only |
 
+## Implementation status
+
+Phase 1 (auth/invites/devices) and Phase 2 (per-user harness + streaming
+proxy) are implemented in `gateway/` with tests. They are not deployed to the
+live host yet.
+
+- `gateway/src/auth.ts`, `store.ts`, `password.ts`, `server.ts`, `harness.ts`
+- `gateway/src/cli.ts` for owner creation, invites, password reset, and
+  device revocation
+- `pnpm build:gateway` → `dist-gateway/`
+- `pnpm gateway:dev` → local gateway on port 8780
+- Transitional owner mode: set `OC_GATEWAY_OWNER_HARNESS_PORT=8799` so the
+  gateway proxies the owner to the existing live harness without starting a
+  second process on `~/.kodbot`. New accounts still get their own harness.
+
+The next implementation step is the Android login screen and HTTPS address
+support, then deployment on port 8780 behind TLS.
+
 ## Why a gateway instead of making the harness multi-tenant
 
 The current harness is deliberately single-user. Its `Store`, `messages.db`,
@@ -46,13 +64,20 @@ and engine configuration.
 - Public self-service signup.
 - Email verification and self-service password reset (SMTP comes later;
   invites and an owner CLI are the gate for the first release).
-- Email/password login inside the Android app. Android keeps QR pairing;
-  the web/desktop app uses email + password.
 - Per-user managed Composio provisioning. New tenants start with connected
   apps disabled; the owner keeps the existing managed installation.
 - Strong isolation for untrusted users. Invite-only/trusted users share the
   host OS user; a hostile bot could read another tenant's files. Public
   signup requires per-tenant containers or VMs before it can be enabled.
+
+Android email/password login **is** in the first release: the phone asks for
+the gateway URL, email, and password, stores a bearer session token, and
+keeps QR pairing as an alternative. The desktop app and browser use the
+cookie session.
+
+All tenant harnesses inherit the operator's shared `OPENCODE_API_KEY` (and
+any other engine credentials the operator puts in the gateway environment).
+
 
 ## Data model (gateway SQLite)
 
@@ -257,10 +282,12 @@ KodBot user, not by desktop install) and is a separate phase.
 - Owner data-dir mapping; new tenant dirs.
 - Integration test with a fake upstream harness.
 
-### Phase 3 — Devices and QR
+### Phase 3 — Devices, QR, and Android login
 
 - Gateway pairing window, `/api/pair`, device token auth.
 - Companion route allowlist and revocation.
+- Android: gateway URL + email/password screen, bearer session storage,
+  logout, and 401 handling. QR pairing remains available.
 - Android pairing against the gateway in a test environment.
 
 ### Phase 4 — Hosted rollout

@@ -964,7 +964,14 @@ export async function api(path: string, init?: RequestInit): Promise<any> {
     ...init,
   });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error ?? `${res.status} ${res.statusText}`);
+  if (!res.ok) {
+    // Hosted gateways answer 401 with an explicit login URL. The local
+    // single-user harness has no such route, so it keeps its normal error.
+    if (res.status === 401 && typeof body.login === "string" && typeof window !== "undefined") {
+      window.location.assign(body.login);
+    }
+    throw new Error(body.error ?? `${res.status} ${res.statusText}`);
+  }
   return body;
 }
 

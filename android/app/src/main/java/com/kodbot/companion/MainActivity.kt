@@ -85,6 +85,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -186,6 +187,7 @@ class MainActivity : ComponentActivity() {
                     onDismissError = { actionError = null },
                     onPair = ::pair,
                     onScanQr = ::scanPairingQr,
+                    onLogin = ::login,
                     onSelectChat = ::selectChat,
                     onBackToFleet = { activeChatKey = null },
                     onOpenSettings = ::openSettings,
@@ -301,6 +303,26 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun login(address: String, email: String, password: String) {
+        lifecycleScope.launch {
+            loading = true
+            actionError = null
+            try {
+                val signedIn = CompanionApi.login(address, email, password)
+                connectionStore.save(signedIn)
+                connection = signedIn
+                pairingInvite = null
+                activeChatKey = null
+                CompanionStreamService.start(this@MainActivity)
+                refreshFleet()
+            } catch (error: Exception) {
+                actionError = error.message ?: "Couldn't sign in to that server."
+            } finally {
+                loading = false
+            }
+        }
+    }
+
     private fun pair(address: String, credential: String) {
         lifecycleScope.launch {
             loading = true
@@ -349,7 +371,17 @@ class MainActivity : ComponentActivity() {
                     if (activeChatKey != null && chats.none { it.key == activeChatKey }) activeChatKey = null
                     actionError = null
                 } catch (error: Exception) {
-                    actionError = error.message ?: "Couldn't load the bots from the computer."
+                    if (saved.kind == "session" && error.message?.contains("HTTP 401") == true) {
+                        CompanionStreamService.stop(this@MainActivity)
+                        connectionStore.clear()
+                        connection = null
+                        chats = emptyList()
+                        activeChatKey = null
+                        pendingThreadId = null
+                        actionError = "Your session expired. Sign in again."
+                    } else {
+                        actionError = error.message ?: "Couldn't load the bots from the computer."
+                    }
                 }
                 // Coalesce the tail of a burst without polling continuously.
                 if (refreshQueued) delay(250)
@@ -722,13 +754,18 @@ class MainActivity : ComponentActivity() {
             "hello" -> if (!frame.optBoolean("resumed")) refreshFleet()
             "message", "message.patch", "bot", "bot.deleted", "group", "group.deleted", "notify" -> refreshFleet()
             "unauthorized" -> {
+                val wasSession = connection?.kind == "session"
                 CompanionStreamService.stop(this)
                 connectionStore.clear()
                 connection = null
                 chats = emptyList()
                 activeChatKey = null
                 pendingThreadId = null
-                actionError = "This phone was unpaired on the computer. Pair it again in KodBot Settings → Companion."
+                actionError = if (wasSession) {
+                    "Your session expired. Sign in again."
+                } else {
+                    "This phone was unpaired on the computer. Pair it again in KodBot Settings → Companion."
+                }
             }
         }
     }
@@ -767,6 +804,7 @@ private fun KodBotScreen(
     onDismissError: () -> Unit,
     onPair: (String, String) -> Unit,
     onScanQr: () -> Unit,
+    onLogin: (String, String, String) -> Unit,
     onSelectChat: (ConversationRecord) -> Unit,
     onBackToFleet: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -816,6 +854,7 @@ private fun KodBotScreen(
                     loading = loading,
                     onPair = onPair,
                     onScanQr = onScanQr,
+                    onLogin = onLogin,
                 )
             } else if (settingsOpen) {
                 SettingsScreen(
@@ -897,24 +936,82 @@ private fun PairingScreen(
     loading: Boolean,
     onPair: (String, String) -> Unit,
     onScanQr: () -> Unit,
+    onLogin: (String, String, String) -> Unit,
 ) {
+    var server by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
     var address by rememberSaveable(invite?.address) { mutableStateOf(invite?.address.orEmpty()) }
     var credential by rememberSaveable(invite?.credential) { mutableStateOf(invite?.credential.orEmpty()) }
-    val ready = address.isNotBlank() && credential.isNotBlank()
+    val canLogin = server.isNotBlank() && email.isNotBlank() && password.isNotBlank()
+    val canPair = address.isNotBlank() && credential.isNotBlank()
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 28.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 28.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.Start,
     ) {
         Text("KodBot", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-        Text("Companion", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.size(12.dp))
+        Text("Sign in or pair this phone", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.size(10.dp))
         Text(
-            "Your agents keep running on the Linux computer. Pair this phone to send work, follow replies, and handle approvals.",
+            "Your agents keep running on the KodBot server. Sign in with your account, or pair this phone with a local Companion.",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.size(24.dp))
+        Spacer(Modifier.size(22.dp))
+
+        Text("Hosted account", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.size(8.dp))
+        OutlinedTextField(
+            value = server,
+            onValueChange = { server = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Server address") },
+            placeholder = { Text("https://kodbot.example.com") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
+        )
+        Spacer(Modifier.size(10.dp))
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it.trim() },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Email") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+        )
+        Spacer(Modifier.size(10.dp))
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Password") },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { if (canLogin && !loading) onLogin(server, email, password) }),
+        )
+        Spacer(Modifier.size(12.dp))
+        Button(
+            onClick = { onLogin(server, email, password) },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = canLogin && !loading,
+        ) {
+            if (loading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            else Text("Sign in")
+        }
+
+        Spacer(Modifier.size(26.dp))
+        Text("Local Companion", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.size(6.dp))
+        Text(
+            "Pair directly with a KodBot computer on your LAN or Tailscale network.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.size(12.dp))
         OutlinedButton(
             onClick = onScanQr,
             modifier = Modifier.fillMaxWidth(),
@@ -936,7 +1033,7 @@ private fun PairingScreen(
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
         )
-        Spacer(Modifier.size(12.dp))
+        Spacer(Modifier.size(10.dp))
         if (invite?.credential?.startsWith("omb_pair_") == true) {
             Text("A one-time pairing invitation is ready. Confirm to pair with this computer.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
@@ -950,16 +1047,16 @@ private fun PairingScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
             )
         }
-        Spacer(Modifier.size(18.dp))
+        Spacer(Modifier.size(12.dp))
         Button(
             onClick = { onPair(address, credential) },
             modifier = Modifier.fillMaxWidth(),
-            enabled = ready && !loading,
+            enabled = canPair && !loading,
         ) {
             if (loading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
             else Text("Pair with computer")
         }
-        Spacer(Modifier.size(12.dp))
+        Spacer(Modifier.size(14.dp))
         Text(
             "On Linux: KodBot → Settings → Companion → Set up a phone. Use the shown LAN address on trusted Wi-Fi, or a Tailscale address when away.",
             style = MaterialTheme.typography.bodySmall,

@@ -43,6 +43,14 @@ class CompanionProtocolTest {
     }
 
     @Test
+    fun gatewayAddressKeepsHttpsAndUsesTheSchemeDefaultPort() {
+        assertEquals("https://kodbot.example.com:443", CompanionAddress.normalizeGateway("https://kodbot.example.com"))
+        assertEquals("https://kodbot.example.com:8780", CompanionAddress.normalizeGateway("kodbot.example.com:8780"))
+        assertEquals("http://127.0.0.1:8780", CompanionAddress.normalizeGateway("http://127.0.0.1:8780/"))
+        assertThrows(IllegalArgumentException::class.java) { CompanionAddress.normalizeGateway("ftp://kodbot.example.com") }
+    }
+
+    @Test
     fun desktopQrDeepLinkOpensAConfirmedPairingInvite() {
         val token = "omb_pair_${"a".repeat(43)}"
         val invite = PairingInvite.parse(
@@ -55,6 +63,17 @@ class CompanionProtocolTest {
         assertEquals(token, invite?.credential)
         assertEquals("KodBot Linux", invite?.computerName)
         assertEquals(listOf("linux.tail1234.ts.net", "192.168.1.42"), invite?.hosts)
+    }
+
+    @Test
+    fun hostedQrAcceptsAnHttpsGatewayAddress() {
+        val token = "omb_pair_${"b".repeat(43)}"
+        val invite = PairingInvite.parse(
+            "kodbot://pair?address=https%3A%2F%2Fgateway.example.com" +
+                "&token=$token&name=KodBot&hosts=https%3A%2F%2Fgateway.example.com",
+        )
+        assertEquals("https://gateway.example.com:443", invite?.address)
+        assertEquals(listOf("https://gateway.example.com"), invite?.hosts)
     }
 
     @Test
