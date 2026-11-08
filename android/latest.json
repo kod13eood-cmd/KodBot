@@ -1,7 +1,7 @@
 {
-  "versionCode": 14,
-  "versionName": "0.1.13",
-  "apkUrl": "https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-android.apk",
+  "versionCode": 15,
+  "versionName": "0.1.14",
+  "apkUrl": "https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.14.apk",
   "notes": "Adds email/password sign-in, hosted Companion QR pairing, HTTPS server addresses, session expiry handling, and the latest chat loading and connected-app fixes.",
-  "publishedAt": "2026-11-08T17:55:23Z"
+  "publishedAt": "2026-11-08T20:05:00Z"
 }
