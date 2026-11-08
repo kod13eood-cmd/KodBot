@@ -157,11 +157,14 @@
       <a class="btn primary" href="https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-setup.exe">
         Download for Windows <small>.exe · x64</small>
       </a>
-      <a class="btn ghost" href="https://github.com/kod13eood-cmd/kodbot-releases/releases/latest">
-        macOS — see Releases
+      <a class="btn ghost" href="https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot.AppImage">
+        Download for Linux <small>.AppImage</small>
+      </a>
+      <a class="btn ghost" href="https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-android.apk">
+        Download for Android <small>.apk</small>
       </a>
     </div>
-    <p class="note">Windows: one-click installer, no admin rights. macOS build is pending — the latest release currently ships Windows only.</p>
+    <p class="note">Windows: one-click installer, no admin rights. Linux: x64 .deb or AppImage. Android: sideloadable companion APK that pairs with your KodBot host.</p>
 
     <figure class="shot">
       <img src="assets/hero.png" width="1440" height="900" alt="KodBot desktop app: a Telegram-style chat list where every chat is a real AI agent" fetchpriority="high">
@@ -223,9 +226,17 @@
             <a class="btn primary" href="https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-setup.exe">Download .exe</a>
           </div>
           <div class="dl">
-            <h3>macOS (Apple silicon)</h3>
-            <p>Build pending. Watch the releases page for the signed and notarized <code>.dmg</code>; only Windows ships today.</p>
-            <a class="btn ghost" href="https://github.com/kod13eood-cmd/kodbot-releases/releases">Open Releases</a>
+            <h3>Linux (x64)</h3>
+            <p>AppImage for any distro, or a .deb for Debian/Ubuntu. No separate server setup — the harness is embedded.</p>
+            <p style="display:flex;gap:10px;flex-wrap:wrap;margin:0">
+              <a class="btn primary" href="https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot.AppImage">Download .AppImage</a>
+              <a class="btn ghost" href="https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot.deb">Download .deb</a>
+            </p>
+          </div>
+          <div class="dl">
+            <h3>Android</h3>
+            <p>Companion app: sideload the APK, then scan the QR from the desktop's companion panel to pair. Android 8+.</p>
+            <a class="btn ghost" href="https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-android.apk">Download .apk</a>
           </div>
         </div>
         <div>
@@ -239,7 +250,7 @@ pnpm dev           <span class="cmd"># app → http://127.0.0.1:5199</span>
 pnpm dev:desktop   <span class="cmd"># Electron shell</span></code></pre>
           <ul class="requirements">
             <li>Node 24+ and pnpm</li>
-            <li>macOS, Windows, or Ubuntu 24.04 x64</li>
+            <li>Linux, Windows, or Ubuntu 24.04 x64</li>
             <li>One agent CLI installed and logged in: <a href="https://claude.com/claude-code">Claude</a>, <a href="https://github.com/openai/codex">Codex</a>, or <a href="https://x.ai/cli">Grok</a></li>
           </ul>
         </div>
