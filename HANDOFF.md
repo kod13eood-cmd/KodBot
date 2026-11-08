@@ -106,6 +106,10 @@ The Android APK is written to
    `~/.kodbot/android/latest.json`.
 6. Verify both the GitHub raw URL and
    `http://paperclipi7.tail89d239.ts.net:8799/api/android/latest.json`.
+7. GitHub release assets are built by `kodbot-releases`; its Android job
+   requires the `ANDROID_KEYSTORE_*` secrets and verifies the built
+   certificate before uploading. Never upload an APK signed with a different
+   key.
 
 The current APK is **debug-signed**. Android will only install it over an
 existing build signed by the same debug key. That key is:
@@ -120,6 +124,10 @@ existing build signed by the same debug key. That key is:
 Do not commit the keystore. If the Android build moves to another machine,
 either transfer this keystore securely or create a real release signing key
 before publishing the next APK.
+
+All GitHub release APKs were replaced with builds signed by this key on
+2026-11-08. Anyone who installed an earlier CI-signed APK must uninstall it
+once; after that, releases update in place.
 
 ## 4. Remote deployment topology
 
