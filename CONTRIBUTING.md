@@ -4,6 +4,13 @@ Thanks for wanting to help — community PRs have already shipped in this repo, 
 This file tells you how to get a working dev setup, what the codebase expects from a change, and what
 makes a PR easy to merge. Read it once before opening anything; it's short on purpose.
 
+## Questions and ideas
+
+Not sure something is a bug, or want to discuss an approach first? Use
+[Discussions](https://github.com/kod13eood-cmd/KodBot/discussions) — Q&A for setup
+and usage, Ideas for proposals. Issues are for reproducible bugs and concrete,
+agreed-upon work.
+
 ## Ground rules
 
 - **Small, focused PRs.** One concern per PR. A PR that ports a platform *and* adds a feature *and*

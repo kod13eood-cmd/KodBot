@@ -8,6 +8,8 @@
 
 <sub>An open-source version of **Grok Bot** — bring-your-own-agent, local-first, on the models you already have.</sub>
 
+<sub>[Website](https://kod13eood-cmd.github.io/KodBot) · [Discussions](https://github.com/kod13eood-cmd/KodBot/discussions) · [Releases](https://github.com/kod13eood-cmd/kodbot-releases/releases)</sub>
+
 Every bot in the sidebar is a real agent — Claude, Codex, or OpenCode running locally under the hood — with its own
 personality, its own model, its own cloud computer, and its own connected apps.
 Talk to them like contacts. Watch them work. Approve what matters.
@@ -20,15 +22,15 @@ Talk to them like contacts. Watch them work. Approve what matters.
 
 <br>
 
-<a href="https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot.dmg">
-  <img src="https://img.shields.io/github/v/release/kod13eood-cmd/kodbot-releases?style=for-the-badge&label=%E2%AC%87%EF%B8%8F%20%20Download%20for%20macOS&labelColor=070707&color=1084fe&cacheSeconds=300" alt="Download the latest KodBot for macOS (.dmg)" height="40">
+<a href="https://github.com/kod13eood-cmd/kodbot-releases/releases/latest">
+  <img src="https://img.shields.io/github/v/release/kod13eood-cmd/kodbot-releases?style=for-the-badge&label=macOS%20%E2%80%94%20see%20Releases&labelColor=070707&color=6e7681&cacheSeconds=300" alt="macOS build is pending — see Releases" height="40">
 </a>
 &nbsp;
 <a href="https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-setup.exe">
   <img src="https://img.shields.io/github/v/release/kod13eood-cmd/kodbot-releases?style=for-the-badge&label=%E2%AC%87%EF%B8%8F%20%20Download%20for%20Windows&labelColor=070707&color=4cc2ff&cacheSeconds=300" alt="Download the latest KodBot for Windows (.exe)" height="40">
 </a>
 
-<sub>macOS: Apple silicon · signed & notarized · one-click .dmg &nbsp;·&nbsp; Windows: 64-bit · one-click installer, no admin rights &nbsp;·&nbsp; both always the latest · [all releases](https://github.com/kod13eood-cmd/kodbot-releases/releases)</sub>
+<sub>Windows: 64-bit · one-click installer, no admin rights &nbsp;·&nbsp; macOS: Apple silicon build is pending — [see Releases](https://github.com/kod13eood-cmd/kodbot-releases/releases) &nbsp;·&nbsp; [all releases](https://github.com/kod13eood-cmd/kodbot-releases/releases)</sub>
 
 <br>
 <br>
@@ -214,11 +216,11 @@ flowchart LR
 
 ## Quick start
 
-**Released builds:** the harness server is embedded, so macOS and Windows need no separate server setup.
+**Released builds:** the harness server is embedded, so a packaged Windows build needs no separate server setup.
 
 | | Download | Install |
 |---|---|---|
-| **macOS** (Apple silicon) | [KodBot.dmg](https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot.dmg) | Drag it to Applications, open it. Signed & notarized. |
+| **macOS** (Apple silicon) | [Releases](https://github.com/kod13eood-cmd/kodbot-releases/releases/latest) | Build pending — the latest release currently ships Windows only. Watch [Releases](https://github.com/kod13eood-cmd/kodbot-releases/releases) for the `.dmg`. |
 | **Windows** (x64) | [KodBot-setup.exe](https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-setup.exe) | Run it — one-click, per-user, no admin rights. The installer isn't code-signed yet, so SmartScreen shows "unknown publisher": **More info → Run anyway**. |
 
 **Ubuntu Desktop beta:** build the `.deb` or AppImage from source using the commands below. This branch
@@ -299,7 +301,7 @@ dedicated receiver through a hosted relay or a tool such as Tailscale Funnel.
 ## Status
 
 Early but real — the loop works end to end: message → agent → streamed reply → tools → approvals →
-computer use. macOS and Windows have released builds; Ubuntu 24.04 x64 packages are in beta with the
+computer use. Windows has a released build; the macOS build is still pending, and Ubuntu 24.04 x64 packages are in beta with the
 capability limits above. Rough edges to expect: hosted/mobile connectivity is still being built, and webhook
 triggers currently use the local receiver rather than an always-on hosted relay.
 Voice needs an ElevenLabs key, and calls are macOS-only for now (they ride the same on-device dictation as
@@ -307,6 +309,14 @@ the composer mic) — see [`docs/voice-mode.md`](docs/voice-mode.md) for the des
 
 Contributions welcome — the driver SPI in [`server/contracts.ts`](server/contracts.ts) is deliberately
 small; adding a provider is one file in [`server/drivers/`](server/drivers/) plus a one-line registration.
+
+## Community and feedback
+
+- **Ask a question:** [Discussions → Q&A](https://github.com/kod13eood-cmd/KodBot/discussions/categories/q-a) — setup help, pairing, provider quirks.
+- **Share an idea:** [Discussions → Ideas](https://github.com/kod13eood-cmd/KodBot/discussions/categories/ideas) for what should land next.
+- **Show what you built:** [Discussions → Show and tell](https://github.com/kod13eood-cmd/KodBot/discussions/categories/show-and-tell).
+- **Report a bug:** [open an issue](https://github.com/kod13eood-cmd/KodBot/issues/new/choose) with your version, OS, install method, and logs (redact secrets).
+- **New here?** Start with [good first issues](https://github.com/kod13eood-cmd/KodBot/labels/good%20first%20issue).
 
 ## License
 
