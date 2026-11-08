@@ -23,7 +23,7 @@ import { NoEngines } from "@/components/NoEngines";
 import { CommandPalette } from "@/components/CommandPalette";
 import { ShortcutsSheet } from "@/components/ShortcutsSheet";
 import { NeedsYouBar } from "@/components/NeedsYouBar";
-import { collectNeedsYou } from "@/lib/needs-you";
+import { collectNeedsYou, collectRoutineFailures } from "@/lib/needs-you";
 import { useI18n } from "@/lib/i18n";
 
 function Shell() {
@@ -51,8 +51,8 @@ function Shell() {
   // Who cannot continue without an answer or an approval. Drives the persistent
   // strip, the tab title, and the app badge.
   const needsYou = useMemo(
-    () =>
-      collectNeedsYou(
+    () => [
+      ...collectNeedsYou(
         state.bots.map((entry) => ({
           kind: "bot" as const,
           id: entry.id,
@@ -68,7 +68,9 @@ function Shell() {
           messages: entry.messages,
         })),
       ),
-    [state.bots, state.groups],
+      ...collectRoutineFailures(state.routineRuns, state.bots),
+    ],
+    [state.bots, state.groups, state.routineRuns],
   );
 
   useEffect(() => {

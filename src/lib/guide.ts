@@ -127,6 +127,7 @@ KodBot е local-first chat приложение за екип от AI агент
 - A **room** is a group chat with several bots. Use **@Name** to address a member; without a mention the room's default responder answers.
 - **@everyone** asks all members; replies are sequential so the transcript stays coherent.
 - A **team** groups bots and can have a leader; the team view opens its room.
+- When a bot hands work to another bot, the result appears as a card in the original chat; the full exchange is in the **A ⇄ B** room.
 - The room header shows the shared working folder (developer mode) and the default responder.`,
       bg: `## Стаи и екипи
 
@@ -146,6 +147,8 @@ KodBot е local-first chat приложение за екип от AI агент
 - **Once**: a date and time. **Daily**: a time and weekdays. **Interval**: every 5–720 minutes, optionally only between two times (for example 09:00–18:00) and on chosen weekdays.
 - Interval slots are wall-clock anchored: 09:00, 09:15, 09:30… A slow turn never stacks runs; the next slot waits for it.
 - Every run creates a separate task with its own result; the calendar shows the schedule and the latest receipts.
+- A routine task is marked **Scheduled** in the task picker, so it is not confused with a chat you started.
+- A run that fails or is missed raises a notification and stays in the **needs you** strip until you open it.
 - Pause/resume a schedule, or open a run to see its output. Webhooks are the event-driven sibling.`,
       bg: `## Автоматизации
 
@@ -153,6 +156,8 @@ KodBot е local-first chat приложение за екип от AI агент
 - **Once**: дата и час. **Daily**: час и дни. **Interval**: на всеки 5–720 минути, по желание само между два часа (например 09:00–18:00) и в избрани дни.
 - Интервалите са вързани за wall-clock: 09:00, 09:15, 09:30… Бавен ход не трупа опашка; следващият слот го изчаква.
 - Всеки run създава отделна задача с резултат; календарът показва графика и последните разписки.
+- Задача от routine е маркирана като **Scheduled** в task picker-а, за да не се бърка с чат, който си започнал.
+- Run, който е failed или missed, вдига известие и остава в лентата **needs you**, докато не го отвориш.
 - Можеш да паузираш/пуснеш графика или да отвориш run, за да видиш изхода. Webhooks са event-driven варианта.`,
     },
   },
@@ -183,6 +188,7 @@ KodBot е local-first chat приложение за екип от AI агент
       en: `## Notifications
 
 - A bot that needs you — an approval or a question — raises a native desktop notification and a persistent **needs you** strip at the top.
+- A scheduled run that fails or is missed also raises a notification and stays in the strip until you open it.
 - A finished reply notifies when you are in another chat or the window is in the background.
 - Click a notification to open the bot or room that asked.
 - The per-bot **Notifications** switch (Bot settings → Notifications) gates its notifications.
@@ -190,6 +196,7 @@ KodBot е local-first chat приложение за екип от AI агент
       bg: `## Известия
 
 - Бот, който има нужда от теб — approval или въпрос — вдига native desktop известие и постоянна лента **needs you** горе.
+- Планиран run, който е failed или missed, също вдига известие и остава в лентата, докато не го отвориш.
 - Готов отговор извести когато си в друг чат или прозорецът е във фон.
 - Клик върху известие отваря бота или стаята, която пита.
 - Превключвателят **Notifications** за всеки бот (Bot settings → Notifications) управлява неговите известия.

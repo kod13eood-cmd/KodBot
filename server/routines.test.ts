@@ -22,6 +22,8 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
   const triggerSources: string[] = [];
   const taskActivations: boolean[] = [];
   const emitted: any[] = [];
+  const terminals: any[] = [];
+  let startError: string | null = null;
   const options: RoutineManagerOptions = {
     file: tempFile(),
     now: () => now,
@@ -32,10 +34,12 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
       return { threadId: `thread-${++task}` };
     },
     startTurn: async (botId, threadId, prompt, runOn, triggerSource) => {
+      if (startError) throw new Error(startError);
       started.push({ botId, threadId, prompt });
       runOns.push(runOn);
       triggerSources.push(triggerSource);
     },
+    onRunTerminal: (run) => terminals.push(run),
   };
   const manager = new RoutineManager(options);
   return {
@@ -46,8 +50,10 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
     runOns,
     triggerSources,
     taskActivations,
+    terminals,
     setNow: (value: number) => (now = value),
     setBot: (value: typeof bot) => (bot = value),
+    setStartError: (value: string | null) => (startError = value),
   };
 }
 
@@ -342,5 +348,64 @@ describe("RoutineManager", () => {
     await h.manager.tick();
     expect(h.manager.listRuns()[0]).toMatchObject({ status: "missed" });
     expect(h.started).toHaveLength(0);
+  });
+
+  it("reports a missed run once, even when the scheduler ticks again", async () => {
+    const h = harness();
+    const routine = h.manager.create({
+      name: "Old check",
+      prompt: "Do the old thing",
+      botId: "crew-5",
+      schedule: { type: "once", at: new Date(2026, 7, 17, 8, 1).getTime() },
+    });
+    h.setNow(routine.nextRunAt! + 13 * 60 * 60_000);
+    await h.manager.tick();
+    await h.manager.tick();
+
+    expect(h.terminals).toHaveLength(1);
+    expect(h.terminals[0]).toMatchObject({ status: "missed", routineName: "Old check" });
+    expect(h.terminals[0].notifiedAt).toEqual(expect.any(Number));
+  });
+
+  it("reports a failed start once and keeps the error on the receipt", async () => {
+    const h = harness();
+    const routine = h.manager.create({
+      name: "Broken engine",
+      prompt: "Run the report",
+      botId: "crew-6",
+      schedule: { type: "once", at: new Date(2026, 7, 17, 8, 1).getTime() },
+    });
+    h.setStartError("the engine is not installed");
+    h.setNow(routine.nextRunAt!);
+    await h.manager.tick();
+    await h.manager.tick();
+
+    expect(h.manager.listRuns()[0]).toMatchObject({ status: "failed" });
+    expect(h.manager.listRuns()[0]!.error).toContain("the engine is not installed");
+    expect(h.terminals).toHaveLength(1);
+    expect(h.terminals[0].status).toBe("failed");
+  });
+
+  it("does not report a successful run as a routine failure", async () => {
+    const h = harness();
+    const routine = h.manager.create({
+      name: "Working report",
+      prompt: "Run the report",
+      botId: "crew-7",
+      schedule: { type: "once", at: new Date(2026, 7, 17, 8, 1).getTime() },
+    });
+    h.setNow(routine.nextRunAt!);
+    await h.manager.tick();
+    h.manager.handleRuntimeEvent({
+      eventId: "done",
+      provider: "fake",
+      threadId: "thread-1",
+      createdAt: new Date().toISOString(),
+      type: "turn.completed",
+      ok: true,
+    });
+
+    expect(h.manager.listRuns()[0]!.status).toBe("completed");
+    expect(h.terminals).toHaveLength(0);
   });
 });

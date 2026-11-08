@@ -59,6 +59,7 @@ export interface RoutineRun {
   denials?: string[];
   createdAt: number;
   seenAt?: number;
+  notifiedAt?: number;
 }
 
 export interface RoutineInput {

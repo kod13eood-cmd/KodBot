@@ -2,6 +2,7 @@
 // per-thread chips. Extracted from /api/internal/ask-bot so delegations
 // (delegate_bot) and any future peer flow reuse the same UX without a copy.
 
+import { summarize } from "./notify.ts";
 import type { BotRecord, GroupRecord, Message, Store } from "./store.ts";
 
 /** What a peer-exchange helper needs from the outside world:
@@ -109,4 +110,58 @@ export function mirrorActivity(
     from: { botId: from.id, name: from.name, color: from.color },
   });
   bus.store.patchGroup(channel.id, { unread: true });
+}
+
+/** The source-chat card for a finished handoff. Kept separate from the
+ * store write so the wording and link shape can be tested without a fake
+ * Store. */
+export function buildDelegationTerminalNote(
+  target: Pick<BotRecord, "id" | "name" | "color">,
+  channel: Pick<GroupRecord, "id"> | undefined,
+  ok: boolean,
+  reply: string,
+  failureName = "Delegated turn did not finish",
+): Omit<Message, "id" | "at"> {
+  if (!channel) {
+    return {
+      role: "bot",
+      kind: "activity",
+      tool: ok
+        ? { name: `@${target.name} replied: ${reply.trim() ? summarize(reply, 140) : "completed"}` }
+        : { name: `Delegated task failed — ${failureName}`, ok: false },
+    };
+  }
+  return {
+    role: "bot",
+    kind: "activity",
+    tool: ok
+      ? { name: `@${target.name} replied: ${reply.trim() ? summarize(reply, 140) : "completed"}` }
+      : { name: `Delegated task failed — ${failureName}`, ok: false },
+    comm: { groupId: channel.id, withBotId: target.id, withName: target.name, withColor: target.color },
+  };
+}
+
+/** Finish a delegated handoff. The shared channel keeps the full record;
+ * the source chat gets a compact terminal card with a link to that channel,
+ * because a fire-and-forget delegation otherwise leaves its result hidden in
+ * an auto-created room. */
+export function mirrorDelegationTerminal(
+  bus: CommsBus,
+  target: BotRecord,
+  channel: GroupRecord | undefined,
+  sourceThreadId: string | undefined,
+  ok: boolean,
+  reply: string,
+  failureName = "Delegated turn did not finish",
+): void {
+  if (channel) {
+    if (ok && reply.trim()) mirrorReply(bus, target, reply, channel);
+    else if (ok) mirrorActivity(bus, target, channel, "Delegated turn completed", true);
+    else mirrorActivity(bus, target, channel, failureName, false);
+  }
+  if (!sourceThreadId) return;
+  bus.store.appendMessage(
+    sourceThreadId,
+    buildDelegationTerminalNote(target, channel, ok, reply, failureName),
+  );
 }

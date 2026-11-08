@@ -32,6 +32,9 @@ Status keys:
   surface as inline cards: Allow, Deny, or answer in chat.
 - **Rooms.** Put several bots in one conversation with a shared bulletin and
   an optional Chief of Staff.
+- **Visible bot-to-bot handoffs.** When a bot hands work to another bot, the
+  source chat gets a result or failure card and the full exchange stays in the
+  shared `A ⇄ B` room.
 - **Tasks and branches.** Each bot keeps separate tasks; edits and rewinds
   branch the transcript instead of destroying history.
 - **Remote mode.** Point the desktop app at a KodBot server that stays on 24/7.
@@ -109,7 +112,9 @@ prompt.
 Automations can run once, daily at a chosen time, or **on an interval** — every
 5 minutes up to once a day — optionally only inside a time window (for
 example 09:00–18:00) and on selected weekdays. A slow turn never stacks runs:
-the next slot waits for the current one to finish.
+the next slot waits for the current one to finish. Routine-created tasks are
+marked **Scheduled** in the task picker, and a failed or missed run raises a
+notification and stays in the **needs you** strip until it is opened.
 
 ### Loading feedback — Live
 
@@ -122,11 +127,12 @@ stays responsive while the chat catches up.
 
 A bot that cannot continue — a command or file approval, a question — raises a
 native desktop notification that stays on screen until it is answered, plus a
-persistent **needs you** strip at the top of the app. A finished reply notifies
-too when the window is on another chat or in the background. Clicking a
-notification opens the bot or room that asked; the app title and badge count the
-blocked conversations. Each bot's **Notifications** switch still gates its own
-notifications.
+persistent **needs you** strip at the top of the app. A scheduled run that
+fails or is missed also raises a notification and joins that strip. A finished
+reply notifies too when the window is on another chat or in the background.
+Clicking a notification opens the bot, room, or routine task that asked; the
+app title and badge count the blocked conversations. Each bot's
+**Notifications** switch still gates its own notifications.
 
 ### Shopping cards — Live
 

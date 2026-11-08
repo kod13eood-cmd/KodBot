@@ -5,7 +5,7 @@
 // own transcript and its own provider session — so sensitive work, a
 // long job and a quick question can sit side by side under one agent.
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Check, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { useStore, formatTime, type Bot, type Task } from "@/state/store";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
@@ -33,7 +33,7 @@ function TaskUsage({ usage }: { usage: Task["usage"] }) {
 
 export function TaskPicker({ bot }: { bot: Bot }) {
   const { t } = useI18n();
-  const { dispatch } = useStore();
+  const { state, dispatch } = useStore();
   const [open, setOpen] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -108,6 +108,7 @@ export function TaskPicker({ bot }: { bot: Bot }) {
           <div className="max-h-[320px] overflow-y-auto">
             {tasks.map((task) => {
               const active = task.threadId === bot.threadId;
+              const scheduled = state.routineRuns.some((run) => run.threadId === task.threadId);
               return (
                 <div
                   key={task.threadId}
@@ -139,8 +140,12 @@ export function TaskPicker({ bot }: { bot: Bot }) {
                       className="min-w-0 flex-1 text-left"
                       title={t("Click to switch · double-click to rename")}
                     >
-                      <div className="truncate text-[13px] text-ink">{task.title}</div>
+                      <div className="flex min-w-0 items-center gap-1.5 text-[13px] text-ink">
+                        {scheduled && <CalendarClock size={11} className="shrink-0 text-accent" aria-label={t("Scheduled")} />}
+                        <span className="truncate">{task.title}</span>
+                      </div>
                       <div className="text-[11px] text-ink-secondary">
+                        {scheduled && <span className="text-accent">{t("Scheduled")} · </span>}
                         {formatTime(task.createdAt)}
                         <TaskUsage usage={task.usage} />
                       </div>

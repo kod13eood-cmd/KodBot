@@ -4,7 +4,12 @@
 import { pendingRequests } from "./approvals";
 import type { Message } from "@/state/store";
 
-export type NeedsYouReason = "approval" | "question" | "waiting";
+export type NeedsYouReason =
+  | "approval"
+  | "question"
+  | "waiting"
+  | "routine-failed"
+  | "routine-missed";
 
 export interface NeedsYouCandidate {
   kind: "bot" | "group";
@@ -18,11 +23,26 @@ export interface NeedsYouCandidate {
 }
 
 export interface NeedsYouItem {
-  kind: "bot" | "group";
+  kind: "bot" | "group" | "routine";
   id: string;
   name: string;
   reason: NeedsYouReason;
   detail?: string;
+}
+
+export interface RoutineFailureCandidate {
+  id: string;
+  botId: string;
+  routineName: string;
+  status: "failed" | "missed" | string;
+  error?: string;
+  seenAt?: number;
+}
+
+export interface RoutineFailureBot {
+  id: string;
+  name: string;
+  hidden?: boolean;
 }
 
 /** Blocked chats, oldest request first, with a waiting bot counted once even
@@ -67,5 +87,30 @@ export function collectNeedsYou(
     }
   }
 
+  return items;
+}
+
+/** Unseen scheduled runs that ended badly. This is the in-app counterpart to
+ * the routine-failed notification; it keeps a failure visible until the user
+ * opens the run, instead of leaving it only inside Automations. */
+export function collectRoutineFailures(
+  runs: RoutineFailureCandidate[],
+  bots: RoutineFailureBot[],
+): NeedsYouItem[] {
+  const byId = new Map(bots.filter((bot) => !bot.hidden).map((bot) => [bot.id, bot]));
+  const items: NeedsYouItem[] = [];
+  for (const run of runs) {
+    if (run.seenAt != null) continue;
+    if (run.status !== "failed" && run.status !== "missed") continue;
+    const bot = byId.get(run.botId);
+    if (!bot) continue;
+    items.push({
+      kind: "routine",
+      id: run.id,
+      name: bot.name,
+      reason: run.status === "missed" ? "routine-missed" : "routine-failed",
+      detail: run.error ? `${run.routineName} — ${run.error}` : run.routineName,
+    });
+  }
   return items;
 }

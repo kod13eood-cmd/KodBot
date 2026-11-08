@@ -1460,6 +1460,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             notification,
             () => {
               const room = stateRef.current.groups.find((group) => group.threadId === notification.threadId);
+              if (!room && notification.threadId) {
+                const bot = stateRef.current.bots.find((entry) => entry.id === notification.botId);
+                const task = bot?.tasks?.find((entry) => entry.threadId === notification.threadId);
+                if (bot && task && bot.threadId !== task.threadId) {
+                  dispatch({ type: "switchTask", botId: bot.id, threadId: task.threadId });
+                }
+              }
               dispatch({ type: "select", id: room?.id ?? notification.botId });
             },
             { activeThreadId: activeBot?.threadId ?? activeGroup?.threadId },

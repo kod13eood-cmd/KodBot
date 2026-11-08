@@ -43,7 +43,7 @@ import { buildNotification, type Notification } from "./notify.ts";
 import { isEffortLevel, type ModelSelection, type RequestOutcome, type RuntimeEvent } from "./contracts.ts";
 
 import { BUILT_IN_DRIVERS } from "./drivers/builtIn.ts";
-import { getOrCreateChannel, mirrorActivity, mirrorExchange, mirrorReply, type CommsBus } from "./comms-visibility.ts";
+import { getOrCreateChannel, mirrorDelegationTerminal, mirrorExchange, mirrorReply, type CommsBus } from "./comms-visibility.ts";
 import { searchMessages } from "./message-db.ts";
 import { _loadPending, discardDelegations, drainDelegations, pendingThreads, queueDelegation, type QueueResult } from "./delegations.ts";
 import { drainSteeredMessages, queueSteeredMessage } from "./steer-queue.ts";
@@ -980,7 +980,7 @@ bus.subscribe((event: RuntimeEvent) => {
 // (target threadId → channel) lets the main fold mirror the delegated
 // turn's TERMINAL state into the A⇄B channel when it completes — the
 // channel stays the full record of the handoff, not just its request.
-const delegationWatch = new Map<string, { channelId?: string; toBotId: string }>();
+const delegationWatch = new Map<string, { channelId?: string; toBotId: string; sourceThreadId?: string }>();
 
 /** Consume one delegated-turn watch and mirror exactly one terminal state.
  * Some harness paths settle a busy bot without a provider turn.completed
@@ -995,11 +995,9 @@ function finalizeDelegationWatch(
   if (!watched) return false;
   delegationWatch.delete(threadId);
   const target = store.bot(watched.toBotId);
+  if (!target) return true;
   const channel = watched.channelId ? store.group(watched.channelId) : undefined;
-  if (!target || !channel) return true;
-  if (ok && reply.trim()) mirrorReply(commsBus, target, reply, channel);
-  else if (ok) mirrorActivity(commsBus, target, channel, "Delegated turn completed", true);
-  else mirrorActivity(commsBus, target, channel, failureName, false);
+  mirrorDelegationTerminal(commsBus, target, channel, watched.sourceThreadId, ok, reply, failureName);
   return true;
 }
 
@@ -1043,7 +1041,7 @@ const runDelegatedTurn: Parameters<typeof drainDelegations>[3] = (toBotId, text,
     // harness (Node's default), which in the packaged app kills the server
     // child. Every delegation failure has to land as a chip instead.
     const targetThreadId = store.bot(toBotId)?.threadId;
-    if (targetThreadId) delegationWatch.set(targetThreadId, { channelId: channel?.id, toBotId });
+    if (targetThreadId) delegationWatch.set(targetThreadId, { channelId: channel?.id, toBotId, sourceThreadId });
     let failureReported = false;
     const reportStartFailure = (error: unknown) => {
       if (failureReported) return;
@@ -1664,6 +1662,14 @@ async function startTurn(
 // only owner of provider sessions, approvals, tools, computers and messages.
 routines = new RoutineManager({
   emit: broadcast,
+  onRunTerminal: (run) => {
+    const bot = store.bot(run.botId);
+    if (!bot) return;
+    const detail = run.error
+      ? `${run.routineName}: ${run.error}`
+      : `${run.routineName} did not finish`;
+    notify(buildNotification("routine-failed", bot, run.threadId ?? bot.threadId, detail));
+  },
   botState: (botId) => {
     const bot = store.bot(botId);
     return !bot ? "missing" : bot.busy ? "busy" : "ready";

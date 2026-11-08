@@ -73,6 +73,8 @@ export interface RoutineRun {
   denials?: string[];
   createdAt: number;
   seenAt?: number;
+  /** When a terminal failure was pushed to the notification path. */
+  notifiedAt?: number;
 }
 
 export interface RoutineInput {
@@ -108,6 +110,9 @@ export interface RoutineManagerOptions {
     onDispatchError: (message: string) => void,
   ) => Promise<void>;
   interruptTurn?: (botId: string, threadId: string, runOn: RoutineRunOn) => Promise<void>;
+  /** Called once when a run ends in a state a human should hear about.
+   * Failures and misses are reported; cancellations and successes are not. */
+  onRunTerminal?: (run: RoutineRun) => void;
 }
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
@@ -253,16 +258,17 @@ export class RoutineManager {
       this.runs = [];
     }
     // A local process cannot still own these turns after a full restart.
-    let recovered = false;
+    const recoveredRuns: RoutineRun[] = [];
     for (const run of this.runs) {
       if (run.status === "running" || run.status === "waiting") {
         run.status = "failed";
         run.error = "KodBot restarted while this routine was running";
         run.finishedAt = this.now();
-        recovered = true;
+        recoveredRuns.push(run);
       }
     }
-    if (recovered) this.save();
+    if (recoveredRuns.length) this.save();
+    for (const run of recoveredRuns) this.notifyTerminal(run);
   }
 
   listRoutines(): Routine[] {
@@ -508,7 +514,9 @@ export class RoutineManager {
           missed.status = "missed";
           missed.finishedAt = now;
           missed.error = "This computer was offline for more than 12 hours after the scheduled time";
+          this.save();
           this.emitRun(missed);
+          this.notifyTerminal(missed);
         } else {
           const run = this.newRun(routine, scheduledFor, false);
           this.emitRun(run);
@@ -532,6 +540,7 @@ export class RoutineManager {
           run.finishedAt = this.now();
           this.save();
           this.emitRun(run);
+          this.notifyTerminal(run);
           continue;
         }
         // A webhook is an incoming message, so make its task the bot's live
@@ -543,6 +552,7 @@ export class RoutineManager {
           run.finishedAt = this.now();
           this.save();
           this.emitRun(run);
+          this.notifyTerminal(run);
           continue;
         }
         run.threadId = task.threadId;
@@ -596,7 +606,10 @@ export class RoutineManager {
     }
     this.save();
     this.emitRun(run);
-    if (event.type === "turn.completed") queueMicrotask(() => void this.tick());
+    if (event.type === "turn.completed") {
+      if (!event.ok) this.notifyTerminal(run);
+      queueMicrotask(() => void this.tick());
+    }
   }
 
   failThread(threadId: string, message: string) {
@@ -607,7 +620,23 @@ export class RoutineManager {
     run.finishedAt = this.now();
     this.save();
     this.emitRun(run);
+    this.notifyTerminal(run);
     queueMicrotask(() => void this.tick());
+  }
+
+  /** Push one terminal failure/miss to the outside world. The persisted
+   * timestamp is the dedupe key: repeated SSE frames and process reloads
+   * cannot produce a second notification for the same run. */
+  private notifyTerminal(run: RoutineRun) {
+    if (run.notifiedAt != null) return;
+    if (run.status !== "failed" && run.status !== "missed") return;
+    run.notifiedAt = this.now();
+    this.save();
+    try {
+      this.options.onRunTerminal?.({ ...run });
+    } catch (error) {
+      console.error("routines: terminal notification failed", error);
+    }
   }
 
   private initialOccurrence(schedule: RoutineSchedule, now: number): number | null {
