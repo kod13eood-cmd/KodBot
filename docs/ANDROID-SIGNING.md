@@ -6,7 +6,7 @@ a machine-generated debug key, so an APK built on a GitHub runner does **not**
 update an APK built on a developer machine.
 
 KodBot now supports a stable CI signing key. Until the `ANDROID_KEYSTORE_BASE64`
-secret is configured, the release workflow refuses to publish an Android APK
+secret is configured in `kodbot-releases`, the release workflow refuses to publish an Android APK
 rather than shipping one that cannot update existing installs.
 
 ## The key already used by the installed app
@@ -38,8 +38,11 @@ phone. On this setup that is the development workstation's
 `~/.android/debug.keystore`; the server's own debug keystore is a different key
 and would reintroduce the conflict.
 
-In `kod13eood-cmd/KodBot` → Settings → Secrets and variables → Actions:
-<https://github.com/kod13eood-cmd/KodBot/settings/secrets/actions>
+In `kod13eood-cmd/kodbot-releases` → Settings → Secrets and variables → Actions:
+<https://github.com/kod13eood-cmd/kodbot-releases/settings/secrets/actions>
+
+The release workflow lives in the `kodbot-releases` repository, so the secrets
+belong there, not in the source repository.
 
 
 | Name | Value |
