@@ -33,6 +33,11 @@ changes.
 
 ## Add the GitHub secrets
 
+Use the keystore from the machine that signed the app currently installed on the
+phone. On this setup that is the development workstation's
+`~/.android/debug.keystore`; the server's own debug keystore is a different key
+and would reintroduce the conflict.
+
 In `kod13eood-cmd/KodBot` → Settings → Secrets and variables → Actions:
 
 | Name | Value |
