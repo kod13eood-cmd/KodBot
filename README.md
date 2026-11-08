@@ -16,21 +16,25 @@ Talk to them like contacts. Watch them work. Approve what matters.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
-![Electron](https://img.shields.io/badge/Electron-macOS%20%C2%B7%20Windows%20%C2%B7%20Ubuntu-2B2E3A?logo=electron&logoColor=9FEAF9)
+![Electron](https://img.shields.io/badge/Electron-Linux%20%C2%B7%20Windows%20%C2%B7%20Android-2B2E3A?logo=electron&logoColor=9FEAF9)
 ![Agents](https://img.shields.io/badge/agents-Claude%20·%20Codex%20·%20OpenCode-d97757)
 ![PRs](https://img.shields.io/badge/PRs-welcome-38d591)
 
 <br>
 
-<a href="https://github.com/kod13eood-cmd/kodbot-releases/releases/latest">
-  <img src="https://img.shields.io/github/v/release/kod13eood-cmd/kodbot-releases?style=for-the-badge&label=macOS%20%E2%80%94%20see%20Releases&labelColor=070707&color=6e7681&cacheSeconds=300" alt="macOS build is pending — see Releases" height="40">
-</a>
-&nbsp;
 <a href="https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-setup.exe">
   <img src="https://img.shields.io/github/v/release/kod13eood-cmd/kodbot-releases?style=for-the-badge&label=%E2%AC%87%EF%B8%8F%20%20Download%20for%20Windows&labelColor=070707&color=4cc2ff&cacheSeconds=300" alt="Download the latest KodBot for Windows (.exe)" height="40">
 </a>
+&nbsp;
+<a href="https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot.AppImage">
+  <img src="https://img.shields.io/github/v/release/kod13eood-cmd/kodbot-releases?style=for-the-badge&label=%E2%AC%87%EF%B8%8F%20%20Download%20for%20Linux&labelColor=070707&color=e95420&cacheSeconds=300" alt="Download the latest KodBot for Linux (.deb and .AppImage)" height="40">
+</a>
+&nbsp;
+<a href="https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-android.apk">
+  <img src="https://img.shields.io/github/v/release/kod13eood-cmd/kodbot-releases?style=for-the-badge&label=%E2%AC%87%EF%B8%8F%20%20Download%20for%20Android&labelColor=070707&color=3ddc84&cacheSeconds=300" alt="Download the latest KodBot Android companion (.apk)" height="40">
+</a>
 
-<sub>Windows: 64-bit · one-click installer, no admin rights &nbsp;·&nbsp; macOS: Apple silicon build is pending — [see Releases](https://github.com/kod13eood-cmd/kodbot-releases/releases) &nbsp;·&nbsp; [all releases](https://github.com/kod13eood-cmd/kodbot-releases/releases)</sub>
+<sub>Windows: 64-bit · one-click installer, no admin rights &nbsp;·&nbsp; Linux: x64 · .deb and .AppImage &nbsp;·&nbsp; Android: sideloadable APK companion &nbsp;·&nbsp; all always the latest · [all releases](https://github.com/kod13eood-cmd/kodbot-releases/releases)</sub>
 
 <br>
 <br>
@@ -216,14 +220,15 @@ flowchart LR
 
 ## Quick start
 
-**Released builds:** the harness server is embedded, so a packaged Windows build needs no separate server setup.
+**Released builds:** the desktop harness server is embedded, so packaged Windows and Linux builds need no separate server setup; the Android app is a companion that connects to your KodBot host.
 
 | | Download | Install |
 |---|---|---|
-| **macOS** (Apple silicon) | [Releases](https://github.com/kod13eood-cmd/kodbot-releases/releases/latest) | Build pending — the latest release currently ships Windows only. Watch [Releases](https://github.com/kod13eood-cmd/kodbot-releases/releases) for the `.dmg`. |
 | **Windows** (x64) | [KodBot-setup.exe](https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-setup.exe) | Run it — one-click, per-user, no admin rights. The installer isn't code-signed yet, so SmartScreen shows "unknown publisher": **More info → Run anyway**. |
+| **Linux** (x64) | [KodBot.AppImage](https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot.AppImage) · [KodBot.deb](https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot.deb) | AppImage: `chmod +x` then run. Debian/Ubuntu: `sudo apt install ./KodBot.deb`. |
+| **Android** | [KodBot-android.apk](https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-android.apk) | Sideload the APK, then pair it with your KodBot host by scanning the companion QR in the app. |
 
-**Ubuntu Desktop beta:** build the `.deb` or AppImage from source using the commands below. This branch
+**Ubuntu Desktop beta:** released as `.deb` and AppImage above; you can also build them from source with the commands below. This branch
 serves Linux AppImage updates from its 24/7 host; see [the Ubuntu Desktop guide](docs/linux-desktop.md) for
 installation, self-hosted updates, capabilities, and troubleshooting.
 
@@ -301,7 +306,7 @@ dedicated receiver through a hosted relay or a tool such as Tailscale Funnel.
 ## Status
 
 Early but real — the loop works end to end: message → agent → streamed reply → tools → approvals →
-computer use. Windows has a released build; the macOS build is still pending, and Ubuntu 24.04 x64 packages are in beta with the
+computer use. Windows, Linux, and Android have released builds; macOS source support exists but no builds are published at the moment, and Ubuntu 24.04 x64 packages are in beta with the
 capability limits above. Rough edges to expect: hosted/mobile connectivity is still being built, and webhook
 triggers currently use the local receiver rather than an always-on hosted relay.
 Voice needs an ElevenLabs key, and calls are macOS-only for now (they ride the same on-device dictation as
