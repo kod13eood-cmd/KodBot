@@ -39,6 +39,25 @@ Talk to them like contacts. Watch them work. Approve what matters.
 <br>
 <br>
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://signpath.io), certificate by
+[SignPath Foundation](https://signpath.org).
+
+- Windows installer: signed through SignPath Foundation's open-source program when
+  the signing request is approved.
+- Linux and Android builds: not signed by SignPath; checksums and release notes are
+  published on the release page.
+- Build provenance: GitHub Actions builds from this public repository; every signing
+  request needs manual approval.
+- Maintainers and approvers: see [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md).
+- Privacy: see [PRIVACY.md](PRIVACY.md).
+
+SignPath integration notes live in [docs/SIGNPATH.md](docs/SIGNPATH.md).
+
+<br>
+<br>
+
 <img src="docs/screenshots/hero.png" alt="KodBot — a Telegram-style chat app where every chat is a real AI agent" width="900">
 
 </div>

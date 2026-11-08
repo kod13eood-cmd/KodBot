@@ -1,0 +1,130 @@
+name: Package Windows with SignPath
+
+# Manual dry run for the free SignPath Foundation OSS signing flow. This
+# workflow builds the Windows installer, submits it to SignPath, waits for the
+# per-release manual approval, then verifies and refreshes latest.yml.
+#
+# It does NOT publish a release. Once the SignPath project is approved, the
+# same steps can be folded into the release workflow in kodbot-releases.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Source ref to build
+        required: true
+        default: feat/multi-user
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build-sign-verify:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Require SignPath configuration
+        shell: bash
+        env:
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+          SIGNPATH_ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          SIGNPATH_PROJECT_SLUG: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          SIGNPATH_SIGNING_POLICY_SLUG: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+        run: |
+          missing=0
+          for name in SIGNPATH_API_TOKEN SIGNPATH_ORGANIZATION_ID SIGNPATH_PROJECT_SLUG SIGNPATH_SIGNING_POLICY_SLUG; do
+            if [ -z "${!name}" ]; then
+              echo "::error::missing repository secret/variable $name"
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - name: Build installer
+        shell: bash
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm package:win
+
+      - name: Verify unsigned package
+        id: version
+        shell: bash
+        run: |
+          res=release/win-unpacked/resources
+          test -f "$res/server/index.js"
+          test -f "$res/ui/index.html"
+          test -f "$res/app-update.yml"
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Upload unsigned installer for SignPath
+        id: upload-unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: kodbot-windows-unsigned
+          if-no-files-found: error
+          path: release/KodBot-${{ steps.version.outputs.version }}-setup.exe
+
+      - name: Submit SignPath signing request
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed
+          parameters: |
+            version: "${{ steps.version.outputs.version }}"
+
+      - name: Use and verify the signed installer
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem -Path signed -Recurse -Filter "KodBot-*-setup.exe" |
+            Select-Object -First 1
+          if (-not $installer) { throw "SignPath returned no signed installer" }
+
+          $versioned = "release/KodBot-$env:VERSION-setup.exe"
+          Copy-Item $installer.FullName $versioned -Force
+          Copy-Item $installer.FullName "release/KodBot-setup.exe" -Force
+
+          # The unsigned blockmap no longer describes the signed bytes.
+          Remove-Item "release/*.blockmap" -Force -ErrorAction SilentlyContinue
+
+          node scripts/refresh-windows-latest.mjs $versioned release/latest.yml
+
+          $signature = Get-AuthenticodeSignature $versioned
+          Write-Host "signature status: $($signature.Status)"
+          Write-Host "publisher: $($signature.SignerCertificate.Subject)"
+          if ($signature.Status -ne "Valid") {
+            throw "The signed installer does not have a valid Authenticode signature"
+          }
+          if ($signature.SignerCertificate.Subject -notmatch "SignPath") {
+            throw "Unexpected signer: $($signature.SignerCertificate.Subject)"
+          }
+
+      - name: Upload signed artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kodbot-windows-signed
+          if-no-files-found: error
+          path: |
+            release/KodBot-${{ steps.version.outputs.version }}-setup.exe
+            release/KodBot-setup.exe
+            release/latest.yml
