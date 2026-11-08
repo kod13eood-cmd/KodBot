@@ -86,6 +86,7 @@ import { RoutineManager, type RoutineRunOn, type RoutineRunTrigger } from "./rou
 import { fetchGithubTeam, fetchLibraryTeam, fetchTeamCatalog } from "./team-library.ts";
 import { createTeamManifest, parseTeamManifest } from "./team-manifest.ts";
 import { readThreadEvents } from "./thread-events.ts";
+import { updateFileAllowed, updateFileType } from "./update-feed.ts";
 import { listenWebhookIngress, webhookCredential, type WebhookIngress } from "./webhook-ingress.ts";
 import { memberTurnSelection } from "./member-turn.ts";
 import { WebhookManager } from "./webhooks.ts";
@@ -3869,18 +3870,14 @@ const server = createServer(async (req, res) => {
     // so a normal UI deploy cannot erase the feed.
     if (method === "GET" && path.startsWith("/updates/")) {
       const name = path.slice("/updates/".length);
-      if (
-        !name ||
-        name.includes("..") ||
-        (name !== "latest-linux.yml" && !/^KodBot-[\w.-]+\.AppImage$/.test(name))
-      ) {
+      if (!updateFileAllowed(name)) {
         return json(res, 404, { error: "no such update file" });
       }
       const file = join(DATA_DIR, "desktop", "updates", name);
       try {
         const info = statSync(file);
         res.writeHead(200, {
-          "content-type": name.endsWith(".yml") ? "text/yaml; charset=utf-8" : "application/octet-stream",
+          "content-type": updateFileType(name),
           "content-length": String(info.size),
           "cache-control": name.endsWith(".yml") ? "no-store" : "public, max-age=31536000, immutable",
         });
