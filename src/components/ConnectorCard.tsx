@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Loader2, PlugZap, RefreshCw, X } from "lucide-react";
 
+import { ConnectionNameDialog } from "@/components/ConnectionNameDialog";
+
 import { useI18n } from "@/lib/i18n";
 import { api, type Message } from "@/state/store";
 
@@ -19,6 +21,8 @@ export function ConnectorCard({ botId, threadId, message }: { botId: string; thr
   const { t } = useI18n();
   const connector = message.connector!;
   const [busy, setBusy] = useState(false);
+  const [naming, setNaming] = useState(false);
+  const [alias, setAlias] = useState<string | undefined>(undefined);
   const [localError, setLocalError] = useState<string | null>(null);
   const polling = useRef(false);
 
@@ -55,13 +59,15 @@ export function ConnectorCard({ botId, threadId, message }: { botId: string; thr
 
   if (connector.dismissed) return null;
 
-  const connect = async () => {
+  const connect = async (accountAlias?: string) => {
+    if (accountAlias) setAlias(accountAlias);
+    setNaming(false);
     setBusy(true);
     setLocalError(null);
     try {
       const result = await api(`${endpoint}/authorize`, {
         method: "POST",
-        body: JSON.stringify({ threadId }),
+        body: JSON.stringify({ threadId, ...(accountAlias ? { alias: accountAlias } : {}) }),
       });
       await openConnectionPage(
         String(result.url),
@@ -137,7 +143,10 @@ export function ConnectorCard({ botId, threadId, message }: { botId: string; thr
           </div>
           {!connected ? (
             <button
-              onClick={() => void connect()}
+              onClick={() => {
+                if (authorizing) void connect(alias);
+                else setNaming(true);
+              }}
               disabled={busy}
               className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[12.5px] font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
@@ -157,6 +166,13 @@ export function ConnectorCard({ botId, threadId, message }: { botId: string; thr
           )}
         </div>
       </div>
+      <ConnectionNameDialog
+        open={naming}
+        service={connector.label}
+        busy={busy}
+        onCancel={() => setNaming(false)}
+        onConfirm={(name) => void connect(name)}
+      />
     </div>
   );
 }

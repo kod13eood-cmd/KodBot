@@ -25,6 +25,12 @@ const BULGARIAN: Record<string, string> = {
   "Settings": "Настройки",
   "Close settings": "Затвори настройките",
   "Cancel": "Отказ",
+  "Name this connection": "Име на връзката",
+  "Give this {service} connection a name you will recognize. It appears in Connected apps and in each bot's access list.":
+    "Дай на тази връзка с {service} име, което ще разпознаваш. То се показва в Свързани приложения и в списъка с достъп на всеки бот.",
+  "Connection name": "Име на връзката",
+  "e.g. Work {service}": "напр. Работен {service}",
+  "Continue to sign in": "Продължи към вход",
   "Close": "Затвори",
   "Back": "Назад",
   "Save": "Запази",

@@ -18,6 +18,7 @@ import { api, useStore } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { copyText } from "@/lib/clipboard";
 import { useI18n } from "@/lib/i18n";
+import { ConnectionNameDialog } from "@/components/ConnectionNameDialog";
 
 interface ToolkitCard {
   slug: string;
@@ -512,6 +513,12 @@ export function PluginsPanel() {
   const [tab, setTab] = useState<"marketplace" | "connected">("marketplace");
   const [detailsSlug, setDetailsSlug] = useState<string | null>(null);
   const [hoveredCard, setHoveredCard] = useState<{ card: ToolkitCard; x: number; y: number } | null>(null);
+  const [namePrompt, setNamePrompt] = useState<{
+    slug: string;
+    addAccount: boolean;
+    label: string;
+    initial: string;
+  } | null>(null);
 
   const pollTimers = useRef(new Map<string, ReturnType<typeof setInterval>>());
   const statusGenerations = useRef(new Map<string, number>());
@@ -709,14 +716,25 @@ export function PluginsPanel() {
     pollTimers.current.set(slug, timer);
   };
 
-  const connect = async (slug: string, addAccount = false) => {
+  const beginConnect = (slug: string, addAccount = false) => {
+    const card = (cards ?? []).find((entry) => entry.slug === slug);
+    const existing = status[slug]?.accounts?.length ?? 0;
+    setNamePrompt({
+      slug,
+      addAccount,
+      label: card?.label ?? slug,
+      initial: addAccount && existing > 0 ? `${card?.label ?? slug} ${existing + 1}` : "",
+    });
+  };
+
+  const connect = async (slug: string, addAccount = false, alias?: string) => {
     statusGenerations.current.set(slug, (statusGenerations.current.get(slug) ?? 0) + 1);
     setBusySlug(slug);
     setError(null);
     try {
       const result = await api(`/api/connectors/${slug}/authorize`, {
         method: "POST",
-        body: JSON.stringify({ add: addAccount }),
+        body: JSON.stringify({ add: addAccount, ...(alias ? { alias } : {}) }),
       });
       // The server refuses to mint a second link for an app that is already
       // connected. A stale card must refresh into Details, not create a
@@ -1038,7 +1056,7 @@ export function PluginsPanel() {
                       else if (pending && pendingUrls[card.slug]) {
                         setError(null);
                         void openConnectUrl(pendingUrls[card.slug]).catch((e) => setError(e.message));
-                      } else void connect(card.slug);
+                      } else beginConnect(card.slug);
                     }}
                     className={cn(
                       "flex min-w-[88px] items-center justify-center gap-1.5 rounded-full px-3 py-2 text-[12.5px] transition-colors disabled:opacity-40",
@@ -1097,7 +1115,7 @@ export function PluginsPanel() {
           busy={busySlug === detailsCard.slug}
           error={error}
           onClose={() => setDetailsSlug(null)}
-          onConnect={() => void connect(detailsCard.slug, true)}
+          onConnect={() => beginConnect(detailsCard.slug, true)}
           onDisconnect={() => {
             if (window.confirm(t("Disconnect every account for {name}?", { name: detailsCard.label }))) {
               disconnect(detailsCard.slug);
@@ -1131,6 +1149,18 @@ export function PluginsPanel() {
           </p>
         </div>
       )}
+      <ConnectionNameDialog
+        open={namePrompt !== null}
+        service={namePrompt?.label ?? ""}
+        initial={namePrompt?.initial}
+        busy={namePrompt ? busySlug === namePrompt.slug : false}
+        onCancel={() => setNamePrompt(null)}
+        onConfirm={(name) => {
+          const pending = namePrompt;
+          setNamePrompt(null);
+          if (pending) void connect(pending.slug, pending.addAccount, name);
+        }}
+      />
     </div>
   );
 }

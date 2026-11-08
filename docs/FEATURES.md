@@ -185,9 +185,14 @@ there too.
 ### Connected Apps with readable identities — Live
 
 The Connected Apps marketplace now includes **1Password, Stripe, Aircall,
-AgentMail, All Images AI, and HeyGen** under their real names, alongside the
-rest of the catalog. Hover any app to read its full description before
-connecting. These are ordinary Connected Apps, not a separate “Grok” section.
+AgentMail, All Images AI, HeyGen, and Google Search Console** under their real
+names, alongside the rest of the catalog. Hover any app to read its full
+description before connecting. These are ordinary Connected Apps, not a
+separate “Grok” section.
+
+Every new connection asks for a name first. The name is stored as the account
+alias, so several Gmail, Slack, or Search Console accounts stay distinguishable
+in the marketplace and in each bot's access list.
 
 The panel checks the **whole catalog**, not only the first featured rows, so a
 connected app such as Alpaca appears under **Connected** and opens **Details**

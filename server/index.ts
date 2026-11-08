@@ -4252,7 +4252,8 @@ const server = createServer(async (req, res) => {
           connector: { ...connector, status: "authorizing", error: undefined, dismissed: false },
         });
         try {
-          return json(res, 200, await composio.authorizeService(cfg, connector.slug));
+          const alias = typeof body.alias === "string" ? body.alias.trim() : undefined;
+          return json(res, 200, await composio.authorizeService(cfg, connector.slug, alias));
         } catch (error) {
           const detail = error instanceof Error ? error.message : String(error);
           store.patchMessage(threadId, message.id, {
