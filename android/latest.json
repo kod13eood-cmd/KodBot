@@ -1,7 +1,7 @@
 {
-  "versionCode": 13,
-  "versionName": "0.1.12",
-  "apkUrl": "https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.12.apk",
-  "notes": "Adds bot body shapes, team grouping and management, model capability badges, separate OpenCode Zen/Go sections, per-bot Auto model pools, and tappable product cards.",
-  "publishedAt": "2026-11-02T13:20:00Z"
+  "versionCode": 14,
+  "versionName": "0.1.13",
+  "apkUrl": "https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-android.apk",
+  "notes": "Adds email/password sign-in, hosted Companion QR pairing, HTTPS server addresses, session expiry handling, and the latest chat loading and connected-app fixes.",
+  "publishedAt": "2026-11-08T17:55:23Z"
 }
