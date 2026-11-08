@@ -38,6 +38,7 @@ KodBot is currently maintained as an individual project.
 
 | Role | Person / group |
 | --- | --- |
+| Authors | Repository owner: [@kod13eood-cmd](https://github.com/kod13eood-cmd) |
 | Committers and reviewers | Repository owner: [@kod13eood-cmd](https://github.com/kod13eood-cmd) |
 | Approvers | Repository owner: [@kod13eood-cmd](https://github.com/kod13eood-cmd) |
 
