@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://github.com/kod13eood-cmd/KodBot/discussions/categories/q-a
+    about: Setup help, pairing, provider quirks, and usage questions.
+  - name: Share an idea
+    url: https://github.com/kod13eood-cmd/KodBot/discussions/categories/ideas
+    about: Suggest and discuss what should land next.
+  - name: Show what you built
+    url: https://github.com/kod13eood-cmd/KodBot/discussions/categories/show-and-tell
+    about: Bots, teams, routines, and setups you want to share.
+  - name: Read the docs
+    url: https://kod13eood-cmd.github.io/KodBot
+    about: Features, quick start, and screenshots.
