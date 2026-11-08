@@ -295,12 +295,20 @@ export type AppSettingsSection =
   | "computer"
   | "usage";
 
+export interface AuthUser {
+  id: string;
+  email: string;
+  role: "owner" | "member";
+}
+
 export interface AppState {
   bots: Bot[];
   groups: Group[];
   teams: Team[];
   instances: InstanceInfo[];
   config: ConfigStatus | null;
+  /** Signed-in hosted account, or null for a local single-user harness. */
+  authUser: AuthUser | null;
   /** selected chat — a bot id OR a group id */
   selectedId: string;
   activeView: "chat" | "routines";
@@ -410,6 +418,7 @@ export type Action =
   | { type: "setModel"; botId: string; selection: ModelSelection }
   | { type: "interrupt"; botId: string }
   | { type: "connected"; value: boolean }
+  | { type: "authUser"; user: AuthUser | null }
   | { type: "error"; message: string | null }
   | { type: "toggleSettings"; open?: boolean }
   | { type: "togglePlugins"; open?: boolean; query?: string }
@@ -745,6 +754,8 @@ export function reducer(state: AppState, action: Action): AppState {
       return updateBot(state, action.botId, (b) => ({ ...b, modelSelection: action.selection }));
     case "connected":
       return { ...state, connected: action.value };
+    case "authUser":
+      return { ...state, authUser: action.user };
     case "error":
       return {
         ...(action.message && state.selectedId
@@ -933,6 +944,7 @@ export const initialState: AppState = {
   teams: [],
   instances: [],
   config: null,
+  authUser: null,
   selectedId: "",
   activeView: "chat",
   routines: [],
@@ -1320,6 +1332,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           .catch(() => {}),
         api("/api/config")
           .then((config) => alive && rawDispatch({ type: "configStatus", config }))
+          .catch(() => {}),
+        // Hosted gateways answer with the signed-in account. A local
+        // single-user harness has no auth route, so this stays null.
+        api("/api/auth/me")
+          .then(({ user }) => alive && rawDispatch({ type: "authUser", user }))
           .catch(() => {}),
         api("/api/routines")
           .then(({ routines, runs }) => alive && rawDispatch({ type: "routinesHydrated", routines, runs }))

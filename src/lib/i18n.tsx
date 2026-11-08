@@ -481,6 +481,20 @@ const BULGARIAN: Record<string, string> = {
   "This turns on Companion and opens a short, single-use pairing window in one step.":
     "Това включва Компаньон и отваря кратък прозорец за еднократно свързване с една стъпка.",
   "Phone pairing QR code": "QR код за свързване на телефон",
+  "Signed in as {email} on this KodBot server.":
+    "Влязъл си като {email} на този KodBot сървър.",
+  "This hosted workspace is isolated to your account. A paired phone sees only your bots and rooms.":
+    "Това hosted работно пространство е изолирано за твоя акаунт. Свързаният телефон вижда само твоите ботове и стаи.",
+  "Scan the QR with the KodBot Android app, or enter the server address and code manually.":
+    "Сканирай QR с KodBot Android app или въведи адреса на сървъра и кода ръчно.",
+  "Removing a device signs it out immediately.":
+    "Премахването на устройство го отписва веднага.",
+  "Remove this device?": "Да се премахне ли това устройство?",
+  "Remove this device": "Премахни това устройство",
+  "Owner": "Собственик",
+  "Member": "Член",
+  "Signed in as {email} ({role}).": "Влязъл си като {email} ({role}).",
+  "Sign out": "Изход",
   "Manual code": "Ръчен код",
   "Expires in {seconds}s": "Изтича след {seconds} сек.",
   "Or open the mobile app and choose “{name}” under On this network.":

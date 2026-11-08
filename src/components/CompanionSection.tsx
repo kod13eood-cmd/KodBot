@@ -18,6 +18,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { companionPairingLink } from "../lib/companion-pairing";
 import { Card } from "./SettingsPrimitives";
 import { useI18n } from "@/lib/i18n";
+import { api, useStore } from "@/state/store";
 
 interface Device {
   id: string;
@@ -25,6 +26,7 @@ interface Device {
   createdAt: number;
   lastSeenAt: number;
   cloudDesktopAccess: boolean;
+  revokedAt?: number | null;
 }
 
 interface CompanionState {
@@ -77,8 +79,163 @@ const relative = (at: number, t: (source: string, vars?: Record<string, string |
   return t("{count} d ago", { count: Math.round(hours / 24) });
 };
 
+interface HostedPairing {
+  code: string;
+  qr: string;
+  expiresAt: number;
+  hosts?: string[];
+}
+
+/** Hosted accounts pair through the gateway, not through the local sidecar.
+ * The Android app walks the same QR/pairing-code flow, but the device belongs
+ * to the signed-in account instead of this computer. */
+function HostedCompanion() {
+  const { t } = useI18n();
+  const { state } = useStore();
+  const [pairing, setPairing] = useState<HostedPairing | null>(null);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  const loadDevices = useCallback(async () => {
+    const result = await api("/api/devices");
+    setDevices(
+      (result.devices ?? [])
+        .filter((device: Device) => !device.revokedAt)
+        .map((device: Device) => ({ ...device, cloudDesktopAccess: false })),
+    );
+  }, []);
+
+  useEffect(() => {
+    void loadDevices().catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  }, [loadDevices]);
+
+  useEffect(() => {
+    if (!pairing) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, [pairing]);
+
+  const startPairing = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await api("/api/device/pairing", { method: "POST" });
+      setPairing(result);
+      setNow(Date.now());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const revoke = async (device: Device) => {
+    if (!window.confirm(t("Remove this device?"))) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/api/devices/${encodeURIComponent(device.id)}`, { method: "DELETE" });
+      await loadDevices();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const secondsLeft = pairing ? Math.max(0, Math.round((pairing.expiresAt - now) / 1000)) : 0;
+  const address = pairing?.hosts?.[0] || window.location.origin;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Card
+        title={t("Companion")}
+        subtitle={t("Signed in as {email} on this KodBot server.", { email: state.authUser?.email ?? "" })}
+      >
+        <div className="text-[13px] leading-relaxed text-ink-secondary">
+          {t("This hosted workspace is isolated to your account. A paired phone sees only your bots and rooms.")}
+        </div>
+        {error && <div className="mt-3 text-[13px] text-danger">{error}</div>}
+      </Card>
+
+      <Card
+        title={t("Connect a phone")}
+        subtitle={
+          pairing
+            ? t("Scan the QR with the KodBot Android app, or enter the server address and code manually.")
+            : t("Open a short, single-use pairing window for a trusted phone.")
+        }
+      >
+        {pairing ? (
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="w-fit shrink-0 rounded-xl bg-white p-3" aria-label={t("Phone pairing QR code")}>
+              <QRCodeSVG value={pairing.qr} size={240} level="M" bgColor="#ffffff" fgColor="#111111" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[12px] font-medium uppercase tracking-wide text-ink-secondary">{t("Manual code")}</div>
+              <div className="mt-1 font-mono text-[28px] tracking-[0.3em] text-ink">{pairing.code}</div>
+              <div className="mt-1 break-all text-[13px] text-ink-secondary">
+                {t("Expires in {seconds}s", { seconds: secondsLeft })}
+              </div>
+              <div className="mt-1 break-all text-[12.5px] text-ink-secondary">{address}</div>
+              <button
+                disabled={busy}
+                onClick={() => setPairing(null)}
+                className="mt-3 rounded-lg border border-hairline/40 px-3 py-1.5 text-[13px] text-ink hover:bg-raised disabled:opacity-40"
+              >
+                {t("Cancel")}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            disabled={busy}
+            onClick={() => void startPairing()}
+            className="rounded-lg bg-accent px-3 py-2 text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-40"
+          >
+            {busy ? t("Preparing…") : devices.length ? t("Pair another phone") : t("Set up a phone")}
+          </button>
+        )}
+      </Card>
+
+      <Card
+        title={t("Paired devices")}
+        subtitle={devices.length ? t("Removing a device signs it out immediately.") : t("No phones are paired yet.")}
+      >
+        {devices.length > 0 && (
+          <ul className="flex flex-col gap-2">
+            {devices.map((device) => (
+              <li key={device.id} className="flex items-center gap-3 rounded-lg bg-inset px-3 py-2">
+                <Smartphone size={15} className="shrink-0 text-ink-secondary" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[14px] text-ink">{device.name}</div>
+                  <div className="text-[12px] text-ink-secondary">
+                    {t("Last seen {time}", { time: relative(device.lastSeenAt, t) })}
+                  </div>
+                </div>
+                <button
+                  disabled={busy}
+                  onClick={() => void revoke(device)}
+                  className="rounded-md p-1.5 text-ink-secondary hover:bg-raised hover:text-danger disabled:opacity-40"
+                  aria-label={t("Remove this device")}
+                  title={t("Remove this device")}
+                >
+                  <Trash2 size={15} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+    </div>
+  );
+}
+
 export function CompanionSection() {
   const { t } = useI18n();
+  const { state: appState } = useStore();
   const [state, setState] = useState<CompanionState | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -133,6 +290,8 @@ export function CompanionSection() {
     );
     return () => window.clearInterval(timer);
   }, [pairing, load]);
+
+  if (appState.authUser) return <HostedCompanion />;
 
   if (!bridge()) {
     return (

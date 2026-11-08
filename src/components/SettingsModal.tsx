@@ -283,6 +283,32 @@ function DeveloperCard() {
   );
 }
 
+function AccountCard() {
+  const { state } = useStore();
+  const { t } = useI18n();
+  if (!state.authUser) return null;
+  const signOut = async () => {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    window.location.assign("/login");
+  };
+  return (
+    <Card
+      title={t("Account")}
+      subtitle={t("Signed in as {email} ({role}).", {
+        email: state.authUser.email,
+        role: state.authUser.role === "owner" ? t("Owner") : t("Member"),
+      })}
+    >
+      <button
+        onClick={() => void signOut()}
+        className="rounded-lg border border-hairline/40 px-3 py-1.5 text-[13px] text-ink hover:bg-raised"
+      >
+        {t("Sign out")}
+      </button>
+    </Card>
+  );
+}
+
 function HelpCard() {
   const { dispatch } = useStore();
   const { t } = useI18n();
@@ -447,6 +473,7 @@ export function SettingsModal() {
           <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 pb-5">
             {section === "general" && (
               <>
+                <AccountCard />
                 <Card title={t("Profile")} subtitle={t("Shown in the sidebar. Saved as you go.")}>
                   <ProfileFields />
                 </Card>
