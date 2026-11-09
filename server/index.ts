@@ -143,21 +143,45 @@ function connectorLabelKey(slug: string, accountId: string): string {
   return `${slug.toLowerCase()}:${accountId}`;
 }
 
+/** The name typed before OAuth is held here until the new account appears in
+ * a status response. The account id does not exist yet when the auth link is
+ * minted, so the panel sends the ids it already knows and the first new id
+ * inherits the name. */
+const pendingConnectorLabels = new Map<
+  string,
+  { alias: string; existing: Set<string>; at: number }
+>();
+const PENDING_LABEL_TTL_MS = 10 * 60_000;
+
 function withConnectorLabels(status: Record<string, any>): Record<string, any> {
   const labels = readConnectorLabels();
+  let changed = false;
   for (const [slug, state] of Object.entries(status)) {
     const accounts = Array.isArray(state?.accounts) ? state.accounts : [];
     if (!accounts.length) continue;
+    const pending = pendingConnectorLabels.get(slug.toLowerCase());
+    const usablePending = pending && Date.now() - pending.at < PENDING_LABEL_TTL_MS ? pending : null;
+    if (pending && !usablePending) pendingConnectorLabels.delete(slug.toLowerCase());
+    let adopted = false;
     state.accounts = accounts.map((account: Record<string, unknown>) => {
-      const local = typeof account.id === "string" ? labels[connectorLabelKey(slug, account.id)] : undefined;
+      const id = typeof account.id === "string" ? account.id : undefined;
+      const local = id ? labels[connectorLabelKey(slug, id)] : undefined;
       // The name entered before OAuth is stored upstream as the account
       // alias. Fall back to it until the user saves a local label, so a fresh
       // connection never reads as "Account 1" after the browser returns.
       const alias = typeof account.alias === "string" && account.alias.trim() ? account.alias.trim() : undefined;
-      const label = local ?? alias;
+      let label = local ?? alias;
+      if (!local && usablePending && id && !usablePending.existing.has(id)) {
+        label = usablePending.alias;
+        labels[connectorLabelKey(slug, id)] = label;
+        adopted = true;
+        changed = true;
+      }
       return { ...account, ...(label ? { label } : {}) };
     });
+    if (adopted) pendingConnectorLabels.delete(slug.toLowerCase());
   }
+  if (changed) saveConnectorLabels(labels);
   return status;
 }
 const MIME: Record<string, string> = {
@@ -4226,16 +4250,27 @@ const server = createServer(async (req, res) => {
     m = path.match(/^\/api\/connectors\/([\w-]+)\/authorize$/);
     if (m && method === "POST") {
       const body = await readBody(req);
-      return json(
-        res,
-        200,
-        await composio.authorizeService(
-          cfg,
-          m[1],
-          typeof body.alias === "string" ? body.alias : undefined,
-          { guardExisting: body.add !== true },
-        ),
-      );
+      const alias = typeof body.alias === "string" ? body.alias.trim().slice(0, 80) : "";
+      const existing = Array.isArray(body.existingAccountIds)
+        ? body.existingAccountIds.filter((id: unknown): id is string => typeof id === "string")
+        : [];
+      if (alias) {
+        pendingConnectorLabels.set(m[1].toLowerCase(), {
+          alias,
+          existing: new Set(existing),
+          at: Date.now(),
+        });
+      }
+      try {
+        const result = await composio.authorizeService(cfg, m[1], alias || undefined, {
+          guardExisting: body.add !== true,
+        });
+        if (!result?.url) pendingConnectorLabels.delete(m[1].toLowerCase());
+        return json(res, 200, result);
+      } catch (error) {
+        pendingConnectorLabels.delete(m[1].toLowerCase());
+        throw error;
+      }
     }
     m = path.match(/^\/api\/connectors\/([\w-]+)$/);
     if (m && method === "DELETE") return json(res, 200, await composio.removeService(cfg, m[1]));
@@ -4255,9 +4290,28 @@ const server = createServer(async (req, res) => {
           connector: { ...connector, status: "authorizing", error: undefined, dismissed: false },
         });
         try {
-          const alias = typeof body.alias === "string" ? body.alias.trim() : undefined;
-          return json(res, 200, await composio.authorizeService(cfg, connector.slug, alias));
+          const alias = typeof body.alias === "string" ? body.alias.trim().slice(0, 80) : "";
+          if (alias) {
+            const existing: string[] = [];
+            try {
+              const current = await composio.connectionStatus(cfg, [connector.slug]);
+              for (const account of current[connector.slug]?.accounts ?? []) {
+                if (account.id) existing.push(account.id);
+              }
+            } catch {
+              /* status is only needed to avoid renaming an older account */
+            }
+            pendingConnectorLabels.set(connector.slug.toLowerCase(), {
+              alias,
+              existing: new Set(existing),
+              at: Date.now(),
+            });
+          }
+          const result = await composio.authorizeService(cfg, connector.slug, alias || undefined);
+          if (!result?.url) pendingConnectorLabels.delete(connector.slug.toLowerCase());
+          return json(res, 200, result);
         } catch (error) {
+          pendingConnectorLabels.delete(connector.slug.toLowerCase());
           const detail = error instanceof Error ? error.message : String(error);
           store.patchMessage(threadId, message.id, {
             connector: { ...connector, status: "failed", error: detail.slice(0, 180) },

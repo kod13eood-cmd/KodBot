@@ -735,7 +735,11 @@ export function PluginsPanel() {
     try {
       const result = await api(`/api/connectors/${slug}/authorize`, {
         method: "POST",
-        body: JSON.stringify({ add: addAccount, ...(alias ? { alias } : {}) }),
+        body: JSON.stringify({
+          add: addAccount,
+          ...(alias ? { alias } : {}),
+          existingAccountIds: (status[slug]?.accounts ?? []).map((account) => account.id),
+        }),
       });
       // The server refuses to mint a second link for an app that is already
       // connected. A stale card must refresh into Details, not create a
