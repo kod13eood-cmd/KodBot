@@ -1961,6 +1961,17 @@ private fun ApprovalItem(card: ApprovalCard, onRespond: (ApprovalCard, String) -
             card.explanation?.takeIf(String::isNotBlank)?.let { explanation ->
                 Text("What this means: $explanation", color = MaterialTheme.colorScheme.primary)
             }
+            card.risk?.takeIf(String::isNotBlank)?.let { risk ->
+                val tone = when (card.riskLevel) {
+                    "high" -> Color(0xFFFFB4AB)
+                    "low" -> Color(0xFF9BE7B0)
+                    else -> Color(0xFFFFCC80)
+                }
+                Text("Why it needs approval: $risk", color = tone)
+            }
+            card.purpose?.takeIf(String::isNotBlank)?.let { task ->
+                Text("Task: $task", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
             if (card.subtitle.isNotBlank()) Text(card.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (card.pending && card.overdueAt != null) {
                 Text(

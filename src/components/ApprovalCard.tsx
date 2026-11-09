@@ -4,7 +4,7 @@
 // approval is a decision about one concrete action, so it shows the tool
 // and the actual command/path in monospace, and the choices carry their
 // own behavior instead of being matched by their label text.
-import { Check, Info, ShieldCheck, X } from "lucide-react";
+import { Check, Info, ShieldAlert, ShieldCheck, X } from "lucide-react";
 import { type Bot, type Message } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
@@ -20,6 +20,9 @@ function toolLabel(tool?: string): string {
   const bare = tool.replace(/^mcp__[^_]+__/, "").replace(/_/g, " ");
   const nice: ToolLabels = {
     Bash: "run a command",
+    other: "run a command",
+    unknown: "use a tool",
+    tool: "use a tool",
     Read: "read a file",
     Write: "write a file",
     Edit: "edit a file",
@@ -67,8 +70,36 @@ export function ApprovalCard({
         </div>
       )}
 
+      {card.risk && (
+        <div
+          className={cn(
+            "mt-2 flex items-start gap-2 rounded-lg border px-3 py-2 text-[12.5px] leading-relaxed",
+            card.riskLevel === "high"
+              ? "border-danger/35 bg-danger/10 text-danger"
+              : card.riskLevel === "low"
+                ? "border-success/30 bg-success/10 text-success"
+                : "border-warning/30 bg-warning/10 text-warning",
+          )}
+        >
+          <ShieldAlert size={14} className="mt-0.5 shrink-0" />
+          <span>
+            <span className="font-medium">{t("Why it needs approval")}: </span>
+            {card.risk}
+          </span>
+        </div>
+      )}
+
+      {card.purpose && (
+        <div className="mt-1.5 text-[11.5px] text-ink-secondary">
+          {t("Task")}: {card.purpose}
+        </div>
+      )}
+
       {/* what, exactly */}
-      <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-inset px-3 py-2 font-mono text-[12.5px] leading-relaxed text-ink">
+      <div className="mt-2 text-[10.5px] uppercase tracking-wider text-ink-secondary">
+        {t("Requested action")}
+      </div>
+      <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-inset px-3 py-2 font-mono text-[12.5px] leading-relaxed text-ink">
         {card.subtitle}
       </pre>
 

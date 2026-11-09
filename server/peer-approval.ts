@@ -96,6 +96,8 @@ function pushApprovalCard(
   sourceThreadId: string,
 ): Message {
   const subtitle = message.length > 200 ? `${message.slice(0, 200)}…` : message;
+  const taskTitle = bus.store.taskByThread(from.id, sourceThreadId)?.title.trim();
+  const purpose = taskTitle && taskTitle !== "New task" ? taskTitle : undefined;
   const note = bus.store.appendMessage(sourceThreadId, {
     role: "bot",
     kind: "options",
@@ -109,6 +111,12 @@ function pushApprovalCard(
         action === "ask_bot"
           ? `Send one message from @${from.name} to @${target.name}. @${target.name} can read it and reply.`
           : `Hand a task from @${from.name} to @${target.name}. @${target.name} will work on it in the background.`,
+      risk:
+        action === "ask_bot"
+          ? "This contacts another bot with your workspace context. Review the message before allowing it."
+          : "This lets another bot take on work and spend tokens on your behalf. Review the task before allowing it.",
+      riskLevel: action === "ask_bot" ? "medium" : "high",
+      ...(purpose ? { purpose } : {}),
       allowKey: peerAllowKey(action, target.id),
     },
   });

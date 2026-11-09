@@ -10,7 +10,7 @@ import { extname, join } from "node:path";
 import { z } from "zod";
 
 import { approvalKey, autoDecision } from "./auto-approve.ts";
-import { explainRequest } from "./approval-explain.ts";
+import { explainRequestDetails } from "./approval-explain.ts";
 import { writeFileAtomic } from "./atomic.ts";
 import { validateBotCwd } from "./bot-cwd.ts";
 import { connectedAppsSystemPrompt } from "./connected-apps-prompt.ts";
@@ -846,12 +846,18 @@ bus.subscribe((event: RuntimeEvent) => {
       break;
     case "request.opened": {
       const permission = event.requestType === "permission";
-      const explanation = explainRequest(event.tool, event.summary, permission ? "permission" : "question");
       // Auto mode / always-allow: answer routine tool permissions for the
       // bot so it keeps working. A QUESTION always reaches the human — the
       // whole point of asking is that a person decides — and anything that
       // looks destructive stops even in auto mode.
       const asker = bot ?? (speaker ? store.bot(speaker.botId) : undefined);
+      const details = explainRequestDetails(
+        event.tool,
+        event.summary,
+        permission ? "permission" : "question",
+      );
+      const taskTitle = asker ? store.taskByThread(asker.id, event.threadId)?.title.trim() : "";
+      const purpose = taskTitle && taskTitle !== "New task" ? taskTitle : undefined;
       const settled = permission && asker && event.requestId
         ? autoDecision(asker, event.tool, event.summary, {
             unattended: isUnattended(asker.id),
@@ -890,7 +896,10 @@ bus.subscribe((event: RuntimeEvent) => {
                 requestId,
                 tool,
                 allowKey: approvalKey(tool, summary),
-                explanation,
+                explanation: details.summary,
+                risk: details.risk,
+                riskLevel: details.level,
+                ...(purpose ? { purpose } : {}),
                 held: "Auto mode couldn't answer this one.",
               },
             });
@@ -908,7 +917,10 @@ bus.subscribe((event: RuntimeEvent) => {
           options: event.choices?.length ? event.choices : permission ? ["Allow", "Deny"] : [],
           requestId: event.requestId,
           tool: permission ? event.tool : undefined,
-          explanation,
+          explanation: details.summary,
+          risk: details.risk,
+          riskLevel: details.level,
+          ...(purpose ? { purpose } : {}),
           // the exact grant "always allow" would remember, decided here so
           // client and server can never derive it differently
           allowKey: permission ? approvalKey(event.tool, event.summary) : undefined,
@@ -923,7 +935,7 @@ bus.subscribe((event: RuntimeEvent) => {
       if (asker) {
         // the bot is not working now — it is waiting on a person
         if (asker.busy) store.setActivity(asker.id, "waiting-on-you");
-        notify(buildNotification(permission ? "approval" : "question", asker, event.threadId, explanation));
+        notify(buildNotification(permission ? "approval" : "question", asker, event.threadId, `${details.summary} ${details.risk}`));
       }
       break;
     }

@@ -79,6 +79,8 @@ const BULGARIAN: Record<string, string> = {
   "Automations": "Автоматизации",
   "Approval timeout": "Таймер за одобрение",
   "What this means": "Какво означава това",
+  "Why it needs approval": "Защо е нужно разрешение",
+  "Requested action": "Заявено действие",
   "The timer expired, but the bot is still waiting. You can answer now and it will continue.":
     "Таймерът изтече, но ботът все още чака. Можеш да отговориш сега и той ще продължи.",
   "How long a bot waits for your answer before the request is marked overdue. The card stays answerable, so a late Allow still runs the action.":

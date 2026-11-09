@@ -46,6 +46,11 @@ export interface OptionCardData {
   tool?: string;
   /** one plain-language sentence explaining what the tool will do */
   explanation?: string;
+  /** why this action needs approval and what could go wrong */
+  risk?: string;
+  riskLevel?: "low" | "medium" | "high";
+  /** the task title, so the card has context beyond the raw command */
+  purpose?: string;
   /** when the soft timer expired; the card stays answerable */
   overdueAt?: number;
   /** why this stopped despite auto mode (destructive-looking command) */

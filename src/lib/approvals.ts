@@ -12,6 +12,13 @@ export interface Pending {
   allowKey?: string;
   detail: string;
   held?: string;
+  /** what the command/tool will do, in plain language */
+  explanation?: string;
+  /** why this action needs approval and what may go wrong */
+  risk?: string;
+  riskLevel?: "low" | "medium" | "high";
+  /** task context for a request raised inside a longer job */
+  purpose?: string;
 }
 
 /** Every open request card, permission or question, oldest first. */
@@ -25,6 +32,10 @@ export function pendingRequests(messages: Message[]): Pending[] {
       allowKey: m.card!.allowKey,
       detail: m.card!.subtitle,
       held: m.card!.held,
+      explanation: m.card!.explanation,
+      risk: m.card!.risk,
+      riskLevel: m.card!.riskLevel,
+      purpose: m.card!.purpose,
     }));
 }
 
