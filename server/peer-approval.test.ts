@@ -3,7 +3,7 @@
 // and the composer stays disabled behind it — so a gate that works
 // perfectly can still make a thread unusable. These tests pin the settle.
 import { rmSync } from "node:fs";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DATA_DIR } from "./config.ts";
 import type { ModelSelection } from "./contracts.ts";
@@ -14,6 +14,7 @@ import {
   requestPeerApproval,
   resolvePeerComms,
   type ApprovalBus,
+  type PeerOverdueInfo,
 } from "./peer-approval.ts";
 import { closeMessageDb } from "./message-db.ts";
 import { Store, type BotRecord } from "./store.ts";
@@ -66,6 +67,55 @@ describe("peer approval card lifecycle", () => {
     resolvePeerComms(bus, card.card!.requestId!, "deny");
     expect(await verdict).toBe("deny");
     expect(store.messagesFor(from.threadId).find((m) => m.id === card.id)?.card?.answered).toBe("deny");
+  });
+
+  it("marks the card overdue instead of denying it, and accepts a late allow", async () => {
+    vi.useFakeTimers();
+    try {
+      const reminders: PeerOverdueInfo[] = [];
+      const waiting: Array<[string, boolean]> = [];
+      bus = {
+        store,
+        broadcast: () => {},
+        approvalTimeoutMs: () => 60_000,
+        onOverdue: (info) => reminders.push(info),
+        setWaitingOnHuman: (threadId, value) => waiting.push([threadId, value]),
+      };
+
+      const verdict = requestPeerApproval(bus, from, target, "ping", "ask_bot");
+      const card = pendingCard(store, from)!;
+      expect(card.card?.explanation).toContain("message");
+
+      vi.advanceTimersByTime(59_999);
+      expect(store.messagesFor(from.threadId).find((m) => m.id === card.id)?.card?.overdueAt).toBeUndefined();
+
+      vi.advanceTimersByTime(1);
+      const overdue = store.messagesFor(from.threadId).find((m) => m.id === card.id);
+      expect(overdue?.card?.answered).toBeUndefined();
+      expect(overdue?.card?.overdueAt).toBeGreaterThan(0);
+      expect(reminders).toHaveLength(1);
+      expect(reminders[0]).toMatchObject({
+        requestId: card.card!.requestId,
+        action: "ask_bot",
+        minutes: 1,
+      });
+      // The overdue card is still waiting on a person, and a late answer
+      // releases the turn back to the watchdog.
+      expect(waiting).toEqual([[from.threadId, true]]);
+
+      // Nothing was denied or answered: the late Allow still goes through.
+      expect(resolvePeerComms(bus, card.card!.requestId!, "allow")).toBe(true);
+      await expect(verdict).resolves.toBe("allow");
+      const settled = store.messagesFor(from.threadId).find((m) => m.id === card.id);
+      expect(settled?.card?.answered).toBe("allow");
+      expect(settled?.card?.overdueAt).toBeGreaterThan(0);
+      expect(waiting).toEqual([
+        [from.threadId, true],
+        [from.threadId, false],
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("answers an unknown requestId as not-ours, so provider cards still route", () => {

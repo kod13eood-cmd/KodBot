@@ -1834,7 +1834,23 @@ const delegationObserver: DelegationObserver = {
 // approval bus: peer-approval.ts only needs to push cards and broadcast
 // them — its pending map lives in the module so the two respond endpoints
 // can call resolvePeerComms without holding a reference back to here.
-const approvalBus: ApprovalBus = { store, broadcast };
+const approvalBus: ApprovalBus = {
+  store,
+  broadcast,
+  approvalTimeoutMs: () => approvalTimeoutMs(),
+  setWaitingOnHuman: (threadId, waiting) => watchdog.setWaitingOnHuman(threadId, waiting),
+  onOverdue: ({ from, target, action, threadId }) => {
+    const verb = action === "ask_bot" ? "contact" : "delegate to";
+    notify(
+      buildNotification(
+        "approval",
+        from,
+        threadId,
+        `Still waiting for your answer — @${from.name} wants to ${verb} @${target.name}`,
+      ),
+    );
+  },
+};
 
 // Approvals live only in memory, so any peer card still open on disk is one
 // whose resolver died with the previous process. Left alone it can never be
@@ -2591,9 +2607,10 @@ const server = createServer(async (req, res) => {
         //
         // per-bot approval gate: a chief-of-staff bot without this on is
         // free to coordinate; one with it on must wait for a human card
-        // (15-min timeout → deny) before its peer turn starts. The channel
-        // and the chips are created only AFTER the verdict, so a denied
-        // contact leaves no trace of an exchange that never happened.
+        // before its peer turn starts. The timer only marks the card
+        // overdue — a late Allow still starts the exchange. The channel and
+        // the chips are created only AFTER the verdict, so a denied contact
+        // leaves no trace of an exchange that never happened.
         if (from.approvePeerComms) {
           const verdict = await requestPeerApproval(
             approvalBus,

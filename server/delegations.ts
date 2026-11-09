@@ -287,7 +287,7 @@ async function processOne(
       });
       return;
     }
-    // The approval could have been sitting for up to 15 minutes. Everything
+    // The approval could have been sitting for a long time. Everything
     // checked above is a stale snapshot now: re-read both bots and re-check
     // busy, or an allow can start a second turn on a bot that is mid-turn —
     // and mirror a "Messaged @X" chip for an exchange that never happens.
