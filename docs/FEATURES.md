@@ -26,8 +26,10 @@ Status keys:
   short simple requests go to the fastest/free one. Each bot can use an
   explicit **Auto model pool** — a hand-picked list that may span engines. An
   empty pool keeps routing inside the current engine.
-- **A real computer per bot.** A cloud Linux desktop, the local machine, or a
-  shared room computer. Watch the live screen or take over.
+- **A real computer per bot.** A cloud Linux desktop, a shared **Local VM**
+  (Cua in Docker/Podman, with one durable workspace), or the local machine.
+  Auto picks a cloud box, then the local computer, then the prepared Local VM.
+  Watch the live screen or take over.
 - **Approvals before risky actions.** Shell commands, file edits, and questions
   surface as inline cards: Allow, Deny, or answer in chat. Every permission
   card explains in plain language what the action will do, and an unanswered

@@ -14,6 +14,7 @@ import { explainRequest } from "./approval-explain.ts";
 import { writeFileAtomic } from "./atomic.ts";
 import { validateBotCwd } from "./bot-cwd.ts";
 import { connectedAppsSystemPrompt } from "./connected-apps-prompt.ts";
+import { resolveComputerDestination } from "./computer-selection.ts";
 import { ensureGuideCopy, guideSystemPrompt } from "./guide.ts";
 import { groupTurnCwd } from "./room-cwd.ts";
 import * as box from "./box.ts";
@@ -1572,7 +1573,7 @@ async function startTurn(
       if (instance.adapter.capabilities.jevMcp === true && jevConfigured(cfg)) {
         integrations.jev = jevIntegration();
       }
-      const wants = opts?.runOn === "cloud" ? "cloud" : bot.computer; // cloud routine overrides the CREW default
+      const wants = resolveComputerDestination(opts?.runOn, bot.computer); // cloud routine overrides the CREW default
       const mountsComputerMcp = instance.adapter.capabilities.computerMcp === true;
       const mountsCloudComputer = mountsComputerMcp || instance.driverKind === "boxAgent";
       let previewBoxId: string | null = null;
@@ -3566,9 +3567,10 @@ const server = createServer(async (req, res) => {
       }
       if (
         body.computer !== undefined &&
+        body.computer !== null &&
         !["cloud", "vm", "local", "off"].includes(String(body.computer))
       ) {
-        return json(res, 400, { error: "computer must be cloud, vm, local, or off" });
+        return json(res, 400, { error: "computer must be cloud, vm, local, off, or null for Auto" });
       }
       if (body.chiefOfStaff !== undefined && typeof body.chiefOfStaff !== "boolean") {
         return json(res, 400, { error: "chiefOfStaff must be true or false" });

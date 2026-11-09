@@ -321,6 +321,16 @@ describe("harness HTTP API", () => {
     expect(gated.body.bot.composio).toBe(false);
     expect((await api("PATCH", `/api/bots/${bot.id}`, { composio: true })).body.bot.composio).toBe(true);
 
+    // Auto is stored as null by the fleet serializer; a user must be able to
+    // go back to it after choosing an explicit destination.
+    const vm = await api("PATCH", `/api/bots/${bot.id}`, { computer: "vm" });
+    expect(vm.status).toBe(200);
+    expect(vm.body.bot.computer).toBe("vm");
+    const auto = await api("PATCH", `/api/bots/${bot.id}`, { computer: null });
+    expect(auto.status).toBe(200);
+    expect(auto.body.bot.computer ?? null).toBeNull();
+    expect((await api("PATCH", `/api/bots/${bot.id}`, { computer: "bogus" })).status).toBe(400);
+
     const deleted = await api("DELETE", `/api/bots/${bot.id}`);
     expect(deleted.status).toBe(200);
     const after = await api("GET", "/api/bots");

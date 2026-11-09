@@ -16,6 +16,7 @@ EN / BG.
 - Bots, models and chats
 - Emoji reactions
 - Tasks and branches
+- The bot's computer
 - Approvals and safety
 - Rooms and teams
 - Automations
@@ -33,6 +34,7 @@ EN / BG.
 - Ботове, модели и чатове
 - Емотикони
 - Задачи и разклонения
+- Компютърът на бота
 - Одобрения и безопасност
 - Стаи и екипи
 - Автоматизации
@@ -92,6 +94,16 @@ The rest of this guide is organized by topic.
 - Routines and webhooks run in **detached tasks**, so unattended work does not mix with your main chat.
 - Branches (‹ 2/3 ›) are versions inside one task. Switching a branch does not switch tasks.
 - A running turn stays on its task; switching tasks does not stop it.
+
+---
+
+## The bot's computer
+
+- A bot can use a real desktop through its computer tools: a cloud box, the shared **Local VM** on the machine running KodBot, or the local computer (desktop app only; the Linux harness does not expose its own desktop).
+- **Auto** picks a configured cloud box first, then this computer when available, then the prepared Local VM. Choose an explicit destination in Bot settings → Computer when a bot must not fall back.
+- The Local VM is a Cua Linux desktop in Docker or Podman. Only `/home/cua/workspace` is durable; save downloads, repositories, and browser profiles there. Set it up once in App Settings → Local VM.
+- The prepared image and workspace survive container recreation. Only one bot uses the shared Local VM at a time.
+- Use **Watch screen** in App Settings → Local VM, or ask the bot for a screenshot, to see what it is doing.
 
 ---
 
@@ -260,6 +272,16 @@ KodBot е local-first chat приложение за екип от AI агент
 - Автоматизациите и webhook-овете работят в **отделни задачи**, така че фоновата работа не се смесва с основния чат.
 - Разклоненията (‹ 2/3 ›) са версии в една задача. Смяната на branch не сменя задачата.
 - Текущият ход остава в своята задача; смяната на задача не го спира.
+
+---
+
+## Компютърът на бота
+
+- Ботът може да използва реален десктоп чрез computer инструментите: cloud box, споделената **Local VM** на машината с KodBot, или локалния компютър (само desktop app; Linux harness-ът не дава собствения си десктоп).
+- **Auto** избира първо конфигуриран cloud box, после този компютър, ако е наличен, и накрая подготвената Local VM. Избери конкретна дестинация в Bot settings → Computer, ако ботът не трябва да пада към друга.
+- Local VM е Cua Linux десктоп в Docker или Podman. Само `/home/cua/workspace` е трайна; пази изтеглянията, repository-тата и browser профилите там. Настройва се веднъж от App Settings → Local VM.
+- Подготвеният image и workspace-ът оцеляват при пресъздаване на контейнера. Само един бот използва споделената Local VM в даден момент.
+- Използвай **Watch screen** в App Settings → Local VM или поискай screenshot от бота, за да видиш какво прави.
 
 ---
 
