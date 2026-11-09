@@ -1,7 +1,7 @@
 {
-  "versionCode": 16,
-  "versionName": "0.1.15",
-  "apkUrl": "https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.15.apk",
-  "notes": "Adds an adaptive tablet and wide-window layout: the fleet stays on the left while the chat or settings open on the right. Phones and short landscape windows keep the single-pane layout.",
-  "publishedAt": "2026-11-09T00:30:00Z"
+  "versionCode": 17,
+  "versionName": "0.1.16",
+  "apkUrl": "https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.16.apk",
+  "notes": "Fixes the landscape keyboard losing focus, and adds Desktop mode (web view) with native notifications on tablets. The native tablet layout keeps the fleet on the left and chat or settings on the right.",
+  "publishedAt": "2026-11-09T01:15:00Z"
 }

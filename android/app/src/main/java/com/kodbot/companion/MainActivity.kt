@@ -81,6 +81,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -112,6 +113,8 @@ class MainActivity : ComponentActivity() {
     private var activeChatKey by mutableStateOf<String?>(null)
     private var pendingThreadId: String? = null
     private var settingsOpen by mutableStateOf(false)
+    private var desktopMode by mutableStateOf(false)
+    private var desktopSuggestionDismissed by mutableStateOf(false)
     private var showHiddenBots by mutableStateOf(false)
     private var showGroups by mutableStateOf(true)
     private var engines by mutableStateOf<List<EngineRecord>>(emptyList())
@@ -145,6 +148,8 @@ class MainActivity : ComponentActivity() {
         displayPreferences = getSharedPreferences("kodbot.mobile.display", MODE_PRIVATE)
         showHiddenBots = displayPreferences.getBoolean("showHiddenBots", false)
         showGroups = displayPreferences.getBoolean("showGroups", true)
+        desktopMode = displayPreferences.getBoolean("desktopMode", false)
+        desktopSuggestionDismissed = displayPreferences.getBoolean("desktopSuggestionDismissed", false)
         connection = try {
             connectionStore.load()
         } catch (_: Exception) {
@@ -172,6 +177,8 @@ class MainActivity : ComponentActivity() {
                     chats = chats,
                     activeChatKey = activeChatKey,
                     settingsOpen = settingsOpen,
+                    desktopMode = desktopMode,
+                    desktopSuggestionDismissed = desktopSuggestionDismissed,
                     showHiddenBots = showHiddenBots,
                     showGroups = showGroups,
                     engines = engines,
@@ -194,6 +201,9 @@ class MainActivity : ComponentActivity() {
                     onBackToFleet = { activeChatKey = null },
                     onOpenSettings = ::openSettings,
                     onCloseSettings = { settingsOpen = false },
+                    onDesktopModeChange = ::changeDesktopMode,
+                    onDismissDesktopSuggestion = ::dismissDesktopSuggestion,
+                    onExitDesktopMode = { changeDesktopMode(false) },
                     onRefresh = ::refreshFleet,
                     onRefreshEngines = ::refreshEngines,
                     onTestServer = ::testServer,
@@ -396,6 +406,21 @@ class MainActivity : ComponentActivity() {
         settingsMessage = null
         settingsError = null
         refreshEngines()
+    }
+
+    private fun changeDesktopMode(enabled: Boolean) {
+        desktopMode = enabled
+        desktopSuggestionDismissed = true
+        if (enabled) settingsOpen = false
+        displayPreferences.edit()
+            .putBoolean("desktopMode", enabled)
+            .putBoolean("desktopSuggestionDismissed", true)
+            .apply()
+    }
+
+    private fun dismissDesktopSuggestion() {
+        desktopSuggestionDismissed = true
+        displayPreferences.edit().putBoolean("desktopSuggestionDismissed", true).apply()
     }
 
     private fun refreshEngines() {
@@ -743,6 +768,8 @@ class MainActivity : ComponentActivity() {
 
     private fun disconnect() {
         CompanionStreamService.stop(this)
+        android.webkit.CookieManager.getInstance().removeAllCookies(null)
+        android.webkit.CookieManager.getInstance().flush()
         connectionStore.clear()
         connection = null
         chats = emptyList()
@@ -791,6 +818,8 @@ private fun KodBotScreen(
     chats: List<ConversationRecord>,
     activeChatKey: String?,
     settingsOpen: Boolean,
+    desktopMode: Boolean,
+    desktopSuggestionDismissed: Boolean,
     showHiddenBots: Boolean,
     showGroups: Boolean,
     engines: List<EngineRecord>,
@@ -813,6 +842,9 @@ private fun KodBotScreen(
     onBackToFleet: () -> Unit,
     onOpenSettings: () -> Unit,
     onCloseSettings: () -> Unit,
+    onDesktopModeChange: (Boolean) -> Unit,
+    onDismissDesktopSuggestion: () -> Unit,
+    onExitDesktopMode: () -> Unit,
     onRefresh: () -> Unit,
     onRefreshEngines: () -> Unit,
     onTestServer: (String) -> Unit,
@@ -859,6 +891,11 @@ private fun KodBotScreen(
                     onScanQr = onScanQr,
                     onLogin = onLogin,
                 )
+            } else if (desktopMode) {
+                WebDesktopScreen(
+                    connection = connection,
+                    onExit = onExitDesktopMode,
+                )
             } else {
                 val activeConnection = connection
                 val fleetContent: @Composable (String?) -> Unit = { selected ->
@@ -895,6 +932,8 @@ private fun KodBotScreen(
                         engines = engines,
                         showHiddenBots = showHiddenBots,
                         showGroups = showGroups,
+                        desktopMode = desktopMode,
+                        onDesktopModeChange = onDesktopModeChange,
                         busy = settingsBusy,
                         message = settingsMessage,
                         error = settingsError,
@@ -954,6 +993,33 @@ private fun KodBotScreen(
                 }
             }
         }
+    }
+
+    val configuration = LocalConfiguration.current
+    if (!desktopMode &&
+        !desktopSuggestionDismissed &&
+        connection != null &&
+        !settingsOpen &&
+        configuration.screenWidthDp >= 600
+    ) {
+        AlertDialog(
+            onDismissRequest = onDismissDesktopSuggestion,
+            title = { Text("Try Desktop mode?") },
+            text = {
+                Text(
+                    "This tablet can show the same web interface as the browser, with the Android notification service still running in the background. You can switch back at any time with the system back gesture.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDismissDesktopSuggestion()
+                    onDesktopModeChange(true)
+                }) { Text("Try it") }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissDesktopSuggestion) { Text("Not now") }
+            },
+        )
     }
 
     if (confirmDisconnect) {

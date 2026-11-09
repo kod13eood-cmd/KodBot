@@ -50,6 +50,8 @@ fun SettingsScreen(
     engines: List<EngineRecord>,
     showHiddenBots: Boolean,
     showGroups: Boolean,
+    desktopMode: Boolean,
+    onDesktopModeChange: (Boolean) -> Unit,
     busy: Boolean,
     message: String?,
     error: String?,
@@ -207,6 +209,18 @@ fun SettingsScreen(
                             "Use this if Check for updates can't reach the update server.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+                        Text("Display", modifier = Modifier.padding(top = 10.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        SettingSwitch(
+                            title = "Desktop mode (web view)",
+                            subtitle = "Use the full web interface while native notifications keep running. System back returns to the native app.",
+                            checked = desktopMode,
+                            onCheckedChange = onDesktopModeChange,
                         )
                     }
                 }
