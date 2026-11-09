@@ -8,7 +8,7 @@
 
 <sub>An open-source version of **Grok Bot** — bring-your-own-agent, local-first, on the models you already have.</sub>
 
-<sub>[Website](https://kod13eood-cmd.github.io/KodBot) · [Discussions](https://github.com/kod13eood-cmd/KodBot/discussions) · [Releases](https://github.com/kod13eood-cmd/kodbot-releases/releases)</sub>
+<sub>[Website](https://kodbot.kod13.com/) · [Discussions](https://github.com/kod13eood-cmd/KodBot/discussions) · [Releases](https://github.com/kod13eood-cmd/kodbot-releases/releases)</sub>
 
 Every bot in the sidebar is a real agent — Claude, Codex, or OpenCode running locally under the hood — with its own
 personality, its own model, its own cloud computer, and its own connected apps.
