@@ -1,7 +1,7 @@
 {
-  "versionCode": 15,
-  "versionName": "0.1.14",
-  "apkUrl": "https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.14.apk",
-  "notes": "Adds email/password sign-in, hosted Companion QR pairing, HTTPS server addresses, session expiry handling, and the latest chat loading and connected-app fixes. If you installed an earlier GitHub APK signed by a CI runner, uninstall it once before installing this build.",
-  "publishedAt": "2026-11-08T20:05:00Z"
+  "versionCode": 16,
+  "versionName": "0.1.15",
+  "apkUrl": "https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.15.apk",
+  "notes": "Adds an adaptive tablet and wide-window layout: the fleet stays on the left while the chat or settings open on the right. Phones and short landscape windows keep the single-pane layout.",
+  "publishedAt": "2026-11-09T00:30:00Z"
 }
