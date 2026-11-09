@@ -27,6 +27,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -593,6 +595,7 @@ class MainActivity : ComponentActivity() {
                 val chat = CompanionApi(saved).createBot()
                 chats = chats + chat
                 activeChatKey = chat.key
+                settingsOpen = false
             } catch (error: Exception) {
                 actionError = error.message ?: "Couldn't create a bot."
             } finally {
@@ -603,6 +606,7 @@ class MainActivity : ComponentActivity() {
 
     private fun selectChat(chat: ConversationRecord) {
         activeChatKey = chat.key
+        settingsOpen = false
         val saved = connection ?: return
         lifecycleScope.launch {
             try {
@@ -828,9 +832,8 @@ private fun KodBotScreen(
     onDisconnect: () -> Unit,
 ) {
     var confirmDisconnect by rememberSaveable { mutableStateOf(false) }
-    BackHandler(enabled = settingsOpen || activeChatKey != null) {
-        if (settingsOpen) onCloseSettings() else onBackToFleet()
-    }
+    val activeChat = chats.firstOrNull { it.key == activeChatKey }
+
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.fillMaxSize().imePadding()) {
             if (error != null) {
@@ -856,44 +859,16 @@ private fun KodBotScreen(
                     onScanQr = onScanQr,
                     onLogin = onLogin,
                 )
-            } else if (settingsOpen) {
-                SettingsScreen(
-                    connection = connection,
-                    chats = chats,
-                    engines = engines,
-                    showHiddenBots = showHiddenBots,
-                    showGroups = showGroups,
-                    busy = settingsBusy,
-                    message = settingsMessage,
-                    error = settingsError,
-                    onBack = onCloseSettings,
-                    onTestServer = onTestServer,
-                    onSaveServerAddress = onSaveServerAddress,
-                    onRefreshEngines = onRefreshEngines,
-                    onShowHiddenBots = onShowHiddenBots,
-                    onShowGroups = onShowGroups,
-                    onSelectModel = onSelectModel,
-                    onSetAutoModel = onSetAutoModel,
-                    onCreateTeam = onCreateTeam,
-                    onJoinTeam = onJoinTeam,
-                    onLeaveTeam = onLeaveTeam,
-                    onTransferTeam = onTransferTeam,
-                    onDisconnect = { confirmDisconnect = true },
-                    updateState = updateState,
-                    appVersion = appVersion,
-                    onCheckForUpdates = onCheckForUpdates,
-                    onInstallUpdate = onInstallUpdate,
-                    onDownloadApk = onDownloadApk,
-                )
             } else {
-                val activeChat = chats.firstOrNull { it.key == activeChatKey }
-                if (activeChat == null) {
+                val activeConnection = connection
+                val fleetContent: @Composable (String?) -> Unit = { selected ->
                     FleetScreen(
-                        connection = connection,
+                        connection = activeConnection,
                         chats = chats,
                         showHiddenBots = showHiddenBots,
                         showGroups = showGroups,
                         loading = loading,
+                        selectedChatKey = selected,
                         onSelectChat = onSelectChat,
                         onRefresh = onRefresh,
                         onSettings = onOpenSettings,
@@ -901,15 +876,81 @@ private fun KodBotScreen(
                         updateState = updateState,
                         onInstallUpdate = onInstallUpdate,
                     )
-                } else {
+                }
+                val chatContent: @Composable (ConversationRecord, Boolean) -> Unit = { chat, compact ->
                     ChatScreen(
-                        chat = activeChat,
+                        chat = chat,
+                        compact = compact,
                         loading = loading,
                         onBack = onBackToFleet,
                         onSend = onSend,
                         onRespond = onRespond,
                         onInterrupt = onInterrupt,
                     )
+                }
+                val settingsContent: @Composable () -> Unit = {
+                    SettingsScreen(
+                        connection = activeConnection,
+                        chats = chats,
+                        engines = engines,
+                        showHiddenBots = showHiddenBots,
+                        showGroups = showGroups,
+                        busy = settingsBusy,
+                        message = settingsMessage,
+                        error = settingsError,
+                        onBack = onCloseSettings,
+                        onTestServer = onTestServer,
+                        onSaveServerAddress = onSaveServerAddress,
+                        onRefreshEngines = onRefreshEngines,
+                        onShowHiddenBots = onShowHiddenBots,
+                        onShowGroups = onShowGroups,
+                        onSelectModel = onSelectModel,
+                        onSetAutoModel = onSetAutoModel,
+                        onCreateTeam = onCreateTeam,
+                        onJoinTeam = onJoinTeam,
+                        onLeaveTeam = onLeaveTeam,
+                        onTransferTeam = onTransferTeam,
+                        onDisconnect = { confirmDisconnect = true },
+                        updateState = updateState,
+                        appVersion = appVersion,
+                        onCheckForUpdates = onCheckForUpdates,
+                        onInstallUpdate = onInstallUpdate,
+                        onDownloadApk = onDownloadApk,
+                    )
+                }
+
+                BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    val twoPane = TabletLayout.isTwoPane(maxWidth.value, maxHeight.value)
+                    BackHandler(enabled = settingsOpen || (!twoPane && activeChatKey != null)) {
+                        if (settingsOpen) onCloseSettings() else onBackToFleet()
+                    }
+                    if (twoPane) {
+                        val fleetWidth = TabletLayout.fleetPaneWidthDp(maxWidth.value).dp
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            Box(modifier = Modifier.width(fleetWidth).fillMaxHeight()) {
+                                fleetContent(activeChatKey)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(1.dp)
+                                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+                            )
+                            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                when {
+                                    settingsOpen -> settingsContent()
+                                    activeChat != null -> chatContent(activeChat, false)
+                                    else -> TabletEmptyState()
+                                }
+                            }
+                        }
+                    } else {
+                        when {
+                            settingsOpen -> settingsContent()
+                            activeChat != null -> chatContent(activeChat, true)
+                            else -> fleetContent(null)
+                        }
+                    }
                 }
             }
         }
@@ -1071,10 +1112,17 @@ private sealed interface FleetRow {
 }
 
 @Composable
-private fun FleetChatCard(chat: ConversationRecord, onSelectChat: (ConversationRecord) -> Unit) {
+private fun FleetChatCard(
+    chat: ConversationRecord,
+    selected: Boolean,
+    onSelectChat: (ConversationRecord) -> Unit,
+) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onSelectChat(chat) },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.surfaceVariant
+            else MaterialTheme.colorScheme.surface,
+        ),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -1141,6 +1189,7 @@ private fun FleetScreen(
     showHiddenBots: Boolean,
     showGroups: Boolean,
     loading: Boolean,
+    selectedChatKey: String? = null,
     onSelectChat: (ConversationRecord) -> Unit,
     onRefresh: () -> Unit,
     onSettings: () -> Unit,
@@ -1308,7 +1357,11 @@ private fun FleetScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
                             )
                         }
-                        is FleetRow.Chat -> FleetChatCard(row.chat, onSelectChat)
+                        is FleetRow.Chat -> FleetChatCard(
+                            chat = row.chat,
+                            selected = row.chat.key == selectedChatKey,
+                            onSelectChat = onSelectChat,
+                        )
                     }
                 }
             }
@@ -1317,8 +1370,29 @@ private fun FleetScreen(
 }
 
 @Composable
+private fun TabletEmptyState() {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            "Select a bot or room",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            "The conversation will open here.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
+
+@Composable
 private fun ChatScreen(
     chat: ConversationRecord,
+    compact: Boolean = true,
     loading: Boolean,
     onBack: () -> Unit,
     onSend: (ConversationRecord, String, List<PendingAttachment>, (Boolean) -> Unit) -> Unit,
@@ -1384,7 +1458,7 @@ private fun ChatScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = onBack) { Text("‹ Bots") }
+            if (compact) TextButton(onClick = onBack) { Text("‹ Bots") }
             if (chat.kind == "group") {
                 Surface(modifier = Modifier.size(34.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primary) {
                     BoxCenter {

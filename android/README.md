@@ -20,6 +20,10 @@ approval flow. The phone does not receive a general shell endpoint.
   approval, question, completion, and routine-failure events.
 - Long-press any answer to select and copy text, then paste it into the
   composer with the normal Android text controls.
+- **Tablet and wide-window layout:** from 600dp wide (and at least 480dp tall)
+  the fleet becomes a left navigation column and the chat or settings open on
+  the right. Phones and short landscape windows keep the single-pane layout.
+  The QR scanner remains portrait-only; the chat shell follows the device.
 - Attach photos, PDFs, or files from the composer. The phone uploads the bytes
   to the host's `~/.kodbot/uploads` directory and sends the same
   `<attached-file path="…" />` block the desktop composer uses, so the agent
