@@ -219,7 +219,7 @@ function emptyStatus(platform: NodeJS.Platform): ContainerComputerStatus {
     container_name: CONTAINER,
     workspace_path: VM_WORKSPACE_DIR,
     workspace_guest_path: VM_WORKSPACE_GUEST,
-    viewer_url: `http://127.0.0.1:${HOST_VIEWER_PORT}/vnc.html`,
+    viewer_url: "/api/local-computer/viewer/vnc.html",
   };
 }
 
@@ -283,7 +283,9 @@ function viewerPassword(env: string[] | Record<string, string> | undefined): str
 }
 
 function viewerUrl(password: string | null): string {
-  const base = `http://127.0.0.1:${HOST_VIEWER_PORT}/vnc.html`;
+  // Relative so a remote app or phone reaches the harness proxy rather than
+  // its own loopback interface. The query fragment never leaves the client.
+  const base = "/api/local-computer/viewer/vnc.html";
   if (!password) return base;
   const fragment = new URLSearchParams({ autoconnect: "true", resize: "scale", password });
   return `${base}#${fragment.toString()}`;
@@ -598,6 +600,11 @@ export function containerRunArgs(runtime: Runtime, password = "CHANGE_ME"): stri
     "--label",
     `${WORKSPACE_LABEL}=1`,
   );
+  if (runtime !== "container") {
+    // Product testing often starts on a host dev server. Docker's bridge
+    // gateway keeps that reachable without publishing the product to the LAN.
+    common.push("--add-host", "host.docker.internal:host-gateway");
+  }
   if (runtime === "container") {
     // Apple container already places each Linux container in a lightweight VM.
     common.push(

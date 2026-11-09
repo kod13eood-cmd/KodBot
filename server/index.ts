@@ -15,6 +15,7 @@ import { writeFileAtomic } from "./atomic.ts";
 import { validateBotCwd } from "./bot-cwd.ts";
 import { connectedAppsSystemPrompt } from "./connected-apps-prompt.ts";
 import { resolveComputerDestination } from "./computer-selection.ts";
+import { isViewerPath, proxyViewerRequest, proxyViewerUpgrade } from "./local-vm-viewer.ts";
 import { ensureGuideCopy, guideSystemPrompt } from "./guide.ts";
 import { groupTurnCwd } from "./room-cwd.ts";
 import * as box from "./box.ts";
@@ -2523,6 +2524,16 @@ const server = createServer(async (req, res) => {
     if (origin && !isAllowedOrigin(origin)) {
       return json(res, 403, { error: "forbidden: cross-origin request" });
     }
+    // The Local VM's noVNC viewer stays loopback-only; this is the one
+    // same-origin path that reaches it from the app or a paired phone.
+    if (isViewerPath(path)) {
+      if (method !== "GET" && method !== "HEAD") {
+        return json(res, 405, { error: "method not allowed" });
+      }
+      proxyViewerRequest(req, res);
+      return;
+    }
+
     // ── internal peer-agent comms (localhost + shared token only) ──────
     // The agents-proxy (spawned inside a bot's agent process) calls these to
     // discover peers and hand a message to one. Not part of the public API.
@@ -4495,6 +4506,18 @@ const server = createServer(async (req, res) => {
     const status = (e as any)?.status ?? 500;
     return json(res, status, { error: e instanceof Error ? e.message : String(e) });
   }
+});
+
+server.on("upgrade", (req, socket, head) => {
+  if (!isViewerPath(req.url ?? "")) {
+    socket.destroy();
+    return;
+  }
+  if (!isAllowedHost(req.headers.host) || (req.headers.origin && !isAllowedOrigin(req.headers.origin))) {
+    socket.destroy();
+    return;
+  }
+  proxyViewerUpgrade(req, socket, head);
 });
 
 server.listen(PORT, HOST, () => {

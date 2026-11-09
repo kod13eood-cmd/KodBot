@@ -260,7 +260,7 @@ describe("containerComputerStatus", () => {
       problem: null,
       driver_version: "0.20.0",
     });
-    expect(status.viewer_url).toContain("#autoconnect=true&resize=scale&password=secret123");
+    expect(status.viewer_url).toContain("/api/local-computer/viewer/vnc.html#autoconnect=true&resize=scale&password=secret123");
   });
 
   it("reports the bounded desktop startup error instead of waiting forever", async () => {
@@ -516,6 +516,7 @@ describe("setupCommands", () => {
     expect(command).toContain(`--label ${DRIVER_LABEL}=${CUA_DRIVER_VERSION}`);
     expect(command).toContain(`--label ${WORKSPACE_LABEL}=1`);
     expect(command).toContain(`--hostname ${CONTAINER}`);
+    expect(command).toContain("--add-host host.docker.internal:host-gateway");
     expect(command).toContain(
       `--mount type=bind,source=${VM_WORKSPACE_DIR},target=${VM_WORKSPACE_GUEST}`,
     );

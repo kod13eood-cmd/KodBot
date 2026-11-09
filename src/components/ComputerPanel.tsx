@@ -22,6 +22,7 @@ import type { Routine } from "@/lib/routines";
 import { ApiKeyRow } from "./ApiKeys";
 import { cn } from "@/lib/cn";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
+import { LocalVmViewer } from "./LocalVmViewer";
 import { RoutineEditor } from "./RoutinesPage";
 
 async function api(path: string, init?: RequestInit): Promise<any> {
@@ -92,6 +93,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
   const [localFrame, setLocalFrame] = useState<string | null>(null);
   const [pending, setPending] = useState<"join" | "sleep" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [creatingRoutine, setCreatingRoutine] = useState(false);
   // bumped when a Box API key is saved inline, to re-run the spin-up flow
   const [retry, setRetry] = useState(0);
@@ -355,6 +357,16 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
       .finally(() => setPending(null));
   };
 
+  const openViewer = () => {
+    setError(null);
+    api("/api/local-computer")
+      .then((status) => {
+        if (status.viewer_url) setViewerUrl(status.viewer_url);
+        else setError("The Local VM viewer is not ready.");
+      })
+      .catch((e) => setError(e.message));
+  };
+
   const openVmSettings = () => {
     window.sessionStorage.setItem("kodbot.settings.section", "computer");
     dispatch({ type: "toggleAppSettings", open: true });
@@ -376,6 +388,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
   } satisfies Record<Exclude<Phase, "ready" | "local" | "vm">, string>;
 
   return (
+    <>
     <aside className="animate-panel-in flex h-full w-[400px] shrink-0 flex-col border-l border-hairline/40 bg-panel">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3">
@@ -397,10 +410,22 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
 
       <div className="flex-1 overflow-y-auto px-5 pb-5">
           {/* Screen preview */}
-          <div className="mb-1.5 mt-2 flex items-center justify-between text-[13px] text-ink-secondary">
+          <div className="mb-1.5 mt-2 flex items-center justify-between gap-2 text-[13px] text-ink-secondary">
             <span>{bot.name}'s screen</span>
-            {phase === "local" && <span className="text-[11px]">this computer</span>}
-            {phase === "vm" && <span className="text-[11px]">Local VM</span>}
+            <div className="flex items-center gap-2">
+              {phase === "vm" && (
+                <button
+                  type="button"
+                  onClick={openViewer}
+                  className="flex items-center gap-1 rounded-md border border-hairline/40 px-2 py-0.5 text-[11px] text-ink hover:bg-raised"
+                  title="Open the shared Local VM desktop"
+                >
+                  <Monitor size={11} /> Open
+                </button>
+              )}
+              {phase === "local" && <span className="text-[11px]">this computer</span>}
+              {phase === "vm" && <span className="text-[11px]">Local VM</span>}
+            </div>
         </div>
         <div className="flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-xl bg-card">
           {frameSrc ? (
@@ -630,5 +655,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
         />
       )}
     </aside>
+    {viewerUrl && <LocalVmViewer url={viewerUrl} onClose={() => setViewerUrl(null)} />}
+    </>
   );
 }
