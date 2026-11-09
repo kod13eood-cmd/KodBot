@@ -32,6 +32,9 @@ const appConfigSchema = z.object({
   tts: z.object({ key: optionalText, voice: optionalText }).optional(),
   /** Non-secret profile details shown in the sidebar. */
   profile: z.object({ name: optionalText, email: optionalText }).optional(),
+  /** Minutes before an unanswered permission/question is marked overdue.
+   * null or 0 means wait without a timer. The request stays answerable. */
+  approvalTimeoutMinutes: z.number().int().min(0).max(24 * 60).nullable().optional(),
   instances: instanceConfigMapSchema.optional(),
 });
 const appConfigPatchSchema = appConfigSchema.omit({ instances: true });
@@ -44,6 +47,7 @@ export interface AppConfig {
   opencodeGo?: { apiKey?: string };
   tts?: { key?: string; voice?: string };
   profile?: { name?: string; email?: string };
+  approvalTimeoutMinutes?: number | null;
   instances?: InstanceConfigMap;
 }
 export type ConfigPatch = z.output<typeof appConfigPatchSchema>;
@@ -143,6 +147,9 @@ export function saveConfig(patch: Partial<AppConfig>): void {
     const merged: JsonObject = current.success ? { ...current.data } : {};
     Object.assign(merged, section);
     disk[key] = merged;
+  }
+  if (checkedPatch.approvalTimeoutMinutes !== undefined) {
+    disk.approvalTimeoutMinutes = checkedPatch.approvalTimeoutMinutes;
   }
   if (checkedPatch.instances) {
     const currentInstances = jsonObjectSchema.safeParse(disk.instances);

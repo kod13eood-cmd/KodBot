@@ -242,6 +242,67 @@ function LanguageCard() {
   );
 }
 
+function ApprovalTimeoutCard() {
+  const { state, dispatch } = useStore();
+  const { t } = useI18n();
+  const [saving, setSaving] = useState(false);
+  const configured = state.config?.approvalTimeoutMinutes;
+  const current = configured === undefined ? 15 : configured === 0 ? null : configured;
+  const options: Array<{ value: number | null; label: string }> = [
+    { value: null, label: t("Wait until I answer") },
+    { value: 5, label: t("5 min") },
+    { value: 15, label: t("15 min") },
+    { value: 30, label: t("30 min") },
+    { value: 60, label: t("1 hour") },
+    { value: 240, label: t("4 hours") },
+  ];
+  const save = (value: number | null) => {
+    if (saving) return;
+    setSaving(true);
+    void fetch("/api/config", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ approvalTimeoutMinutes: value }),
+    })
+      .then((response) => response.json())
+      .then((config) => dispatch({ type: "configStatus", config }))
+      .catch(() => {})
+      .finally(() => setSaving(false));
+  };
+  return (
+    <Card
+      title={t("Approval timeout")}
+      subtitle={t("How long a bot waits for your answer before the request is marked overdue. The card stays answerable, so a late Allow still runs the action.")}
+    >
+      <div className="flex flex-wrap gap-2" role="group" aria-label={t("Approval timeout")}>
+        {options.map((option) => {
+          const selected = current === option.value;
+          return (
+            <button
+              key={option.value ?? "never"}
+              type="button"
+              aria-pressed={selected}
+              disabled={saving}
+              onClick={() => save(option.value)}
+              className={cn(
+                "rounded-lg border px-3 py-1.5 text-[12px] transition-colors disabled:opacity-50",
+                selected
+                  ? "border-accent bg-accent/10 text-accent"
+                  : "border-hairline/40 bg-inset text-ink-secondary hover:bg-raised hover:text-ink",
+              )}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-[12px] leading-relaxed text-ink-secondary">
+        {t("The bot keeps waiting after the timer; the notification is a reminder, not a denial. Choose “Wait until I answer” to hide the timer entirely.")}
+      </p>
+    </Card>
+  );
+}
+
 function DeveloperCard() {
   const { state, dispatch } = useStore();
   const { t } = useI18n();
@@ -478,6 +539,7 @@ export function SettingsModal() {
                   <ProfileFields />
                 </Card>
                 <ServerCard />
+                <ApprovalTimeoutCard />
                 <DeveloperCard />
                 <GroupChatsCard />
                 <HelpCard />

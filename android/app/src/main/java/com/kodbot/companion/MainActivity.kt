@@ -1943,7 +1943,17 @@ private fun ApprovalItem(card: ApprovalCard, onRespond: (ApprovalCard, String) -
     ) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(card.title.ifBlank { if (card.permission) "Approval needed" else "Question" }, fontWeight = FontWeight.SemiBold)
+            card.explanation?.takeIf(String::isNotBlank)?.let { explanation ->
+                Text("What this means: $explanation", color = MaterialTheme.colorScheme.primary)
+            }
             if (card.subtitle.isNotBlank()) Text(card.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (card.pending && card.overdueAt != null) {
+                Text(
+                    "The timer expired, but the bot is still waiting. You can answer now and it will continue.",
+                    color = Color(0xFFFFCC80),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             if (card.pending) {
                 if (card.options.isNotEmpty()) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

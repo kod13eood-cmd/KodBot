@@ -98,9 +98,10 @@ The rest of this guide is organized by topic.
 ## Approvals and safety
 
 - A bot can ask before a risky command, file change, or external action. The card takes over the composer: **Allow**, **Deny**, or **Always allow** the narrow action.
+- Each permission card includes a plain-language **What this means** explanation before the exact command, path, recipient, or amount.
+- App Settings → General → **Approval timeout** controls when an unanswered card is marked overdue. It never denies automatically; a late **Allow** still lets the bot finish the work. Choose **Wait until I answer** to remove the timer.
 - Auto mode can answer routine requests; destructive actions still stop and ask.
 - **Stop** rejects the pending action. A stopped turn does not run queued follow-ups.
-- Read the exact command, path, recipient, or amount on the card before allowing.
 
 ---
 

@@ -29,7 +29,10 @@ Status keys:
 - **A real computer per bot.** A cloud Linux desktop, the local machine, or a
   shared room computer. Watch the live screen or take over.
 - **Approvals before risky actions.** Shell commands, file edits, and questions
-  surface as inline cards: Allow, Deny, or answer in chat.
+  surface as inline cards: Allow, Deny, or answer in chat. Every permission
+  card explains in plain language what the action will do, and an unanswered
+  card can be marked overdue without auto-denying; a late Allow still lets the
+  bot finish the work.
 - **Rooms.** Put several bots in one conversation with a shared bulletin and
   an optional Chief of Staff.
 - **Visible bot-to-bot handoffs.** When a bot hands work to another bot, the

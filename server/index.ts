@@ -10,6 +10,7 @@ import { extname, join } from "node:path";
 import { z } from "zod";
 
 import { approvalKey, autoDecision } from "./auto-approve.ts";
+import { explainRequest } from "./approval-explain.ts";
 import { writeFileAtomic } from "./atomic.ts";
 import { validateBotCwd } from "./bot-cwd.ts";
 import { connectedAppsSystemPrompt } from "./connected-apps-prompt.ts";
@@ -200,8 +201,14 @@ ensureDirs();
 // copy. Helpful for support and for agents that prefer an absolute data path.
 ensureGuideCopy(DATA_DIR);
 const cfg = loadConfig();
+const APPROVAL_TIMEOUT_DEFAULT_MINUTES = 15;
+function approvalTimeoutMs(): number {
+  const minutes = cfg.approvalTimeoutMinutes;
+  if (minutes === null || minutes === 0) return 0;
+  return (minutes ?? APPROVAL_TIMEOUT_DEFAULT_MINUTES) * 60_000;
+}
 const registry = new ProviderRegistry(BUILT_IN_DRIVERS);
-await registry.load(instanceConfigs(cfg));
+await registry.load(instanceConfigs(cfg), { approvalTimeoutMs: () => approvalTimeoutMs() });
 
 // Auto-model routing wants the live model catalog, but `registry.describe()`
 // can spend seconds refreshing providers. The catalog helper caches a
@@ -805,6 +812,7 @@ bus.subscribe((event: RuntimeEvent) => {
       break;
     case "request.opened": {
       const permission = event.requestType === "permission";
+      const explanation = explainRequest(event.tool, event.summary, permission ? "permission" : "question");
       // Auto mode / always-allow: answer routine tool permissions for the
       // bot so it keeps working. A QUESTION always reaches the human — the
       // whole point of asking is that a person decides — and anything that
@@ -848,6 +856,7 @@ bus.subscribe((event: RuntimeEvent) => {
                 requestId,
                 tool,
                 allowKey: approvalKey(tool, summary),
+                explanation,
                 held: "Auto mode couldn't answer this one.",
               },
             });
@@ -865,6 +874,7 @@ bus.subscribe((event: RuntimeEvent) => {
           options: event.choices?.length ? event.choices : permission ? ["Allow", "Deny"] : [],
           requestId: event.requestId,
           tool: permission ? event.tool : undefined,
+          explanation,
           // the exact grant "always allow" would remember, decided here so
           // client and server can never derive it differently
           allowKey: permission ? approvalKey(event.tool, event.summary) : undefined,
@@ -879,7 +889,30 @@ bus.subscribe((event: RuntimeEvent) => {
       if (asker) {
         // the bot is not working now — it is waiting on a person
         if (asker.busy) store.setActivity(asker.id, "waiting-on-you");
-        notify(buildNotification(permission ? "approval" : "question", asker, event.threadId, event.summary));
+        notify(buildNotification(permission ? "approval" : "question", asker, event.threadId, explanation));
+      }
+      break;
+    }
+    case "request.overdue": {
+      const messageId = askMessageByRequest.get(`${event.threadId}:${event.requestId}`);
+      if (messageId) {
+        const existing = store.messagesFor(event.threadId).find((message) => message.id === messageId);
+        if (existing?.card && !existing.card.answered) {
+          store.patchMessage(event.threadId, messageId, {
+            card: { ...existing.card, overdueAt: Date.now() },
+          });
+        }
+      }
+      const bot = store.botByThread(event.threadId) ?? undefined;
+      if (bot) {
+        notify(
+          buildNotification(
+            event.requestType === "permission" ? "approval" : "question",
+            bot,
+            event.threadId,
+            `Still waiting for your answer — ${event.summary}`,
+          ),
+        );
       }
       break;
     }
@@ -2227,6 +2260,9 @@ function configStatus() {
     tts: tts.describeVoice(cfg),
     // not a secret — the sidebar shows it
     profile: { name: cfg.profile?.name ?? "", email: cfg.profile?.email ?? "" },
+    approvalTimeoutMinutes: cfg.approvalTimeoutMinutes === undefined
+      ? APPROVAL_TIMEOUT_DEFAULT_MINUTES
+      : cfg.approvalTimeoutMinutes,
   };
 }
 
@@ -2235,7 +2271,7 @@ function configStatus() {
 async function reloadProviders() {
   bus.detachAll();
   await registry.disposeAll();
-  await registry.load(instanceConfigs(cfg));
+  await registry.load(instanceConfigs(cfg), { approvalTimeoutMs: () => approvalTimeoutMs() });
   bus.attach(registry.instances());
   // A killed turn's terminal events can die with the old fleet (dispose is
   // async under the hood), stranding the bot busy — and its screen poller —
@@ -4148,7 +4184,7 @@ const server = createServer(async (req, res) => {
       // provider keys change the fleet; a profile or voice edit must not
       // kill in-flight turns with a pointless reload — no driver reads
       // either, and picking a voice mid-turn should be free
-      if (Object.keys(patch).some((k) => k !== "profile" && k !== "tts")) await reloadProviders();
+      if (Object.keys(patch).some((k) => k !== "profile" && k !== "tts" && k !== "approvalTimeoutMinutes")) await reloadProviders();
       const status = configStatus();
       broadcast({ kind: "config", ...status });
       return json(res, 200, status);

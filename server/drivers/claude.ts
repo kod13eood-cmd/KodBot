@@ -16,6 +16,7 @@ import { join, dirname } from "node:path";
 import { DATA_DIR } from "../config.ts";
 import { augmentedPath } from "../env-path.ts";
 import { brokerSocketPath, describeSpawnFailure, execCli, killCliTree, spawnCli } from "../procs.ts";
+import { resolveApprovalTimeoutMs } from "./approval-timeout.ts";
 
 import type {
   DriverCreateInput,
@@ -161,9 +162,9 @@ const NODE_ENV_FLAG = { ELECTRON_RUN_AS_NODE: "1" };
 // A headless run that hits a permission acceptEdits doesn't cover should
 // neither stall silently NOR get blanket-denied — it should ask the user.
 // The broker is a net server on a per-turn socket; the proxy (spawned by
-// the claude CLI) forwards asks over it and waits. Unanswered permission
-// asks deny after timeoutMs with a keep-moving note; unanswered questions
-// answer with "use your best judgment" — guidance, never a block.
+// the claude CLI) forwards asks over it and waits. The timeout only marks an
+// unanswered ask overdue; it never denies or answers for the user, so a late
+// answer can still let the bot finish the work.
 interface Ask {
   id: string;
   kind: "permission" | "question";
@@ -174,9 +175,6 @@ interface Ask {
 type AskBehavior = "allow" | "deny" | "answer";
 type AskResolutionSource = "user" | "timeout" | "system";
 
-const DENY_TIMEOUT_NOTE =
-  "KodBot: nobody answered this permission request in time. Skip this action and finish what you can without it.";
-const QUESTION_TIMEOUT_NOTE = "KodBot: nobody answered in time. Use your best judgment and continue.";
 const DUPLICATE_ASK_ID_NOTE = "KodBot: duplicate ask id — skipping this request.";
 
 /** One human-readable line for an ask — what the card subtitle shows. */
@@ -198,9 +196,9 @@ function createPermissionBroker(opts: {
   socketPath: string;
   onAsk: (ask: Ask) => void;
   onResolve: (resolved: Ask & { behavior: AskBehavior; source: AskResolutionSource }) => void;
-  timeoutMs?: number;
+  onOverdue?: (ask: Ask) => void;
+  timeoutMs?: number | (() => number);
 }) {
-  const timeoutMs = opts.timeoutMs ?? 15 * 60_000;
   const pending = new Map<
     string,
     { ask: Ask; finish: (behavior: AskBehavior, message: string | undefined, source: AskResolutionSource) => void }
@@ -243,22 +241,24 @@ function createPermissionBroker(opts: {
         }
         const kind = msg.kind === "question" ? ("question" as const) : ("permission" as const);
         const ask: Ask = { id: askId, kind, tool: msg.tool ?? "tool", input: msg.input ?? {}, at: Date.now() };
+        let timer: ReturnType<typeof setTimeout> | null = null;
         const finish = (behavior: AskBehavior, message: string | undefined, source: AskResolutionSource) => {
           if (!pending.delete(askId)) return;
-          clearTimeout(timer);
+          if (timer) clearTimeout(timer);
+          timer = null;
           try {
             conn.write(JSON.stringify({ t: "answer", id: askId, behavior, message }) + "\n");
           } catch {}
           opts.onResolve({ ...ask, behavior, source });
         };
-        const timer = setTimeout(
-          () =>
-            kind === "question"
-              ? finish("answer", QUESTION_TIMEOUT_NOTE, "timeout")
-              : finish("deny", DENY_TIMEOUT_NOTE, "timeout"),
-          timeoutMs,
-        );
-        timer.unref?.();
+        const timeoutMs = resolveApprovalTimeoutMs(opts.timeoutMs);
+        if (timeoutMs > 0) {
+          timer = setTimeout(() => {
+            timer = null;
+            opts.onOverdue?.(ask);
+          }, timeoutMs);
+          timer.unref?.();
+        }
         pending.set(askId, { ask, finish });
         opts.onAsk(ask);
       }
@@ -444,6 +444,17 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
         const socketPath = permissionSocketPath(threadId);
         broker = createPermissionBroker({
           socketPath,
+          timeoutMs: input.approvalTimeoutMs,
+          onOverdue: (ask) =>
+            emit({
+              ...base(threadId, turnId),
+              type: "request.overdue",
+              requestId: ask.id,
+              requestType: ask.kind,
+              tool: ask.tool,
+              summary: askSummary(ask),
+              minutes: Math.max(1, Math.round(resolveApprovalTimeoutMs(input.approvalTimeoutMs) / 60_000)),
+            }),
           onAsk: (ask) =>
             emit({
               ...base(threadId, turnId),

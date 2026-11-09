@@ -44,6 +44,10 @@ export interface OptionCardData {
   /** permission cards: the tool being requested, so the card can show what
    * is actually being asked and offer "always allow this tool". */
   tool?: string;
+  /** one plain-language sentence explaining what the tool will do */
+  explanation?: string;
+  /** when the soft timer expired; the card stays answerable */
+  overdueAt?: number;
   /** why this stopped despite auto mode (destructive-looking command) */
   held?: string;
   /** the narrow grant "always allow" remembers, e.g. "Bash:git" */

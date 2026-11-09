@@ -34,6 +34,10 @@ export interface OptionCardData {
   requestId?: string;
   /** permission asks: the tool being requested (drives the approval box) */
   tool?: string;
+  /** one plain-language sentence explaining what the tool will do */
+  explanation?: string;
+  /** when the soft timer expired; the card stays answerable */
+  overdueAt?: number;
   /** why auto mode stopped to ask anyway */
   held?: string;
   /** the narrow grant "always allow" remembers, e.g. "Bash:git" */
@@ -240,6 +244,8 @@ export interface ConfigStatus {
   tts?: { configured: boolean; ready: boolean; voice: string };
   /** who's using the app — collected in onboarding, shown in the sidebar */
   profile?: { name: string; email: string };
+  /** minutes before an unanswered ask is marked overdue; null = no timer */
+  approvalTimeoutMinutes?: number | null;
 }
 
 /** How an engine gets installed — declared by its driver, mirrors

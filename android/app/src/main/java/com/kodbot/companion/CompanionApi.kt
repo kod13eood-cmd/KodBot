@@ -63,6 +63,8 @@ data class ApprovalCard(
     val options: List<String>,
     val requestId: String?,
     val tool: String?,
+    val explanation: String?,
+    val overdueAt: Long?,
     val answered: String?,
     val dismissed: Boolean,
 ) {
@@ -756,6 +758,8 @@ class CompanionApi(private val connection: CompanionConnection) {
                     options = (0 until optionsJson.length()).mapNotNull { index -> optionsJson.optString(index).takeIf(String::isNotBlank) },
                     requestId = it.optString("requestId").takeIf(String::isNotBlank),
                     tool = it.optString("tool").takeIf(String::isNotBlank),
+                    explanation = it.optString("explanation").takeIf(String::isNotBlank),
+                    overdueAt = it.optLong("overdueAt", 0L).takeIf { value -> value > 0L },
                     answered = it.optString("answered").takeIf(String::isNotBlank),
                     dismissed = it.optBoolean("dismissed"),
                 )

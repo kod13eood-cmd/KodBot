@@ -110,6 +110,14 @@ export type RuntimeEvent = RuntimeEventBase &
         choices?: string[];
       }
     | {
+        type: "request.overdue";
+        requestId: string;
+        requestType: "permission" | "question";
+        tool: string;
+        summary: string;
+        minutes: number;
+      }
+    | {
         type: "request.resolved";
         behavior: "allow" | "deny" | "answer";
         /** who decided: a person, auto mode, the ask's own timeout, the
@@ -275,6 +283,9 @@ export interface DriverCreateInput<Config> {
   environment: Record<string, string>;
   enabled: boolean;
   config: Config;
+  /** 0 means wait for a human without a timer. A function is re-read for
+   * every ask so a settings change applies without rebuilding the fleet. */
+  approvalTimeoutMs?: number | (() => number);
 }
 
 export interface ProviderInstance {

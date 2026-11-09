@@ -22,6 +22,13 @@ describe("configuration boundaries", () => {
     });
   });
 
+  it("keeps the approval timer as a nullable top-level setting", () => {
+    expect(parseStoredConfig({ approvalTimeoutMinutes: 30 })).toEqual({ approvalTimeoutMinutes: 30 });
+    expect(parseStoredConfig({ approvalTimeoutMinutes: null })).toEqual({ approvalTimeoutMinutes: null });
+    expect(parseConfigPatch({ approvalTimeoutMinutes: 5 })).toEqual({ approvalTimeoutMinutes: 5 });
+    expect(() => parseConfigPatch({ approvalTimeoutMinutes: 24 * 60 + 1 })).toThrow("approvalTimeoutMinutes");
+  });
+
   it("rejects malformed stored instances and API patches", () => {
     expect(() => parseStoredConfig({ instances: { claude: { driver: 42 } } })).toThrow("instances.claude.driver");
     expect(() => parseConfigPatch({ opencodeGo: { apiKey: 42 } })).toThrow("opencodeGo.apiKey");

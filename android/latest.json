@@ -1,7 +1,7 @@
 {
-  "versionCode": 17,
-  "versionName": "0.1.16",
-  "apkUrl": "https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.16.apk",
-  "notes": "Fixes the landscape keyboard losing focus, and adds Desktop mode (web view) with native notifications on tablets. The native tablet layout keeps the fleet on the left and chat or settings on the right.",
-  "publishedAt": "2026-11-09T01:15:00Z"
+  "versionCode": 18,
+  "versionName": "0.1.17",
+  "apkUrl": "https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.17.apk",
+  "notes": "Adds a plain-language explanation to every permission card. The approval timer now marks a request overdue instead of denying it, so a late Allow still lets the bot finish; the timer can be set or turned off in App Settings.",
+  "publishedAt": "2026-11-09T03:20:00Z"
 }

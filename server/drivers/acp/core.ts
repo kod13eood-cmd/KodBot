@@ -16,6 +16,7 @@
 import { homedir } from "node:os";
 
 import { describeSpawnFailure, execCli, killCliTree, spawnCli } from "../../procs.ts";
+import { resolveApprovalTimeoutMs } from "../approval-timeout.ts";
 
 import type {
   DriverCreateInput,
@@ -146,8 +147,6 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
   const DRIVER_KIND = support.driverKind;
   const SOURCE = support.nativeSource;
   const decodeConfig = decodeAcpConfig(support.defaultCli);
-  const DENY_TIMEOUT_NOTE =
-    "KodBot: nobody answered this permission request in time. Skip this action and finish what you can without it.";
 
   return {
     driverKind: DRIVER_KIND,
@@ -357,9 +356,11 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
           const tool = kind === "execute" ? "shell" : kind === "edit" ? "edit" : kind || "tool";
           const summary = String(toolCall.rawInput?.command ?? toolCall.title ?? tool).slice(0, 200);
           const requestId = newId();
+          let timer: ReturnType<typeof setTimeout> | null = null;
           const finish = (behavior: string, source: "user" | "timeout" | "system" = "user") => {
             if (!asks.delete(requestId)) return;
-            clearTimeout(timer);
+            if (timer) clearTimeout(timer);
+            timer = null;
             const want = behavior === "allow" ? "allow" : "reject";
             const optionId = behavior === "cancel" ? null : optionFor(want);
             if (behavior !== "cancel" && !optionId) missing(want);
@@ -376,11 +377,22 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
               source: optionId ? source : "system",
             });
           };
-          const timer = setTimeout(() => {
-            emit({ ...base(threadId, turnId), type: "runtime.error", message: DENY_TIMEOUT_NOTE });
-            finish("deny", "timeout");
-          }, 15 * 60_000);
-          timer.unref?.();
+          const timeoutMs = resolveApprovalTimeoutMs(input.approvalTimeoutMs);
+          if (timeoutMs > 0) {
+            timer = setTimeout(() => {
+              timer = null;
+              emit({
+                ...base(threadId, turnId),
+                type: "request.overdue",
+                requestId,
+                requestType: "permission",
+                tool,
+                summary,
+                minutes: Math.max(1, Math.round(timeoutMs / 60_000)),
+              });
+            }, timeoutMs);
+            timer.unref?.();
+          }
           asks.set(requestId, finish);
           emit({
             ...base(threadId, turnId),

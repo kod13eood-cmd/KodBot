@@ -77,6 +77,19 @@ const BULGARIAN: Record<string, string> = {
   "Close search": "Затвори търсенето",
   "Nothing matches “{query}”": "Няма съвпадения за „{query}“",
   "Automations": "Автоматизации",
+  "Approval timeout": "Таймер за одобрение",
+  "What this means": "Какво означава това",
+  "The timer expired, but the bot is still waiting. You can answer now and it will continue.":
+    "Таймерът изтече, но ботът все още чака. Можеш да отговориш сега и той ще продължи.",
+  "How long a bot waits for your answer before the request is marked overdue. The card stays answerable, so a late Allow still runs the action.":
+    "Колко време ботът чака отговор, преди заявката да бъде маркирана като закъсняла. Картата остава отговорна, така че късно Allow пак изпълнява действието.",
+  "Wait until I answer": "Изчакай до мой отговор",
+  "5 min": "5 мин",
+  "15 min": "15 мин",
+  "30 min": "30 мин",
+  "4 hours": "4 часа",
+  "The bot keeps waiting after the timer; the notification is a reminder, not a denial. Choose “Wait until I answer” to hide the timer entirely.":
+    "Ботът продължава да чака след таймера; известието е напомняне, не отказ. Избери „Изчакай до мой отговор“, за да няма таймер.",
   "{count} failed runs need attention": "{count} неуспешни задачи чакат внимание",
   "Connected apps": "Свързани приложения",
   "App settings": "Настройки на приложението",
