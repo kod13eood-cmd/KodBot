@@ -388,6 +388,8 @@ describe("Cua integration", () => {
     expect(dockerfile).toContain(`cua-driver ${CUA_DRIVER_VERSION}`);
     expect(dockerfile).toContain(`serve --socket ${CUA_SOCKET} --permission-mode standard`);
     expect(dockerfile).toContain("CUA_DRIVER_RS_TELEMETRY_ENABLED=0");
+    expect(dockerfile).toContain("apt-get install -y --no-install-recommends chromium chromium-sandbox");
+    expect(dockerfile).toContain("chromium-real --no-sandbox --force-renderer-accessibility");
     expect(dockerfile).toContain("prepare-opencrew-workspace.sh");
     expect(dockerfile).toContain("migrate_profile google-chrome");
     expect(dockerfile).toContain("migrate_profile chromium");

@@ -29,7 +29,8 @@ Status keys:
 - **A real computer per bot.** A cloud Linux desktop, a shared **Local VM**
   (Cua in Docker/Podman, with one durable workspace), or the local machine.
   Auto picks a cloud box, then the local computer, then the prepared Local VM.
-  Watch the live screen or take over.
+  Open the shared desktop in a full-window viewer with full screen, or take
+  over with the mouse and keyboard while the bot watches the same screen.
 - **Approvals before risky actions.** Shell commands, file edits, and questions
   surface as inline cards: Allow, Deny, or answer in chat. Every permission
   card explains in plain language what the action will do, and an unanswered

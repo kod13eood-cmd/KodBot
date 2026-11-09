@@ -36,7 +36,7 @@ export const BASE_IMAGE = `${BASE_IMAGE_REPOSITORY}@${BASE_IMAGE_DIGEST}`;
 // Image and container labels below remain the authoritative compatibility
 // check, not the mutable tag.
 export const IMAGE_REPOSITORY = "localhost/opencrew/cua-local-vm";
-export const IMAGE_LAYER_VERSION = "3";
+export const IMAGE_LAYER_VERSION = "6";
 export const IMAGE_LAYER_LABEL = "com.opencrew.image-layer";
 export const IMAGE = `${IMAGE_REPOSITORY}:driver-${CUA_DRIVER_VERSION}-v${IMAGE_LAYER_VERSION}`;
 export const CONTAINER = "opencrew-computer";
@@ -93,6 +93,16 @@ RUN set -eux; \\
     install -D -m 0755 "$driver_bin" ${CUA_EXECUTABLE}; \\
     install -d -o cua -g cua -m 0700 ${VM_WORKSPACE_GUEST}; \\
     test "$(${CUA_EXECUTABLE} --version)" = "cua-driver ${CUA_DRIVER_VERSION}"
+# Chromium gives Cua's semantic browser_* tools a CDP endpoint. Firefox ESR is
+# still installed for ordinary desktop browsing, but its AT-SPI text insertion
+# is unreliable in this image.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends chromium chromium-sandbox; \
+    rm -rf /var/lib/apt/lists/*; \
+    mv /usr/lib/chromium/chromium /usr/lib/chromium/chromium-real; \
+    printf '%s\\n' '#!/bin/sh' 'exec /usr/lib/chromium/chromium-real --no-sandbox --force-renderer-accessibility "$@"' > /usr/lib/chromium/chromium; \
+    chmod 0755 /usr/lib/chromium/chromium
 RUN printf '%s\\n' \\
       '#!/bin/sh' \\
       'set -eu' \\
