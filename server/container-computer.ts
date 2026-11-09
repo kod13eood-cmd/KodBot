@@ -1,8 +1,8 @@
 // Cua-backed Local VM lifecycle and health checks.
 //
 // KodBot owns only the sandbox boundary: image preparation, container
-// lifecycle, resource limits, loopback viewer, and the single-bot lease in the
-// harness. Desktop automation itself is Cua Driver. Agents connect directly to
+// lifecycle, resource limits, loopback viewer, and the per-turn desktop lock
+// in the MCP bridge. Desktop automation itself is Cua Driver. Agents connect directly to
 // `cua-driver mcp` inside the container; this module never reimplements clicks,
 // typing, screenshots, accessibility, or window discovery.
 import { execFile } from "node:child_process";
@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { desktopLockHeld } from "./desktop-lock.ts";
 import { augmentedPath } from "./env-path.ts";
 import { DATA_DIR } from "./config.ts";
 import { SPAWNED_PROXIES } from "./proxy-paths.ts";
@@ -45,6 +46,7 @@ export const DRIVER_LABEL = "com.opencrew.cua-driver";
 export const BASE_IMAGE_LABEL = "com.opencrew.cua-base";
 export const WORKSPACE_LABEL = "com.opencrew.workspace";
 export const VM_WORKSPACE_DIR = join(DATA_DIR, "vm-home");
+export const VM_DESKTOP_LOCK = join(DATA_DIR, "vm-desktop.lock");
 export const VM_WORKSPACE_GUEST = "/home/cua/workspace";
 export const DISPLAY = ":1";
 export const CUA_SOCKET = "/run/user/1000/opencrew-cua.sock";
@@ -735,6 +737,11 @@ export async function containerComputerAction(
     throw Object.assign(new Error("The Local VM is not running"), { status: 409 });
   }
   if (action === "remove" && before.container === "missing") return before;
+  if ((action === "run" || action === "stop" || action === "remove") && desktopLockHeld(VM_DESKTOP_LOCK)) {
+    throw Object.assign(new Error("the Local VM desktop is in use by a bot — wait for its turn to finish"), {
+      status: 409,
+    });
+  }
 
   if (action === "pull") {
     await prepareManagedImage(runtime, runner);
@@ -828,11 +835,15 @@ type ContainerMcpLaunch = {
   env: Record<string, string>;
 };
 
-export function containerComputerMcp(runtime: Runtime): ContainerMcpLaunch {
+export function containerComputerMcp(runtime: Runtime, owner?: string): ContainerMcpLaunch {
   return {
     command: process.execPath,
     args: [containerMcpPath, runtime, CONTAINER, CUA_SOCKET],
-    env: { ELECTRON_RUN_AS_NODE: "1" },
+    env: {
+      ELECTRON_RUN_AS_NODE: "1",
+      OC_VM_DESKTOP_LOCK: VM_DESKTOP_LOCK,
+      ...(owner ? { OC_VM_DESKTOP_OWNER: owner } : {}),
+    },
   };
 }
 

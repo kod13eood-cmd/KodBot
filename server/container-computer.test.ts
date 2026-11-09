@@ -23,10 +23,12 @@ import {
   containerComputerStatus,
   managedImageDockerfile,
   setupCommands,
+  VM_DESKTOP_LOCK,
   waitForContainerReady,
   type CommandRunner,
   type ContainerComputerStatus,
 } from "./container-computer.ts";
+import { acquireDesktopLock } from "./desktop-lock.ts";
 
 function runner(responses: Record<string, string | Error>) {
   const calls: string[] = [];
@@ -373,7 +375,10 @@ describe("Cua integration", () => {
     expect(connection.args.at(-3)).toBe("podman");
     expect(connection.args.at(-2)).toBe(CONTAINER);
     expect(connection.args.at(-1)).toBe(CUA_SOCKET);
-    expect(connection.env).toEqual({ ELECTRON_RUN_AS_NODE: "1" });
+    expect(connection.env).toMatchObject({
+      ELECTRON_RUN_AS_NODE: "1",
+      OC_VM_DESKTOP_LOCK: VM_DESKTOP_LOCK,
+    });
   });
 
   it("builds an exact, checksum-verified Cua Driver 0.20.0 image", () => {
@@ -471,6 +476,23 @@ describe("containerComputerAction", () => {
       "Prepare the Cua desktop image",
     );
     expect(fake.calls.some((call) => call.startsWith("docker run "))).toBe(false);
+  });
+
+  it("refuses to mutate the desktop while a bot's MCP bridge holds it", async () => {
+    const fake = runner({
+      "/usr/bin/which docker": "docker\n",
+      "/usr/bin/which podman": new Error("missing"),
+      "docker info --format {{.ServerVersion}}": "29\n",
+      [`docker image inspect ${IMAGE}`]: preparedImageInspect(),
+      [`docker inspect ${CONTAINER}`]: new Error("missing container"),
+    });
+    const lock = await acquireDesktopLock(VM_DESKTOP_LOCK, { pollMs: 5 });
+    try {
+      await expect(containerComputerAction("run", fake.run, "linux")).rejects.toThrow("in use by a bot");
+      expect(fake.calls.some((call) => call.startsWith("docker run "))).toBe(false);
+    } finally {
+      lock.release();
+    }
   });
 
   it("never starts a stopped desktop because its stale X lock makes resume unsafe", async () => {

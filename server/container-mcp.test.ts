@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { CONTAINER, CUA_EXECUTABLE, CUA_SOCKET } from "./container-computer.ts";
+import { acquireDesktopLock, desktopLockHeld } from "./desktop-lock.ts";
 
 const temporary: string[] = [];
 
@@ -18,24 +19,17 @@ afterEach(async () => {
 const posixOnly = describe.skipIf(process.platform === "win32");
 
 posixOnly("Local VM Cua MCP bridge", () => {
-  it("passes MCP bytes unchanged to cua-driver mcp over the container runtime", async () => {
-    const bin = await mkdtemp(join(tmpdir(), "opencrew-container-mcp-"));
-    temporary.push(bin);
-    const fakeDocker = join(bin, "docker");
-    await writeFile(
-      fakeDocker,
-      "#!/bin/sh\nprintf 'ARGS:%s\\n' \"$*\" >&2\ncat\n",
-      { mode: 0o700 },
-    );
-    await chmod(fakeDocker, 0o700);
-
-    const input = '{"jsonrpc":"2.0","id":1,"method":"tools/list"}\n';
-    const result = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
+  const runBridge = (
+    input: string,
+    bin: string,
+    extraEnv: Record<string, string> = {},
+  ): Promise<{ code: number | null; stdout: string; stderr: string }> =>
+    new Promise((resolve, reject) => {
       const child = spawn(
         process.execPath,
         [fileURLToPath(new URL("./container-mcp.ts", import.meta.url)), "docker", CONTAINER, CUA_SOCKET],
         {
-          env: { ...process.env, OC_EXTRA_PATH: bin, NODE_NO_WARNINGS: "1" },
+          env: { ...process.env, OC_EXTRA_PATH: bin, NODE_NO_WARNINGS: "1", ...extraEnv },
           stdio: ["pipe", "pipe", "pipe"],
         },
       );
@@ -48,6 +42,20 @@ posixOnly("Local VM Cua MCP bridge", () => {
       child.stdin.end(input);
     });
 
+  it("passes MCP bytes unchanged to cua-driver mcp over the container runtime", async () => {
+    const bin = await mkdtemp(join(tmpdir(), "opencrew-container-mcp-"));
+    temporary.push(bin);
+    const fakeDocker = join(bin, "docker");
+    await writeFile(
+      fakeDocker,
+      "#!/bin/sh\nprintf 'ARGS:%s\\n' \"$*\" >&2\ncat\n",
+      { mode: 0o700 },
+    );
+    await chmod(fakeDocker, 0o700);
+
+    const input = '{"jsonrpc":"2.0","id":1,"method":"tools/list"}\n';
+    const result = await runBridge(input, bin);
+
     expect(result.code).toBe(0);
     expect(result.stdout).toBe(input);
     expect(result.stderr).toContain(
@@ -55,5 +63,39 @@ posixOnly("Local VM Cua MCP bridge", () => {
         `-e CUA_DRIVER_RS_TELEMETRY_ENABLED=0 ${CONTAINER} ` +
         `${CUA_EXECUTABLE} mcp --socket ${CUA_SOCKET}`,
     );
+  });
+
+  it("holds the shared desktop for a computer tool call and releases it on exit", async () => {
+    const bin = await mkdtemp(join(tmpdir(), "opencrew-container-mcp-"));
+    temporary.push(bin);
+    const lock = join(bin, "desktop.lock");
+    const fakeDocker = join(bin, "docker");
+    await writeFile(fakeDocker, "#!/bin/sh\ncat\n", { mode: 0o700 });
+    await chmod(fakeDocker, 0o700);
+
+    const input = '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"get_desktop_state"}}\n';
+    const result = await runBridge(input, bin, { OC_VM_DESKTOP_LOCK: lock });
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toBe(input);
+    expect(desktopLockHeld(lock)).toBe(false);
+  });
+
+  it("times out waiting for a desktop another bridge holds", async () => {
+    const bin = await mkdtemp(join(tmpdir(), "opencrew-container-mcp-"));
+    temporary.push(bin);
+    const lock = join(bin, "desktop.lock");
+    const fakeDocker = join(bin, "docker");
+    await writeFile(fakeDocker, "#!/bin/sh\ncat\n", { mode: 0o700 });
+    await chmod(fakeDocker, 0o700);
+    const owner = await acquireDesktopLock(lock, { pollMs: 5 });
+    try {
+      const input = '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"click"}}\n';
+      const result = await runBridge(input, bin, { OC_VM_DESKTOP_LOCK: lock, OC_VM_DESKTOP_WAIT_MS: "50" });
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain("timed out waiting for the shared Local VM desktop");
+    } finally {
+      owner.release();
+    }
   });
 });

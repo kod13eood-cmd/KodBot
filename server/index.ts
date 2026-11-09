@@ -27,6 +27,7 @@ import {
   containerComputerScreenshot,
   containerComputerStatus,
   setupCommands,
+  VM_DESKTOP_LOCK,
   VM_WORKSPACE_DIR,
   type LifecycleAction,
   type Runtime,
@@ -84,9 +85,9 @@ import {
   writeMemoryTopic,
   MEMORY_FILE_MAX_BYTES,
 } from "./workspace.ts";
+import { desktopLockHeld } from "./desktop-lock.ts";
 import { readCuaConnection } from "./local-computer.ts";
 import { LocalVmIdleTimer } from "./local-vm-idle.ts";
-import { LocalVmLease } from "./local-vm-lease.ts";
 import { RepeatDetector, callKey } from "./repeat-detector.ts";
 import { RoutineManager, type RoutineRunOn, type RoutineRunTrigger } from "./routines.ts";
 import { fetchGithubTeam, fetchLibraryTeam, fetchTeamCatalog } from "./team-library.ts";
@@ -704,17 +705,15 @@ function isUnattended(botId?: string | null): boolean {
   return true;
 }
 let routines: RoutineManager | null = null;
-// The Local VM is intentionally one shared, visible desktop. Two agents
-// driving it simultaneously would mix clicks, keystrokes and screenshots,
-// so only one thread may lease it at a time.
-const localVmLease = new LocalVmLease(30 * 60_000);
-const localVmOwnerBusy = (botId: string) => store.bot(botId)?.busy === true;
+// The Local VM is one shared, visible desktop. The MCP bridge takes the
+// desktop lock only when a turn actually calls a computer tool, so ordinary
+// bot turns run in parallel and only real desktop work is serialised.
 let localVmLifecycleBusy = false;
-let localVmActiveThread: string | null = null;
+let localVmCreatePromise: ReturnType<typeof containerComputerAction> | null = null;
 const LOCAL_VM_IDLE_MS = 8 * 60 * 60_000;
 const localVmIdle = new LocalVmIdleTimer(
   LOCAL_VM_IDLE_MS,
-  () => localVmLifecycleBusy || localVmActiveThread !== null,
+  () => localVmLifecycleBusy || desktopLockHeld(VM_DESKTOP_LOCK),
   async () => {
     // Fence lifecycle and turn dispatch before the first runtime inspection.
     localVmLifecycleBusy = true;
@@ -730,51 +729,41 @@ const localVmIdle = new LocalVmIdleTimer(
   },
 );
 
-/** Mount the shared Local VM for one turn. Explicit `vm` selection is strict;
- * Auto callers catch the error and continue without a computer so a busy
- * shared desktop never turns an ordinary chat into a failed turn. */
+/** Mount the shared Local VM for one turn. Mounting does not claim the
+ * desktop: the MCP bridge claims it on the first computer tool call, so a
+ * busy desktop never blocks a normal chat turn. */
 async function mountLocalVm(
-  threadId: string,
-  botId: string,
   options: { createIfMissing?: boolean } = {},
 ): Promise<{ runtime: Runtime }> {
-  if (localVmLifecycleBusy) {
+  if (localVmLifecycleBusy && !localVmCreatePromise) {
     throw new Error("the Local VM is being started, stopped, or replaced — wait for setup to finish");
   }
-  if (!localVmLease.claim(threadId, botId, localVmOwnerBusy)) {
-    throw new Error("the shared Local VM is already being used by another bot — wait for that turn to finish");
-  }
-  localVmActiveThread = threadId;
   localVmIdle.touch();
-  try {
-    let status = await containerComputerStatus();
-    // The idle backstop removes the disposable container and leaves the
-    // prepared image + durable workspace. Recreate it on the next turn so a
-    // bot does not need a manual Settings visit after an overnight pause.
-    if (
-      options.createIfMissing !== false &&
-      !status.ready &&
-      status.runtime &&
-      status.daemonUp &&
-      status.image &&
-      status.container === "missing"
-    ) {
+  let status = await containerComputerStatus();
+  // The idle backstop removes the disposable container and leaves the
+  // prepared image + durable workspace. Recreate it on the next turn so a
+  // bot does not need a manual Settings visit after an overnight pause.
+  if (
+    options.createIfMissing !== false &&
+    !status.ready &&
+    status.runtime &&
+    status.daemonUp &&
+    status.image &&
+    status.container === "missing"
+  ) {
+    if (!localVmCreatePromise) {
       localVmLifecycleBusy = true;
-      try {
-        status = await containerComputerAction("run");
-      } finally {
+      localVmCreatePromise = containerComputerAction("run").finally(() => {
+        localVmCreatePromise = null;
         localVmLifecycleBusy = false;
-      }
+      });
     }
-    if (!status.ready || !status.runtime) {
-      throw new Error(`${status.problem ?? "the Local VM is not ready"} (App Settings → Local VM)`);
-    }
-    return { runtime: status.runtime };
-  } catch (error) {
-    localVmLease.release(threadId);
-    if (localVmActiveThread === threadId) localVmActiveThread = null;
-    throw error;
+    status = await localVmCreatePromise;
   }
+  if (!status.ready || !status.runtime) {
+    throw new Error(`${status.problem ?? "the Local VM is not ready"} (App Settings → Local VM)`);
+  }
+  return { runtime: status.runtime };
 }
 
 // A running VM may have survived an app/server restart. Start its idle
@@ -786,12 +775,6 @@ void containerComputerStatus()
   .catch(() => null);
 
 bus.subscribe((event: RuntimeEvent) => {
-  localVmLease.touch(event.threadId);
-  if (localVmActiveThread === event.threadId) localVmIdle.touch();
-  if (event.type === "turn.completed") {
-    localVmLease.release(event.threadId);
-    if (localVmActiveThread === event.threadId) localVmActiveThread = null;
-  }
   broadcast({ kind: "runtime", event });
   routines?.handleRuntimeEvent(event);
   const bot = store.botByThread(event.threadId);
@@ -1586,8 +1569,8 @@ async function startTurn(
         if (!mountsComputerMcp || instance.driverKind === "boxAgent") {
           throw new Error("this model engine cannot use the Local VM — choose Claude or an ACP engine, or select another computer destination");
         }
-        const localVm = await mountLocalVm(threadId, bot.id);
-        integrations.localComputer = containerComputerMcp(localVm.runtime);
+        const localVm = await mountLocalVm();
+        integrations.localComputer = containerComputerMcp(localVm.runtime, `${bot.name} (${bot.id})`);
         computerKind = "vm";
       } else if (wants === "local") {
         if (!mountsComputerMcp) {
@@ -1647,8 +1630,8 @@ async function startTurn(
           computerKind = "local";
         } else if (existsSync(VM_WORKSPACE_DIR)) {
           try {
-            const localVm = await mountLocalVm(threadId, bot.id);
-            integrations.localComputer = containerComputerMcp(localVm.runtime);
+            const localVm = await mountLocalVm();
+            integrations.localComputer = containerComputerMcp(localVm.runtime, `${bot.name} (${bot.id})`);
             computerKind = "vm";
           } catch {
             // Auto is best-effort: a busy or unprepared shared VM must not
@@ -1752,8 +1735,6 @@ async function startTurn(
         startScreenPoller(bot.id, previewBoxId, { screenIsTheWork: instance.driverKind === "boxAgent" });
       }
     } catch (e) {
-      localVmLease.release(threadId);
-      if (localVmActiveThread === threadId) localVmActiveThread = null;
       watchdog.settle(threadId);
       turnUsage.delete(threadId);
       const message = e instanceof Error ? e.message : String(e);
@@ -2341,11 +2322,6 @@ async function reloadProviders() {
   // async under the hood), stranding the bot busy — and its screen poller —
   // forever. Settle anything still marked busy.
   for (const b of store.bots.filter((b) => b.busy)) {
-    const vmLease = localVmLease.current(localVmOwnerBusy);
-    if (vmLease?.botId === b.id) {
-      localVmLease.release(vmLease.threadId);
-      if (localVmActiveThread === vmLease.threadId) localVmActiveThread = null;
-    }
     stopScreenPoller(b.id);
     finalizeDelegationWatch(
       b.threadId,
@@ -3965,10 +3941,6 @@ const server = createServer(async (req, res) => {
       const action = m[1] as LifecycleAction;
       if (localVmLifecycleBusy) {
         return json(res, 409, { error: "another Local VM setup action is still running" });
-      }
-      const vmOwner = localVmLease.current(localVmOwnerBusy);
-      if (vmOwner && (action === "stop" || action === "remove" || action === "run")) {
-        return json(res, 409, { error: "the Local VM is being used by a bot — stop that turn first" });
       }
       localVmLifecycleBusy = true;
       try {
