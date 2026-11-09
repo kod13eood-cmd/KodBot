@@ -450,8 +450,8 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
             <div className="mt-0.5 text-[13px] text-ink-secondary">
               {!bot.computer &&
                 (localAvailable
-                  ? "Auto uses a cloud box when one exists, otherwise this computer. "
-                  : "Auto uses a cloud box when one is configured; otherwise computer use stays off. ")}
+                  ? "Auto uses a cloud box when one exists, then this computer, then the prepared Local VM. "
+                  : "Auto uses a cloud box when one is configured, then the prepared Local VM; otherwise computer use stays off. ")}
               Pick where this bot's computer lives. <b className="text-ink">Local VM</b> is a Cua-controlled Linux desktop
               in a container on this machine — free and separate from your own desktop. Set it up in App
               Settings → Local VM.

@@ -666,10 +666,36 @@ async function prepareManagedImage(runtime: Runtime, runner: CommandRunner): Pro
   }
 }
 
+export interface ReadyWaitOptions {
+  timeoutMs?: number;
+  intervalMs?: number;
+  sleep?: (ms: number) => Promise<void>;
+}
+
+/** A freshly created container answers `docker inspect` before XFCE and the
+ * Cua daemon are listening. Poll briefly instead of returning the startup
+ * error as if the desktop had failed. */
+export async function waitForContainerReady(
+  status: () => Promise<ContainerComputerStatus>,
+  options: ReadyWaitOptions = {},
+): Promise<ContainerComputerStatus> {
+  const timeoutMs = options.timeoutMs ?? 90_000;
+  const intervalMs = options.intervalMs ?? 1_500;
+  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const deadline = Date.now() + timeoutMs;
+  let current = await status();
+  while (!current.ready && current.container === "running" && Date.now() < deadline) {
+    await sleep(intervalMs);
+    current = await status();
+  }
+  return current;
+}
+
 export async function containerComputerAction(
   action: LifecycleAction,
   runner: CommandRunner = sh,
   platform: NodeJS.Platform = process.platform,
+  options: ReadyWaitOptions & { waitForReady?: boolean } = {},
 ): Promise<ContainerComputerStatus> {
   if (runner === sh && platform === process.platform) screenshotStatusCache = null;
   const before = await containerComputerStatus(runner, platform);
@@ -695,14 +721,17 @@ export async function containerComputerAction(
 
   if (action === "pull") {
     await prepareManagedImage(runtime, runner);
+  } else if (action === "run") {
+    await ensureVmWorkspace(platform);
+    await runner(runtime, containerRunArgs(runtime, randomBytes(6).toString("base64url")), 2 * 60_000);
+    if (options.waitForReady !== false) {
+      return waitForContainerReady(() => containerComputerStatus(runner, platform), options);
+    }
   } else {
-    if (action === "run") await ensureVmWorkspace(platform);
     const args =
-      action === "run"
-        ? containerRunArgs(runtime, randomBytes(6).toString("base64url"))
-        : action === "remove"
-          ? ["rm", runtime === "container" ? "--force" : "-f", CONTAINER]
-          : [action, CONTAINER];
+      action === "remove"
+        ? ["rm", runtime === "container" ? "--force" : "-f", CONTAINER]
+        : [action, CONTAINER];
     await runner(runtime, args, 2 * 60_000);
   }
   return containerComputerStatus(runner, platform);

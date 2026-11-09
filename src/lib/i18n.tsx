@@ -348,6 +348,7 @@ const BULGARIAN: Record<string, string> = {
   "Where this bot's computer runs": "Къде работи компютърът на този бот",
   "currently: auto": "в момента: автоматично",
   "cloud": "облак",
+  "vm": "локална VM",
   "local": "локално",
   "off": "изключено",
   "All bots →": "Всички ботове →",

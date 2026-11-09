@@ -2,7 +2,7 @@
 // (upstream rule): the React app dispatches typed commands over HTTP and
 // folds one SSE event stream; every provider process runs here.
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { readFileSync, unlinkSync, createReadStream, statSync } from "node:fs";
+import { readFileSync, unlinkSync, createReadStream, statSync, existsSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { isIP } from "node:net";
 import { extname, join } from "node:path";
@@ -25,7 +25,9 @@ import {
   containerComputerScreenshot,
   containerComputerStatus,
   setupCommands,
+  VM_WORKSPACE_DIR,
   type LifecycleAction,
+  type Runtime,
 } from "./container-computer.ts";
 import {
   ensureDirs,
@@ -725,6 +727,53 @@ const localVmIdle = new LocalVmIdleTimer(
     }
   },
 );
+
+/** Mount the shared Local VM for one turn. Explicit `vm` selection is strict;
+ * Auto callers catch the error and continue without a computer so a busy
+ * shared desktop never turns an ordinary chat into a failed turn. */
+async function mountLocalVm(
+  threadId: string,
+  botId: string,
+  options: { createIfMissing?: boolean } = {},
+): Promise<{ runtime: Runtime }> {
+  if (localVmLifecycleBusy) {
+    throw new Error("the Local VM is being started, stopped, or replaced — wait for setup to finish");
+  }
+  if (!localVmLease.claim(threadId, botId, localVmOwnerBusy)) {
+    throw new Error("the shared Local VM is already being used by another bot — wait for that turn to finish");
+  }
+  localVmActiveThread = threadId;
+  localVmIdle.touch();
+  try {
+    let status = await containerComputerStatus();
+    // The idle backstop removes the disposable container and leaves the
+    // prepared image + durable workspace. Recreate it on the next turn so a
+    // bot does not need a manual Settings visit after an overnight pause.
+    if (
+      options.createIfMissing !== false &&
+      !status.ready &&
+      status.runtime &&
+      status.daemonUp &&
+      status.image &&
+      status.container === "missing"
+    ) {
+      localVmLifecycleBusy = true;
+      try {
+        status = await containerComputerAction("run");
+      } finally {
+        localVmLifecycleBusy = false;
+      }
+    }
+    if (!status.ready || !status.runtime) {
+      throw new Error(`${status.problem ?? "the Local VM is not ready"} (App Settings → Local VM)`);
+    }
+    return { runtime: status.runtime };
+  } catch (error) {
+    localVmLease.release(threadId);
+    if (localVmActiveThread === threadId) localVmActiveThread = null;
+    throw error;
+  }
+}
 
 // A running VM may have survived an app/server restart. Start its idle
 // backstop even if nobody opens Settings or begins a turn this session.
@@ -1535,21 +1584,7 @@ async function startTurn(
         if (!mountsComputerMcp || instance.driverKind === "boxAgent") {
           throw new Error("this model engine cannot use the Local VM — choose Claude or an ACP engine, or select another computer destination");
         }
-        if (localVmLifecycleBusy) {
-          throw new Error("the Local VM is being started, stopped, or replaced — wait for setup to finish");
-        }
-        // Claim before the first await. The lifecycle route performs its
-        // matching check synchronously, so neither side can enter while the
-        // other is between inspection and mutation.
-        if (!localVmLease.claim(threadId, bot.id, localVmOwnerBusy)) {
-          throw new Error("the shared Local VM is already being used by another bot — wait for that turn to finish");
-        }
-        localVmActiveThread = threadId;
-        localVmIdle.touch();
-        const localVm = await containerComputerStatus();
-        if (!localVm.ready || !localVm.runtime) {
-          throw new Error(`${localVm.problem ?? "the Local VM is not ready"} (App Settings → Local VM)`);
-        }
+        const localVm = await mountLocalVm(threadId, bot.id);
         integrations.localComputer = containerComputerMcp(localVm.runtime);
         computerKind = "vm";
       } else if (wants === "local") {
@@ -1599,13 +1634,24 @@ async function startTurn(
         throw new Error("the cloud computer could not be created or reached");
       }
 
-      // Auto-only host fallback. Electron owns cua-driver/TCC attribution;
-      // the harness only reads its already-running connection descriptor.
+      // Auto-only fallback. Electron owns cua-driver/TCC attribution; the
+      // harness only reads its already-running connection descriptor. On a
+      // headless Linux host that descriptor is deliberately absent, so the
+      // prepared shared Local VM is the useful computer instead.
       if (!integrations.computer && !integrations.localComputer && wants === undefined && mountsComputerMcp) {
         const cua = readCuaConnection();
         if (cua) {
           integrations.localComputer = cua;
           computerKind = "local";
+        } else if (existsSync(VM_WORKSPACE_DIR)) {
+          try {
+            const localVm = await mountLocalVm(threadId, bot.id);
+            integrations.localComputer = containerComputerMcp(localVm.runtime);
+            computerKind = "vm";
+          } catch {
+            // Auto is best-effort: a busy or unprepared shared VM must not
+            // turn an ordinary chat into a failed turn.
+          }
         }
       }
       // peer-agent comms: give a user-initiated turn the list_bots/ask_bot

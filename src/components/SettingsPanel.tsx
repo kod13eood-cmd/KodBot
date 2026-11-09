@@ -1279,7 +1279,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
               {bot.computer ? "" : ` (${t("currently: auto")})`}
             </div>
             <div className="mt-3 flex overflow-hidden rounded-lg border border-hairline/40">
-              {(["cloud", "local", "off"] as const).map((mode, i) => (
+              {(["cloud", "vm", "local", "off"] as const).map((mode, i) => (
                 <button
                   key={mode}
                   onClick={() => patch({ computer: mode })}

@@ -23,7 +23,9 @@ import {
   containerComputerStatus,
   managedImageDockerfile,
   setupCommands,
+  waitForContainerReady,
   type CommandRunner,
+  type ContainerComputerStatus,
 } from "./container-computer.ts";
 
 function runner(responses: Record<string, string | Error>) {
@@ -420,6 +422,36 @@ describe("Cua integration", () => {
     expect(image).toBe(`data:image/png;base64,${png.toString("base64")}`);
     expect(fake.calls).toContain(screenshotCall);
     expect(fake.calls.some((call) => /xdotool|scrot|vnc/i.test(call))).toBe(false);
+  });
+});
+
+describe("waitForContainerReady", () => {
+  const status = (ready: boolean, container: "running" | "missing" = "running") =>
+    ({ ready, container } as ContainerComputerStatus);
+
+  it("polls a fresh container instead of reporting its startup probe as a failure", async () => {
+    const sequence = [status(false), status(false), status(true)];
+    const sleeps: number[] = [];
+    let index = 0;
+
+    const result = await waitForContainerReady(
+      async () => sequence[Math.min(index++, sequence.length - 1)],
+      { timeoutMs: 10_000, intervalMs: 250, sleep: async (ms) => void sleeps.push(ms) },
+    );
+
+    expect(result.ready).toBe(true);
+    expect(sleeps).toEqual([250, 250]);
+  });
+
+  it("does not wait when the container never started", async () => {
+    const sleeps: number[] = [];
+    const result = await waitForContainerReady(async () => status(false, "missing"), {
+      timeoutMs: 10_000,
+      sleep: async (ms) => void sleeps.push(ms),
+    });
+
+    expect(result.ready).toBe(false);
+    expect(sleeps).toEqual([]);
   });
 });
 
