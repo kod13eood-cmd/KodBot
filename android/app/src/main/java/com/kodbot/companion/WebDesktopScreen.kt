@@ -3,6 +3,7 @@ package com.kodbot.companion
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Message
 import android.webkit.CookieManager
@@ -17,6 +18,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,7 +32,12 @@ import androidx.compose.ui.viewinterop.AndroidView
  * WebView never receives the bearer token as a JavaScript-visible value. */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun WebDesktopScreen(connection: CompanionConnection, onExit: () -> Unit) {
+fun WebDesktopScreen(
+    connection: CompanionConnection,
+    target: DesktopMode.DesktopTarget? = null,
+    onTargetHandled: () -> Unit = {},
+    onExit: () -> Unit,
+) {
     val context = LocalContext.current
     val url = remember(connection.baseUrl, connection.kind) {
         DesktopMode.webUrl(connection.baseUrl, connection.kind)
@@ -39,6 +46,7 @@ fun WebDesktopScreen(connection: CompanionConnection, onExit: () -> Unit) {
         DesktopMode.sessionCookie(connection.baseUrl, connection.token, connection.kind)
     }
     var webView by remember { mutableStateOf<WebView?>(null) }
+    var pageReady by remember { mutableStateOf(false) }
     var fileCallback by remember { mutableStateOf<ValueCallback<Array<Uri>>?>(null) }
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val callback = fileCallback
@@ -70,6 +78,16 @@ fun WebDesktopScreen(connection: CompanionConnection, onExit: () -> Unit) {
                 settings.mediaPlaybackRequiresUserGesture = false
                 settings.setSupportMultipleWindows(true)
                 webViewClient = object : WebViewClient() {
+                    override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                        super.onPageStarted(view, url, favicon)
+                        pageReady = false
+                    }
+
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        super.onPageFinished(view, url)
+                        pageReady = true
+                    }
+
                     override fun shouldOverrideUrlLoading(
                         view: WebView,
                         request: android.webkit.WebResourceRequest,
@@ -130,6 +148,26 @@ fun WebDesktopScreen(connection: CompanionConnection, onExit: () -> Unit) {
         },
         update = { webView = it },
     )
+
+    // A notification click while the WebView is alive opens the exact bot or
+    // task without a reload. If the page has not loaded yet (or its listener
+    // did not acknowledge the event), reload with a URL deep link instead.
+    LaunchedEffect(target?.nonce, webView, pageReady) {
+        val wanted = target ?: return@LaunchedEffect
+        val view = webView ?: return@LaunchedEffect
+        if (!wanted.hasTarget) return@LaunchedEffect
+        if (!pageReady) {
+            view.loadUrl(DesktopMode.deepLinkUrl(url, wanted.botId, wanted.threadId))
+            onTargetHandled()
+            return@LaunchedEffect
+        }
+        view.evaluateJavascript(DesktopMode.openTargetScript(wanted)) { result ->
+            if (result?.trim('"') != "1") {
+                view.loadUrl(DesktopMode.deepLinkUrl(url, wanted.botId, wanted.threadId))
+            }
+            onTargetHandled()
+        }
+    }
 
     DisposableEffect(Unit) {
         onDispose {

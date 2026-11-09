@@ -45,6 +45,35 @@ class DesktopModeTest {
     }
 
     @Test
+    fun `notification deep links preserve existing query parameters`() {
+        assertEquals(
+            "http://host:8799?bot=bot-1&thread=task-1",
+            DesktopMode.deepLinkUrl("http://host:8799", "bot-1", "task-1"),
+        )
+        assertEquals(
+            "https://host/ui?login=1&thread=task-1",
+            DesktopMode.deepLinkUrl("https://host/ui?login=1", null, "task-1"),
+        )
+        assertEquals(
+            "https://host/ui?login=1&bot=bot-1#top",
+            DesktopMode.deepLinkUrl("https://host/ui?login=1#top", "bot-1", null),
+        )
+        assertEquals("https://host", DesktopMode.deepLinkUrl("https://host", null, null))
+    }
+
+    @Test
+    fun `notification event carries escaped ids and an acknowledgement nonce`() {
+        val script = DesktopMode.openTargetScript(
+            DesktopMode.DesktopTarget("bot\"1", "task\n2", 42),
+        )
+        assertTrue(script.contains("\"botId\":\"bot\\\"1\""))
+        assertTrue(script.contains("\"threadId\":\"task\\n2\""))
+        assertTrue(script.contains("\"nonce\":42"))
+        assertTrue(script.contains("__kodbotOpenAck"))
+        assertTrue(script.contains("CustomEvent('kodbot:open'"))
+    }
+
+    @Test
     fun `same-origin checks include the effective port`() {
         assertTrue(DesktopMode.isSameOrigin("https://example.com/a", "https://example.com:443/b"))
         assertTrue(DesktopMode.isSameOrigin("http://127.0.0.1:8799", "http://127.0.0.1:8799/x"))

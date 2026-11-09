@@ -114,6 +114,7 @@ class MainActivity : ComponentActivity() {
     private var pendingThreadId: String? = null
     private var settingsOpen by mutableStateOf(false)
     private var desktopMode by mutableStateOf(false)
+    private var desktopTarget by mutableStateOf<DesktopMode.DesktopTarget?>(null)
     private var desktopSuggestionDismissed by mutableStateOf(false)
     private var showHiddenBots by mutableStateOf(false)
     private var showGroups by mutableStateOf(true)
@@ -178,6 +179,7 @@ class MainActivity : ComponentActivity() {
                     activeChatKey = activeChatKey,
                     settingsOpen = settingsOpen,
                     desktopMode = desktopMode,
+                    desktopTarget = desktopTarget,
                     desktopSuggestionDismissed = desktopSuggestionDismissed,
                     showHiddenBots = showHiddenBots,
                     showGroups = showGroups,
@@ -204,6 +206,7 @@ class MainActivity : ComponentActivity() {
                     onDesktopModeChange = ::changeDesktopMode,
                     onDismissDesktopSuggestion = ::dismissDesktopSuggestion,
                     onExitDesktopMode = { changeDesktopMode(false) },
+                    onDesktopTargetHandled = { desktopTarget = null },
                     onRefresh = ::refreshFleet,
                     onRefreshEngines = ::refreshEngines,
                     onTestServer = ::testServer,
@@ -281,12 +284,20 @@ class MainActivity : ComponentActivity() {
             }
         }
         val threadId = intent?.getStringExtra(CompanionStreamService.EXTRA_THREAD_ID)
+        val botId = intent?.getStringExtra(CompanionStreamService.EXTRA_BOT_ID)
+        if (desktopMode && (!botId.isNullOrBlank() || !threadId.isNullOrBlank())) {
+            desktopTarget = DesktopMode.DesktopTarget(
+                botId = botId?.takeIf(String::isNotBlank),
+                threadId = threadId?.takeIf(String::isNotBlank),
+                nonce = System.nanoTime(),
+            )
+        }
         if (!threadId.isNullOrBlank()) {
             chats.firstOrNull { it.threadId == threadId }?.let { activeChatKey = it.key }
                 ?: run { pendingThreadId = threadId }
         } else {
-            intent?.getStringExtra(CompanionStreamService.EXTRA_BOT_ID)?.let { botId ->
-                chats.firstOrNull { it.kind == "bot" && it.id == botId }?.let { activeChatKey = it.key }
+            botId?.let { id ->
+                chats.firstOrNull { it.kind == "bot" && it.id == id }?.let { activeChatKey = it.key }
             }
         }
     }
@@ -819,6 +830,7 @@ private fun KodBotScreen(
     activeChatKey: String?,
     settingsOpen: Boolean,
     desktopMode: Boolean,
+    desktopTarget: DesktopMode.DesktopTarget?,
     desktopSuggestionDismissed: Boolean,
     showHiddenBots: Boolean,
     showGroups: Boolean,
@@ -845,6 +857,7 @@ private fun KodBotScreen(
     onDesktopModeChange: (Boolean) -> Unit,
     onDismissDesktopSuggestion: () -> Unit,
     onExitDesktopMode: () -> Unit,
+    onDesktopTargetHandled: () -> Unit,
     onRefresh: () -> Unit,
     onRefreshEngines: () -> Unit,
     onTestServer: (String) -> Unit,
@@ -894,6 +907,8 @@ private fun KodBotScreen(
             } else if (desktopMode) {
                 WebDesktopScreen(
                     connection = connection,
+                    target = desktopTarget,
+                    onTargetHandled = onDesktopTargetHandled,
                     onExit = onExitDesktopMode,
                 )
             } else {
