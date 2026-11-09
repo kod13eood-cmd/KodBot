@@ -153,16 +153,17 @@ function AccountRow({
   onSaveLabel: (label: string) => Promise<void>;
 }) {
   const { t } = useI18n();
-  const [label, setLabel] = useState(account.label ?? "");
+  const savedLabel = account.label ?? account.alias ?? "";
+  const [label, setLabel] = useState(savedLabel);
   const [saving, setSaving] = useState(false);
   const [labelError, setLabelError] = useState<string | null>(null);
   useEffect(() => {
-    setLabel(account.label ?? "");
+    setLabel(savedLabel);
     setLabelError(null);
-  }, [account.id, account.label]);
+  }, [account.id, savedLabel]);
   const identity = identityState?.identity?.trim() || "";
   const active = /^active$/i.test(account.status ?? "");
-  const heading = account.label?.trim() || identity || `${t("Account")} ${index + 1}`;
+  const heading = account.label?.trim() || account.alias?.trim() || identity || `${t("Account")} ${index + 1}`;
   const save = async () => {
     setSaving(true);
     setLabelError(null);
@@ -267,7 +268,7 @@ function AccountRow({
         />
         <button
           type="submit"
-          disabled={saving || busy || label.trim() === (account.label ?? "")}
+          disabled={saving || busy || label.trim() === savedLabel.trim()}
           className="rounded-lg bg-raised px-2.5 py-1.5 text-[11.5px] text-ink hover:bg-raised-hover disabled:opacity-40"
         >
           {saving ? <Loader2 size={12} className="animate-spin" /> : t("Save label")}

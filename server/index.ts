@@ -148,12 +148,15 @@ function withConnectorLabels(status: Record<string, any>): Record<string, any> {
   for (const [slug, state] of Object.entries(status)) {
     const accounts = Array.isArray(state?.accounts) ? state.accounts : [];
     if (!accounts.length) continue;
-    state.accounts = accounts.map((account: Record<string, unknown>) => ({
-      ...account,
-      ...(typeof account.id === "string" && labels[connectorLabelKey(slug, account.id)]
-        ? { label: labels[connectorLabelKey(slug, account.id)] }
-        : {}),
-    }));
+    state.accounts = accounts.map((account: Record<string, unknown>) => {
+      const local = typeof account.id === "string" ? labels[connectorLabelKey(slug, account.id)] : undefined;
+      // The name entered before OAuth is stored upstream as the account
+      // alias. Fall back to it until the user saves a local label, so a fresh
+      // connection never reads as "Account 1" after the browser returns.
+      const alias = typeof account.alias === "string" && account.alias.trim() ? account.alias.trim() : undefined;
+      const label = local ?? alias;
+      return { ...account, ...(label ? { label } : {}) };
+    });
   }
   return status;
 }
