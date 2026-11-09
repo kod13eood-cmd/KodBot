@@ -920,7 +920,7 @@ private fun KodBotScreen(
                 }
 
                 BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    val twoPane = TabletLayout.isTwoPane(maxWidth.value, maxHeight.value)
+                    val twoPane = TabletLayout.isTwoPane(maxWidth.value)
                     BackHandler(enabled = settingsOpen || (!twoPane && activeChatKey != null)) {
                         if (settingsOpen) onCloseSettings() else onBackToFleet()
                     }

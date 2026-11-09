@@ -7,17 +7,16 @@ import org.junit.Test
 
 class TabletLayoutTest {
     @Test
-    fun `phones and short windows stay single pane`() {
-        assertFalse(TabletLayout.isTwoPane(360f, 800f))
-        assertFalse(TabletLayout.isTwoPane(599f, 800f))
-        assertFalse(TabletLayout.isTwoPane(800f, 400f))
+    fun `phones stay single pane`() {
+        assertFalse(TabletLayout.isTwoPane(360f))
+        assertFalse(TabletLayout.isTwoPane(599f))
     }
 
     @Test
     fun `tablet widths use the two pane shell`() {
-        assertTrue(TabletLayout.isTwoPane(600f, 960f))
-        assertTrue(TabletLayout.isTwoPane(720f, 800f))
-        assertTrue(TabletLayout.isTwoPane(1280f, 800f))
+        assertTrue(TabletLayout.isTwoPane(600f))
+        assertTrue(TabletLayout.isTwoPane(720f))
+        assertTrue(TabletLayout.isTwoPane(1280f))
     }
 
     @Test

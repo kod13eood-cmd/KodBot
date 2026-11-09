@@ -4,13 +4,12 @@ package com.kodbot.companion
  * layout decision is testable without a Compose UI test. */
 object TabletLayout {
     /** A 600dp window is the Material "medium" breakpoint: a small tablet or
-     * a foldable. The height guard keeps a short phone in landscape on the
-     * single-pane phone layout instead of squeezing the chat. */
+     * a foldable. This decision is deliberately width-only: the IME shrinks
+     * the window height while typing, and a height breakpoint would switch
+     * layouts mid-keystroke and drop the composer's focus. */
     const val TWO_PANE_MIN_WIDTH_DP = 600f
-    const val TWO_PANE_MIN_HEIGHT_DP = 480f
 
-    fun isTwoPane(widthDp: Float, heightDp: Float): Boolean =
-        widthDp >= TWO_PANE_MIN_WIDTH_DP && heightDp >= TWO_PANE_MIN_HEIGHT_DP
+    fun isTwoPane(widthDp: Float): Boolean = widthDp >= TWO_PANE_MIN_WIDTH_DP
 
     /** The fleet list is a navigation column, not the main content. Keep it
      * narrow enough that a tablet still gives the chat most of the width, and
