@@ -22,6 +22,8 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState<Recording | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [naming, setNaming] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
   const recordingRef = useRef<Recording | null>(null);
   recordingRef.current = recording;
   const selectedBot = state.bots.find((bot) => bot.id === state.selectedId);
@@ -63,12 +65,18 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
     };
   }, []);
 
-  const record = async () => {
-    const name = window.prompt(
-      "Name this workflow",
+  const openRecord = () => {
+    setNameDraft(
       `Workflow ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
     );
-    if (!name?.trim()) return;
+    setMessage(null);
+    setNaming(true);
+  };
+
+  const startRecording = async () => {
+    const name = nameDraft.trim();
+    if (!name) return;
+    setNaming(false);
     setBusy(true);
     setMessage(null);
     setSaved(null);
@@ -76,7 +84,7 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
       const response = await fetch("/api/local-computer/recordings/start", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error ?? "Couldn't start the recording");
@@ -172,7 +180,7 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
             ) : (
               <button
                 type="button"
-                onClick={() => void record()}
+                onClick={openRecord}
                 disabled={busy}
                 className="flex items-center gap-1.5 rounded-md border border-hairline/40 px-2 py-1 text-[11.5px] text-ink hover:bg-raised disabled:opacity-50"
                 title="Record a workflow the bot can learn from"
@@ -239,6 +247,51 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
           className="min-h-0 w-full flex-1 border-0 bg-black"
           allow="clipboard-read; clipboard-write; fullscreen"
         />
+        {naming && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 p-4">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void startRecording();
+              }}
+              className="w-full max-w-sm rounded-xl border border-hairline/40 bg-panel p-4 shadow-2xl"
+            >
+              <div className="text-[14px] font-medium text-ink">Name this workflow</div>
+              <div className="mt-1 text-[12px] leading-relaxed text-ink-secondary">
+                The viewer records your clicks, keys, and periodic screenshots. The bot can turn
+                them into a reusable workflow.
+              </div>
+              <input
+                autoFocus
+                value={nameDraft}
+                onChange={(event) => setNameDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setNaming(false);
+                }}
+                maxLength={80}
+                className="mt-3 w-full rounded-lg border border-hairline/40 bg-raised px-3 py-2 text-[13px] text-ink outline-none focus:border-accent/60"
+                placeholder="Workflow name"
+              />
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNaming(false)}
+                  className="rounded-md px-3 py-1.5 text-[12.5px] text-ink-secondary hover:bg-raised"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!nameDraft.trim()}
+                  className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[12.5px] font-medium text-white hover:brightness-110 disabled:opacity-50"
+                >
+                  <Circle size={10} className="fill-current" />
+                  Start recording
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );
