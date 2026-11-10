@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URI
@@ -383,6 +384,39 @@ class CompanionApi(private val connection: CompanionConnection) {
                 http.disconnect()
             }
         }
+
+    /** Send one short push-to-talk clip to the harness's local Whisper
+     * endpoint. The file is a private cache file and is deleted by the caller
+     * once the transcript comes back. */
+    suspend fun transcribe(file: File): String = withContext(Dispatchers.IO) {
+        val http = URL(connection.baseUrl + "/api/voice/transcribe?language=auto").openConnection() as HttpURLConnection
+        try {
+            http.requestMethod = "POST"
+            http.connectTimeout = 15_000
+            http.readTimeout = 180_000
+            http.doOutput = true
+            http.setFixedLengthStreamingMode(file.length())
+            http.setRequestProperty("Accept", "application/json")
+            http.setRequestProperty("Authorization", "Bearer ${connection.token}")
+            http.setRequestProperty("Content-Type", "audio/mp4")
+            file.inputStream().use { source ->
+                http.outputStream.use { target -> source.copyTo(target, 64 * 1024) }
+            }
+            val status = http.responseCode
+            val stream = if (status in 200..299) http.inputStream else http.errorStream
+            val response = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+            if (status !in 200..299) {
+                val detail = runCatching { JSONObject(response).optString("error") }.getOrNull()
+                throw IOException(
+                    detail?.takeIf(String::isNotBlank)
+                        ?: "The computer couldn't transcribe the recording (HTTP $status).",
+                )
+            }
+            JSONObject(response).optString("text").trim()
+        } finally {
+            http.disconnect()
+        }
+    }
 
     suspend fun createBot(): ConversationRecord = withContext(Dispatchers.IO) {
         val response = JSONObject(request("POST", "/api/bots", JSONObject()))

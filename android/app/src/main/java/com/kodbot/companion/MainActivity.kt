@@ -23,6 +23,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -71,14 +72,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
@@ -93,6 +97,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -103,6 +108,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import java.io.File
 import java.net.URI
 
 class MainActivity : ComponentActivity() {
@@ -217,6 +223,11 @@ class MainActivity : ComponentActivity() {
                     onSend = ::send,
                     onRespond = ::respond,
                     onInterrupt = ::interrupt,
+                    onTranscribe = { file ->
+                        val saved = connection
+                            ?: throw java.io.IOException("Pair this phone with a computer first.")
+                        CompanionApi(saved).transcribe(file)
+                    },
                     onSelectModel = ::selectModel,
                     onSetAutoModel = ::setAutoModel,
                     onCreateTeam = ::createTeam,
@@ -868,6 +879,7 @@ private fun KodBotScreen(
     onSend: (ConversationRecord, String, List<PendingAttachment>, (Boolean) -> Unit) -> Unit,
     onRespond: (ConversationRecord, ApprovalCard, String) -> Unit,
     onInterrupt: (ConversationRecord) -> Unit,
+    onTranscribe: suspend (File) -> String,
     onSelectModel: (ConversationRecord, EngineRecord, ModelOptionRecord) -> Unit,
     onSetAutoModel: (ConversationRecord, Boolean, List<ModelSelectionRecord>) -> Unit,
     onCreateTeam: (ConversationRecord, String) -> Unit,
@@ -938,6 +950,7 @@ private fun KodBotScreen(
                         onSend = onSend,
                         onRespond = onRespond,
                         onInterrupt = onInterrupt,
+                        onTranscribe = onTranscribe,
                     )
                 }
                 val settingsContent: @Composable () -> Unit = {
@@ -1479,6 +1492,7 @@ private fun ChatScreen(
     onSend: (ConversationRecord, String, List<PendingAttachment>, (Boolean) -> Unit) -> Unit,
     onRespond: (ConversationRecord, ApprovalCard, String) -> Unit,
     onInterrupt: (ConversationRecord) -> Unit,
+    onTranscribe: suspend (File) -> String,
 ) {
     var draft by rememberSaveable(chat.key) { mutableStateOf("") }
     var attachments by rememberSaveable(chat.key) { mutableStateOf(emptyList<PendingAttachment>()) }
@@ -1486,6 +1500,24 @@ private fun ChatScreen(
     var attachmentError by rememberSaveable(chat.key) { mutableStateOf<String?>(null) }
     var choosingAttachment by rememberSaveable(chat.key) { mutableStateOf(false) }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val recorder = remember { VoiceRecorder(context) }
+    var micGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+                PackageManager.PERMISSION_GRANTED,
+        )
+    }
+    var recording by remember { mutableStateOf(false) }
+    var transcribing by remember { mutableStateOf(false) }
+    var micError by remember { mutableStateOf<String?>(null) }
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        micGranted = granted
+        micError = if (granted) null else "Microphone permission is needed for voice input."
+    }
+    DisposableEffect(Unit) {
+        onDispose { recorder.cancel() }
+    }
     val acceptPicked: (List<Uri>) -> Unit = { uris ->
         if (uris.isNotEmpty()) {
             val accepted = mutableListOf<PendingAttachment>()
@@ -1530,6 +1562,51 @@ private fun ChatScreen(
                     draft = ""
                     attachments = emptyList()
                 }
+            }
+        }
+    }
+
+    fun startVoice(): Boolean {
+        if (!micGranted) {
+            micPermission.launch(Manifest.permission.RECORD_AUDIO)
+            return false
+        }
+        if (recording || transcribing) return false
+        micError = null
+        return try {
+            recorder.start()
+            recording = true
+            true
+        } catch (error: Exception) {
+            recorder.cancel()
+            micError = error.message ?: "Couldn't start the microphone."
+            false
+        }
+    }
+
+    fun stopVoice() {
+        if (!recording) return
+        recording = false
+        val file = recorder.stop()
+        if (file == null) {
+            micError = "Nothing was recorded. Hold the mic while you speak."
+            return
+        }
+        transcribing = true
+        scope.launch {
+            try {
+                val transcript = onTranscribe(file)
+                if (transcript.isNotBlank()) {
+                    draft = if (draft.isBlank()) transcript else draft.trimEnd() + " " + transcript
+                    micError = null
+                } else {
+                    micError = "The recording didn't contain speech."
+                }
+            } catch (error: Exception) {
+                micError = error.message ?: "Couldn't transcribe the recording."
+            } finally {
+                file.delete()
+                transcribing = false
             }
         }
     }
@@ -1622,6 +1699,14 @@ private fun ChatScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
             )
         }
+        micError?.let { message ->
+            Text(
+                message,
+                color = Color(0xFFFF8A80),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.Bottom,
@@ -1646,6 +1731,37 @@ private fun ChatScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { submit() }),
             )
+            Box(
+                modifier = Modifier
+                    .padding(bottom = 4.dp)
+                    .size(48.dp)
+                    .background(if (recording) Color(0x33FF5252) else Color.Transparent, CircleShape)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onPress = {
+                                if (!micGranted) {
+                                    micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                                    return@detectTapGestures
+                                }
+                                if (transcribing || recording) return@detectTapGestures
+                                if (startVoice()) {
+                                    tryAwaitRelease()
+                                    stopVoice()
+                                }
+                            },
+                        )
+                    }
+                    .semantics {
+                        contentDescription = if (recording) "Stop recording" else "Hold to talk"
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (transcribing) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(if (recording) "⏹" else "🎙", fontSize = 20.sp)
+                }
+            }
             Button(
                 onClick = submit,
                 enabled = canSend,

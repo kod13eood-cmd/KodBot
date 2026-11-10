@@ -46,8 +46,10 @@ Status keys:
   branch the transcript instead of destroying history.
 - **Remote mode.** Point the desktop app at a KodBot server that stays on 24/7.
 - **Voice.** Local push-to-talk dictation (faster-whisper) and Piper text to
-  speech on the harness, with no audio leaving the machine. ElevenLabs remains
-  available for cloud voices; macOS also has native on-device dictation.
+  speech on the harness, with no audio leaving the machine. The web composer,
+  the Electron desktop app, and the native Android chat all use it; Android
+  Desktop mode uses the web control. ElevenLabs remains available for cloud
+  voices; macOS also has native on-device dictation.
 - **Record workflow.** Record a human demonstration in the Local VM viewer:
   pointer/key events plus periodic screenshots are saved under the durable
   workspace, and the bot can read them into a reusable workflow in memory.
