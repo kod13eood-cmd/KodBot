@@ -40,6 +40,7 @@ export interface LocalVmRecordingState {
 interface ActiveRecording extends LocalVmRecording {
   lock: DesktopLock;
   timer: ReturnType<typeof setInterval> | null;
+  maxTimer: ReturnType<typeof setTimeout> | null;
   capture: Promise<void> | null;
   events: number;
   eventsPath: string;
@@ -48,6 +49,10 @@ interface ActiveRecording extends LocalVmRecording {
 }
 
 let active: ActiveRecording | null = null;
+
+/** A browser crash must not leave the shared desktop locked forever. A
+ * demonstration longer than an hour is almost certainly a forgotten tab. */
+const MAX_RECORDING_MS = 60 * 60_000;
 
 export function localVmRecordingActive(): boolean {
   return active !== null;
@@ -80,6 +85,7 @@ function publicRecording(recording: ActiveRecording): LocalVmRecording {
   const {
     lock: _lock,
     timer: _timer,
+    maxTimer: _maxTimer,
     capture: _capture,
     events: _events,
     eventsPath: _eventsPath,
@@ -124,6 +130,7 @@ export async function startLocalVmRecording(name: string): Promise<LocalVmRecord
       ...paths,
       lock,
       timer: null,
+      maxTimer: null,
       capture: null,
       events: 0,
       eventsPath: join(paths.host_path, "events.jsonl"),
@@ -160,6 +167,11 @@ export async function startLocalVmRecording(name: string): Promise<LocalVmRecord
     }, 2_000);
     timer.unref?.();
     recording.timer = timer;
+    const maxTimer = setTimeout(() => {
+      void stopLocalVmRecording().catch(() => {});
+    }, MAX_RECORDING_MS);
+    maxTimer.unref?.();
+    recording.maxTimer = maxTimer;
     active = recording;
     return publicRecording(recording);
   } catch (error) {
@@ -172,6 +184,7 @@ export async function stopLocalVmRecording(): Promise<LocalVmRecording> {
   const current = active;
   if (!current) throw Object.assign(new Error("no workflow recording is running"), { status: 409 });
   clearInterval(current.timer ?? undefined);
+  if (current.maxTimer) clearTimeout(current.maxTimer);
   // Let an in-flight screenshot finish before releasing the desktop.
   if (current.capture) await current.capture.catch(() => {});
   const stopped = Date.now();
