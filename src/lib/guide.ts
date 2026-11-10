@@ -110,6 +110,7 @@ KodBot е local-first chat приложение за екип от AI агент
 - **Auto** picks a configured cloud box first, then this computer when available, then the prepared Local VM. Choose an explicit destination in Bot settings → Computer when a bot must not fall back.
 - The Local VM is a Cua Linux desktop in Docker or Podman. Only \`/home/cua/workspace\` is durable; save downloads, repositories, and browser profiles there. Set it up once in App Settings → Local VM. Chromium and Firefox are installed for real browser work.
 - **Open computer** in App Settings → Local VM (or the Computer panel) opens the shared desktop in a full-window view with a **Full screen** button. You can click, type, and scroll directly; the bot sees the same screen and can take over or observe with a screenshot.
+- **Record** in the viewer saves your pointer/key actions and periodic screenshots under the durable workspace. Stop and choose **Analyze with <bot>** to have the bot write the workflow into its memory.
 - The prepared image and workspace survive container recreation. Bots can run normal tasks in parallel; only their desktop actions take turns, and a bot that needs the screen waits at its first computer tool call.
 - Use **Watch screen** in App Settings → Local VM, or ask the bot for a screenshot, to see what it is doing.`,
       bg: `## Компютърът на бота
@@ -118,8 +119,27 @@ KodBot е local-first chat приложение за екип от AI агент
 - **Auto** избира първо конфигуриран cloud box, после този компютър, ако е наличен, и накрая подготвената Local VM. Избери конкретна дестинация в Bot settings → Computer, ако ботът не трябва да пада към друга.
 - Local VM е Cua Linux десктоп в Docker или Podman. Само \`/home/cua/workspace\` е трайна; пази изтеглянията, repository-тата и browser профилите там. Настройва се веднъж от App Settings → Local VM. Chromium и Firefox са инсталирани за реална browser работа.
 - **Open computer** от App Settings → Local VM (или Computer панела) отваря споделения десктоп в прозорец на цял екран с бутон **Full screen**. Можеш да кликаш, пишеш и скролваш директно; ботът вижда същия екран и може да поеме или да наблюдава със screenshot.
+- **Record** във viewer-а запазва движенията/кликовете/клавишите и периодични screenshot-и в трайния workspace. Спри и избери **Analyze with <bot>**, за да запише ботът workflow-а в паметта си.
 - Подготвеният image и workspace-ът оцеляват при пресъздаване на контейнера. Ботовете могат да изпълняват обикновени задачи паралелно; само действията им по десктопа се редуват, а ботът, който има нужда от екрана, изчаква при първото computer действие.
 - Използвай **Watch screen** в App Settings → Local VM или поискай screenshot от бота, за да видиш какво прави.`,
+    },
+  },
+  {
+    id: "voice",
+    title: { en: "Voice", bg: "Глас" },
+    body: {
+      en: `## Voice
+
+- **App Settings → Voice → Local (free)** uses faster-whisper for speech-to-text and Piper for text-to-speech on the harness. Audio stays on the machine; the first setup downloads the models once.
+- **Hold the microphone** in the composer to talk. The transcript lands in the composer so you can edit or send it. Voice capture needs HTTPS or the localhost desktop app; the Android companion uses Desktop mode for web voice.
+- **ElevenLabs** is still available if you prefer a cloud voice. It is billed per character by ElevenLabs.
+- Bots with **Speak replies** enabled read settled replies aloud; call mode on macOS uses the native speech service.`,
+      bg: `## Глас
+
+- **App Settings → Voice → Local (free)** използва faster-whisper за реч към текст и Piper за текст към реч на сървъра. Аудиото остава на машината; моделите се изтеглят еднократно при първата настройка.
+- **Задръж микрофона** в composer-а, за да говориш. Транскриптът влиза в полето, за да го редактираш или изпратиш. Гласът иска HTTPS или localhost desktop app; Android companion използва Desktop mode за уеб глас.
+- **ElevenLabs** остава наличен, ако предпочиташ облачен глас. Таксува се на знак от ElevenLabs.
+- Ботовете с включено **Speak replies** четат готовите отговори на глас; call mode на macOS използва native speech услугата.`,
     },
   },
   {

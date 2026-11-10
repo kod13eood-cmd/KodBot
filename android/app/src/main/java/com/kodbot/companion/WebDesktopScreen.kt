@@ -1,12 +1,15 @@
 package com.kodbot.companion
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Message
 import android.webkit.CookieManager
+import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -26,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 
 /** Full-screen web UI with the native notification service still running.
  * The gateway session, when present, is installed as an HttpOnly cookie so the
@@ -48,6 +52,15 @@ fun WebDesktopScreen(
     var webView by remember { mutableStateOf<WebView?>(null) }
     var pageReady by remember { mutableStateOf(false) }
     var fileCallback by remember { mutableStateOf<ValueCallback<Array<Uri>>?>(null) }
+    var pendingMic by remember { mutableStateOf<PermissionRequest?>(null) }
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val request = pendingMic
+        pendingMic = null
+        if (request != null) {
+            if (granted) request.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE))
+            else request.deny()
+        }
+    }
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val callback = fileCallback
         fileCallback = null
@@ -119,6 +132,23 @@ fun WebDesktopScreen(
                         transport.webView = popup
                         resultMsg.sendToTarget()
                         return true
+                    }
+
+                    override fun onPermissionRequest(request: PermissionRequest) {
+                        if (!DesktopMode.isSameOrigin(url, request.origin.toString())) {
+                            request.deny()
+                            return
+                        }
+                        if (!request.resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) {
+                            request.deny()
+                            return
+                        }
+                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                            request.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE))
+                        } else {
+                            pendingMic = request
+                            micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                        }
                     }
 
                     override fun onShowFileChooser(

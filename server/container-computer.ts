@@ -231,7 +231,7 @@ function emptyStatus(platform: NodeJS.Platform): ContainerComputerStatus {
     container_name: CONTAINER,
     workspace_path: VM_WORKSPACE_DIR,
     workspace_guest_path: VM_WORKSPACE_GUEST,
-    viewer_url: "/api/local-computer/viewer/vnc.html",
+    viewer_url: "/api/local-computer/viewer/vnc.html#path=api%2Flocal-computer%2Fviewer%2Fwebsockify",
   };
 }
 
@@ -297,13 +297,21 @@ function viewerPassword(env: string[] | Record<string, string> | undefined): str
 function viewerUrl(password: string | null): string {
   // Relative so a remote app or phone reaches the harness proxy rather than
   // its own loopback interface. The query fragment never leaves the client.
+  // noVNC builds its WebSocket from `window.location.host + '/' + path`, so
+  // the default `websockify` would land on the harness root. Point it at the
+  // proxied path explicitly; without this the page loads but says "VNC not
+  // connected".
   const base = "/api/local-computer/viewer/vnc.html";
-  if (!password) return base;
-  const fragment = new URLSearchParams({ autoconnect: "true", resize: "scale", password });
+  const fragment = new URLSearchParams({
+    autoconnect: "true",
+    resize: "scale",
+    path: "api/local-computer/viewer/websockify",
+  });
+  if (password) fragment.set("password", password);
   return `${base}#${fragment.toString()}`;
 }
 
-function cuaExecArgs(args: string[], interactive = false): string[] {
+export function cuaExecArgs(args: string[], interactive = false): string[] {
   return [
     "exec",
     ...(interactive ? ["-i"] : []),

@@ -262,7 +262,7 @@ describe("containerComputerStatus", () => {
       problem: null,
       driver_version: "0.20.0",
     });
-    expect(status.viewer_url).toContain("/api/local-computer/viewer/vnc.html#autoconnect=true&resize=scale&password=secret123");
+    expect(status.viewer_url).toContain("/api/local-computer/viewer/vnc.html#autoconnect=true&resize=scale&path=api%2Flocal-computer%2Fviewer%2Fwebsockify&password=secret123");
   });
 
   it("reports the bounded desktop startup error instead of waiting forever", async () => {

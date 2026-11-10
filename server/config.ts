@@ -29,7 +29,13 @@ const appConfigSchema = z.object({
   /** OpenCode Go key; persisted write-only and passed only to its child. */
   opencodeGo: z.object({ apiKey: optionalText }).optional(),
   /** Voice credentials and the selected voice id. */
-  tts: z.object({ key: optionalText, voice: optionalText }).optional(),
+  tts: z
+    .object({
+      key: optionalText,
+      voice: optionalText,
+      provider: z.enum(["elevenlabs", "local"]).optional(),
+    })
+    .optional(),
   /** Non-secret profile details shown in the sidebar. */
   profile: z.object({ name: optionalText, email: optionalText }).optional(),
   /** Minutes before an unanswered permission/question is marked overdue.
@@ -45,7 +51,7 @@ export interface AppConfig {
   composio?: { apiKey?: string; userId?: string; sessionId?: string };
   box?: { token?: string };
   opencodeGo?: { apiKey?: string };
-  tts?: { key?: string; voice?: string };
+  tts?: { key?: string; voice?: string; provider?: "elevenlabs" | "local" };
   profile?: { name?: string; email?: string };
   approvalTimeoutMinutes?: number | null;
   instances?: InstanceConfigMap;

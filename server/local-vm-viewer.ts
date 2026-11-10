@@ -8,6 +8,65 @@ import { connect } from "node:net";
 import type { Duplex } from "node:stream";
 
 export const VIEWER_PREFIX = "/api/local-computer/viewer";
+export const VIEWER_RECORDER_PATH = `${VIEWER_PREFIX}/recorder.js`;
+
+/** Injected before noVNC's module script. RFB input messages are exact:
+ * type 4 is KeyEvent, type 5 is PointerEvent. The parent page cannot observe
+ * them after the WebSocket is created, so the wrapper has to exist first. */
+export const VIEWER_RECORDER_SCRIPT = `(() => {
+  const Native = window.WebSocket;
+  if (!Native || window.__kodbotRecorderInstalled) return;
+  window.__kodbotRecorderInstalled = true;
+  const names = {
+    0xff0d: "Enter", 0xff1b: "Escape", 0xff08: "Backspace", 0xff09: "Tab",
+    0xff51: "ArrowLeft", 0xff52: "ArrowUp", 0xff53: "ArrowRight", 0xff54: "ArrowDown",
+    0xffe1: "Shift", 0xffe2: "Shift", 0xffe3: "Control", 0xffe4: "Control",
+    0xffe9: "Alt", 0xffea: "Alt", 0xffeb: "Meta", 0xffec: "Meta"
+  };
+  const post = (event) => {
+    try {
+      void fetch("/api/local-computer/recordings/event", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(event),
+        keepalive: true
+      }).catch(() => {});
+    } catch {}
+  };
+  let lastMask = 0;
+  function RecorderWebSocket(url, protocols) {
+    const socket = new Native(url, protocols);
+    const send = socket.send.bind(socket);
+    socket.send = (data) => {
+      try {
+        const bytes = data instanceof ArrayBuffer
+          ? new Uint8Array(data)
+          : ArrayBuffer.isView(data)
+            ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+            : null;
+        if (bytes && bytes[0] === 4 && bytes.length >= 8) {
+          const keysym = ((bytes[4] << 24) | (bytes[5] << 16) | (bytes[6] << 8) | bytes[7]) >>> 0;
+          const key = keysym >= 0x20 && keysym <= 0x7e ? String.fromCharCode(keysym) : names[keysym];
+          post({ type: "key", down: bytes[1] === 1, keysym, ...(key ? { key } : {}), at: Date.now() });
+        } else if (bytes && bytes[0] === 5 && bytes.length >= 6) {
+          const button = bytes[1];
+          if (button !== lastMask) {
+            post({ type: "pointer", x: (bytes[2] << 8) | bytes[3], y: (bytes[4] << 8) | bytes[5], button, at: Date.now() });
+            lastMask = button;
+          }
+        }
+      } catch {}
+      return send(data);
+    };
+    return socket;
+  }
+  RecorderWebSocket.prototype = Native.prototype;
+  Object.setPrototypeOf(RecorderWebSocket, Native);
+  for (const key of ["CONNECTING", "OPEN", "CLOSING", "CLOSED"]) {
+    Object.defineProperty(RecorderWebSocket, key, { value: Native[key] });
+  }
+  window.WebSocket = RecorderWebSocket;
+})();`;
 export const VIEWER_HOST = "127.0.0.1";
 export const VIEWER_PORT = 6080;
 
@@ -55,6 +114,27 @@ export function proxyViewerRequest(
       delete headers.connection;
       delete headers["keep-alive"];
       delete headers["transfer-encoding"];
+      const htmlPath = viewerPath(req.url ?? "/").split("?")[0];
+      if (
+        (htmlPath === "/vnc.html" || htmlPath === "/vnc_lite.html") &&
+        !response.headers["content-encoding"]
+      ) {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+        response.on("end", () => {
+          let html = Buffer.concat(chunks).toString("utf8");
+          if (!html.includes("recorder.js")) {
+            const tag = `<script src="${VIEWER_RECORDER_PATH}"></script>`;
+            const module = /<script[^>]*src="app\/ui\.js"[^>]*><\/script>/;
+            html = module.test(html) ? html.replace(module, `${tag}$&`) : html.replace("</head>", `${tag}</head>`);
+          }
+          const bytes = Buffer.from(html);
+          headers["content-length"] = String(bytes.length);
+          res.writeHead(response.statusCode ?? 502, headers);
+          res.end(bytes);
+        });
+        return;
+      }
       res.writeHead(response.statusCode ?? 502, headers);
       response.pipe(res);
     },

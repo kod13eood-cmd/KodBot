@@ -52,6 +52,15 @@ try {
 const SERVER_CONNECTION_FILE = path.join(app.getPath("userData"), "server-connection.json");
 const HEADLESS = process.argv.includes("--headless") || process.env.OC_HEADLESS === "1";
 
+// A remote harness is commonly reached over plain HTTP on a LAN/Tailscale.
+// Chromium hides getUserMedia in an insecure context, which would silently
+// remove the microphone button. Treat only the exact user-configured KodBot
+// origin as secure; no other HTTP origin gets the exception.
+const initialConnection = readServerConnection();
+if (!HEADLESS && initialConnection.mode === "remote" && initialConnection.url.startsWith("http://")) {
+  app.commandLine.appendSwitch("unsafely-treat-insecure-origin-as-secure", initialConnection.url);
+}
+
 function normalizeRemoteUrl(raw) {
   const text = String(raw ?? "").trim();
   if (!text) throw new Error("Enter the remote server address.");

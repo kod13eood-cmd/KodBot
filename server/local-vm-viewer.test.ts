@@ -2,7 +2,13 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { isViewerPath, proxyViewerRequest, viewerPath } from "./local-vm-viewer.ts";
+import {
+  isViewerPath,
+  proxyViewerRequest,
+  viewerPath,
+  VIEWER_RECORDER_PATH,
+  VIEWER_RECORDER_SCRIPT,
+} from "./local-vm-viewer.ts";
 
 const servers: Server[] = [];
 
@@ -54,6 +60,59 @@ describe("Local VM viewer proxy", () => {
     const response = await fetch(`http://127.0.0.1:${proxyPort}/api/local-computer/viewer/app/ui.js?x=1`);
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("GET /app/ui.js?x=1");
+  });
+
+  it("injects the RFB recorder before noVNC's module script", async () => {
+    const target = createServer((_req, res) => {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end('<html><head><script type="module" src="app/ui.js"></script></head><body></body></html>');
+    });
+    const targetPort = await listen(target);
+    const proxy = createServer((req, res) => {
+      if (!proxyViewerRequest(req, res, targetPort)) {
+        res.writeHead(404);
+        res.end();
+      }
+    });
+    const proxyPort = await listen(proxy);
+
+    const response = await fetch(`http://127.0.0.1:${proxyPort}/api/local-computer/viewer/vnc.html`);
+    const html = await response.text();
+    expect(html.indexOf(VIEWER_RECORDER_PATH)).toBeGreaterThan(-1);
+    expect(html.indexOf(VIEWER_RECORDER_PATH)).toBeLessThan(html.indexOf("app/ui.js"));
+    expect(VIEWER_RECORDER_SCRIPT).toContain("recordings/event");
+    expect(VIEWER_RECORDER_SCRIPT).toContain("function RecorderWebSocket");
+  });
+
+  it("records the RFB pointer and key messages noVNC sends", () => {
+    const events: Array<Record<string, unknown>> = [];
+    class FakeWebSocket {
+      static readonly CONNECTING = 0;
+      static readonly OPEN = 1;
+      static readonly CLOSING = 2;
+      static readonly CLOSED = 3;
+      sent: unknown[] = [];
+      constructor(_url: string, _protocols?: string[]) {}
+      send(data: unknown) {
+        this.sent.push(data);
+      }
+    }
+    const window = { WebSocket: FakeWebSocket } as {
+      WebSocket: typeof FakeWebSocket;
+      __kodbotRecorderInstalled?: boolean;
+    };
+    const fakeFetch = (_url: string, init: { body: string }) => {
+      events.push(JSON.parse(init.body) as Record<string, unknown>);
+      return Promise.resolve({ ok: true });
+    };
+    new Function("window", "fetch", VIEWER_RECORDER_SCRIPT)(window, fakeFetch);
+    const socket = new window.WebSocket("ws://viewer/websockify");
+    socket.send(new Uint8Array([4, 1, 0, 0, 0, 0, 0, 75]).buffer);
+    socket.send(new Uint8Array([5, 1, 2, 128, 1, 144]).buffer);
+
+    expect(events[0]).toMatchObject({ type: "key", down: true, keysym: 75, key: "K" });
+    expect(events[1]).toMatchObject({ type: "pointer", x: 640, y: 400, button: 1 });
+    expect(socket.sent).toHaveLength(2);
   });
 
   it("reports an unreachable viewer as 502 instead of crashing the harness", async () => {

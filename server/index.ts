@@ -15,7 +15,13 @@ import { writeFileAtomic } from "./atomic.ts";
 import { validateBotCwd } from "./bot-cwd.ts";
 import { connectedAppsSystemPrompt } from "./connected-apps-prompt.ts";
 import { resolveComputerDestination } from "./computer-selection.ts";
-import { isViewerPath, proxyViewerRequest, proxyViewerUpgrade } from "./local-vm-viewer.ts";
+import {
+  isViewerPath,
+  proxyViewerRequest,
+  proxyViewerUpgrade,
+  VIEWER_RECORDER_PATH,
+  VIEWER_RECORDER_SCRIPT,
+} from "./local-vm-viewer.ts";
 import { ensureGuideCopy, guideSystemPrompt } from "./guide.ts";
 import { groupTurnCwd } from "./room-cwd.ts";
 import * as box from "./box.ts";
@@ -86,7 +92,16 @@ import {
   MEMORY_FILE_MAX_BYTES,
 } from "./workspace.ts";
 import { desktopLockHeld } from "./desktop-lock.ts";
+import {
+  listLocalVmRecordings,
+  localVmRecordingActive,
+  localVmRecordingState,
+  recordLocalVmEvent,
+  startLocalVmRecording,
+  stopLocalVmRecording,
+} from "./vm-recorder.ts";
 import { readCuaConnection } from "./local-computer.ts";
+import { transcribeLocal } from "./local-voice.ts";
 import { LocalVmIdleTimer } from "./local-vm-idle.ts";
 import { RepeatDetector, callKey } from "./repeat-detector.ts";
 import { RoutineManager, type RoutineRunOn, type RoutineRunTrigger } from "./routines.ts";
@@ -2512,6 +2527,15 @@ const server = createServer(async (req, res) => {
     if (origin && !isAllowedOrigin(origin)) {
       return json(res, 403, { error: "forbidden: cross-origin request" });
     }
+    if (method === "GET" && path === VIEWER_RECORDER_PATH) {
+      res.writeHead(200, {
+        "content-type": "text/javascript; charset=utf-8",
+        "cache-control": "no-store",
+        "x-content-type-options": "nosniff",
+      });
+      return res.end(VIEWER_RECORDER_SCRIPT);
+    }
+
     // The Local VM's noVNC viewer stays loopback-only; this is the one
     // same-origin path that reaches it from the app or a paired phone.
     if (isViewerPath(path)) {
@@ -3972,6 +3996,38 @@ const server = createServer(async (req, res) => {
       localVmIdle.touch();
       return json(res, 200, { image: await containerComputerScreenshot() });
     }
+    if (method === "GET" && path === "/api/local-computer/recordings") {
+      return json(res, 200, { recordings: await listLocalVmRecordings() });
+    }
+    if (method === "GET" && path === "/api/local-computer/recordings/state") {
+      return json(res, 200, { state: await localVmRecordingState() });
+    }
+    if (method === "POST" && path === "/api/local-computer/recordings/start") {
+      if (!String(req.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) {
+        return json(res, 415, { error: "content-type must be application/json" });
+      }
+      if (localVmLifecycleBusy) return json(res, 409, { error: "the Local VM is busy — wait for setup to finish" });
+      if (localVmRecordingActive()) return json(res, 409, { error: "a workflow recording is already running" });
+      if (desktopLockHeld(VM_DESKTOP_LOCK)) {
+        return json(res, 409, { error: "a bot is using the desktop — wait for its turn to finish before recording" });
+      }
+      const body = await readBody(req);
+      localVmIdle.touch();
+      return json(res, 201, { recording: await startLocalVmRecording(String(body.name ?? "Workflow")) });
+    }
+    if (method === "POST" && path === "/api/local-computer/recordings/event") {
+      if (!String(req.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) {
+        return json(res, 415, { error: "content-type must be application/json" });
+      }
+      const accepted = recordLocalVmEvent(await readBody(req));
+      return json(res, accepted ? 200 : 409, { ok: accepted });
+    }
+    if (method === "POST" && path === "/api/local-computer/recordings/stop") {
+      if (!String(req.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) {
+        return json(res, 415, { error: "content-type must be application/json" });
+      }
+      return json(res, 200, { recording: await stopLocalVmRecording() });
+    }
 
     // identity handshake for the packaged app's port fallback: the forked
     // child proves it is OURS by echoing its pid (a stray dev server has
@@ -4258,6 +4314,21 @@ const server = createServer(async (req, res) => {
     // the same reason approvalKey does — it is the piece most likely to be
     // tuned against real transcripts, and it belongs next to the transform
     // that produced it.
+    if (method === "POST" && path === "/api/voice/transcribe") {
+      const mime = String(req.headers["content-type"] ?? "audio/webm").split(";")[0].trim();
+      if (!mime.startsWith("audio/") && mime !== "application/octet-stream") {
+        return json(res, 415, { error: "content-type must be audio/*" });
+      }
+      const bytes = await readRawBody(req, 12 * 1024 * 1024);
+      if (!bytes.byteLength) return json(res, 400, { error: "empty audio" });
+      try {
+        const language = url.searchParams.get("language") ?? undefined;
+        const text = await transcribeLocal(new Uint8Array(bytes), mime, language);
+        return json(res, 200, { text });
+      } catch (error) {
+        return json(res, 409, { error: error instanceof Error ? error.message : String(error) });
+      }
+    }
     if (method === "POST" && path === "/api/tts/prepare") {
       const body = await readBody(req);
       return json(res, 200, {

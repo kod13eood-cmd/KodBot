@@ -80,6 +80,15 @@ const BULGARIAN: Record<string, string> = {
   "Approval timeout": "Таймер за одобрение",
   "What this means": "Какво означава това",
   "Why it needs approval": "Защо е нужно разрешение",
+  "Local (free)": "Локално (безплатно)",
+  "ElevenLabs": "ElevenLabs",
+  "Local voice": "Локален глас",
+  "Hold to talk": "Задръж, за да говориш",
+  "Auto (BG / EN)": "Автоматично (BG / EN)",
+  "Read replies aloud and turn speech into text with local models. No audio leaves this computer.":
+    "Чети отговорите на глас и превръщай реч в текст с локални модели. Никакво аудио не напуска компютъра.",
+  "Local voice is not installed on the harness yet. Run scripts/setup-local-voice.sh on the server, then refresh.":
+    "Локалният глас още не е инсталиран на сървъра. Пусни scripts/setup-local-voice.sh на сървъра и опресни.",
   "Requested action": "Заявено действие",
   "The timer expired, but the bot is still waiting. You can answer now and it will continue.":
     "Таймерът изтече, но ботът все още чака. Можеш да отговориш сега и той ще продължи.",
