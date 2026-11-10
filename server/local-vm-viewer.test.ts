@@ -109,10 +109,16 @@ describe("Local VM viewer proxy", () => {
     const socket = new window.WebSocket("ws://viewer/websockify");
     socket.send(new Uint8Array([4, 1, 0, 0, 0, 0, 0, 75]).buffer);
     socket.send(new Uint8Array([5, 1, 2, 128, 1, 144]).buffer);
+    // QEMU extended key event (type 255): what a real noVNC connection sends
+    // when the VNC server advertises the extended-key-event pseudo-encoding.
+    socket.send(new Uint8Array([255, 0, 0, 1, 0, 0, 0, 75, 0, 0, 0, 30]).buffer);
+    socket.send(new Uint8Array([255, 0, 0, 0, 0, 0, 0, 75, 0, 0, 0, 30]).buffer);
 
     expect(events[0]).toMatchObject({ type: "key", down: true, keysym: 75, key: "K" });
     expect(events[1]).toMatchObject({ type: "pointer", x: 640, y: 400, button: 1 });
-    expect(socket.sent).toHaveLength(2);
+    expect(events[2]).toMatchObject({ type: "key", down: true, keysym: 75, key: "K" });
+    expect(events[3]).toMatchObject({ type: "key", down: false, keysym: 75, key: "K" });
+    expect(socket.sent).toHaveLength(4);
   });
 
   it("reports an unreachable viewer as 502 instead of crashing the harness", async () => {

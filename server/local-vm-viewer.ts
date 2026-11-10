@@ -18,8 +18,14 @@ export const VIEWER_RECORDER_SCRIPT = `(() => {
   if (!Native || window.__kodbotRecorderInstalled) return;
   window.__kodbotRecorderInstalled = true;
   const names = {
-    0xff0d: "Enter", 0xff1b: "Escape", 0xff08: "Backspace", 0xff09: "Tab",
-    0xff51: "ArrowLeft", 0xff52: "ArrowUp", 0xff53: "ArrowRight", 0xff54: "ArrowDown",
+    0x20: "Space",
+    0xff08: "Backspace", 0xff09: "Tab", 0xff0d: "Enter", 0xff1b: "Escape",
+    0xff50: "Home", 0xff51: "ArrowLeft", 0xff52: "ArrowUp", 0xff53: "ArrowRight",
+    0xff54: "ArrowDown", 0xff55: "PageUp", 0xff56: "PageDown", 0xff57: "End",
+    0xff63: "Insert", 0xff9f: "Delete",
+    0xffbe: "F1", 0xffbf: "F2", 0xffc0: "F3", 0xffc1: "F4", 0xffc2: "F5",
+    0xffc3: "F6", 0xffc4: "F7", 0xffc5: "F8", 0xffc6: "F9", 0xffc7: "F10",
+    0xffc8: "F11", 0xffc9: "F12",
     0xffe1: "Shift", 0xffe2: "Shift", 0xffe3: "Control", 0xffe4: "Control",
     0xffe9: "Alt", 0xffea: "Alt", 0xffeb: "Meta", 0xffec: "Meta"
   };
@@ -34,6 +40,10 @@ export const VIEWER_RECORDER_SCRIPT = `(() => {
     } catch {}
   };
   let lastMask = 0;
+  const postKey = (keysym, down) => {
+    const key = keysym >= 0x21 && keysym <= 0x7e ? String.fromCharCode(keysym) : names[keysym];
+    post({ type: "key", down, keysym, ...(key ? { key } : {}), at: Date.now() });
+  };
   function RecorderWebSocket(url, protocols) {
     const socket = new Native(url, protocols);
     const send = socket.send.bind(socket);
@@ -46,8 +56,12 @@ export const VIEWER_RECORDER_SCRIPT = `(() => {
             : null;
         if (bytes && bytes[0] === 4 && bytes.length >= 8) {
           const keysym = ((bytes[4] << 24) | (bytes[5] << 16) | (bytes[6] << 8) | bytes[7]) >>> 0;
-          const key = keysym >= 0x20 && keysym <= 0x7e ? String.fromCharCode(keysym) : names[keysym];
-          post({ type: "key", down: bytes[1] === 1, keysym, ...(key ? { key } : {}), at: Date.now() });
+          postKey(keysym, bytes[1] === 1);
+        } else if (bytes && bytes[0] === 255 && bytes[1] === 0 && bytes.length >= 12) {
+          // QEMU extended key event: u16 down flag, u32 keysym, u32 scancode.
+          const down = (((bytes[2] << 8) | bytes[3]) & 0xffff) === 1;
+          const keysym = ((bytes[4] << 24) | (bytes[5] << 16) | (bytes[6] << 8) | bytes[7]) >>> 0;
+          postKey(keysym, down);
         } else if (bytes && bytes[0] === 5 && bytes.length >= 6) {
           const button = bytes[1];
           if (button !== lastMask) {
