@@ -96,7 +96,7 @@ async function handle(msg: any) {
       result: {
         protocolVersion: msg.params?.protocolVersion ?? "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "opencrew-permissions", version: "1" },
+        serverInfo: { name: "kodbot-permissions", version: "1" },
       },
     });
   }

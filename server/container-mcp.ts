@@ -40,7 +40,7 @@ const child = spawn(
     "-e",
     "CUA_DRIVER_RS_TELEMETRY_ENABLED=0",
     container,
-    "/usr/local/libexec/opencrew/cua-driver",
+    "/usr/local/libexec/kodbot/cua-driver",
     "mcp",
     "--socket",
     socket,

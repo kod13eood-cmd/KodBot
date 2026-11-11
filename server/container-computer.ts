@@ -36,21 +36,27 @@ export const BASE_IMAGE = `${BASE_IMAGE_REPOSITORY}@${BASE_IMAGE_DIGEST}`;
 // tags, then may otherwise resolve the same name to Docker Hub when running it.
 // Image and container labels below remain the authoritative compatibility
 // check, not the mutable tag.
-export const IMAGE_REPOSITORY = "localhost/opencrew/cua-local-vm";
-export const IMAGE_LAYER_VERSION = "6";
-export const IMAGE_LAYER_LABEL = "com.opencrew.image-layer";
+export const IMAGE_REPOSITORY = "localhost/kodbot/cua-local-vm";
+export const IMAGE_LAYER_VERSION = "7";
+export const IMAGE_LAYER_LABEL = "com.kodbot.image-layer";
 export const IMAGE = `${IMAGE_REPOSITORY}:driver-${CUA_DRIVER_VERSION}-v${IMAGE_LAYER_VERSION}`;
-export const CONTAINER = "opencrew-computer";
-export const MANAGED_LABEL = "com.opencrew.local-vm";
-export const DRIVER_LABEL = "com.opencrew.cua-driver";
-export const BASE_IMAGE_LABEL = "com.opencrew.cua-base";
-export const WORKSPACE_LABEL = "com.opencrew.workspace";
+export const CONTAINER = "kodbot-computer";
+/** The container created before the KodBot rename. It stays visible in the
+ * status so the existing VM can be deleted and recreated instead of leaving
+ * an orphan on the viewer port. */
+export const LEGACY_CONTAINER = "opencrew-computer";
+export const MANAGED_LABEL = "com.kodbot.local-vm";
+export const DRIVER_LABEL = "com.kodbot.cua-driver";
+export const BASE_IMAGE_LABEL = "com.kodbot.cua-base";
+export const WORKSPACE_LABEL = "com.kodbot.workspace";
 export const VM_WORKSPACE_DIR = join(DATA_DIR, "vm-home");
 export const VM_DESKTOP_LOCK = join(DATA_DIR, "vm-desktop.lock");
 export const VM_WORKSPACE_GUEST = "/home/cua/workspace";
 export const DISPLAY = ":1";
-export const CUA_SOCKET = "/run/user/1000/opencrew-cua.sock";
-export const CUA_EXECUTABLE = "/usr/local/libexec/opencrew/cua-driver";
+/** The RFB desktop name is the container hostname; noVNC shows it verbatim. */
+export const HOSTNAME = "KodBot";
+export const CUA_SOCKET = "/run/user/1000/kodbot-cua.sock";
+export const CUA_EXECUTABLE = "/usr/local/libexec/kodbot/cua-driver";
 
 const RUNTIMES = ["docker", "podman", "container"] as const;
 export type Runtime = (typeof RUNTIMES)[number];
@@ -125,11 +131,11 @@ RUN printf '%s\\n' \\
       'migrate_profile google-chrome' \\
       'migrate_profile chromium' \\
       'find "$profiles" \\( -name SingletonLock -o -name SingletonSocket -o -name SingletonCookie -o -name .parentlock \\) -delete' \\
-      > /usr/local/bin/prepare-opencrew-workspace.sh \\
-    && chmod 0755 /usr/local/bin/prepare-opencrew-workspace.sh
+      > /usr/local/bin/prepare-kodbot-workspace.sh \\
+    && chmod 0755 /usr/local/bin/prepare-kodbot-workspace.sh
 RUN printf '%s\\n' \\
       '#!/bin/sh' \\
-      '/usr/local/bin/prepare-opencrew-workspace.sh' \\
+      '/usr/local/bin/prepare-kodbot-workspace.sh' \\
       'attempt=0' \\
       'until DISPLAY=:1 xset q >/dev/null 2>&1; do' \\
       '  attempt=$((attempt + 1))' \\
@@ -137,12 +143,12 @@ RUN printf '%s\\n' \\
       '  sleep 1' \\
       'done' \\
       'exec env CUA_DRIVER_INSTALL_CHANNEL=python_package CUA_DRIVER_RS_TELEMETRY_ENABLED=0 ${CUA_EXECUTABLE} serve --socket ${CUA_SOCKET} --permission-mode standard' \\
-      > /usr/local/bin/start-opencrew-cua-driver.sh \\
-    && chmod 0755 /usr/local/bin/start-opencrew-cua-driver.sh
+      > /usr/local/bin/start-kodbot-cua-driver.sh \\
+    && chmod 0755 /usr/local/bin/start-kodbot-cua-driver.sh
 RUN printf '%s\\n' \\
       '' \\
-      '[program:opencrew-cua-driver]' \\
-      'command=/usr/local/bin/start-opencrew-cua-driver.sh' \\
+      '[program:kodbot-cua-driver]' \\
+      'command=/usr/local/bin/start-kodbot-cua-driver.sh' \\
       'user=cua' \\
       'environment=HOME="/home/cua",USER="cua",DISPLAY=":1"' \\
       'autorestart=true' \\
@@ -189,6 +195,8 @@ export interface ContainerComputerStatus {
   image: boolean;
   imageMatches: boolean;
   managed: boolean;
+  /** True when the only VM found is the pre-rename opencrew container. */
+  legacy: boolean;
   container: "running" | "stopped" | "missing";
   network: "loopback" | "unsafe" | "unknown";
   security: "hardened" | "unsafe" | "unknown";
@@ -216,6 +224,7 @@ function emptyStatus(platform: NodeJS.Platform): ContainerComputerStatus {
     image: false,
     imageMatches: false,
     managed: false,
+    legacy: false,
     container: "missing",
     network: "unknown",
     security: "unknown",
@@ -240,6 +249,7 @@ function statusProblem(status: ContainerComputerStatus): string | null {
   if (!status.daemonUp) return `Start ${status.runtime} first`;
   if (!status.image) return `Prepare the Cua desktop image with Driver ${CUA_DRIVER_VERSION}`;
   if (status.container === "missing") return "Create the Local VM";
+  if (status.legacy) return "The existing Local VM still uses the old OpenCrew name; delete and recreate it as KodBot";
   if (!status.imageMatches) return "The existing Local VM uses an older desktop or Cua Driver; recreate it";
   if (!status.managed) return "The existing container was not created by KodBot; recreate it";
   if (status.network === "unsafe") return "The existing Local VM exposes its viewer publicly; recreate it";
@@ -447,6 +457,35 @@ export async function containerComputerStatus(
     // No container with this name.
   }
 
+  // A VM created before the KodBot rename is still the same durable desktop.
+  // Surface it instead of pretending the name is free: the user can prepare
+  // the new image and delete/recreate it, and we never leave an orphan on the
+  // viewer port.
+  if (status.container === "missing") {
+    try {
+      const { stdout } = await runner(status.runtime, ["inspect", LEGACY_CONTAINER]);
+      const inspected = JSON.parse(stdout) as Array<{
+        State?: { Running?: boolean };
+        status?: { state?: string };
+        Config?: { Env?: string[] };
+        configuration?: { environment?: string[] | Record<string, string> };
+      }>;
+      const detail = inspected[0];
+      const running =
+        status.runtime === "container"
+          ? detail?.status?.state === "running"
+          : detail?.State?.Running === true;
+      status.container = running ? "running" : "stopped";
+      status.container_name = LEGACY_CONTAINER;
+      status.legacy = true;
+      status.viewer_url = viewerUrl(
+        viewerPassword(detail?.Config?.Env ?? detail?.configuration?.environment),
+      );
+    } catch {
+      // No legacy container either; the name is genuinely free.
+    }
+  }
+
   const canProbe =
     status.container === "running" &&
     status.imageMatches &&
@@ -473,7 +512,7 @@ export async function containerComputerStatus(
       ) {
         throw new Error(`Cua health report is ${report.overall ?? "invalid"}`);
       }
-      const readinessShot = "/tmp/opencrew-readiness.png";
+      const readinessShot = "/tmp/kodbot-readiness.png";
       await runner(
         status.runtime,
         cuaExecArgs([
@@ -644,7 +683,7 @@ export function containerRunArgs(runtime: Runtime, password = "CHANGE_ME"): stri
   } else {
     common.push(
       "--hostname",
-      CONTAINER,
+      HOSTNAME,
       "--memory",
       "4g",
       "--memory-swap",
@@ -684,7 +723,7 @@ async function ensureVmWorkspace(platform: NodeJS.Platform): Promise<void> {
 
 async function prepareManagedImage(runtime: Runtime, runner: CommandRunner): Promise<void> {
   await runner(runtime, ["pull", BASE_IMAGE], 10 * 60_000);
-  const context = await mkdtemp(join(tmpdir(), "opencrew-cua-image-"));
+  const context = await mkdtemp(join(tmpdir(), "kodbot-cua-image-"));
   try {
     await writeFile(join(context, "Dockerfile"), managedImageDockerfile(), { mode: 0o600 });
     await runner(runtime, ["build", "-t", IMAGE, context], 10 * 60_000);
@@ -760,10 +799,11 @@ export async function containerComputerAction(
       return waitForContainerReady(() => containerComputerStatus(runner, platform), options);
     }
   } else {
+    const containerName = before.legacy ? LEGACY_CONTAINER : CONTAINER;
     const args =
       action === "remove"
-        ? ["rm", runtime === "container" ? "--force" : "-f", CONTAINER]
-        : [action, CONTAINER];
+        ? ["rm", runtime === "container" ? "--force" : "-f", containerName]
+        : [action, containerName];
     await runner(runtime, args, 2 * 60_000);
   }
   return containerComputerStatus(runner, platform);
@@ -803,7 +843,7 @@ export async function containerComputerScreenshot(
   }
   if (cacheable) screenshotStatusCache = { status, expiresAt: now + SCREENSHOT_STATUS_TTL_MS };
   try {
-    const screenshot = "/tmp/opencrew-preview.png";
+    const screenshot = "/tmp/kodbot-preview.png";
     await runner(
       status.runtime,
       cuaExecArgs([

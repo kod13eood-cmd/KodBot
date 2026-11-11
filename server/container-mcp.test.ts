@@ -43,7 +43,7 @@ posixOnly("Local VM Cua MCP bridge", () => {
     });
 
   it("passes MCP bytes unchanged to cua-driver mcp over the container runtime", async () => {
-    const bin = await mkdtemp(join(tmpdir(), "opencrew-container-mcp-"));
+    const bin = await mkdtemp(join(tmpdir(), "kodbot-container-mcp-"));
     temporary.push(bin);
     const fakeDocker = join(bin, "docker");
     await writeFile(
@@ -66,7 +66,7 @@ posixOnly("Local VM Cua MCP bridge", () => {
   });
 
   it("holds the shared desktop for a computer tool call and releases it on exit", async () => {
-    const bin = await mkdtemp(join(tmpdir(), "opencrew-container-mcp-"));
+    const bin = await mkdtemp(join(tmpdir(), "kodbot-container-mcp-"));
     temporary.push(bin);
     const lock = join(bin, "desktop.lock");
     const fakeDocker = join(bin, "docker");
@@ -82,7 +82,7 @@ posixOnly("Local VM Cua MCP bridge", () => {
   });
 
   it("times out waiting for a desktop another bridge holds", async () => {
-    const bin = await mkdtemp(join(tmpdir(), "opencrew-container-mcp-"));
+    const bin = await mkdtemp(join(tmpdir(), "kodbot-container-mcp-"));
     temporary.push(bin);
     const lock = join(bin, "desktop.lock");
     const fakeDocker = join(bin, "docker");

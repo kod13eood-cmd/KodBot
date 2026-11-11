@@ -119,7 +119,7 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
       if (turn.integrations?.composio) {
         const bridge = turn.integrations.composio;
         Object.assign(env, bridge.env);
-        const prefix = "mcp_servers.opencrew_connectors";
+        const prefix = "mcp_servers.kodbot_connectors";
         appServerArgs.push(
           "-c", `${prefix}.command=${JSON.stringify(bridge.command)}`,
           "-c", `${prefix}.args=${JSON.stringify(bridge.args)}`,
@@ -423,7 +423,7 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
       // handshake + kickoff; any refusal surfaces as failure, not a hang
       (async () => {
         try {
-          await request("initialize", { clientInfo: { name: "opencrew", version: "1" } });
+          await request("initialize", { clientInfo: { name: "kodbot", version: "1" } });
           send({ jsonrpc: "2.0", method: "initialized", params: {} });
           const cursor = typeof turn.resumeCursor === "string" ? turn.resumeCursor : null;
           let codexThreadId: string | null = null;

@@ -241,7 +241,7 @@ async function handle(msg: Json) {
       ok(id, {
         protocolVersion: (params.protocolVersion as string) ?? "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "opencrew-agents", version: "0.1.0" },
+        serverInfo: { name: "kodbot-agents", version: "0.1.0" },
       });
       return;
     case "notifications/initialized":
