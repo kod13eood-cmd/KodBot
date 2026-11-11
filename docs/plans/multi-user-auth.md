@@ -1,7 +1,9 @@
 # Multi-user KodBot — invite-only hosted accounts
 
-Status: design approved in principle (2026-11-08). No auth code has shipped yet.
-Branch: `feat/multi-user`.
+Status: Phase 1-2 implemented and deployed in transitional owner mode
+(2026-11-11). No member accounts yet; the gateway is not the public entry
+point until the desktop/Android login and HTTPS cutover are done.
+Branch: `feat/vnc-record-voice` for the current line.
 
 ## Decisions
 
@@ -44,11 +46,13 @@ support, then deployment on port 8780 behind TLS.
   `~/.config/kodbot-gateway.env` (mode 600).
 - Bootstrap is enabled so the first registration becomes the owner. After
   that, new accounts need invites.
-- TLS is pending because Tailscale Serve/HTTPS is not enabled on the tailnet.
-  The gateway is currently HTTP on the private tailnet; 8799 is still
-  directly reachable until it is bound to loopback or firewalled.
-- Backups for `~/.kodbot-gateway` and `~/.kodbot-tenants` are not part of the
-  existing 2/2/2 snapshot script yet; this must be fixed before real tenants.
+- Tailscale Serve provides HTTPS on the tailnet, but the 443 root still
+  proxies to the harness on 8799, not to the gateway. The gateway is HTTP on
+  the private tailnet; 8799 is still directly reachable until it is bound to
+  loopback or firewalled.
+- Backups for `~/.kodbot-gateway` and `~/.kodbot-tenants` are part of the
+  existing snapshot and offsite scripts as of 2026-11-11. The gateway SQLite
+  database is copied with `.backup`, not as a raw live WAL file.
 
 ## Why a gateway instead of making the harness multi-tenant
 

@@ -280,10 +280,12 @@ A KodBot maintenance pass then restored the missing state:
   ~20:22 UTC.
 - `groups.json` was written at ~20:26 UTC.
 - `/home/paperclipi7/kodbot-backups/RESTORE.md` documents the restore process.
-- `kodbot-state-snapshot.timer` now snapshots `.kodbot` + `.kodbot-companion`
-  and the live API every 15 minutes.
+- `kodbot-state-snapshot.timer` now snapshots `.kodbot`, `.kodbot-companion`,
+  `.kodbot-gateway` (with a consistent SQLite copy) and `.kodbot-tenants`,
+  plus the live API every 15 minutes.
 - `kodbot-offsite-backup.timer` uploads a daily archive to `llm1:/home/llm1/backups/kodbot/`
-  at 03:30 Europe/Sofia (60-day retention, sha256-verified).
+  at 03:30 Europe/Sofia (60-day retention, sha256-verified). The archive
+  includes the gateway and tenant roots.
 
 Current state:
 
@@ -296,6 +298,8 @@ Current state:
 | `bots.json` | Yes | Current fleet |
 | `messages.db` | Yes | Current transcript DB |
 | `webhooks.json` | Yes | Current webhooks |
+| `~/.kodbot-gateway` | Yes | Gateway DB (accounts, sessions, invites), mode 600 |
+| `~/.kodbot-tenants` | Yes | Tenant root; 0 members as of 2026-11-11 |
 | backups | Yes | `/home/paperclipi7/kodbot-backups` |
 | `~/.config/kodbot.env` | Yes | Managed Composio broker URL/token and companion name |
 

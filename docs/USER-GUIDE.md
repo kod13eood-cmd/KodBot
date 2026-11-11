@@ -206,8 +206,8 @@ The rest of this guide is organized by topic.
 
 ## Data, backups and recovery
 
-- State lives in `~/.kodbot`: `bots.json`, `teams.json`, `groups.json`, `routines.json`, `config.json`, `webhooks.json`, and `messages.db`.
-- Automatic hot snapshots run every 15 minutes and keep the newest 2 (about 30 minutes); the daily full archive keeps 2 days, and 2 offsite copies are kept, one per day.
+- State lives in `~/.kodbot`: `bots.json`, `teams.json`, `groups.json`, `routines.json`, `config.json`, `webhooks.json`, and `messages.db`. Hosted mode adds `~/.kodbot-gateway` (accounts and sessions) and `~/.kodbot-tenants/<id>` (member data).
+- Automatic hot snapshots run every 15 minutes and keep the newest 2 (about 30 minutes); the daily full archive keeps 2 days, and 2 offsite copies are kept, one per day. All archives include the gateway and tenant roots.
 - If the disk fills, SQLite cannot write and the harness stops; free space and restart the service. The app shows no data while the harness is down — the files are still there.
 - Use **Settings → General → Updates** for app updates; the harness and UI update separately.
 
@@ -393,8 +393,8 @@ KodBot е local-first chat приложение за екип от AI агент
 
 ## Данни, backup и възстановяване
 
-- Състоянието е в `~/.kodbot`: `bots.json`, `teams.json`, `groups.json`, `routines.json`, `config.json`, `webhooks.json` и `messages.db`.
-- Автоматичните hot snapshot-и вървят на всеки 15 минути и пазят последните 2 (около 30 минути); дневният full архив пази 2 дни, а offsite копията са 2, по едно на ден.
+- Състоянието е в `~/.kodbot`: `bots.json`, `teams.json`, `groups.json`, `routines.json`, `config.json`, `webhooks.json` и `messages.db`. Hosted режимът добавя `~/.kodbot-gateway` (акаунти и сесии) и `~/.kodbot-tenants/<id>` (данни на member-ите).
+- Автоматичните hot snapshot-и вървят на всеки 15 минути и пазят последните 2 (около 30 минути); дневният full архив пази 2 дни, а offsite копията са 2, по едно на ден. Всички архиви включват gateway и tenant директориите.
 - Ако дискът се напълни, SQLite не може да пише и harness-ът спира; освободи място и рестартирай услугата. App-ът не показва данни, докато harness-ът е спрян — файловете са там.
 - Използвай **Settings → General → Updates** за обновяване на app-а; harness-ът и UI-ът се обновяват отделно.
 
