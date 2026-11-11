@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { collectNeedsYou, type NeedsYouCandidate } from "./needs-you";
+import { collectNeedsYou, collectRoutineFailures, type NeedsYouCandidate } from "./needs-you";
 import type { Message } from "@/state/store";
 
 function card(tool?: string, from?: { botId: string; name: string }): Message {
@@ -56,6 +56,47 @@ describe("needs-you collection", () => {
     );
     expect(items).toEqual([
       { kind: "group", id: "group-Mochi ⇄ Comet", name: "Mochi ⇄ Comet", reason: "approval", detail: "details" },
+    ]);
+  });
+});
+
+describe("routine failure collection", () => {
+  const crews = [
+    { id: "bot-Atlas", name: "Atlas" },
+    { id: "bot-Hidden", name: "Hidden", hidden: true },
+  ];
+
+  it("lists an unseen failed run with the routine name and error", () => {
+    expect(
+      collectRoutineFailures(
+        [{ id: "run-1", botId: "bot-Atlas", routineName: "Morning report", status: "failed", error: "engine missing" }],
+        crews,
+      ),
+    ).toEqual([
+      {
+        kind: "routine",
+        id: "run-1",
+        name: "Atlas",
+        reason: "routine-failed",
+        detail: "Morning report — engine missing",
+      },
+    ]);
+  });
+
+  it("distinguishes a missed run and skips seen or hidden runs", () => {
+    const runs = [
+      { id: "run-1", botId: "bot-Atlas", routineName: "Daily brief", status: "missed" as const, error: "offline" },
+      { id: "run-2", botId: "bot-Atlas", routineName: "Seen", status: "failed" as const, seenAt: 10 },
+      { id: "run-3", botId: "bot-Hidden", routineName: "Hidden", status: "failed" as const },
+    ];
+    expect(collectRoutineFailures(runs, crews)).toEqual([
+      {
+        kind: "routine",
+        id: "run-1",
+        name: "Atlas",
+        reason: "routine-missed",
+        detail: "Daily brief — offline",
+      },
     ]);
   });
 });

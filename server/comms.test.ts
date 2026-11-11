@@ -352,6 +352,24 @@ describe("comms e2e (fake ACP fleet)", () => {
         (m: any) => m.kind === "activity" && m.tool?.name === "Message from @Asker",
       );
       expect(helperNote?.comm?.groupId).toBe(note.comm.groupId);
+
+      // The Activity projection persists the handoff and its result.
+      const jobDeadline = Date.now() + 5_000;
+      let job: any;
+      for (;;) {
+        job = (await api("GET", "/api/jobs")).body.jobs.find(
+          (candidate: any) => candidate.sourceBotId === asker.id && candidate.botId === helper.id,
+        );
+        if (job?.status === "completed") break;
+        if (Date.now() > jobDeadline) {
+          throw new Error(`delegation job never completed: ${JSON.stringify(job)}`);
+        }
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      expect(job).toMatchObject({ kind: "delegation", status: "completed" });
+      expect(job.result).toContain("hello from fake acp");
+      expect(job.sourceThreadId).toBeTruthy();
+
       expect(helperBot.busy).toBeFalsy();
       expect(askerBot.busy).toBeFalsy();
     },

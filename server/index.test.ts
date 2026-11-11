@@ -212,6 +212,12 @@ describe("harness HTTP API", () => {
     expect((await fetch(`${BASE}/api/health`)).status).toBe(200);
   });
 
+  it("lists background jobs for the Activity view", async () => {
+    const { status, body } = await api("GET", "/api/jobs");
+    expect(status).toBe(200);
+    expect(body.jobs).toEqual([]);
+  });
+
   it("seeds one starter bot with its greeting", async () => {
     const { status, body } = await api("GET", "/api/bots");
     expect(status).toBe(200);
@@ -315,6 +321,16 @@ describe("harness HTTP API", () => {
     expect(gated.body.bot.composio).toBe(false);
     expect((await api("PATCH", `/api/bots/${bot.id}`, { composio: true })).body.bot.composio).toBe(true);
 
+    // Auto is stored as null by the fleet serializer; a user must be able to
+    // go back to it after choosing an explicit destination.
+    const vm = await api("PATCH", `/api/bots/${bot.id}`, { computer: "vm" });
+    expect(vm.status).toBe(200);
+    expect(vm.body.bot.computer).toBe("vm");
+    const auto = await api("PATCH", `/api/bots/${bot.id}`, { computer: null });
+    expect(auto.status).toBe(200);
+    expect(auto.body.bot.computer ?? null).toBeNull();
+    expect((await api("PATCH", `/api/bots/${bot.id}`, { computer: "bogus" })).status).toBe(400);
+
     const deleted = await api("DELETE", `/api/bots/${bot.id}`);
     expect(deleted.status).toBe(200);
     const after = await api("GET", "/api/bots");
@@ -349,7 +365,7 @@ describe("harness HTTP API", () => {
       .map((bot: { name: string }) => bot.name);
     const exported = await api("POST", "/api/teams/export", { name: "Field Team" });
     expect(exported.status).toBe(200);
-    expect(exported.body).toMatchObject({ format: "opencrew.team", version: 2, team: { name: "Field Team" } });
+    expect(exported.body).toMatchObject({ format: "kodbot.team", version: 2, team: { name: "Field Team" } });
     expect(exported.body.team.members.map((member: { name: string }) => member.name)).toEqual(visibleNames);
     expect(exported.body.team.members).toEqual(expect.arrayContaining([
       expect.objectContaining({ key: "mira", name: "Mira", title: "Project Lead", appearance: { color: "purple", mascotExpression: "focused" } }),

@@ -58,38 +58,38 @@ afterAll(() => new Promise<void>((r) => server.close(() => r())));
  * stub is listening. */
 const voice = () => import("./index.ts");
 
-const cfg = (tts: AppConfig["tts"]): AppConfig => ({ tts });
+const cfg = (tts: AppConfig["tts"]): AppConfig => ({ tts: { provider: "elevenlabs", ...tts } });
 
 describe("configuration", () => {
   it("needs both a key and a voice before it can speak", async () => {
     const { voiceConfigured, voiceReady } = await voice();
-    expect(voiceConfigured({})).toBe(false);
+    expect(voiceConfigured(cfg({}))).toBe(false);
     expect(voiceConfigured(cfg({ key: "k" }))).toBe(false);
     expect(voiceConfigured(cfg({ voice: "v-1" }))).toBe(false);
     expect(voiceConfigured(cfg({ key: "k", voice: "v-1" }))).toBe(true);
     expect(voiceReady(cfg({ key: "k" }), "v-per-bot")).toBe(true);
-    expect(voiceReady({}, "v-per-bot")).toBe(false);
+    expect(voiceReady(cfg({}), "v-per-bot")).toBe(false);
   });
 
   it("never reports the key itself", async () => {
     const { describeVoice } = await voice();
     const described = describeVoice(cfg({ key: "sk-secret", voice: "v-1" }));
-    expect(described).toEqual({ configured: true, ready: true, voice: "v-1" });
+    expect(described).toEqual({ provider: "elevenlabs", configured: true, ready: true, voice: "v-1" });
     expect(JSON.stringify(described)).not.toContain("sk-secret");
   });
 
   it("distinguishes 'no key' from 'no voice picked'", async () => {
     // the two need different instructions, so they are different errors
     const { speak, NoVoiceConfigured } = await voice();
-    expect(() => speak({}, "hi")).toThrow(NoVoiceConfigured);
-    expect(() => speak({}, "hi")).toThrow(/ElevenLabs key/i);
+    expect(() => speak(cfg({}), "hi")).toThrow(NoVoiceConfigured);
+    expect(() => speak(cfg({}), "hi")).toThrow(/ElevenLabs key/i);
     expect(() => speak(cfg({ key: "k" }), "hi")).toThrow(/Pick a voice/i);
   });
 
   it("lists no voices without a key, rather than calling out", async () => {
     seen.length = 0;
     const { listVoices } = await voice();
-    expect(await listVoices({})).toEqual([]);
+    expect(await listVoices(cfg({}))).toEqual([]);
     expect(seen).toHaveLength(0);
   });
 });

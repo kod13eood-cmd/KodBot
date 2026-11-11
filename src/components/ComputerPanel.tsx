@@ -22,6 +22,7 @@ import type { Routine } from "@/lib/routines";
 import { ApiKeyRow } from "./ApiKeys";
 import { cn } from "@/lib/cn";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
+import { LocalVmViewer } from "./LocalVmViewer";
 import { RoutineEditor } from "./RoutinesPage";
 
 async function api(path: string, init?: RequestInit): Promise<any> {
@@ -92,6 +93,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
   const [localFrame, setLocalFrame] = useState<string | null>(null);
   const [pending, setPending] = useState<"join" | "sleep" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [creatingRoutine, setCreatingRoutine] = useState(false);
   // bumped when a Box API key is saved inline, to re-run the spin-up flow
   const [retry, setRetry] = useState(0);
@@ -126,7 +128,11 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
           ? null
           : phase === "ready"
             ? "the cloud box selected by Auto"
-            : "this computer selected by Auto";
+            : phase === "vm"
+              ? "the Local VM selected by Auto"
+              : localAvailable
+                ? "this computer selected by Auto"
+                : "the Local VM selected by Auto";
 
   // resolve the mode on open; box endpoints are only ever hit on the
   // cloud path, so local/off can never render a JSON error as an image
@@ -165,6 +171,45 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
           if (!alive) return;
           setError(e.message);
           setPhase("vm-unavailable");
+        });
+      return () => {
+        alive = false;
+      };
+    }
+    if (!bot.computer) {
+      if (!capabilitiesReady) return;
+      api(`/api/bots/${bot.id}/computer`)
+        .then((status) => {
+          if (!alive) return;
+          if (status.configured) {
+            setPhase("starting");
+            return api(`/api/bots/${bot.id}/computer/provision`, { method: "POST" }).then((r) => {
+              if (!alive) return;
+              setBoxState(r.state ?? null);
+              setPhase("ready");
+            });
+          }
+          if (localAvailable && computerToolSupported) {
+            setPhase("local");
+            return;
+          }
+          if (vmSupported) {
+            return api("/api/local-computer").then((vm) => {
+              if (!alive) return;
+              if (vm.ready) {
+                setPhase("vm");
+              } else {
+                setError(`${vm.problem ?? "The Local VM is not ready"}. Open App Settings → Local VM.`);
+                setPhase("vm-unavailable");
+              }
+            });
+          }
+          setPhase("unconfigured");
+        })
+        .catch((e) => {
+          if (!alive) return;
+          setError(e.message);
+          setPhase("error");
         });
       return () => {
         alive = false;
@@ -312,6 +357,16 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
       .finally(() => setPending(null));
   };
 
+  const openViewer = () => {
+    setError(null);
+    api("/api/local-computer")
+      .then((status) => {
+        if (status.viewer_url) setViewerUrl(status.viewer_url);
+        else setError("The Local VM viewer is not ready.");
+      })
+      .catch((e) => setError(e.message));
+  };
+
   const openVmSettings = () => {
     window.sessionStorage.setItem("kodbot.settings.section", "computer");
     dispatch({ type: "toggleAppSettings", open: true });
@@ -333,6 +388,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
   } satisfies Record<Exclude<Phase, "ready" | "local" | "vm">, string>;
 
   return (
+    <>
     <aside className="animate-panel-in flex h-full w-[400px] shrink-0 flex-col border-l border-hairline/40 bg-panel">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3">
@@ -354,10 +410,22 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
 
       <div className="flex-1 overflow-y-auto px-5 pb-5">
           {/* Screen preview */}
-          <div className="mb-1.5 mt-2 flex items-center justify-between text-[13px] text-ink-secondary">
+          <div className="mb-1.5 mt-2 flex items-center justify-between gap-2 text-[13px] text-ink-secondary">
             <span>{bot.name}'s screen</span>
-            {phase === "local" && <span className="text-[11px]">this computer</span>}
-            {phase === "vm" && <span className="text-[11px]">Local VM</span>}
+            <div className="flex items-center gap-2">
+              {phase === "vm" && (
+                <button
+                  type="button"
+                  onClick={openViewer}
+                  className="flex items-center gap-1 rounded-md border border-hairline/40 px-2 py-0.5 text-[11px] text-ink hover:bg-raised"
+                  title="Open the shared Local VM desktop"
+                >
+                  <Monitor size={11} /> Open
+                </button>
+              )}
+              {phase === "local" && <span className="text-[11px]">this computer</span>}
+              {phase === "vm" && <span className="text-[11px]">Local VM</span>}
+            </div>
         </div>
         <div className="flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-xl bg-card">
           {frameSrc ? (
@@ -450,8 +518,8 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
             <div className="mt-0.5 text-[13px] text-ink-secondary">
               {!bot.computer &&
                 (localAvailable
-                  ? "Auto uses a cloud box when one exists, otherwise this computer. "
-                  : "Auto uses a cloud box when one is configured; otherwise computer use stays off. ")}
+                  ? "Auto uses a cloud box when one exists, then this computer, then the prepared Local VM. "
+                  : "Auto uses a cloud box when one is configured, then the prepared Local VM; otherwise computer use stays off. ")}
               Pick where this bot's computer lives. <b className="text-ink">Local VM</b> is a Cua-controlled Linux desktop
               in a container on this machine — free and separate from your own desktop. Set it up in App
               Settings → Local VM.
@@ -459,51 +527,50 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
           <div className="mt-3 flex overflow-hidden rounded-lg border border-hairline/40">
             {(
               [
-                ["cloud", "Cloud box"],
-                ["vm", "Local VM"],
-                ["local", "This computer"],
-                ["off", "Off"],
+                ["auto", "Auto", null],
+                ["cloud", "Cloud box", "cloud"],
+                ["vm", "Local VM", "vm"],
+                ["local", "This computer", "local"],
+                ["off", "Off", "off"],
               ] as const
-            ).map(([mode, label], i) => (
-              (() => {
-                const disabled =
-                  (mode === "cloud" && !cloudSupported) ||
-                  (mode === "vm" && !vmSupported) ||
-                  (mode === "local" && (!localAvailable || !computerToolSupported));
-                const unavailableTitle =
-                  mode === "vm" && !vmSupported
-                    ? "This model engine cannot use the Local VM"
-                    : mode === "cloud" && !cloudSupported
-                      ? "This model engine cannot use cloud computer tools"
-                      : mode === "local" && !computerToolSupported
-                        ? "This model engine cannot control this computer"
-                        : mode === "local" && !localAvailable
-                          ? capabilities.host.platform === "linux"
-                            ? "Local computer control isn't available on Linux yet"
-                            : capabilities.host.label === "Browser"
-                              ? "Local computer control requires the desktop app"
-                              : "CUA Driver isn't ready"
-                          : undefined;
-                return (
-              <button
-                key={mode}
-                disabled={disabled}
-                title={unavailableTitle}
-                onClick={() => dispatch({ type: "updateBot", botId: bot.id, patch: { computer: mode } })}
-                className={cn(
-                  "flex-1 py-1.5 text-[13px]",
-                  i > 0 && "border-l border-hairline/40",
-                  disabled && "cursor-not-allowed opacity-40",
-                  bot.computer === mode
-                    ? "bg-raised text-ink"
-                    : "text-ink-secondary hover:bg-raised/60 hover:text-ink",
-                )}
-              >
-                {label}
-              </button>
-                );
-              })()
-            ))}
+            ).map(([key, label, mode], i) => {
+              const disabled =
+                (mode === "cloud" && !cloudSupported) ||
+                (mode === "vm" && !vmSupported) ||
+                (mode === "local" && (!localAvailable || !computerToolSupported));
+              const unavailableTitle =
+                mode === "vm" && !vmSupported
+                  ? "This model engine cannot use the Local VM"
+                  : mode === "cloud" && !cloudSupported
+                    ? "This model engine cannot use cloud computer tools"
+                    : mode === "local" && !computerToolSupported
+                      ? "This model engine cannot control this computer"
+                      : mode === "local" && !localAvailable
+                        ? capabilities.host.platform === "linux"
+                          ? "Local computer control isn't available on Linux yet"
+                          : capabilities.host.label === "Browser"
+                            ? "Local computer control requires the desktop app"
+                            : "CUA Driver isn't ready"
+                        : undefined;
+              return (
+                <button
+                  key={key}
+                  disabled={disabled}
+                  title={unavailableTitle}
+                  onClick={() => dispatch({ type: "updateBot", botId: bot.id, patch: { computer: mode } })}
+                  className={cn(
+                    "flex-1 py-1.5 text-[13px]",
+                    i > 0 && "border-l border-hairline/40",
+                    disabled && "cursor-not-allowed opacity-40",
+                    (bot.computer ?? null) === mode
+                      ? "bg-raised text-ink"
+                      : "text-ink-secondary hover:bg-raised/60 hover:text-ink",
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -588,5 +655,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
         />
       )}
     </aside>
+    {viewerUrl && <LocalVmViewer url={viewerUrl} onClose={() => setViewerUrl(null)} />}
+    </>
   );
 }

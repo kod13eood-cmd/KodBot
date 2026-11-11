@@ -14,6 +14,7 @@ import {
   drainDelegations,
   queueDelegation,
   _pendingCount,
+  type DelegationObserver,
 } from "./delegations.ts";
 import { peerAllowKey, resolvePeerComms } from "./peer-approval.ts";
 import { Store, type BotRecord } from "./store.ts";
@@ -321,6 +322,31 @@ describe("drainDelegations", () => {
     expect(chip.tool?.name).toBe("Delegation to @Helper canceled — @Helper is busy");
     expect(chip.tool?.ok).toBe(false);
     expect(runTargetCalls).toEqual([]);
+  });
+
+  it("reports queued and cancelled handoffs to an Activity observer", async () => {
+    const events: string[] = [];
+    const observer: DelegationObserver = {
+      queued: (item, source, destination) => {
+        events.push(`queued:${item.id}:${source.name}->${destination.name}`);
+      },
+      finished: (itemId, status, _result, error) => {
+        events.push(`finished:${itemId}:${status}:${error ?? ""}`);
+      },
+    };
+    store.patchBot(target.id, { busy: true });
+    queueDelegation(
+      commsBus,
+      from,
+      { toBotId: target.id, message: "do this", depth: 0 },
+      1,
+      from.threadId,
+      observer,
+    );
+    drainDelegations(commsBus, approvalBus, from.threadId, () => {}, observer);
+    await waitFor(() => events.some((event) => event.startsWith("finished:")));
+    expect(events[0]).toMatch(/^queued:/);
+    expect(events[1]).toMatch(/^finished:.*:cancelled:.*busy/);
   });
 
   it("asks for approval when approvePeerComms is on, then runs only on allow", async () => {

@@ -83,7 +83,7 @@ describe("ClaudeDriver.decodeConfig", () => {
   });
 
   it.skipIf(process.platform !== "win32")("names permission pipes per harness process", () => {
-    expect(permissionSocketPath("thread-abc")).toBe(`\\\\.\\pipe\\opencrew-perm-${process.pid}-thread-a`);
+    expect(permissionSocketPath("thread-abc")).toBe(`\\\\.\\pipe\\kodbot-perm-${process.pid}-thread-a`);
   });
 });
 
@@ -92,7 +92,11 @@ describe("ClaudeDriver turns (fake CLI)", () => {
   let recorder: EventRecorder;
   let scratch: string;
 
-  const create = async (mode?: string, environment: Record<string, string> = {}) => {
+  const create = async (
+    mode?: string,
+    environment: Record<string, string> = {},
+    options: { approvalTimeoutMs?: number } = {},
+  ) => {
     if (mode) process.env.FAKE_CLAUDE_MODE = mode;
     instance = await ClaudeDriver.create({
       instanceId: "claude-test",
@@ -100,6 +104,7 @@ describe("ClaudeDriver turns (fake CLI)", () => {
       environment,
       enabled: true,
       config: { cli: FAKE_CLI, permissionMode: "acceptEdits" },
+      approvalTimeoutMs: options.approvalTimeoutMs,
     });
     recorder = recordEvents(instance.adapter);
   };
@@ -421,6 +426,38 @@ describe("ClaudeDriver turns (fake CLI)", () => {
 
     conn.end();
     await instance.adapter.interruptTurn("t-perm-abc");
+    await recorder.until((e) => e.type === "turn.completed");
+  });
+
+  it("marks an unanswered ask overdue without denying it, and still takes a late allow", async () => {
+    await create("hang", {}, { approvalTimeoutMs: 30 });
+    await instance.adapter.sendTurn({ threadId: "t-perm-late", text: "go" });
+    await recorder.until((e) => e.type === "session.started");
+
+    const conn = await connectSocket(permissionSocketPath("t-perm-late"));
+    const answered = answerQueue(conn);
+    conn.write(JSON.stringify({ t: "ask", id: "ask-late", tool: "Bash", input: { command: "rm -rf scratch" } }) + "\n");
+
+    await recorder.until((e) => e.type === "request.opened" && e.requestId === "ask-late");
+    const overdue = await recorder.until((e) => e.type === "request.overdue" && e.requestId === "ask-late");
+    expect(overdue).toMatchObject({
+      requestType: "permission",
+      tool: "Bash",
+      summary: "rm -rf scratch",
+      minutes: 1,
+    });
+
+    // The deadline is only a reminder: nothing is denied or answered yet.
+    expect(recorder.events.some((e) => e.type === "request.resolved")).toBe(false);
+
+    // A late Allow still reaches the provider and the bot can continue.
+    await expect(instance.adapter.respondToRequest("t-perm-late", "ask-late", { behavior: "allow" })).resolves.toBe("allowed-once");
+    expect(await answered()).toMatchObject({ behavior: "allow" });
+    const resolved = await recorder.until((e) => e.type === "request.resolved" && e.requestId === "ask-late");
+    expect(resolved).toMatchObject({ behavior: "allow", source: "user" });
+
+    conn.end();
+    await instance.adapter.interruptTurn("t-perm-late");
     await recorder.until((e) => e.type === "turn.completed");
   });
 

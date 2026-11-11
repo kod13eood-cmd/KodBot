@@ -4,14 +4,15 @@ import {
   AlertTriangle,
   Check,
   Circle,
-  ExternalLink,
   Loader2,
+  Monitor,
   RefreshCw,
   RotateCcw,
   Square,
   Trash2,
 } from "lucide-react";
 import { Card, CommandLine } from "./SettingsPrimitives";
+import { LocalVmViewer } from "./LocalVmViewer";
 import { cn } from "@/lib/cn";
 
 type Action = "pull" | "run" | "start" | "stop" | "remove" | "recreate";
@@ -104,6 +105,7 @@ export function LocalComputerSection() {
   const [pending, setPending] = useState<Action | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     const response = await fetch("/api/local-computer", { signal });
@@ -222,14 +224,13 @@ export function LocalComputerSection() {
             <RefreshCw size={12} /> Re-check
           </button>
           {ready && (
-            <a
-              href={status?.viewer_url ?? c?.view}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              onClick={() => setViewerOpen(true)}
               className="flex items-center gap-1.5 rounded-lg border border-hairline/40 px-2.5 py-1 text-[12.5px] text-ink hover:bg-raised"
             >
-              <ExternalLink size={12} /> Watch screen
-            </a>
+              <Monitor size={12} /> Open computer
+            </button>
           )}
         </div>
         {error && <div className="mt-3 rounded-lg bg-danger/10 px-3 py-2 text-[12px] text-danger">{error}</div>}
@@ -307,7 +308,7 @@ export function LocalComputerSection() {
 
       <Card
         title="Safety and storage"
-        subtitle={`Cua Driver operates only the VM's desktop. Exactly one private host folder is mounted at ${status?.workspace_guest_path ?? "/home/cua/workspace"}; files and browser profiles there survive VM replacement, while everything elsewhere in the VM remains disposable. The password-protected viewer is available only on this machine. Docker and Podman runs are limited to 4 GB memory, 2 CPUs and 512 processes; all Linux capabilities are dropped except the two the desktop supervisor needs to switch to its unprivileged user. The VM can still reach the internet, and bots share it one at a time.`}
+        subtitle={`Cua Driver operates only the VM's desktop. Exactly one private host folder is mounted at ${status?.workspace_guest_path ?? "/home/cua/workspace"}; files and browser profiles there survive VM replacement, while everything elsewhere in the VM remains disposable. The password-protected viewer is available only on this machine. Docker and Podman runs are limited to 4 GB memory, 2 CPUs and 512 processes; all Linux capabilities are dropped except the two the desktop supervisor needs to switch to its unprivileged user. The VM can still reach the internet. Bots run in parallel; their desktop actions take turns, and a bot that needs the screen waits for the current user of it.`}
       >
         {existing && (
           <div className="flex flex-wrap gap-2">
@@ -327,6 +328,10 @@ export function LocalComputerSection() {
           {status?.base_image_ref ? <> · Base: {status.base_image_ref}</> : null}
         </div>
       </Card>
+
+      {viewerOpen && status?.viewer_url && (
+        <LocalVmViewer url={status.viewer_url} onClose={() => setViewerOpen(false)} />
+      )}
     </>
   );
 }

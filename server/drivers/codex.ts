@@ -12,6 +12,7 @@
 import { homedir } from "node:os";
 
 import { describeSpawnFailure, execCli, killCliTree, spawnCli } from "../procs.ts";
+import { resolveApprovalTimeoutMs } from "./approval-timeout.ts";
 
 import type {
   DriverCreateInput,
@@ -46,8 +47,6 @@ function decodeConfig(raw: unknown): CodexConfig {
 }
 
 const QUESTION_TIMEOUT_NOTE = "No answer was given — use your best judgment.";
-const DENY_TIMEOUT_NOTE =
-  "KodBot: nobody answered this permission request in time. Skip this action and finish what you can without it.";
 
 export const CodexDriver: ProviderDriver<CodexConfig> = {
   driverKind: DRIVER_KIND,
@@ -120,7 +119,7 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
       if (turn.integrations?.composio) {
         const bridge = turn.integrations.composio;
         Object.assign(env, bridge.env);
-        const prefix = "mcp_servers.opencrew_connectors";
+        const prefix = "mcp_servers.kodbot_connectors";
         appServerArgs.push(
           "-c", `${prefix}.command=${JSON.stringify(bridge.command)}`,
           "-c", `${prefix}.args=${JSON.stringify(bridge.args)}`,
@@ -155,6 +154,7 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
         usage: undefined as { input: number; output: number } | undefined,
       };
       const asks = new Map<string, (behavior: "allow" | "deny" | "answer", message?: string, source?: "user" | "timeout" | "system") => void>();
+      const approvalTimeout = input.approvalTimeoutMs;
       let nextId = 1;
       const rpcPending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>();
 
@@ -226,9 +226,11 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
         const choices = isQuestion
           ? (params.questions?.[0]?.options ?? []).map((o: any) => o.label).slice(0, 5)
           : undefined;
+        let timer: ReturnType<typeof setTimeout> | null = null;
         const finish = (behavior: "allow" | "deny" | "answer", message?: string, source: "user" | "timeout" | "system" = "user") => {
           if (!asks.delete(requestId)) return;
-          clearTimeout(timer);
+          if (timer) clearTimeout(timer);
+          timer = null;
           if (isQuestion) {
             const answers: Record<string, { answers: string[] }> = {};
             for (const q of Array.isArray(params.questions) ? params.questions : []) {
@@ -244,11 +246,22 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
           }
           emit({ ...base(threadId, turnId), type: "request.resolved", requestId, behavior, source });
         };
-        const timer = setTimeout(
-          () => (isQuestion ? finish("answer", QUESTION_TIMEOUT_NOTE, "timeout") : finish("deny", DENY_TIMEOUT_NOTE, "timeout")),
-          15 * 60_000,
-        );
-        timer.unref?.();
+        const timeoutMs = resolveApprovalTimeoutMs(approvalTimeout);
+        if (timeoutMs > 0) {
+          timer = setTimeout(() => {
+            timer = null;
+            emit({
+              ...base(threadId, turnId),
+              type: "request.overdue",
+              requestId,
+              requestType: isQuestion ? "question" : "permission",
+              tool,
+              summary,
+              minutes: Math.max(1, Math.round(timeoutMs / 60_000)),
+            });
+          }, timeoutMs);
+          timer.unref?.();
+        }
         asks.set(requestId, finish);
         emit({
           ...base(threadId, turnId),
@@ -410,7 +423,7 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
       // handshake + kickoff; any refusal surfaces as failure, not a hang
       (async () => {
         try {
-          await request("initialize", { clientInfo: { name: "opencrew", version: "1" } });
+          await request("initialize", { clientInfo: { name: "kodbot", version: "1" } });
           send({ jsonrpc: "2.0", method: "initialized", params: {} });
           const cursor = typeof turn.resumeCursor === "string" ? turn.resumeCursor : null;
           let codexThreadId: string | null = null;

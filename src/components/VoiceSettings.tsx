@@ -23,7 +23,9 @@ export function VoiceSettings() {
   const [voices, setVoices] = useState<Array<{ id: string; label: string; description?: string }>>([]);
   const [loadingVoices, setLoadingVoices] = useState(false);
 
-  const configured = Boolean(tts?.configured);
+  const provider = tts?.provider ?? (tts?.configured ? "elevenlabs" : "local");
+  const local = provider === "local";
+  const configured = local ? Boolean(tts?.ready) : Boolean(tts?.configured);
 
   useEffect(() => {
     if (!configured) {
@@ -63,10 +65,41 @@ export function VoiceSettings() {
     <div className="rounded-xl bg-card p-4">
       <div className="text-[15px] font-medium text-ink">{t("Voice")}</div>
       <div className="mt-0.5 text-[13px] text-ink-secondary">
-        {t("Read replies aloud and talk to your bots, using your own ElevenLabs account. Billed per character by ElevenLabs.")}
+        {local
+          ? t("Read replies aloud and turn speech into text with local models. No audio leaves this computer.")
+          : t("Read replies aloud and talk to your bots, using your own ElevenLabs account. Billed per character by ElevenLabs.")}
       </div>
 
-      <div className="mt-4">
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {([
+          ["local", t("Local (free)")],
+          ["elevenlabs", t("ElevenLabs")],
+        ] as const).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => void save({ provider: value, ...(value === "local" ? { voice: "" } : {}) })}
+            aria-pressed={provider === value}
+            disabled={saving}
+            className={cn(
+              "rounded-lg border px-3 py-2 text-[13px] transition-colors disabled:opacity-50",
+              provider === value
+                ? "border-accent/50 bg-accent/10 text-ink"
+                : "border-hairline/40 text-ink-secondary hover:bg-raised/60 hover:text-ink",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {local && !tts.ready && (
+        <div className="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-[12px] leading-relaxed text-warning">
+          {t("Local voice is not installed on the harness yet. Run scripts/setup-local-voice.sh on the server, then refresh.")}
+        </div>
+      )}
+
+      {!local && <div className="mt-4">
         <div className="mb-1.5 flex items-center gap-2 text-[13px] text-ink-secondary">
           <span className={cn("size-1.5 rounded-full", configured ? "bg-success" : "bg-raised-hover")} />
           <span>{t("ElevenLabs key")}</span>
@@ -101,11 +134,11 @@ export function VoiceSettings() {
             {t("Get a key from ElevenLabs")}
           </a>
         )}
-      </div>
+      </div>}
 
       {configured && (
         <div className="mt-4">
-          <div className="mb-1.5 text-[13px] text-ink-secondary">{t("Voice")}</div>
+          <div className="mb-1.5 text-[13px] text-ink-secondary">{local ? t("Local voice") : t("Voice")}</div>
           <div className="flex gap-2">
             <select
               value={tts.voice}
@@ -113,7 +146,13 @@ export function VoiceSettings() {
               aria-label={t("Voice")}
               className="w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] text-ink focus:border-hairline focus:outline-none"
             >
-              <option value="">{loadingVoices ? t("Loading voices…") : t("Pick a voice")}</option>
+              <option value="">
+                {loadingVoices
+                  ? t("Loading voices…")
+                  : local
+                    ? t("Auto (BG / EN)")
+                    : t("Pick a voice")}
+              </option>
               {voices.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.label}

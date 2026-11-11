@@ -57,7 +57,7 @@ export class ProviderRegistry {
     this.driversByKind = new Map(drivers.map((d) => [d.driverKind, d]));
   }
 
-  async load(configs: InstanceConfigMap) {
+  async load(configs: InstanceConfigMap, options?: { approvalTimeoutMs?: number | (() => number) }) {
     for (const [instanceId, entry] of Object.entries(configs)) {
       const driver = this.driversByKind.get(entry.driver);
       if (!driver) {
@@ -87,6 +87,7 @@ export class ProviderRegistry {
           environment: entry.environment ?? {},
           enabled: entry.enabled ?? true,
           config,
+          approvalTimeoutMs: options?.approvalTimeoutMs,
         });
         this.byId.set(instanceId, { instanceId, live });
       } catch (e) {

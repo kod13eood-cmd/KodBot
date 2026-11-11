@@ -12,8 +12,8 @@ android {
         applicationId = "com.kodbot.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 15
-        versionName = "0.1.14"
+        versionCode = 20
+        versionName = "0.1.19"
     }
 
     buildFeatures {
@@ -58,4 +58,7 @@ dependencies {
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
+    // Android's unit-test classpath ships stubbed org.json classes; the voice
+    // upload test needs the real parser.
+    testImplementation("org.json:json:20240303")
 }

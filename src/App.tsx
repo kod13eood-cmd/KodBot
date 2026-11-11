@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState, useDeferredValue } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useDeferredValue } from "react";
 import { Loader2, Menu } from "lucide-react";
 import { StoreProvider, useStore, visibleMessages } from "@/state/store";
 import { Onboarding } from "@/components/Onboarding";
+import { ServerSetupGate } from "@/components/ServerSetupGate";
 import { emailGateDone, initAnalytics } from "@/lib/analytics";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatView } from "@/components/ChatView";
@@ -19,11 +20,18 @@ import { WindowControls } from "@/components/WindowControls";
 import { SendQueueDrainer } from "@/components/SendQueueDrainer";
 import { DesktopCapabilitiesProvider } from "@/components/DesktopCapabilities";
 import { RoutinesPage } from "@/components/RoutinesPage";
+import { ActivityPage } from "@/components/ActivityPage";
 import { NoEngines } from "@/components/NoEngines";
 import { CommandPalette } from "@/components/CommandPalette";
 import { ShortcutsSheet } from "@/components/ShortcutsSheet";
 import { NeedsYouBar } from "@/components/NeedsYouBar";
-import { collectNeedsYou } from "@/lib/needs-you";
+import { collectNeedsYou, collectRoutineFailures } from "@/lib/needs-you";
+import {
+  notificationTargetFromUrl,
+  resolveNotificationTarget,
+  withoutNotificationParams,
+  type NotificationTarget,
+} from "@/lib/notification-target";
 import { useI18n } from "@/lib/i18n";
 
 function Shell() {
@@ -51,8 +59,8 @@ function Shell() {
   // Who cannot continue without an answer or an approval. Drives the persistent
   // strip, the tab title, and the app badge.
   const needsYou = useMemo(
-    () =>
-      collectNeedsYou(
+    () => [
+      ...collectNeedsYou(
         state.bots.map((entry) => ({
           kind: "bot" as const,
           id: entry.id,
@@ -68,7 +76,9 @@ function Shell() {
           messages: entry.messages,
         })),
       ),
-    [state.bots, state.groups],
+      ...collectRoutineFailures(state.routineRuns, state.bots),
+    ],
+    [state.bots, state.groups, state.routineRuns],
   );
 
   useEffect(() => {
@@ -82,15 +92,66 @@ function Shell() {
   }, [needsYou.length]);
 
   // A native notification click names the thread that asked; a room request
-  // opens the room, not the member's private chat.
+  // opens the room, a task opens that exact task. The Android WebView has no
+  // Electron bridge, so it sends the same payload as a custom event. Keep a
+  // click pending until the first fleet snapshot arrives on a cold start.
+  const pendingNotification = useRef<NotificationTarget | null>(
+    notificationTargetFromUrl(window.location.search),
+  );
+
+  const openNotification = useCallback(
+    (target: NotificationTarget) => {
+      const resolved = resolveNotificationTarget(target, state.bots, state.groups);
+      if (!resolved) return false;
+      if (resolved.kind === "group") {
+        dispatch({ type: "select", id: resolved.id });
+      } else {
+        if (resolved.taskThreadId) {
+          dispatch({ type: "switchTask", botId: resolved.id, threadId: resolved.taskThreadId });
+        }
+        dispatch({ type: "select", id: resolved.id });
+      }
+      pendingNotification.current = null;
+      if (window.location.search) {
+        window.history.replaceState(
+          {},
+          "",
+          `${window.location.pathname}${withoutNotificationParams(window.location.search)}${window.location.hash}`,
+        );
+      }
+      return true;
+    },
+    [state.bots, state.groups, dispatch],
+  );
+
   useEffect(() => {
+    const open = (target: NotificationTarget) => {
+      if (!openNotification(target)) pendingNotification.current = target;
+    };
     const bridge = window.ogb?.notifications;
-    if (!bridge) return;
-    return bridge.onOpen(({ botId, threadId }) => {
-      const room = state.groups.find((entry) => entry.threadId === threadId);
-      dispatch({ type: "select", id: room?.id ?? botId });
-    });
-  }, [state.groups, dispatch]);
+    const offBridge = bridge?.onOpen(open);
+    const onCustom = (event: Event) => {
+      const detail = (event as CustomEvent<NotificationTarget>).detail;
+      if (!detail) return;
+      // The WebView checks this synchronously to know its listener existed;
+      // otherwise it reloads with a URL deep link instead.
+      const nonce = (detail as NotificationTarget & { nonce?: number }).nonce;
+      if (typeof nonce === "number") {
+        (window as Window & { __kodbotOpenAck?: number }).__kodbotOpenAck = nonce;
+      }
+      open(detail);
+    };
+    window.addEventListener("kodbot:open", onCustom);
+    return () => {
+      offBridge?.();
+      window.removeEventListener("kodbot:open", onCustom);
+    };
+  }, [openNotification]);
+
+  useEffect(() => {
+    const target = pendingNotification.current;
+    if (target) openNotification(target);
+  }, [openNotification]);
 
   // Nothing on this machine can run a bot. A missing cloud login does not
   // count — that CLI can still host a local model. Wait for the first
@@ -174,7 +235,9 @@ function Shell() {
           menuButtonRef.current?.focus();
         }}
       />
-      {state.activeView === "routines" ? (
+      {state.activeView === "activity" ? (
+        <ActivityPage />
+      ) : state.activeView === "routines" ? (
         <RoutinesPage />
       ) : noEngines ? (
         <NoEngines />
@@ -225,11 +288,13 @@ export default function App() {
   return (
     <DesktopCapabilitiesProvider>
       <StoreProvider>
-        <Shell />
+        <ServerSetupGate>
+          <Shell />
+          <SendQueueDrainer />
+          {gated && <Onboarding onDone={() => setGated(false)} />}
+        </ServerSetupGate>
         <WindowControls />
         <PageBridge />
-        <SendQueueDrainer />
-        {gated && <Onboarding onDone={() => setGated(false)} />}
       </StoreProvider>
     </DesktopCapabilitiesProvider>
   );

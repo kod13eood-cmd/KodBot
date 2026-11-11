@@ -15,6 +15,7 @@
 // `alwaysAllow`, so the two sides never disagree about what was granted.
 
 import { newId } from "./contracts.ts";
+import { resolveApprovalTimeoutMs } from "./drivers/approval-timeout.ts";
 import { peerAllowKey, type PeerAction } from "./peer-approval-key.ts";
 import type { BotRecord, Message, Store } from "./store.ts";
 
@@ -23,16 +24,33 @@ export { peerAllowKey } from "./peer-approval-key.ts";
 /** What a peer-approval helper needs from the outside world: the store
  * for thread append + persist, and the SSE broadcaster so the chat
  * updates without waiting for a refresh. */
+export interface PeerOverdueInfo {
+  requestId: string;
+  from: BotRecord;
+  target: BotRecord;
+  action: PeerAction;
+  message: string;
+  threadId: string;
+  messageId: string;
+  minutes: number;
+}
+
 export interface ApprovalBus {
   store: Store;
   /** SSE broadcast (kind: "message" envelope). */
   broadcast: (payload: Record<string, unknown>) => void;
+  /** Live approval-timeout setting. 0 means wait without a timer. */
+  approvalTimeoutMs?: () => number;
+  /** Called once when the reminder timer expires. The card stays answerable. */
+  onOverdue?: (info: PeerOverdueInfo) => void;
+  /** Keep the source turn out of the stall watchdog while a person decides. */
+  setWaitingOnHuman?: (threadId: string, waiting: boolean) => void;
 }
 
 interface Pending {
   resolve: (result: "allow" | "deny") => void;
-  /** Frees the requestId if the user never answers. */
-  timer: ReturnType<typeof setTimeout>;
+  /** Marks the card overdue if the user has not answered yet. */
+  timer?: ReturnType<typeof setTimeout>;
   fromBotId: string;
   toBotId: string;
   message: string;
@@ -61,8 +79,6 @@ function settleCard(pending: Pending, behavior: string, source: "user" | "system
  * server cancels every in-flight approval, like provider permissions do. */
 const pendingComms = new Map<string, Pending>();
 
-const APPROVAL_TIMEOUT_MS = 15 * 60_000;
-
 /** The narrow grant "always allow" remembers for a peer comm. Mirrored
  * back into `bot.alwaysAllow` when the user picks "Always allow" on the
  * card. */
@@ -80,6 +96,8 @@ function pushApprovalCard(
   sourceThreadId: string,
 ): Message {
   const subtitle = message.length > 200 ? `${message.slice(0, 200)}…` : message;
+  const taskTitle = bus.store.taskByThread(from.id, sourceThreadId)?.title.trim();
+  const purpose = taskTitle && taskTitle !== "New task" ? taskTitle : undefined;
   const note = bus.store.appendMessage(sourceThreadId, {
     role: "bot",
     kind: "options",
@@ -89,6 +107,16 @@ function pushApprovalCard(
       options: ["Allow", "Deny", "Always allow"],
       requestId,
       tool: action,
+      explanation:
+        action === "ask_bot"
+          ? `Send one message from @${from.name} to @${target.name}. @${target.name} can read it and reply.`
+          : `Hand a task from @${from.name} to @${target.name}. @${target.name} will work on it in the background.`,
+      risk:
+        action === "ask_bot"
+          ? "This contacts another bot with your workspace context. Review the message before allowing it."
+          : "This lets another bot take on work and spend tokens on your behalf. Review the task before allowing it.",
+      riskLevel: action === "ask_bot" ? "medium" : "high",
+      ...(purpose ? { purpose } : {}),
       allowKey: peerAllowKey(action, target.id),
     },
   });
@@ -115,16 +143,36 @@ export function requestPeerApproval(
     // the card has to exist before the entry, so a timeout or an answer can
     // always find it to settle
     const card = pushApprovalCard(bus, from, target, message, action, requestId, sourceThreadId);
-    const timer = setTimeout(() => {
-      // 15 minutes without an answer → deny. Keeps an unattended bot from
-      // stalling its own turn forever (matches the Claude broker timeout).
-      const pending = pendingComms.get(requestId);
-      if (!pending) return;
-      pendingComms.delete(requestId);
-      settleCard(pending, "deny", "system");
-      resolve("deny");
-    }, APPROVAL_TIMEOUT_MS);
-    timer.unref?.(); // a waiting card must never hold the process open
+    const timeoutMs = resolveApprovalTimeoutMs(bus.approvalTimeoutMs);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    if (timeoutMs > 0) {
+      timer = setTimeout(() => {
+        const pending = pendingComms.get(requestId);
+        if (!pending) return;
+        // A reminder, not a verdict: the card stays open, the turn keeps
+        // waiting, and a late Allow still lets the peer contact happen.
+        const existing = pending.bus.store
+          .messagesFor(pending.threadId)
+          .find((candidate) => candidate.id === pending.messageId);
+        if (existing?.card && !existing.card.answered && !existing.card.dismissed && !existing.card.overdueAt) {
+          pending.bus.store.patchMessage(pending.threadId, pending.messageId, {
+            card: { ...existing.card, overdueAt: Date.now() },
+          });
+        }
+        bus.onOverdue?.({
+          requestId,
+          from,
+          target,
+          action,
+          message,
+          threadId: sourceThreadId,
+          messageId: card.id,
+          minutes: Math.max(1, Math.round(timeoutMs / 60_000)),
+        });
+      }, timeoutMs);
+      timer.unref?.(); // a waiting card must never hold the process open
+    }
+    bus.setWaitingOnHuman?.(sourceThreadId, true);
     pendingComms.set(requestId, {
       resolve,
       timer,
@@ -151,6 +199,7 @@ export function resolvePeerComms(
   if (!pending) return false;
   pendingComms.delete(requestId);
   clearTimeout(pending.timer);
+  pending.bus.setWaitingOnHuman?.(pending.threadId, false);
   const allow = behavior === "allow";
   settleCard(pending, allow ? "allow" : "deny", "user");
   pending.resolve(allow ? "allow" : "deny");
@@ -164,6 +213,7 @@ export function cancelPeerApprovalsFor(botId: string): void {
     if (pending.fromBotId !== botId && pending.toBotId !== botId) continue;
     pendingComms.delete(requestId);
     clearTimeout(pending.timer);
+    pending.bus.setWaitingOnHuman?.(pending.threadId, false);
     settleCard(pending, "deny", "system");
     pending.resolve("deny");
   }

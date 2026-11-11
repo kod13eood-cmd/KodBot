@@ -2,31 +2,47 @@
 // file is only the part that reads ~/.kodbot/config.json and decides
 // whether there is a voice at all.
 import type { AppConfig } from "../config.ts";
+import {
+  localVoiceReady,
+  localVoices,
+  speakLocal,
+} from "../local-voice.ts";
 import * as elevenlabs from "./elevenlabs.ts";
 
 export class NoVoiceConfigured extends Error {
   // a plain field rather than a constructor parameter property: the harness
   // runs under `node --experimental-strip-types`, which is strip-ONLY, so a
   // parameter property is rejected at load time even though it typechecks
-  readonly reason: "key" | "voice";
+  readonly reason: "key" | "voice" | "local";
 
-  constructor(reason: "key" | "voice") {
+  constructor(reason: "key" | "voice" | "local") {
     super(
       reason === "key"
         ? "Add an ElevenLabs key in App Settings to turn on voice."
-        : "Pick a voice in App Settings.",
+        : reason === "local"
+          ? "Local voice models are not installed on the harness."
+          : "Pick a voice in App Settings.",
     );
     this.reason = reason;
   }
 }
 
+export type VoiceProvider = "elevenlabs" | "local";
+
+export function voiceProvider(cfg: AppConfig): VoiceProvider {
+  return cfg.tts?.provider ?? (cfg.tts?.key ? "elevenlabs" : "local");
+}
+
 export function voiceConfigured(cfg: AppConfig): boolean {
-  return Boolean(cfg.tts?.key && cfg.tts?.voice);
+  return voiceProvider(cfg) === "local"
+    ? localVoiceReady()
+    : Boolean(cfg.tts?.key && cfg.tts?.voice);
 }
 
 /** A per-bot voice is a complete choice too; it should not be blocked just
  * because the app-wide fallback has not been selected yet. */
 export function voiceReady(cfg: AppConfig, voiceId?: string): boolean {
+  if (voiceProvider(cfg) === "local") return localVoiceReady();
   return Boolean(cfg.tts?.key && (voiceId || cfg.tts?.voice));
 }
 
@@ -34,7 +50,8 @@ export function voiceReady(cfg: AppConfig, voiceId?: string): boolean {
  * rule as every other credential. */
 export function describeVoice(cfg: AppConfig) {
   return {
-    configured: Boolean(cfg.tts?.key),
+    provider: voiceProvider(cfg),
+    configured: voiceProvider(cfg) === "local" ? localVoiceReady() : Boolean(cfg.tts?.key),
     ready: voiceConfigured(cfg),
     voice: cfg.tts?.voice ?? "",
   };
@@ -45,6 +62,7 @@ export function verifyKey(key: string) {
 }
 
 export async function listVoices(cfg: AppConfig): Promise<elevenlabs.Voice[]> {
+  if (voiceProvider(cfg) === "local") return localVoices();
   const key = cfg.tts?.key;
   if (!key) return [];
   return elevenlabs.listVoices(key);
@@ -53,6 +71,10 @@ export async function listVoices(cfg: AppConfig): Promise<elevenlabs.Voice[]> {
 /** Synthesize one utterance. Throws NoVoiceConfigured when there is nothing
  * to speak with, which the route turns into a 409 the client can explain. */
 export function speak(cfg: AppConfig, text: string, voiceId?: string) {
+  if (voiceProvider(cfg) === "local") {
+    if (!localVoiceReady()) throw new NoVoiceConfigured("local");
+    return speakLocal(text, voiceId || cfg.tts?.voice);
+  }
   const key = cfg.tts?.key;
   if (!key) throw new NoVoiceConfigured("key");
   const voice = voiceId || cfg.tts?.voice;

@@ -52,6 +52,15 @@ try {
 const SERVER_CONNECTION_FILE = path.join(app.getPath("userData"), "server-connection.json");
 const HEADLESS = process.argv.includes("--headless") || process.env.OC_HEADLESS === "1";
 
+// A remote harness is commonly reached over plain HTTP on a LAN/Tailscale.
+// Chromium hides getUserMedia in an insecure context, which would silently
+// remove the microphone button. Treat only the exact user-configured KodBot
+// origin as secure; no other HTTP origin gets the exception.
+const initialConnection = readServerConnection();
+if (!HEADLESS && initialConnection.mode === "remote" && initialConnection.url.startsWith("http://")) {
+  app.commandLine.appendSwitch("unsafely-treat-insecure-origin-as-secure", initialConnection.url);
+}
+
 function normalizeRemoteUrl(raw) {
   const text = String(raw ?? "").trim();
   if (!text) throw new Error("Enter the remote server address.");
@@ -80,6 +89,18 @@ function readServerConnection() {
     /* missing or malformed: local is the safe default */
   }
   return { mode: "local" };
+}
+
+/** True when the user or an earlier launch saved a valid local/remote choice.
+ * First-run setup uses this so a fresh install gets the wizard once, while an
+ * existing install is not asked again after it updates. */
+function serverConnectionChoiceSaved() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(SERVER_CONNECTION_FILE, "utf8"));
+    return raw?.mode === "local" || raw?.mode === "remote";
+  } catch {
+    return false;
+  }
 }
 
 function writeServerConnection(connection) {
@@ -679,7 +700,9 @@ ipcMain.handle("speech:finish", () => {
 // on and off, look at it, open or cancel a pairing window, and remove a
 // device. It cannot reach the sidecar's control port itself.
 async function remoteCompanion(pathname, method = "GET") {
-  const response = await fetch(`${remoteConnection.url}/api/companion${pathname}`, {
+  // Use the window's session so a gateway cookie authenticates these calls.
+  // Node's global fetch has no cookies and would see 401 on a gateway.
+  const response = await session.defaultSession.fetch(`${remoteConnection.url}/api/companion${pathname}`, {
     method,
     headers: { accept: "application/json" },
     signal: AbortSignal.timeout(8_000),
@@ -691,6 +714,7 @@ async function remoteCompanion(pathname, method = "GET") {
 
 ipcMain.handle("server:get-connection", () => ({
   ...remoteConnection,
+  configured: serverConnectionChoiceSaved(),
   active: remoteMode ? "remote" : "local",
   fallback: remoteConnection.mode === "remote" && !remoteMode,
 }));

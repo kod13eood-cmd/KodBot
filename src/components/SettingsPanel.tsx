@@ -1279,19 +1279,25 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
               {bot.computer ? "" : ` (${t("currently: auto")})`}
             </div>
             <div className="mt-3 flex overflow-hidden rounded-lg border border-hairline/40">
-              {(["cloud", "local", "off"] as const).map((mode, i) => (
+              {([
+                { value: null, label: t("Auto") },
+                { value: "cloud", label: t("cloud") },
+                { value: "vm", label: t("Local VM") },
+                { value: "local", label: t("local") },
+                { value: "off", label: t("off") },
+              ] as const).map((option, i) => (
                 <button
-                  key={mode}
-                  onClick={() => patch({ computer: mode })}
+                  key={option.value ?? "auto"}
+                  onClick={() => patch({ computer: option.value })}
                   className={cn(
-                    "flex-1 py-1.5 text-[13px] capitalize",
+                    "flex-1 py-1.5 text-[13px]",
                     i > 0 && "border-l border-hairline/40",
-                    bot.computer === mode
+                    (bot.computer ?? null) === option.value
                       ? "bg-raised text-ink"
                       : "text-ink-secondary hover:bg-raised/60 hover:text-ink",
                   )}
                 >
-                  {t(mode)}
+                  {option.label}
                 </button>
               ))}
             </div>

@@ -28,7 +28,37 @@ test("accepts a real harness", async () => {
     "/api/health": harnessRoutes["/api/health"](),
     "/api/bots?messages=0": harnessRoutes["/api/bots?messages=0"](),
   };
-  assert.deepEqual(await probeHarness("http://host:8799", { fetchImpl: fakeFetch(routes) }), { ok: true });
+  assert.deepEqual(await probeHarness("http://host:8799", { fetchImpl: fakeFetch(routes) }), {
+    ok: true,
+    kind: "harness",
+  });
+});
+
+test("accepts a gateway with a login page", async () => {
+  const routes = {
+    "/api/health": json({ app: "kodbot-gateway", ok: true }),
+    "/login": new Response("<!doctype html><title>KodBot</title>", {
+      status: 200,
+      headers: { "content-type": "text/html" },
+    }),
+    "/api/auth/me": json({ error: "not signed in", login: "/login" }, 401),
+  };
+  assert.deepEqual(await probeHarness("http://host:8780", { fetchImpl: fakeFetch(routes) }), {
+    ok: true,
+    kind: "gateway",
+  });
+});
+
+test("does not accept a gateway identity without a login page", async () => {
+  const routes = {
+    "/api/health": json({ app: "kodbot-gateway", ok: true }),
+    "/login": new Response("not found", { status: 404 }),
+    "/api/auth/me": json({ error: "not signed in" }, 401),
+  };
+  assert.deepEqual(await probeHarness("http://host:8780", { fetchImpl: fakeFetch(routes) }), {
+    ok: false,
+    reason: "not-kodbot",
+  });
 });
 
 test("rejects the companion, which proxies health but not the API", async () => {

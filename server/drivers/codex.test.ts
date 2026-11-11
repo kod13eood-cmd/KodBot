@@ -144,7 +144,7 @@ describe("CodexDriver turns (fake app-server)", () => {
     });
     await recorder.until((event) => event.type === "turn.completed");
     const seen = JSON.parse(readFileSync(dump, "utf8"));
-    expect(seen.argv.join(" ")).toContain("mcp_servers.opencrew_connectors.command");
+    expect(seen.argv.join(" ")).toContain("mcp_servers.kodbot_connectors.command");
     expect(seen.argv.join(" ")).toContain("OC_COMMS_TOKEN");
     expect(seen.argv.join(" ")).not.toContain("per-boot-token");
     expect(seen.env.OC_COMMS_TOKEN).toBe("per-boot-token");

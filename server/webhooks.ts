@@ -14,6 +14,8 @@ export interface WebhookTrigger {
   name: string;
   prompt: string;
   botId: string;
+  /** Optional dedicated worker; the trigger's bot owns the automation and gets the report. */
+  workerBotId?: string;
   runOn: RoutineRunOn;
   enabled: boolean;
   createdAt: number;
@@ -33,6 +35,7 @@ export interface WebhookTriggerInput {
   name: string;
   prompt: string;
   botId: string;
+  workerBotId?: string | null;
   runOn?: RoutineRunOn;
   enabled?: boolean;
   verificationPending?: boolean;
@@ -122,6 +125,7 @@ export interface WebhookManagerOptions {
     webhookName: string;
     prompt: string;
     botId: string;
+    workerBotId?: string;
     runOn: RoutineRunOn;
     deliveryId: string;
     receivedAt: number;
@@ -148,6 +152,7 @@ const triggerInputSchema = z.object({
   name: z.string(),
   prompt: z.string(),
   botId: z.string(),
+  workerBotId: z.string().trim().max(128).optional().nullable(),
   runOn: runOnSchema.optional(),
   enabled: z.boolean().optional(),
   verificationPending: z.boolean().optional(),
@@ -166,6 +171,7 @@ const storedWebhookSchema = z.object({
   name: z.string(),
   prompt: z.string(),
   botId: z.string().min(1),
+  workerBotId: z.string().min(1).optional(),
   runOn: runOnSchema,
   enabled: z.boolean(),
   createdAt: z.number().finite().nonnegative(),
@@ -236,9 +242,11 @@ function cleanInput(input: WebhookTriggerInput): CleanWebhookInput {
   const name = input.name.trim().slice(0, 80);
   const prompt = input.prompt.trim().slice(0, 20_000);
   const botId = input.botId.trim();
+  const workerBotId = input.workerBotId?.trim() || undefined;
   const runOn = input.runOn ?? "crew";
   if (!name) fail(400, "Give the webhook a name");
   if (!botId) fail(400, "Choose a CREW");
+  if (workerBotId && workerBotId === botId) fail(400, "Choose a different bot to run the automation");
   if (runOn !== "crew" && runOn !== "cloud") fail(400, "Choose where this webhook runs");
   const eventTypes = Array.from(new Set(
     (input.eventTypes ?? [])
@@ -250,6 +258,7 @@ function cleanInput(input: WebhookTriggerInput): CleanWebhookInput {
     name,
     prompt,
     botId,
+    ...(workerBotId ? { workerBotId } : {}),
     runOn,
     enabled,
     verificationPending: enabled ? false : input.verificationPending === true,
@@ -367,7 +376,7 @@ export class WebhookManager {
 
   create(input: JsonValue): CreatedWebhook {
     const clean = cleanInput(parseTriggerInput(input));
-    if (this.options.botState(clean.botId) === "missing") fail(400, "That CREW no longer exists");
+    if (this.options.botState(clean.workerBotId ?? clean.botId) === "missing") fail(400, "That CREW no longer exists");
     const now = this.now();
     const secret = newSecret();
     const trigger: StoredWebhookTrigger = {
@@ -389,17 +398,21 @@ export class WebhookManager {
     const trigger = this.webhooks.find((candidate) => candidate.id === id);
     if (!trigger) return null;
     const patch = parseTriggerPatch(value);
+    // null or "" explicitly clears the worker; `??` alone would retain it.
+    const clearsWorker = Object.prototype.hasOwnProperty.call(patch, "workerBotId") && !String(patch.workerBotId ?? "").trim();
     const clean = cleanInput({
       name: patch.name ?? trigger.name,
       prompt: patch.prompt ?? trigger.prompt,
       botId: patch.botId ?? trigger.botId,
+      workerBotId: clearsWorker ? undefined : patch.workerBotId ?? trigger.workerBotId,
       runOn: patch.runOn ?? trigger.runOn,
       enabled: patch.enabled ?? trigger.enabled,
       verificationPending: patch.verificationPending ?? trigger.verificationPending,
       eventTypes: patch.eventTypes ?? trigger.eventTypes,
     });
-    if (this.options.botState(clean.botId) === "missing") fail(400, "That CREW no longer exists");
+    if (this.options.botState(clean.workerBotId ?? clean.botId) === "missing") fail(400, "That CREW no longer exists");
     Object.assign(trigger, clean, { updatedAt: this.now() });
+    if (clearsWorker) delete trigger.workerBotId;
     if (!clean.eventTypes?.length) delete trigger.eventTypes;
     if (patch.enabled === false) {
       this.options.cancelQueued?.(trigger.id, "The webhook was paused before this delivery started");
@@ -486,7 +499,7 @@ export class WebhookManager {
 
   private dispatch(trigger: StoredWebhookTrigger, event: WebhookEvent): WebhookReceiveResult {
     if (!trigger.enabled) fail(409, "This webhook is paused");
-    if (this.options.botState(trigger.botId) === "missing") fail(410, "The assigned CREW no longer exists");
+    if (this.options.botState(trigger.workerBotId ?? trigger.botId) === "missing") fail(410, "The assigned CREW no longer exists");
 
     const allowed = trigger.eventTypes ?? [];
     if (allowed.length > 0 && (!event.eventName || !allowed.includes(event.eventName))) {
@@ -536,6 +549,7 @@ export class WebhookManager {
       webhookName: trigger.name,
       prompt: eventPrompt(trigger, event, now, deliveryId),
       botId: trigger.botId,
+      ...(trigger.workerBotId ? { workerBotId: trigger.workerBotId } : {}),
       runOn: trigger.runOn,
       deliveryId,
       receivedAt: now,

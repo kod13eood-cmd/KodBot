@@ -2,6 +2,7 @@ import { track } from "@/lib/analytics";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
+  Activity as ActivityIcon,
   Archive,
   ArrowDownToLine,
   BellDot,
@@ -817,6 +818,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const { state, dispatch } = useStore();
   const { t } = useI18n();
   const { capabilities } = useDesktopCapabilities();
+  const failedRoutineRuns = state.routineRuns.filter(
+    (run) => ["failed", "missed"].includes(run.status) && !run.seenAt,
+  ).length;
   const showGroupChats = useShowGroupChats();
   const importReturnRef = useRef<HTMLButtonElement>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
@@ -1210,16 +1214,27 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           )}
           </div>
           <button
+            onClick={() => dispatch({ type: "showActivity" })}
+            aria-label={t("Activity")}
+            title={t("Activity")}
+            className={cn(
+              "rounded-md p-1.5 hover:bg-raised hover:text-ink",
+              state.activeView === "activity" ? "bg-raised text-accent" : "text-ink-secondary",
+            )}
+          >
+            <ActivityIcon size={18} />
+          </button>
+          <button
             onClick={() => dispatch({ type: "showRoutines" })}
             aria-label={t("Automations")}
-            title={t("Automations")}
+            title={failedRoutineRuns > 0 ? t("{count} failed runs need attention", { count: failedRoutineRuns }) : t("Automations")}
             className={cn(
               "relative rounded-md p-1.5 hover:bg-raised hover:text-ink",
               state.activeView === "routines" ? "bg-raised text-accent" : "text-ink-secondary",
             )}
           >
             <CalendarDays size={18} />
-            {state.routineRuns.some((run) => ["failed", "missed"].includes(run.status) && !run.seenAt) && (
+            {failedRoutineRuns > 0 && (
               <span className="absolute right-0.5 top-0.5 size-1.5 rounded-full bg-danger" />
             )}
           </button>

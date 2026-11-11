@@ -15,7 +15,10 @@ const isKodbotApp = (value) => {
   return app === "kodbot" || app === "opencrew";
 };
 
-/** @returns {Promise<{ok: true} | {ok: false, reason: "unreachable" | "not-kodbot" | "companion"}>} */
+/** @returns {Promise<
+ *   | { ok: true; kind: "harness" | "gateway" }
+ *   | { ok: false; reason: "unreachable" | "not-kodbot" | "companion" }
+ * >} */
 export async function probeHarness(url, options = {}) {
   const request = options.fetchImpl ?? fetch;
   const timeoutMs = options.timeoutMs ?? 4_000;
@@ -29,6 +32,24 @@ export async function probeHarness(url, options = {}) {
   }
   if (!health.ok) return { ok: false, reason: "unreachable" };
   const identity = await health.json().catch(() => null);
+  if (identity?.app === "kodbot-gateway") {
+    // A gateway is a valid remote entry point: its health is public, the app
+    // itself sits behind a login page. Point the window at it and let the
+    // normal cookie session carry the user through.
+    let login;
+    let me;
+    try {
+      [login, me] = await Promise.all([
+        request(`${url}/login`, { signal: signal() }),
+        request(`${url}/api/auth/me`, { signal: signal() }),
+      ]);
+    } catch {
+      return { ok: false, reason: "unreachable" };
+    }
+    if (!login.ok) return { ok: false, reason: "not-kodbot" };
+    if (me.status !== 200 && me.status !== 401) return { ok: false, reason: "not-kodbot" };
+    return { ok: true, kind: "gateway" };
+  }
   if (!isKodbotApp(identity)) return { ok: false, reason: "not-kodbot" };
 
   let api;
@@ -43,7 +64,7 @@ export async function probeHarness(url, options = {}) {
   if (!api.ok) return { ok: false, reason: "not-kodbot" };
   const body = await api.json().catch(() => null);
   if (!Array.isArray(body?.bots)) return { ok: false, reason: "not-kodbot" };
-  return { ok: true };
+  return { ok: true, kind: "harness" };
 }
 
 /** The sentence the settings panel shows for a failed probe. */

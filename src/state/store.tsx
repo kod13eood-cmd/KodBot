@@ -16,6 +16,7 @@ import {
 import type { EffortLevel } from "../../server/contracts.ts";
 import type { CrewColor, CrewMotion } from "@/lib/mascot";
 import type { Routine, RoutineInput, RoutineRun } from "@/lib/routines";
+import type { Job } from "@/lib/jobs";
 import type { WebhookAttempt, WebhookIngressStatus, WebhookTrigger } from "@/lib/webhooks";
 import { currentCall } from "@/lib/call";
 import { showNotification } from "@/lib/notify";
@@ -33,6 +34,15 @@ export interface OptionCardData {
   requestId?: string;
   /** permission asks: the tool being requested (drives the approval box) */
   tool?: string;
+  /** one plain-language sentence explaining what the tool will do */
+  explanation?: string;
+  /** why this action needs approval and what could go wrong */
+  risk?: string;
+  riskLevel?: "low" | "medium" | "high";
+  /** the task title, so the card has context beyond the raw command */
+  purpose?: string;
+  /** when the soft timer expired; the card stays answerable */
+  overdueAt?: number;
   /** why auto mode stopped to ask anyway */
   held?: string;
   /** the narrow grant "always allow" remembers, e.g. "Bash:git" */
@@ -138,6 +148,8 @@ export interface Task {
   /** folder this task's turns run in, pinned on its first turn; null =
    * legacy home-folder session; absent = not pinned yet */
   cwd?: string | null;
+  /** archived tasks keep their transcript but leave the picker */
+  archivedAt?: number;
 }
 
 export interface TaskUsage {
@@ -170,7 +182,7 @@ export interface Bot {
   activity?: "working" | "waiting-on-you" | "idle" | "no-signal" | "dead";
   modelSelection: ModelSelection;
   /** Where this bot's computer runs; unset = auto (cloud box if one exists, else local). */
-  computer?: "cloud" | "vm" | "local" | "off";
+  computer?: "cloud" | "vm" | "local" | "off" | null;
   /** where new tasks run their shell tools; absent = the private bot workspace */
   cwd?: string;
   /** auto mode: the bot approves its own tool permissions */
@@ -236,9 +248,11 @@ export interface ConfigStatus {
   /** Voice (ElevenLabs). `configured` = a key is saved; `ready` = a key AND
    * a voice, which is what it takes to actually speak. The key itself is
    * never echoed back. */
-  tts?: { configured: boolean; ready: boolean; voice: string };
+  tts?: { provider: "elevenlabs" | "local"; configured: boolean; ready: boolean; voice: string };
   /** who's using the app — collected in onboarding, shown in the sidebar */
   profile?: { name: string; email: string };
+  /** minutes before an unanswered ask is marked overdue; null = no timer */
+  approvalTimeoutMinutes?: number | null;
 }
 
 /** How an engine gets installed — declared by its driver, mirrors
@@ -295,17 +309,26 @@ export type AppSettingsSection =
   | "computer"
   | "usage";
 
+export interface AuthUser {
+  id: string;
+  email: string;
+  role: "owner" | "member";
+}
+
 export interface AppState {
   bots: Bot[];
   groups: Group[];
   teams: Team[];
   instances: InstanceInfo[];
   config: ConfigStatus | null;
+  /** Signed-in hosted account, or null for a local single-user harness. */
+  authUser: AuthUser | null;
   /** selected chat — a bot id OR a group id */
   selectedId: string;
-  activeView: "chat" | "routines";
+  activeView: "chat" | "routines" | "activity";
   routines: Routine[];
   routineRuns: RoutineRun[];
+  delegationJobs: Job[];
   webhooks: WebhookTrigger[];
   webhookAttempts: WebhookAttempt[];
   webhookIngress: WebhookIngressStatus | null;
@@ -344,7 +367,10 @@ type BotAnnouncement = Omit<Bot, "messages"> & { messages?: Message[] };
 export type Action =
   | { type: "hydrate"; bots: Bot[]; groups: Group[]; teams?: Team[] }
   | { type: "showRoutines" }
+  | { type: "showActivity" }
   | { type: "routinesHydrated"; routines: Routine[]; runs: RoutineRun[] }
+  | { type: "jobsHydrated"; jobs: Job[] }
+  | { type: "jobPatched"; job: Job }
   | { type: "routinePatched"; routine: Routine }
   | { type: "routineDeleted"; routineId: string }
   | { type: "routineRunPatched"; run: RoutineRun }
@@ -397,6 +423,8 @@ export type Action =
   | { type: "taskSwitched"; bot: Bot }
   | { type: "renameTask"; botId: string; threadId: string; title: string }
   | { type: "deleteTask"; botId: string; threadId: string }
+  | { type: "archiveTask"; botId: string; threadId: string }
+  | { type: "unarchiveTask"; botId: string; threadId: string }
   | { type: "newBot" }
   | { type: "botAdded"; bot: Bot }
   | { type: "deleteBot"; botId: string }
@@ -410,6 +438,7 @@ export type Action =
   | { type: "setModel"; botId: string; selection: ModelSelection }
   | { type: "interrupt"; botId: string }
   | { type: "connected"; value: boolean }
+  | { type: "authUser"; user: AuthUser | null }
   | { type: "error"; message: string | null }
   | { type: "toggleSettings"; open?: boolean }
   | { type: "togglePlugins"; open?: boolean; query?: string }
@@ -508,8 +537,32 @@ export function reducer(state: AppState, action: Action): AppState {
         pluginsQuery: "",
         helpOpen: false,
       };
+    case "showActivity":
+      return {
+        ...state,
+        activeView: "activity",
+        settingsOpen: false,
+        computerOpen: false,
+        inspectorOpen: false,
+        appSettingsOpen: false,
+        pluginsOpen: false,
+        pluginsQuery: "",
+        helpOpen: false,
+      };
     case "routinesHydrated":
       return { ...state, routines: action.routines, routineRuns: action.runs };
+    case "jobsHydrated":
+      return { ...state, delegationJobs: action.jobs };
+    case "jobPatched": {
+      const exists = state.delegationJobs.some((job) => job.id === action.job.id);
+      return {
+        ...state,
+        delegationJobs: (exists
+          ? state.delegationJobs.map((job) => (job.id === action.job.id ? action.job : job))
+          : [action.job, ...state.delegationJobs]
+        ).sort((a, b) => (b.finishedAt ?? b.startedAt ?? b.createdAt) - (a.finishedAt ?? a.startedAt ?? a.createdAt)),
+      };
+    }
     case "routinePatched": {
       const exists = state.routines.some((routine) => routine.id === action.routine.id);
       return {
@@ -745,6 +798,8 @@ export function reducer(state: AppState, action: Action): AppState {
       return updateBot(state, action.botId, (b) => ({ ...b, modelSelection: action.selection }));
     case "connected":
       return { ...state, connected: action.value };
+    case "authUser":
+      return { ...state, authUser: action.user };
     case "error":
       return {
         ...(action.message && state.selectedId
@@ -904,6 +959,8 @@ export function reducer(state: AppState, action: Action): AppState {
     case "switchTask":
     case "renameTask":
     case "deleteTask":
+    case "archiveTask":
+    case "unarchiveTask":
       return state;
     case "taskSwitched":
       return updateBot(state, action.bot.id, (bot) => ({ ...bot, ...action.bot, messages: action.bot.messages ?? [] }));
@@ -933,10 +990,12 @@ export const initialState: AppState = {
   teams: [],
   instances: [],
   config: null,
+  authUser: null,
   selectedId: "",
   activeView: "chat",
   routines: [],
   routineRuns: [],
+  delegationJobs: [],
   webhooks: [],
   webhookAttempts: [],
   webhookIngress: null,
@@ -964,7 +1023,14 @@ export async function api(path: string, init?: RequestInit): Promise<any> {
     ...init,
   });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error ?? `${res.status} ${res.statusText}`);
+  if (!res.ok) {
+    // Hosted gateways answer 401 with an explicit login URL. The local
+    // single-user harness has no such route, so it keeps its normal error.
+    if (res.status === 401 && typeof body.login === "string" && typeof window !== "undefined") {
+      window.location.assign(body.login);
+    }
+    throw new Error(body.error ?? `${res.status} ${res.statusText}`);
+  }
   return body;
 }
 
@@ -1276,6 +1342,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             .then((r: any) => r?.bot && dispatch({ type: "taskSwitched", bot: r.bot }))
             .catch(showError);
           break;
+        case "archiveTask":
+          api(`/api/bots/${action.botId}/tasks/${action.threadId}`, {
+            method: "PATCH",
+            body: JSON.stringify({ archivedAt: Date.now() }),
+          })
+            .then((r: any) => r?.bot && dispatch({ type: "taskSwitched", bot: r.bot }))
+            .catch(showError);
+          break;
+        case "unarchiveTask":
+          api(`/api/bots/${action.botId}/tasks/${action.threadId}`, {
+            method: "PATCH",
+            body: JSON.stringify({ archivedAt: null }),
+          })
+            .then((r: any) => r?.bot && dispatch({ type: "botPatched", bot: r.bot }))
+            .catch(showError);
+          break;
         case "interruptGroup":
           api(`/api/groups/${action.groupId}/interrupt`, { method: "POST" }).catch(showError);
           break;
@@ -1314,8 +1396,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         api("/api/config")
           .then((config) => alive && rawDispatch({ type: "configStatus", config }))
           .catch(() => {}),
+        // Hosted gateways answer with the signed-in account. A local
+        // single-user harness has no auth route, so this stays null.
+        api("/api/auth/me")
+          .then(({ user }) => alive && rawDispatch({ type: "authUser", user }))
+          .catch(() => {}),
         api("/api/routines")
           .then(({ routines, runs }) => alive && rawDispatch({ type: "routinesHydrated", routines, runs }))
+          .catch(() => {}),
+        api("/api/jobs")
+          .then(({ jobs }) => alive && rawDispatch({ type: "jobsHydrated", jobs: jobs ?? [] }))
           .catch(() => {}),
         api("/api/webhooks")
           .then(({ webhooks, attempts, ingress }) => alive && rawDispatch({ type: "webhooksHydrated", webhooks, attempts: attempts ?? [], ingress }))
@@ -1436,6 +1526,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             notification,
             () => {
               const room = stateRef.current.groups.find((group) => group.threadId === notification.threadId);
+              if (!room && notification.threadId) {
+                const bot = stateRef.current.bots.find((entry) => entry.id === notification.botId);
+                const task = bot?.tasks?.find((entry) => entry.threadId === notification.threadId);
+                if (bot && task && bot.threadId !== task.threadId) {
+                  dispatch({ type: "switchTask", botId: bot.id, threadId: task.threadId });
+                }
+              }
               dispatch({ type: "select", id: room?.id ?? notification.botId });
             },
             { activeThreadId: activeBot?.threadId ?? activeGroup?.threadId },
@@ -1453,6 +1550,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           break;
         case "routine":
           rawDispatch({ type: "routinePatched", routine: frame.routine });
+          break;
+        case "job":
+          rawDispatch({ type: "jobPatched", job: frame.job as Job });
           break;
         case "routine.deleted":
           rawDispatch({ type: "routineDeleted", routineId: frame.routineId });

@@ -39,6 +39,21 @@ interface PendingDelegationItem extends DelegationItem {
 
 export type QueueResult = "ok" | "no_target" | "self" | "too_deep" | "too_many";
 
+export type QueuedDelegation = DelegationItem & { id: string };
+
+/** Optional sink for the Activity projection. Delegation logic stays
+ * independent of persistence and HTTP; the server wires this to
+ * DelegationJobStore, tests leave it out. */
+export interface DelegationObserver {
+  queued(item: QueuedDelegation, from: BotRecord, target: BotRecord, sourceThreadId: string): void;
+  finished(
+    itemId: string,
+    status: "completed" | "failed" | "cancelled",
+    result?: string,
+    error?: string,
+  ): void;
+}
+
 /** Per source-thread queue. Persisted to delegations.json on every change
  * and reloaded at boot: a handoff queued right before a restart runs after
  * it. (Provider PERMISSIONS still die with the process — nobody can answer
@@ -103,6 +118,7 @@ export function queueDelegation(
   item: DelegationItem,
   maxDepth: number,
   sourceThreadId = from.threadId,
+  observer?: DelegationObserver,
 ): QueueResult {
   if (item.toBotId === from.id) return "self";
   if (item.depth >= maxDepth) return "too_deep";
@@ -113,9 +129,11 @@ export function queueDelegation(
   // making the caller wait. Without a cap, one turn can queue unboundedly
   // and fan out into as many real turns on the next settle.
   if (list.length >= MAX_QUEUED_PER_THREAD) return "too_many";
-  list.push({ ...item, id: newId() });
+  const queued: PendingDelegationItem = { ...item, id: newId() };
+  list.push(queued);
   pendingDelegations.set(sourceThreadId, list);
   savePending();
+  observer?.queued({ ...queued }, from, target, sourceThreadId);
   const label = `Delegated to @${target.name}${item.reason ? `: ${item.reason}` : ""}`;
   bus.store.appendMessage(sourceThreadId, {
     role: "bot",
@@ -141,7 +159,9 @@ export function drainDelegations(
     commsDepth: number,
     sourceThreadId: string,
     channel?: GroupRecord,
+    jobId?: string,
   ) => void | Promise<void>,
+  observer?: DelegationObserver,
 ): void {
   if (drainingThreads.has(threadId)) return;
   const list = pendingDelegations.get(threadId);
@@ -157,7 +177,7 @@ export function drainDelegations(
   void (async () => {
     for (const item of snapshot) {
       try {
-        await processOne(bus, approvalBus, from, threadId, item, runTarget);
+        await processOne(bus, approvalBus, from, threadId, item, runTarget, observer);
       } catch (error) {
         const why = error instanceof Error ? error.message : String(error);
         try {
@@ -179,7 +199,7 @@ export function drainDelegations(
     // waiting for approval. Its items were not in our snapshot, so start a
     // fresh drain instead of leaving them parked until another restart.
     if (pendingDelegations.get(threadId)?.length) {
-      drainDelegations(bus, approvalBus, threadId, runTarget);
+      drainDelegations(bus, approvalBus, threadId, runTarget, observer);
     }
   });
 }
@@ -196,11 +216,14 @@ function acknowledgeDelegation(threadId: string, itemId: string): void {
 
 /** Drop a thread's queued handoffs without running them, telling the user
  * they were dropped. Used when the queueing turn failed or was interrupted. */
-export function discardDelegations(bus: CommsBus, threadId: string): void {
+export function discardDelegations(bus: CommsBus, threadId: string, observer?: DelegationObserver): void {
   const list = pendingDelegations.get(threadId);
   if (!list?.length) return;
   pendingDelegations.delete(threadId);
   savePending();
+  for (const item of list) {
+    observer?.finished(item.id, "cancelled", undefined, "the turn did not finish");
+  }
   const from = bus.store.botByThread(threadId);
   if (!from) return;
   bus.store.appendMessage(threadId, {
@@ -215,18 +238,21 @@ async function processOne(
   approvalBus: ApprovalBus,
   from: BotRecord,
   sourceThreadId: string,
-  item: DelegationItem,
+  item: PendingDelegationItem,
   runTarget: (
     toBotId: string,
     message: string,
     commsDepth: number,
     sourceThreadId: string,
     channel?: GroupRecord,
+    jobId?: string,
   ) => void | Promise<void>,
+  observer?: DelegationObserver,
 ): Promise<void> {
   let sender = from;
   let target = bus.store.bot(item.toBotId);
   if (!target) {
+    observer?.finished(item.id, "failed", undefined, "no such bot");
     bus.store.appendMessage(sourceThreadId, {
       role: "bot",
       kind: "activity",
@@ -235,6 +261,7 @@ async function processOne(
     return;
   }
   if (target.busy) {
+    observer?.finished(item.id, "cancelled", undefined, `@${target.name} was busy`);
     bus.store.appendMessage(sourceThreadId, {
       role: "bot",
       kind: "activity",
@@ -252,6 +279,7 @@ async function processOne(
       sourceThreadId,
     );
     if (verdict !== "allow") {
+      observer?.finished(item.id, "cancelled", undefined, "delegation denied by user");
       bus.store.appendMessage(sourceThreadId, {
         role: "bot",
         kind: "activity",
@@ -259,14 +287,18 @@ async function processOne(
       });
       return;
     }
-    // The approval could have been sitting for up to 15 minutes. Everything
+    // The approval could have been sitting for a long time. Everything
     // checked above is a stale snapshot now: re-read both bots and re-check
     // busy, or an allow can start a second turn on a bot that is mid-turn —
     // and mirror a "Messaged @X" chip for an exchange that never happens.
     const current = bus.store.bot(item.toBotId);
     const currentSender = bus.store.bot(from.id);
-    if (!current || !currentSender || !bus.store.taskByThread(currentSender.id, sourceThreadId)) return;
+    if (!current || !currentSender || !bus.store.taskByThread(currentSender.id, sourceThreadId)) {
+      observer?.finished(item.id, "cancelled", undefined, "the source task was removed");
+      return;
+    }
     if (current.busy) {
+      observer?.finished(item.id, "cancelled", undefined, `@${current.name} was busy`);
       bus.store.appendMessage(sourceThreadId, {
         role: "bot",
         kind: "activity",
@@ -281,7 +313,17 @@ async function processOne(
   mirrorExchange(bus, sender, target, item.message, channel, sourceThreadId);
   const reasonLine = item.reason ? `\n\n[Reason: ${item.reason}]` : "";
   const prefixed = `[Delegated by @${sender.name}, another bot in this KodBot workspace. Do the work and reply directly.]\n\n${item.message}${reasonLine}`;
-  await runTarget(item.toBotId, prefixed, item.depth + 1, sourceThreadId, channel);
+  try {
+    await runTarget(item.toBotId, prefixed, item.depth + 1, sourceThreadId, channel, item.id);
+  } catch (error) {
+    observer?.finished(
+      item.id,
+      "failed",
+      undefined,
+      error instanceof Error ? error.message : String(error),
+    );
+    throw error;
+  }
 }
 
 /** Test helper: how many items remain queued for a thread. */

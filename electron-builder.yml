@@ -2,12 +2,16 @@ appId: com.kodbot.app
 productName: KodBot
 artifactName: KodBot-${version}-${arch}.${ext}
 
-# In-app auto-update reads latest-linux.yml + the AppImage from the feed this
-# install points at. The paperclipi7 harness serves that feed under /updates;
-# the files live in ~/.kodbot/desktop/updates so a UI deploy cannot erase them.
+# In-app auto-update reads the newest published GitHub release in
+# kodbot-releases. The paperclipi7 /updates feed remains only as the bridge
+# for installs built before the GitHub provider switch.
 publish:
-  - provider: generic
-    url: http://paperclipi7.tail89d239.ts.net:8799/updates
+  # Public releases repo. The app reads latest.yml / latest-linux.yml from
+  # the newest published GitHub release; no token is needed for a public repo.
+  - provider: github
+    owner: kod13eood-cmd
+    repo: kodbot-releases
+    releaseType: release
 
 directories:
   buildResources: build

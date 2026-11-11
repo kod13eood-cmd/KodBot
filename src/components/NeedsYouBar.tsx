@@ -17,7 +17,11 @@ export function NeedsYouBar({ items }: { items: NeedsYouItem[] }) {
       ? t("needs approval")
       : first.reason === "question"
         ? t("has a question")
-        : t("is waiting for you");
+        : first.reason === "routine-failed"
+          ? t("has a failed scheduled run")
+          : first.reason === "routine-missed"
+            ? t("missed a scheduled run")
+            : t("is waiting for you");
 
   return (
     <div
@@ -30,11 +34,19 @@ export function NeedsYouBar({ items }: { items: NeedsYouItem[] }) {
       </span>
       <span className="min-w-0 flex-1 truncate text-[13px] text-ink">
         <strong className="font-semibold">{first.name}</strong> {reason}
+        {first.kind === "routine" && first.detail && <span className="text-ink-secondary"> · {first.detail}</span>}
         {items.length > 1 && <span className="text-ink-secondary"> · +{items.length - 1}</span>}
       </span>
       <button
         type="button"
-        onClick={() => dispatch({ type: "select", id: first.id })}
+        onClick={() => {
+          if (first.kind === "routine") {
+            dispatch({ type: "markRoutineRunSeen", runId: first.id });
+            dispatch({ type: "showRoutines" });
+          } else {
+            dispatch({ type: "select", id: first.id });
+          }
+        }}
         className="shrink-0 rounded-lg bg-warning/15 px-3 py-1.5 text-[12.5px] font-medium text-warning hover:bg-warning/25"
       >
         {t("Open")}

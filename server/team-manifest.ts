@@ -3,9 +3,11 @@ import { z } from "zod";
 import { schemaIssue, type JsonValue } from "./schema.ts";
 import type { CrewColor } from "./store.ts";
 
-export const TEAM_MANIFEST_FORMAT = "opencrew.team" as const;
+export const TEAM_MANIFEST_FORMAT = "kodbot.team" as const;
+/** Previous format id, still accepted when importing old team files. */
+export const LEGACY_TEAM_MANIFEST_FORMAT = "opencrew.team" as const;
 /** Pre-rename format id, still accepted when importing old team files. */
-export const LEGACY_TEAM_MANIFEST_FORMAT = "openmaus.team" as const;
+export const PRE_RENAME_TEAM_MANIFEST_FORMAT = "openmaus.team" as const;
 export const TEAM_MANIFEST_VERSION = 2 as const;
 export const LEGACY_TEAM_MANIFEST_VERSION = 1 as const;
 export const MAX_TEAM_MEMBERS = 200;
@@ -59,7 +61,7 @@ const membersSchema = z
 
 const manifestSchema = z.discriminatedUnion("version", [
   z.object({
-    format: z.literal([TEAM_MANIFEST_FORMAT, LEGACY_TEAM_MANIFEST_FORMAT], { error: "This is not a KodBot team file" }),
+    format: z.literal([TEAM_MANIFEST_FORMAT, LEGACY_TEAM_MANIFEST_FORMAT, PRE_RENAME_TEAM_MANIFEST_FORMAT], { error: "This is not a KodBot team file" }),
     version: z.literal(LEGACY_TEAM_MANIFEST_VERSION),
     team: z.object({
       name: requiredText(100),
@@ -73,7 +75,7 @@ const manifestSchema = z.discriminatedUnion("version", [
     }),
   }),
   z.object({
-    format: z.literal([TEAM_MANIFEST_FORMAT, LEGACY_TEAM_MANIFEST_FORMAT], { error: "This is not a KodBot team file" }),
+    format: z.literal([TEAM_MANIFEST_FORMAT, LEGACY_TEAM_MANIFEST_FORMAT, PRE_RENAME_TEAM_MANIFEST_FORMAT], { error: "This is not a KodBot team file" }),
     version: z.literal(TEAM_MANIFEST_VERSION),
     team: z.object({
       name: requiredText(100),

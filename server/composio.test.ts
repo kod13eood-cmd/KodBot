@@ -5,6 +5,7 @@ import type { AppConfig } from "./config.ts";
 import {
   authorizeService,
   connectionStatus,
+  listToolkits,
   mcpIntegration,
   prepareProjectSession,
   removeService,
@@ -125,10 +126,12 @@ beforeAll(async () => {
   await new Promise<void>((resolve) => api.listen(0, "127.0.0.1", resolve));
   base = `http://127.0.0.1:${(api.address() as { port: number }).port}/api/v3.1`;
   process.env.OC_COMPOSIO_API = base;
+  process.env.OC_COMPOSIO_TOOLKITS_API = base;
 });
 
 afterAll(async () => {
   delete process.env.OC_COMPOSIO_API;
+  delete process.env.OC_COMPOSIO_TOOLKITS_API;
   await new Promise<void>((resolve) => api.close(() => resolve()));
 });
 
@@ -160,6 +163,27 @@ describe.sequential("Composio Sessions", () => {
       userId: "opencrew_existing",
       sessionId: "trs_test",
     });
+  });
+
+  it("keeps Google Search Console in the catalog when the API page omits it", async () => {
+    const cfg: AppConfig = {
+      composio: { apiKey: "ak_test", userId: "opencrew_existing", sessionId: "trs_test" },
+    };
+    const { cards, source } = await listToolkits(cfg);
+    expect(source).toBe("api");
+    expect(cards.find((card) => card.slug === "google_search_console")).toMatchObject({
+      label: "Google Search Console",
+      domain: "search.google.com",
+    });
+  });
+
+  it("forwards the connection name to Composio as the account alias", async () => {
+    const cfg: AppConfig = {
+      composio: { apiKey: "ak_test", userId: "opencrew_existing", sessionId: "trs_test" },
+    };
+    await authorizeService(cfg, "notion", "Work Notion");
+    const link = calls.filter((call) => call.method === "POST" && call.path.endsWith("/link")).at(-1);
+    expect(link?.body).toMatchObject({ toolkit: "notion", alias: "Work Notion" });
   });
 
   it("mounts the Session MCP endpoint with the project key header", async () => {

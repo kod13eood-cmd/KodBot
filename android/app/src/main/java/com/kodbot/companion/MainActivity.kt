@@ -23,10 +23,13 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -69,26 +72,32 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -99,6 +108,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import java.io.File
 import java.net.URI
 
 class MainActivity : ComponentActivity() {
@@ -109,6 +119,9 @@ class MainActivity : ComponentActivity() {
     private var activeChatKey by mutableStateOf<String?>(null)
     private var pendingThreadId: String? = null
     private var settingsOpen by mutableStateOf(false)
+    private var desktopMode by mutableStateOf(false)
+    private var desktopTarget by mutableStateOf<DesktopMode.DesktopTarget?>(null)
+    private var desktopSuggestionDismissed by mutableStateOf(false)
     private var showHiddenBots by mutableStateOf(false)
     private var showGroups by mutableStateOf(true)
     private var engines by mutableStateOf<List<EngineRecord>>(emptyList())
@@ -142,6 +155,8 @@ class MainActivity : ComponentActivity() {
         displayPreferences = getSharedPreferences("kodbot.mobile.display", MODE_PRIVATE)
         showHiddenBots = displayPreferences.getBoolean("showHiddenBots", false)
         showGroups = displayPreferences.getBoolean("showGroups", true)
+        desktopMode = displayPreferences.getBoolean("desktopMode", false)
+        desktopSuggestionDismissed = displayPreferences.getBoolean("desktopSuggestionDismissed", false)
         connection = try {
             connectionStore.load()
         } catch (_: Exception) {
@@ -169,6 +184,9 @@ class MainActivity : ComponentActivity() {
                     chats = chats,
                     activeChatKey = activeChatKey,
                     settingsOpen = settingsOpen,
+                    desktopMode = desktopMode,
+                    desktopTarget = desktopTarget,
+                    desktopSuggestionDismissed = desktopSuggestionDismissed,
                     showHiddenBots = showHiddenBots,
                     showGroups = showGroups,
                     engines = engines,
@@ -186,10 +204,15 @@ class MainActivity : ComponentActivity() {
                     onDismissError = { actionError = null },
                     onPair = ::pair,
                     onScanQr = ::scanPairingQr,
+                    onLogin = ::login,
                     onSelectChat = ::selectChat,
                     onBackToFleet = { activeChatKey = null },
                     onOpenSettings = ::openSettings,
                     onCloseSettings = { settingsOpen = false },
+                    onDesktopModeChange = ::changeDesktopMode,
+                    onDismissDesktopSuggestion = ::dismissDesktopSuggestion,
+                    onExitDesktopMode = { changeDesktopMode(false) },
+                    onDesktopTargetHandled = { desktopTarget = null },
                     onRefresh = ::refreshFleet,
                     onRefreshEngines = ::refreshEngines,
                     onTestServer = ::testServer,
@@ -200,6 +223,11 @@ class MainActivity : ComponentActivity() {
                     onSend = ::send,
                     onRespond = ::respond,
                     onInterrupt = ::interrupt,
+                    onTranscribe = { file ->
+                        val saved = connection
+                            ?: throw java.io.IOException("Pair this phone with a computer first.")
+                        CompanionApi(saved).transcribe(file)
+                    },
                     onSelectModel = ::selectModel,
                     onSetAutoModel = ::setAutoModel,
                     onCreateTeam = ::createTeam,
@@ -267,12 +295,20 @@ class MainActivity : ComponentActivity() {
             }
         }
         val threadId = intent?.getStringExtra(CompanionStreamService.EXTRA_THREAD_ID)
+        val botId = intent?.getStringExtra(CompanionStreamService.EXTRA_BOT_ID)
+        if (desktopMode && (!botId.isNullOrBlank() || !threadId.isNullOrBlank())) {
+            desktopTarget = DesktopMode.DesktopTarget(
+                botId = botId?.takeIf(String::isNotBlank),
+                threadId = threadId?.takeIf(String::isNotBlank),
+                nonce = System.nanoTime(),
+            )
+        }
         if (!threadId.isNullOrBlank()) {
             chats.firstOrNull { it.threadId == threadId }?.let { activeChatKey = it.key }
                 ?: run { pendingThreadId = threadId }
         } else {
-            intent?.getStringExtra(CompanionStreamService.EXTRA_BOT_ID)?.let { botId ->
-                chats.firstOrNull { it.kind == "bot" && it.id == botId }?.let { activeChatKey = it.key }
+            botId?.let { id ->
+                chats.firstOrNull { it.kind == "bot" && it.id == id }?.let { activeChatKey = it.key }
             }
         }
     }
@@ -297,6 +333,26 @@ class MainActivity : ComponentActivity() {
                 actionError = null
                 pairingInvite = invite
                 if (invite.credential.startsWith("omb_pair_")) pair(invite.address, invite.credential)
+            }
+        }
+    }
+
+    private fun login(address: String, email: String, password: String) {
+        lifecycleScope.launch {
+            loading = true
+            actionError = null
+            try {
+                val signedIn = CompanionApi.login(address, email, password)
+                connectionStore.save(signedIn)
+                connection = signedIn
+                pairingInvite = null
+                activeChatKey = null
+                CompanionStreamService.start(this@MainActivity)
+                refreshFleet()
+            } catch (error: Exception) {
+                actionError = error.message ?: "Couldn't sign in to that server."
+            } finally {
+                loading = false
             }
         }
     }
@@ -349,7 +405,17 @@ class MainActivity : ComponentActivity() {
                     if (activeChatKey != null && chats.none { it.key == activeChatKey }) activeChatKey = null
                     actionError = null
                 } catch (error: Exception) {
-                    actionError = error.message ?: "Couldn't load the bots from the computer."
+                    if (saved.kind == "session" && error.message?.contains("HTTP 401") == true) {
+                        CompanionStreamService.stop(this@MainActivity)
+                        connectionStore.clear()
+                        connection = null
+                        chats = emptyList()
+                        activeChatKey = null
+                        pendingThreadId = null
+                        actionError = "Your session expired. Sign in again."
+                    } else {
+                        actionError = error.message ?: "Couldn't load the bots from the computer."
+                    }
                 }
                 // Coalesce the tail of a burst without polling continuously.
                 if (refreshQueued) delay(250)
@@ -362,6 +428,21 @@ class MainActivity : ComponentActivity() {
         settingsMessage = null
         settingsError = null
         refreshEngines()
+    }
+
+    private fun changeDesktopMode(enabled: Boolean) {
+        desktopMode = enabled
+        desktopSuggestionDismissed = true
+        if (enabled) settingsOpen = false
+        displayPreferences.edit()
+            .putBoolean("desktopMode", enabled)
+            .putBoolean("desktopSuggestionDismissed", true)
+            .apply()
+    }
+
+    private fun dismissDesktopSuggestion() {
+        desktopSuggestionDismissed = true
+        displayPreferences.edit().putBoolean("desktopSuggestionDismissed", true).apply()
     }
 
     private fun refreshEngines() {
@@ -561,6 +642,7 @@ class MainActivity : ComponentActivity() {
                 val chat = CompanionApi(saved).createBot()
                 chats = chats + chat
                 activeChatKey = chat.key
+                settingsOpen = false
             } catch (error: Exception) {
                 actionError = error.message ?: "Couldn't create a bot."
             } finally {
@@ -571,6 +653,7 @@ class MainActivity : ComponentActivity() {
 
     private fun selectChat(chat: ConversationRecord) {
         activeChatKey = chat.key
+        settingsOpen = false
         val saved = connection ?: return
         lifecycleScope.launch {
             try {
@@ -707,6 +790,8 @@ class MainActivity : ComponentActivity() {
 
     private fun disconnect() {
         CompanionStreamService.stop(this)
+        android.webkit.CookieManager.getInstance().removeAllCookies(null)
+        android.webkit.CookieManager.getInstance().flush()
         connectionStore.clear()
         connection = null
         chats = emptyList()
@@ -722,13 +807,18 @@ class MainActivity : ComponentActivity() {
             "hello" -> if (!frame.optBoolean("resumed")) refreshFleet()
             "message", "message.patch", "bot", "bot.deleted", "group", "group.deleted", "notify" -> refreshFleet()
             "unauthorized" -> {
+                val wasSession = connection?.kind == "session"
                 CompanionStreamService.stop(this)
                 connectionStore.clear()
                 connection = null
                 chats = emptyList()
                 activeChatKey = null
                 pendingThreadId = null
-                actionError = "This phone was unpaired on the computer. Pair it again in KodBot Settings → Companion."
+                actionError = if (wasSession) {
+                    "Your session expired. Sign in again."
+                } else {
+                    "This phone was unpaired on the computer. Pair it again in KodBot Settings → Companion."
+                }
             }
         }
     }
@@ -750,6 +840,9 @@ private fun KodBotScreen(
     chats: List<ConversationRecord>,
     activeChatKey: String?,
     settingsOpen: Boolean,
+    desktopMode: Boolean,
+    desktopTarget: DesktopMode.DesktopTarget?,
+    desktopSuggestionDismissed: Boolean,
     showHiddenBots: Boolean,
     showGroups: Boolean,
     engines: List<EngineRecord>,
@@ -767,10 +860,15 @@ private fun KodBotScreen(
     onDismissError: () -> Unit,
     onPair: (String, String) -> Unit,
     onScanQr: () -> Unit,
+    onLogin: (String, String, String) -> Unit,
     onSelectChat: (ConversationRecord) -> Unit,
     onBackToFleet: () -> Unit,
     onOpenSettings: () -> Unit,
     onCloseSettings: () -> Unit,
+    onDesktopModeChange: (Boolean) -> Unit,
+    onDismissDesktopSuggestion: () -> Unit,
+    onExitDesktopMode: () -> Unit,
+    onDesktopTargetHandled: () -> Unit,
     onRefresh: () -> Unit,
     onRefreshEngines: () -> Unit,
     onTestServer: (String) -> Unit,
@@ -781,6 +879,7 @@ private fun KodBotScreen(
     onSend: (ConversationRecord, String, List<PendingAttachment>, (Boolean) -> Unit) -> Unit,
     onRespond: (ConversationRecord, ApprovalCard, String) -> Unit,
     onInterrupt: (ConversationRecord) -> Unit,
+    onTranscribe: suspend (File) -> String,
     onSelectModel: (ConversationRecord, EngineRecord, ModelOptionRecord) -> Unit,
     onSetAutoModel: (ConversationRecord, Boolean, List<ModelSelectionRecord>) -> Unit,
     onCreateTeam: (ConversationRecord, String) -> Unit,
@@ -790,9 +889,8 @@ private fun KodBotScreen(
     onDisconnect: () -> Unit,
 ) {
     var confirmDisconnect by rememberSaveable { mutableStateOf(false) }
-    BackHandler(enabled = settingsOpen || activeChatKey != null) {
-        if (settingsOpen) onCloseSettings() else onBackToFleet()
-    }
+    val activeChat = chats.firstOrNull { it.key == activeChatKey }
+
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.fillMaxSize().imePadding()) {
             if (error != null) {
@@ -816,45 +914,25 @@ private fun KodBotScreen(
                     loading = loading,
                     onPair = onPair,
                     onScanQr = onScanQr,
+                    onLogin = onLogin,
                 )
-            } else if (settingsOpen) {
-                SettingsScreen(
+            } else if (desktopMode) {
+                WebDesktopScreen(
                     connection = connection,
-                    chats = chats,
-                    engines = engines,
-                    showHiddenBots = showHiddenBots,
-                    showGroups = showGroups,
-                    busy = settingsBusy,
-                    message = settingsMessage,
-                    error = settingsError,
-                    onBack = onCloseSettings,
-                    onTestServer = onTestServer,
-                    onSaveServerAddress = onSaveServerAddress,
-                    onRefreshEngines = onRefreshEngines,
-                    onShowHiddenBots = onShowHiddenBots,
-                    onShowGroups = onShowGroups,
-                    onSelectModel = onSelectModel,
-                    onSetAutoModel = onSetAutoModel,
-                    onCreateTeam = onCreateTeam,
-                    onJoinTeam = onJoinTeam,
-                    onLeaveTeam = onLeaveTeam,
-                    onTransferTeam = onTransferTeam,
-                    onDisconnect = { confirmDisconnect = true },
-                    updateState = updateState,
-                    appVersion = appVersion,
-                    onCheckForUpdates = onCheckForUpdates,
-                    onInstallUpdate = onInstallUpdate,
-                    onDownloadApk = onDownloadApk,
+                    target = desktopTarget,
+                    onTargetHandled = onDesktopTargetHandled,
+                    onExit = onExitDesktopMode,
                 )
             } else {
-                val activeChat = chats.firstOrNull { it.key == activeChatKey }
-                if (activeChat == null) {
+                val activeConnection = connection
+                val fleetContent: @Composable (String?) -> Unit = { selected ->
                     FleetScreen(
-                        connection = connection,
+                        connection = activeConnection,
                         chats = chats,
                         showHiddenBots = showHiddenBots,
                         showGroups = showGroups,
                         loading = loading,
+                        selectedChatKey = selected,
                         onSelectChat = onSelectChat,
                         onRefresh = onRefresh,
                         onSettings = onOpenSettings,
@@ -862,18 +940,114 @@ private fun KodBotScreen(
                         updateState = updateState,
                         onInstallUpdate = onInstallUpdate,
                     )
-                } else {
+                }
+                val chatContent: @Composable (ConversationRecord, Boolean) -> Unit = { chat, compact ->
                     ChatScreen(
-                        chat = activeChat,
+                        chat = chat,
+                        compact = compact,
                         loading = loading,
                         onBack = onBackToFleet,
                         onSend = onSend,
                         onRespond = onRespond,
                         onInterrupt = onInterrupt,
+                        onTranscribe = onTranscribe,
                     )
+                }
+                val settingsContent: @Composable () -> Unit = {
+                    SettingsScreen(
+                        connection = activeConnection,
+                        chats = chats,
+                        engines = engines,
+                        showHiddenBots = showHiddenBots,
+                        showGroups = showGroups,
+                        desktopMode = desktopMode,
+                        onDesktopModeChange = onDesktopModeChange,
+                        busy = settingsBusy,
+                        message = settingsMessage,
+                        error = settingsError,
+                        onBack = onCloseSettings,
+                        onTestServer = onTestServer,
+                        onSaveServerAddress = onSaveServerAddress,
+                        onRefreshEngines = onRefreshEngines,
+                        onShowHiddenBots = onShowHiddenBots,
+                        onShowGroups = onShowGroups,
+                        onSelectModel = onSelectModel,
+                        onSetAutoModel = onSetAutoModel,
+                        onCreateTeam = onCreateTeam,
+                        onJoinTeam = onJoinTeam,
+                        onLeaveTeam = onLeaveTeam,
+                        onTransferTeam = onTransferTeam,
+                        onDisconnect = { confirmDisconnect = true },
+                        updateState = updateState,
+                        appVersion = appVersion,
+                        onCheckForUpdates = onCheckForUpdates,
+                        onInstallUpdate = onInstallUpdate,
+                        onDownloadApk = onDownloadApk,
+                    )
+                }
+
+                BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    val twoPane = TabletLayout.isTwoPane(maxWidth.value)
+                    BackHandler(enabled = settingsOpen || (!twoPane && activeChatKey != null)) {
+                        if (settingsOpen) onCloseSettings() else onBackToFleet()
+                    }
+                    if (twoPane) {
+                        val fleetWidth = TabletLayout.fleetPaneWidthDp(maxWidth.value).dp
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            Box(modifier = Modifier.width(fleetWidth).fillMaxHeight()) {
+                                fleetContent(activeChatKey)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(1.dp)
+                                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+                            )
+                            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                when {
+                                    settingsOpen -> settingsContent()
+                                    activeChat != null -> chatContent(activeChat, false)
+                                    else -> TabletEmptyState()
+                                }
+                            }
+                        }
+                    } else {
+                        when {
+                            settingsOpen -> settingsContent()
+                            activeChat != null -> chatContent(activeChat, true)
+                            else -> fleetContent(null)
+                        }
+                    }
                 }
             }
         }
+    }
+
+    val configuration = LocalConfiguration.current
+    if (!desktopMode &&
+        !desktopSuggestionDismissed &&
+        connection != null &&
+        !settingsOpen &&
+        configuration.screenWidthDp >= 600
+    ) {
+        AlertDialog(
+            onDismissRequest = onDismissDesktopSuggestion,
+            title = { Text("Try Desktop mode?") },
+            text = {
+                Text(
+                    "This tablet can show the same web interface as the browser, with the Android notification service still running in the background. You can switch back at any time with the system back gesture.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDismissDesktopSuggestion()
+                    onDesktopModeChange(true)
+                }) { Text("Try it") }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissDesktopSuggestion) { Text("Not now") }
+            },
+        )
     }
 
     if (confirmDisconnect) {
@@ -897,24 +1071,82 @@ private fun PairingScreen(
     loading: Boolean,
     onPair: (String, String) -> Unit,
     onScanQr: () -> Unit,
+    onLogin: (String, String, String) -> Unit,
 ) {
+    var server by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
     var address by rememberSaveable(invite?.address) { mutableStateOf(invite?.address.orEmpty()) }
     var credential by rememberSaveable(invite?.credential) { mutableStateOf(invite?.credential.orEmpty()) }
-    val ready = address.isNotBlank() && credential.isNotBlank()
+    val canLogin = server.isNotBlank() && email.isNotBlank() && password.isNotBlank()
+    val canPair = address.isNotBlank() && credential.isNotBlank()
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 28.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 28.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.Start,
     ) {
         Text("KodBot", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-        Text("Companion", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.size(12.dp))
+        Text("Sign in or pair this phone", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.size(10.dp))
         Text(
-            "Your agents keep running on the Linux computer. Pair this phone to send work, follow replies, and handle approvals.",
+            "Your agents keep running on the KodBot server. Sign in with your account, or pair this phone with a local Companion.",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.size(24.dp))
+        Spacer(Modifier.size(22.dp))
+
+        Text("Hosted account", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.size(8.dp))
+        OutlinedTextField(
+            value = server,
+            onValueChange = { server = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Server address") },
+            placeholder = { Text("https://kodbot.example.com") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
+        )
+        Spacer(Modifier.size(10.dp))
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it.trim() },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Email") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+        )
+        Spacer(Modifier.size(10.dp))
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Password") },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { if (canLogin && !loading) onLogin(server, email, password) }),
+        )
+        Spacer(Modifier.size(12.dp))
+        Button(
+            onClick = { onLogin(server, email, password) },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = canLogin && !loading,
+        ) {
+            if (loading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            else Text("Sign in")
+        }
+
+        Spacer(Modifier.size(26.dp))
+        Text("Local Companion", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.size(6.dp))
+        Text(
+            "Pair directly with a KodBot computer on your LAN or Tailscale network.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.size(12.dp))
         OutlinedButton(
             onClick = onScanQr,
             modifier = Modifier.fillMaxWidth(),
@@ -936,7 +1168,7 @@ private fun PairingScreen(
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
         )
-        Spacer(Modifier.size(12.dp))
+        Spacer(Modifier.size(10.dp))
         if (invite?.credential?.startsWith("omb_pair_") == true) {
             Text("A one-time pairing invitation is ready. Confirm to pair with this computer.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
@@ -950,16 +1182,16 @@ private fun PairingScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
             )
         }
-        Spacer(Modifier.size(18.dp))
+        Spacer(Modifier.size(12.dp))
         Button(
             onClick = { onPair(address, credential) },
             modifier = Modifier.fillMaxWidth(),
-            enabled = ready && !loading,
+            enabled = canPair && !loading,
         ) {
             if (loading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
             else Text("Pair with computer")
         }
-        Spacer(Modifier.size(12.dp))
+        Spacer(Modifier.size(14.dp))
         Text(
             "On Linux: KodBot → Settings → Companion → Set up a phone. Use the shown LAN address on trusted Wi-Fi, or a Tailscale address when away.",
             style = MaterialTheme.typography.bodySmall,
@@ -974,10 +1206,17 @@ private sealed interface FleetRow {
 }
 
 @Composable
-private fun FleetChatCard(chat: ConversationRecord, onSelectChat: (ConversationRecord) -> Unit) {
+private fun FleetChatCard(
+    chat: ConversationRecord,
+    selected: Boolean,
+    onSelectChat: (ConversationRecord) -> Unit,
+) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onSelectChat(chat) },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.surfaceVariant
+            else MaterialTheme.colorScheme.surface,
+        ),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -1044,6 +1283,7 @@ private fun FleetScreen(
     showHiddenBots: Boolean,
     showGroups: Boolean,
     loading: Boolean,
+    selectedChatKey: String? = null,
     onSelectChat: (ConversationRecord) -> Unit,
     onRefresh: () -> Unit,
     onSettings: () -> Unit,
@@ -1211,7 +1451,11 @@ private fun FleetScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
                             )
                         }
-                        is FleetRow.Chat -> FleetChatCard(row.chat, onSelectChat)
+                        is FleetRow.Chat -> FleetChatCard(
+                            chat = row.chat,
+                            selected = row.chat.key == selectedChatKey,
+                            onSelectChat = onSelectChat,
+                        )
                     }
                 }
             }
@@ -1220,13 +1464,35 @@ private fun FleetScreen(
 }
 
 @Composable
+private fun TabletEmptyState() {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            "Select a bot or room",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            "The conversation will open here.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
+
+@Composable
 private fun ChatScreen(
     chat: ConversationRecord,
+    compact: Boolean = true,
     loading: Boolean,
     onBack: () -> Unit,
     onSend: (ConversationRecord, String, List<PendingAttachment>, (Boolean) -> Unit) -> Unit,
     onRespond: (ConversationRecord, ApprovalCard, String) -> Unit,
     onInterrupt: (ConversationRecord) -> Unit,
+    onTranscribe: suspend (File) -> String,
 ) {
     var draft by rememberSaveable(chat.key) { mutableStateOf("") }
     var attachments by rememberSaveable(chat.key) { mutableStateOf(emptyList<PendingAttachment>()) }
@@ -1234,6 +1500,24 @@ private fun ChatScreen(
     var attachmentError by rememberSaveable(chat.key) { mutableStateOf<String?>(null) }
     var choosingAttachment by rememberSaveable(chat.key) { mutableStateOf(false) }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val recorder = remember { VoiceRecorder(context) }
+    var micGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+                PackageManager.PERMISSION_GRANTED,
+        )
+    }
+    var recording by remember { mutableStateOf(false) }
+    var transcribing by remember { mutableStateOf(false) }
+    var micError by remember { mutableStateOf<String?>(null) }
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        micGranted = granted
+        micError = if (granted) null else "Microphone permission is needed for voice input."
+    }
+    DisposableEffect(Unit) {
+        onDispose { recorder.cancel() }
+    }
     val acceptPicked: (List<Uri>) -> Unit = { uris ->
         if (uris.isNotEmpty()) {
             val accepted = mutableListOf<PendingAttachment>()
@@ -1282,12 +1566,57 @@ private fun ChatScreen(
         }
     }
 
+    fun startVoice(): Boolean {
+        if (!micGranted) {
+            micPermission.launch(Manifest.permission.RECORD_AUDIO)
+            return false
+        }
+        if (recording || transcribing) return false
+        micError = null
+        return try {
+            recorder.start()
+            recording = true
+            true
+        } catch (error: Exception) {
+            recorder.cancel()
+            micError = error.message ?: "Couldn't start the microphone."
+            false
+        }
+    }
+
+    fun stopVoice() {
+        if (!recording) return
+        recording = false
+        val file = recorder.stop()
+        if (file == null) {
+            micError = "Nothing was recorded. Hold the mic while you speak."
+            return
+        }
+        transcribing = true
+        scope.launch {
+            try {
+                val transcript = onTranscribe(file)
+                if (transcript.isNotBlank()) {
+                    draft = if (draft.isBlank()) transcript else draft.trimEnd() + " " + transcript
+                    micError = null
+                } else {
+                    micError = "The recording didn't contain speech."
+                }
+            } catch (error: Exception) {
+                micError = error.message ?: "Couldn't transcribe the recording."
+            } finally {
+                file.delete()
+                transcribing = false
+            }
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = onBack) { Text("‹ Bots") }
+            if (compact) TextButton(onClick = onBack) { Text("‹ Bots") }
             if (chat.kind == "group") {
                 Surface(modifier = Modifier.size(34.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primary) {
                     BoxCenter {
@@ -1370,6 +1699,14 @@ private fun ChatScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
             )
         }
+        micError?.let { message ->
+            Text(
+                message,
+                color = Color(0xFFFF8A80),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.Bottom,
@@ -1394,6 +1731,37 @@ private fun ChatScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { submit() }),
             )
+            Box(
+                modifier = Modifier
+                    .padding(bottom = 4.dp)
+                    .size(48.dp)
+                    .background(if (recording) Color(0x33FF5252) else Color.Transparent, CircleShape)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onPress = {
+                                if (!micGranted) {
+                                    micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                                    return@detectTapGestures
+                                }
+                                if (transcribing || recording) return@detectTapGestures
+                                if (startVoice()) {
+                                    tryAwaitRelease()
+                                    stopVoice()
+                                }
+                            },
+                        )
+                    }
+                    .semantics {
+                        contentDescription = if (recording) "Stop recording" else "Hold to talk"
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (transcribing) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(if (recording) "⏹" else "🎙", fontSize = 20.sp)
+                }
+            }
             Button(
                 onClick = submit,
                 enabled = canSend,
@@ -1706,7 +2074,28 @@ private fun ApprovalItem(card: ApprovalCard, onRespond: (ApprovalCard, String) -
     ) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(card.title.ifBlank { if (card.permission) "Approval needed" else "Question" }, fontWeight = FontWeight.SemiBold)
+            card.explanation?.takeIf(String::isNotBlank)?.let { explanation ->
+                Text("What this means: $explanation", color = MaterialTheme.colorScheme.primary)
+            }
+            card.risk?.takeIf(String::isNotBlank)?.let { risk ->
+                val tone = when (card.riskLevel) {
+                    "high" -> Color(0xFFFFB4AB)
+                    "low" -> Color(0xFF9BE7B0)
+                    else -> Color(0xFFFFCC80)
+                }
+                Text("Why it needs approval: $risk", color = tone)
+            }
+            card.purpose?.takeIf(String::isNotBlank)?.let { task ->
+                Text("Task: $task", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
             if (card.subtitle.isNotBlank()) Text(card.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (card.pending && card.overdueAt != null) {
+                Text(
+                    "The timer expired, but the bot is still waiting. You can answer now and it will continue.",
+                    color = Color(0xFFFFCC80),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             if (card.pending) {
                 if (card.options.isNotEmpty()) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

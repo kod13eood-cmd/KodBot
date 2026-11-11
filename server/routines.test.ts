@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -22,6 +22,8 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
   const triggerSources: string[] = [];
   const taskActivations: boolean[] = [];
   const emitted: any[] = [];
+  const terminals: any[] = [];
+  let startError: string | null = null;
   const options: RoutineManagerOptions = {
     file: tempFile(),
     now: () => now,
@@ -32,10 +34,12 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
       return { threadId: `thread-${++task}` };
     },
     startTurn: async (botId, threadId, prompt, runOn, triggerSource) => {
+      if (startError) throw new Error(startError);
       started.push({ botId, threadId, prompt });
       runOns.push(runOn);
       triggerSources.push(triggerSource);
     },
+    onRunTerminal: (run) => terminals.push(run),
   };
   const manager = new RoutineManager(options);
   return {
@@ -46,8 +50,10 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
     runOns,
     triggerSources,
     taskActivations,
+    terminals,
     setNow: (value: number) => (now = value),
     setBot: (value: typeof bot) => (bot = value),
+    setStartError: (value: string | null) => (startError = value),
   };
 }
 
@@ -148,6 +154,22 @@ describe("RoutineManager", () => {
     expect(h.taskActivations).toEqual([false]);
   });
 
+  it("clears a worker bot when the editor switches back to the owner", () => {
+    const h = harness();
+    const routine = h.manager.create({
+      name: "Worker review",
+      prompt: "Review the queue",
+      botId: "crew-1",
+      workerBotId: "crew-worker",
+      schedule: { type: "once", at: new Date(2026, 7, 17, 8, 1).getTime() },
+    });
+    expect(routine.workerBotId).toBe("crew-worker");
+
+    const updated = h.manager.update(routine.id, { workerBotId: "" });
+    expect(updated?.workerBotId).toBeUndefined();
+    expect(new RoutineManager(h.options).listRoutines()[0]?.workerBotId).toBeUndefined();
+  });
+
   it("cancels queued work when a routine is paused", async () => {
     const h = harness();
     h.setBot("busy");
@@ -213,14 +235,15 @@ describe("RoutineManager", () => {
     expect(h.manager.listRoutines()[0]).toMatchObject({ runOn: "crew" });
   });
 
-  it("opens webhook jobs in the assigned bot's live chat", async () => {
+  it("runs a webhook in its worker task without touching the parent chat", async () => {
     const h = harness();
     const receivedAt = new Date(2026, 7, 17, 8, 2).getTime();
     const queued = h.manager.enqueueWebhook({
       webhookId: "hook-1",
       webhookName: "New ticket",
       prompt: "Handle ticket 42",
-      botId: "crew-webhook",
+      botId: "parent-bot",
+      workerBotId: "worker-bot",
       runOn: "cloud",
       deliveryId: "delivery-42",
       receivedAt,
@@ -230,15 +253,45 @@ describe("RoutineManager", () => {
     expect(queued).toMatchObject({
       routineId: "hook-1",
       webhookId: "hook-1",
+      botId: "parent-bot",
+      workerBotId: "worker-bot",
       deliveryId: "delivery-42",
       triggerSource: "webhook",
       scheduledFor: receivedAt,
     });
     expect(queued).not.toHaveProperty("durationMinutes");
-    expect(h.started).toEqual([{ botId: "crew-webhook", threadId: "thread-1", prompt: "Handle ticket 42" }]);
+    expect(h.started).toEqual([{ botId: "worker-bot", threadId: "thread-1", prompt: "Handle ticket 42" }]);
     expect(h.runOns).toEqual(["cloud"]);
     expect(h.triggerSources).toEqual(["webhook"]);
-    expect(h.taskActivations).toEqual([true]);
+    expect(h.taskActivations).toEqual([false]);
+  });
+
+  it("reports a successful worker run to the parent exactly once", async () => {
+    const h = harness();
+    const completed: any[] = [];
+    h.options.onRunCompleted = (run) => completed.push(run);
+    const queued = h.manager.enqueueWebhook({
+      webhookId: "hook-2",
+      webhookName: "Alert",
+      prompt: "Check the alert",
+      botId: "parent-bot",
+      workerBotId: "worker-bot",
+      runOn: "crew",
+      deliveryId: "delivery-43",
+      receivedAt: Date.now(),
+    });
+    await h.manager.tick();
+    h.manager.handleRuntimeEvent({
+      type: "item.completed",
+      itemType: "assistant_text",
+      text: "All clear",
+      threadId: "thread-1",
+    } as any);
+    h.manager.handleRuntimeEvent({ type: "turn.completed", ok: true, threadId: "thread-1" } as any);
+    h.manager.handleRuntimeEvent({ type: "turn.completed", ok: true, threadId: "thread-1" } as any);
+
+    expect(completed).toHaveLength(1);
+    expect(completed[0]).toMatchObject({ id: queued.id, workerBotId: "worker-bot", output: "All clear" });
   });
 
   it("folds provider lifecycle events into the calendar receipt", async () => {
@@ -342,5 +395,106 @@ describe("RoutineManager", () => {
     await h.manager.tick();
     expect(h.manager.listRuns()[0]).toMatchObject({ status: "missed" });
     expect(h.started).toHaveLength(0);
+  });
+
+  it("normalizes legacy schedules without a weekdays array", () => {
+    const h = harness();
+    writeFileSync(
+      h.options.file!,
+      JSON.stringify({
+        version: 1,
+        routines: [
+          {
+            id: "legacy-interval",
+            name: "Legacy interval",
+            prompt: "Check it",
+            botId: "crew-1",
+            runOn: "crew",
+            enabled: true,
+            schedule: { type: "interval", everyMinutes: 15, anchorAt: 123 },
+            createdAt: 1,
+            updatedAt: 1,
+            nextRunAt: null,
+          },
+          {
+            id: "legacy-daily",
+            name: "Legacy daily",
+            prompt: "Check it",
+            botId: "crew-1",
+            runOn: "crew",
+            enabled: true,
+            schedule: { type: "daily", time: "08:30" },
+            createdAt: 1,
+            updatedAt: 1,
+            nextRunAt: null,
+          },
+        ],
+        runs: [],
+      }),
+    );
+    const manager = new RoutineManager(h.options);
+    expect(manager.listRoutines().map((routine) => routine.schedule)).toEqual([
+      { type: "interval", everyMinutes: 15, weekdays: [0, 1, 2, 3, 4, 5, 6] },
+      { type: "daily", time: "08:30", weekdays: [0, 1, 2, 3, 4, 5, 6] },
+    ]);
+  });
+
+  it("reports a missed run once, even when the scheduler ticks again", async () => {
+    const h = harness();
+    const routine = h.manager.create({
+      name: "Old check",
+      prompt: "Do the old thing",
+      botId: "crew-5",
+      schedule: { type: "once", at: new Date(2026, 7, 17, 8, 1).getTime() },
+    });
+    h.setNow(routine.nextRunAt! + 13 * 60 * 60_000);
+    await h.manager.tick();
+    await h.manager.tick();
+
+    expect(h.terminals).toHaveLength(1);
+    expect(h.terminals[0]).toMatchObject({ status: "missed", routineName: "Old check" });
+    expect(h.terminals[0].notifiedAt).toEqual(expect.any(Number));
+  });
+
+  it("reports a failed start once and keeps the error on the receipt", async () => {
+    const h = harness();
+    const routine = h.manager.create({
+      name: "Broken engine",
+      prompt: "Run the report",
+      botId: "crew-6",
+      schedule: { type: "once", at: new Date(2026, 7, 17, 8, 1).getTime() },
+    });
+    h.setStartError("the engine is not installed");
+    h.setNow(routine.nextRunAt!);
+    await h.manager.tick();
+    await h.manager.tick();
+
+    expect(h.manager.listRuns()[0]).toMatchObject({ status: "failed" });
+    expect(h.manager.listRuns()[0]!.error).toContain("the engine is not installed");
+    expect(h.terminals).toHaveLength(1);
+    expect(h.terminals[0].status).toBe("failed");
+  });
+
+  it("does not report a successful run as a routine failure", async () => {
+    const h = harness();
+    const routine = h.manager.create({
+      name: "Working report",
+      prompt: "Run the report",
+      botId: "crew-7",
+      schedule: { type: "once", at: new Date(2026, 7, 17, 8, 1).getTime() },
+    });
+    h.setNow(routine.nextRunAt!);
+    await h.manager.tick();
+    h.manager.handleRuntimeEvent({
+      eventId: "done",
+      provider: "fake",
+      threadId: "thread-1",
+      createdAt: new Date().toISOString(),
+      type: "turn.completed",
+      ok: true,
+    });
+
+    expect(h.manager.listRuns()[0]!.status).toBe("completed");
+    expect(h.terminals).toHaveLength(0);
   });
 });

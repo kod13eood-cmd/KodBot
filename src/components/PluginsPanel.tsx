@@ -18,6 +18,7 @@ import { api, useStore } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { copyText } from "@/lib/clipboard";
 import { useI18n } from "@/lib/i18n";
+import { ConnectionNameDialog } from "@/components/ConnectionNameDialog";
 
 interface ToolkitCard {
   slug: string;
@@ -152,16 +153,17 @@ function AccountRow({
   onSaveLabel: (label: string) => Promise<void>;
 }) {
   const { t } = useI18n();
-  const [label, setLabel] = useState(account.label ?? "");
+  const savedLabel = account.label ?? account.alias ?? "";
+  const [label, setLabel] = useState(savedLabel);
   const [saving, setSaving] = useState(false);
   const [labelError, setLabelError] = useState<string | null>(null);
   useEffect(() => {
-    setLabel(account.label ?? "");
+    setLabel(savedLabel);
     setLabelError(null);
-  }, [account.id, account.label]);
+  }, [account.id, savedLabel]);
   const identity = identityState?.identity?.trim() || "";
   const active = /^active$/i.test(account.status ?? "");
-  const heading = account.label?.trim() || identity || `${t("Account")} ${index + 1}`;
+  const heading = account.label?.trim() || account.alias?.trim() || identity || `${t("Account")} ${index + 1}`;
   const save = async () => {
     setSaving(true);
     setLabelError(null);
@@ -266,7 +268,7 @@ function AccountRow({
         />
         <button
           type="submit"
-          disabled={saving || busy || label.trim() === (account.label ?? "")}
+          disabled={saving || busy || label.trim() === savedLabel.trim()}
           className="rounded-lg bg-raised px-2.5 py-1.5 text-[11.5px] text-ink hover:bg-raised-hover disabled:opacity-40"
         >
           {saving ? <Loader2 size={12} className="animate-spin" /> : t("Save label")}
@@ -512,6 +514,12 @@ export function PluginsPanel() {
   const [tab, setTab] = useState<"marketplace" | "connected">("marketplace");
   const [detailsSlug, setDetailsSlug] = useState<string | null>(null);
   const [hoveredCard, setHoveredCard] = useState<{ card: ToolkitCard; x: number; y: number } | null>(null);
+  const [namePrompt, setNamePrompt] = useState<{
+    slug: string;
+    addAccount: boolean;
+    label: string;
+    initial: string;
+  } | null>(null);
 
   const pollTimers = useRef(new Map<string, ReturnType<typeof setInterval>>());
   const statusGenerations = useRef(new Map<string, number>());
@@ -709,14 +717,29 @@ export function PluginsPanel() {
     pollTimers.current.set(slug, timer);
   };
 
-  const connect = async (slug: string, addAccount = false) => {
+  const beginConnect = (slug: string, addAccount = false) => {
+    const card = (cards ?? []).find((entry) => entry.slug === slug);
+    const existing = status[slug]?.accounts?.length ?? 0;
+    setNamePrompt({
+      slug,
+      addAccount,
+      label: card?.label ?? slug,
+      initial: addAccount && existing > 0 ? `${card?.label ?? slug} ${existing + 1}` : "",
+    });
+  };
+
+  const connect = async (slug: string, addAccount = false, alias?: string) => {
     statusGenerations.current.set(slug, (statusGenerations.current.get(slug) ?? 0) + 1);
     setBusySlug(slug);
     setError(null);
     try {
       const result = await api(`/api/connectors/${slug}/authorize`, {
         method: "POST",
-        body: JSON.stringify({ add: addAccount }),
+        body: JSON.stringify({
+          add: addAccount,
+          ...(alias ? { alias } : {}),
+          existingAccountIds: (status[slug]?.accounts ?? []).map((account) => account.id),
+        }),
       });
       // The server refuses to mint a second link for an app that is already
       // connected. A stale card must refresh into Details, not create a
@@ -867,14 +890,14 @@ export function PluginsPanel() {
               {t("Connected tab")}{connectedCount > 0 ? ` ${connectedCount}` : ""}
             </button>
           </div>
-          <label className="flex h-11 w-full items-center gap-2.5 rounded-xl bg-raised/70 px-3.5 sm:w-[320px]">
+          <label className="flex h-11 w-full items-center gap-2.5 rounded-xl border border-hairline/40 bg-raised/70 px-3.5 transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/20 sm:w-[320px]">
             <Search size={17} className="shrink-0 text-ink-secondary" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t("Search apps")}
               aria-label={t("Search apps")}
-              className="min-w-0 flex-1 bg-transparent text-[14px] text-ink placeholder:text-ink-secondary focus:outline-none"
+              className="field-input min-w-0 flex-1 bg-transparent text-[14px] text-ink placeholder:text-ink-secondary focus:outline-none"
             />
           </label>
         </div>
@@ -1038,7 +1061,7 @@ export function PluginsPanel() {
                       else if (pending && pendingUrls[card.slug]) {
                         setError(null);
                         void openConnectUrl(pendingUrls[card.slug]).catch((e) => setError(e.message));
-                      } else void connect(card.slug);
+                      } else beginConnect(card.slug);
                     }}
                     className={cn(
                       "flex min-w-[88px] items-center justify-center gap-1.5 rounded-full px-3 py-2 text-[12.5px] transition-colors disabled:opacity-40",
@@ -1097,7 +1120,7 @@ export function PluginsPanel() {
           busy={busySlug === detailsCard.slug}
           error={error}
           onClose={() => setDetailsSlug(null)}
-          onConnect={() => void connect(detailsCard.slug, true)}
+          onConnect={() => beginConnect(detailsCard.slug, true)}
           onDisconnect={() => {
             if (window.confirm(t("Disconnect every account for {name}?", { name: detailsCard.label }))) {
               disconnect(detailsCard.slug);
@@ -1131,6 +1154,18 @@ export function PluginsPanel() {
           </p>
         </div>
       )}
+      <ConnectionNameDialog
+        open={namePrompt !== null}
+        service={namePrompt?.label ?? ""}
+        initial={namePrompt?.initial}
+        busy={namePrompt ? busySlug === namePrompt.slug : false}
+        onCancel={() => setNamePrompt(null)}
+        onConfirm={(name) => {
+          const pending = namePrompt;
+          setNamePrompt(null);
+          if (pending) void connect(pending.slug, pending.addAccount, name);
+        }}
+      />
     </div>
   );
 }

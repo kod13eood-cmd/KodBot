@@ -702,3 +702,44 @@ describe("Store task working folder — cloud runs", () => {
     expect(store.pinTaskCwd(bot.id, bot.threadId)).toBeNull();
   });
 });
+
+describe("Store task archive", () => {
+  beforeEach(() => {
+    rmSync(DATA_DIR, { recursive: true, force: true });
+  });
+
+  it("archives a task, moves the active chat, and restores it", () => {
+    const store = new Store(selection);
+    const bot = store.createBot();
+    const mainThread = bot.threadId;
+    const second = store.createTask(bot.id, "Carry Desk · Results")!;
+    expect(store.bot(bot.id)?.threadId).toBe(second.threadId);
+
+    // archiving the active task hands the bot back to its other visible task
+    const updated = store.setTaskArchived(bot.id, second.threadId, 12345);
+    expect(updated?.threadId).toBe(mainThread);
+    expect(store.taskByThread(bot.id, second.threadId)?.archivedAt).toBe(12345);
+    expect(store.switchTask(bot.id, second.threadId)).toBeNull();
+
+    // restoring makes it selectable again without touching its transcript
+    expect(store.setTaskArchived(bot.id, second.threadId, null)).not.toBeNull();
+    expect(store.taskByThread(bot.id, second.threadId)?.archivedAt).toBeUndefined();
+    expect(store.switchTask(bot.id, second.threadId)?.threadId).toBe(second.threadId);
+  });
+
+  it("refuses to archive the only visible task", () => {
+    const store = new Store(selection);
+    const bot = store.createBot();
+    expect(store.setTaskArchived(bot.id, bot.threadId, 1)).toBeNull();
+    expect(store.taskByThread(bot.id, bot.threadId)?.archivedAt).toBeUndefined();
+  });
+
+  it("keeps an archived task across a restart", () => {
+    const store = new Store(selection);
+    const bot = store.createBot();
+    const second = store.createTask(bot.id, "second")!;
+    store.setTaskArchived(bot.id, second.threadId, 777);
+    const reloaded = new Store(selection);
+    expect(reloaded.taskByThread(bot.id, second.threadId)?.archivedAt).toBe(777);
+  });
+});

@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URI
@@ -17,6 +18,8 @@ data class CompanionConnection(
     val baseUrl: String,
     val serverName: String,
     val token: String,
+    /** "session" = email/password gateway session; "device" = QR pairing. */
+    val kind: String = "device",
 )
 
 /** One local file the phone is about to hand to the host. The content URI
@@ -61,6 +64,11 @@ data class ApprovalCard(
     val options: List<String>,
     val requestId: String?,
     val tool: String?,
+    val explanation: String?,
+    val risk: String?,
+    val riskLevel: String?,
+    val purpose: String?,
+    val overdueAt: Long?,
     val answered: String?,
     val dismissed: Boolean,
 ) {
@@ -166,7 +174,10 @@ data class PairingInvite(
                 if (values.putIfAbsent(key, value) != null) return null
             }
 
-            val address = values["address"]?.let { runCatching { CompanionAddress.normalize(it) }.getOrNull() } ?: return null
+            val address = values["address"]?.let { raw ->
+                runCatching { CompanionAddress.normalize(raw) }.getOrNull()
+                    ?: runCatching { CompanionAddress.normalizeGateway(raw) }.getOrNull()
+            } ?: return null
             val token = values["token"]
             val credential = if (token != null) {
                 if (!PAIRING_TOKEN.matches(token)) return null
@@ -184,7 +195,7 @@ data class PairingInvite(
                 .map { it.trim() }
                 .filter { host ->
                     host.isNotEmpty() && host.length <= 253 &&
-                        host.none { it.isWhitespace() || "/?#".contains(it) }
+                        host.none { it.isWhitespace() || "?#".contains(it) }
                 }
                 .distinct()
                 .take(8)
@@ -252,6 +263,30 @@ object CompanionAddress {
         val port = if (uri.port == -1) defaultPort else uri.port
         require(port in 1..65535) { "The port must be between 1 and 65535." }
         return java.net.URI("http", null, host, port, null, null, null).toASCIIString().trimEnd('/')
+    }
+
+    /** Hosted gateway addresses may be HTTPS. The scheme is kept, and a bare
+     * hostname defaults to HTTPS on 443; local installs can type http://. */
+    fun normalizeGateway(raw: String): String {
+        val value = raw.trim()
+        require(value.isNotEmpty()) { "Enter the KodBot server address." }
+        val input = if (value.contains("://")) value else "https://$value"
+        val uri = try {
+            java.net.URI(input)
+        } catch (_: Exception) {
+            throw IllegalArgumentException("Enter an address such as https://kodbot.example.com.")
+        }
+        val scheme = uri.scheme?.lowercase()
+        val host = uri.host?.removePrefix("[")?.removeSuffix("]")
+        require((scheme == "https" || scheme == "http") && !host.isNullOrBlank()) {
+            "Use an http:// or https:// server address."
+        }
+        require(uri.userInfo == null && uri.query == null && uri.fragment == null && uri.path.isNullOrEmptyOrSlash()) {
+            "Enter only the server address and optional port."
+        }
+        val port = if (uri.port == -1) (if (scheme == "https") 443 else 80) else uri.port
+        require(port in 1..65535) { "The port must be between 1 and 65535." }
+        return java.net.URI(scheme, null, host, port, null, null, null).toASCIIString().trimEnd('/')
     }
 
     private fun String?.isNullOrEmptyOrSlash(): Boolean = this.isNullOrEmpty() || this == "/"
@@ -349,6 +384,39 @@ class CompanionApi(private val connection: CompanionConnection) {
                 http.disconnect()
             }
         }
+
+    /** Send one short push-to-talk clip to the harness's local Whisper
+     * endpoint. The file is a private cache file and is deleted by the caller
+     * once the transcript comes back. */
+    suspend fun transcribe(file: File): String = withContext(Dispatchers.IO) {
+        val http = URL(connection.baseUrl + "/api/voice/transcribe?language=auto").openConnection() as HttpURLConnection
+        try {
+            http.requestMethod = "POST"
+            http.connectTimeout = 15_000
+            http.readTimeout = 180_000
+            http.doOutput = true
+            http.setFixedLengthStreamingMode(file.length())
+            http.setRequestProperty("Accept", "application/json")
+            http.setRequestProperty("Authorization", "Bearer ${connection.token}")
+            http.setRequestProperty("Content-Type", "audio/mp4")
+            file.inputStream().use { source ->
+                http.outputStream.use { target -> source.copyTo(target, 64 * 1024) }
+            }
+            val status = http.responseCode
+            val stream = if (status in 200..299) http.inputStream else http.errorStream
+            val response = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+            if (status !in 200..299) {
+                val detail = runCatching { JSONObject(response).optString("error") }.getOrNull()
+                throw IOException(
+                    detail?.takeIf(String::isNotBlank)
+                        ?: "The computer couldn't transcribe the recording (HTTP $status).",
+                )
+            }
+            JSONObject(response).optString("text").trim()
+        } finally {
+            http.disconnect()
+        }
+    }
 
     suspend fun createBot(): ConversationRecord = withContext(Dispatchers.IO) {
         val response = JSONObject(request("POST", "/api/bots", JSONObject()))
@@ -465,7 +533,10 @@ class CompanionApi(private val connection: CompanionConnection) {
             val response = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
             if (status !in 200..299) {
                 val detail = runCatching { JSONObject(response).optString("error") }.getOrNull()
-                throw IOException(detail?.takeIf(String::isNotBlank) ?: "The computer returned HTTP $status.")
+                throw IOException(
+                    detail?.takeIf(String::isNotBlank)?.let { "HTTP $status: $it" }
+                        ?: "The computer returned HTTP $status.",
+                )
             }
             return response
         } finally {
@@ -476,6 +547,49 @@ class CompanionApi(private val connection: CompanionConnection) {
     companion object {
         const val MAX_ATTACHMENT_BYTES = 30L * 1024 * 1024
 
+        /** Sign in to a hosted gateway with email/password. The returned
+         * connection stores the session token encrypted on the phone. */
+        suspend fun login(
+            address: String,
+            email: String,
+            password: String,
+        ): CompanionConnection = withContext(Dispatchers.IO) {
+            val baseUrl = CompanionAddress.normalizeGateway(address)
+            val http = URL("$baseUrl/api/auth/token").openConnection() as HttpURLConnection
+            try {
+                http.requestMethod = "POST"
+                http.connectTimeout = 10_000
+                http.readTimeout = 20_000
+                http.doOutput = true
+                http.setRequestProperty("Accept", "application/json")
+                http.setRequestProperty("Content-Type", "application/json")
+                val body = JSONObject()
+                    .put("email", email.trim())
+                    .put("password", password)
+                http.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+                val status = http.responseCode
+                val stream = if (status in 200..299) http.inputStream else http.errorStream
+                val response = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+                if (status !in 200..299) {
+                    val detail = runCatching { JSONObject(response).optString("error") }.getOrNull()
+                    throw IOException(detail?.takeIf(String::isNotBlank) ?: "Sign-in failed with HTTP $status.")
+                }
+                val parsed = JSONObject(response)
+                val token = parsed.getString("token")
+                if (token.isBlank()) throw IOException("The server returned no session token.")
+                val name = parsed.optJSONObject("user")?.optString("email")
+                    ?.takeIf(String::isNotBlank) ?: "KodBot"
+                CompanionConnection(
+                    baseUrl = baseUrl,
+                    serverName = name,
+                    token = token,
+                    kind = "session",
+                )
+            } finally {
+                http.disconnect()
+            }
+        }
+
         suspend fun pair(
             address: String,
             code: String,
@@ -483,10 +597,14 @@ class CompanionApi(private val connection: CompanionConnection) {
             fallbackHosts: List<String> = emptyList(),
         ): CompanionConnection =
             withContext(Dispatchers.IO) {
-                val baseUrl = CompanionAddress.normalize(address)
+                val baseUrl = runCatching { CompanionAddress.normalize(address) }
+                    .getOrElse { CompanionAddress.normalizeGateway(address) }
                 val port = URI(baseUrl).port
                 val candidates = (listOf(baseUrl) + fallbackHosts.mapNotNull { host ->
-                    runCatching { CompanionAddress.normalize(host, port) }.getOrNull()
+                    runCatching {
+                        if (host.contains("://")) CompanionAddress.normalizeGateway(host)
+                        else CompanionAddress.normalize(host, port)
+                    }.getOrNull()
                 }).distinct()
                 var lastTransportError: IOException? = null
                 var reachable: String? = null
@@ -677,6 +795,11 @@ class CompanionApi(private val connection: CompanionConnection) {
                     options = (0 until optionsJson.length()).mapNotNull { index -> optionsJson.optString(index).takeIf(String::isNotBlank) },
                     requestId = it.optString("requestId").takeIf(String::isNotBlank),
                     tool = it.optString("tool").takeIf(String::isNotBlank),
+                    explanation = it.optString("explanation").takeIf(String::isNotBlank),
+                    risk = it.optString("risk").takeIf(String::isNotBlank),
+                    riskLevel = it.optString("riskLevel").takeIf(String::isNotBlank),
+                    purpose = it.optString("purpose").takeIf(String::isNotBlank),
+                    overdueAt = it.optLong("overdueAt", 0L).takeIf { value -> value > 0L },
                     answered = it.optString("answered").takeIf(String::isNotBlank),
                     dismissed = it.optBoolean("dismissed"),
                 )

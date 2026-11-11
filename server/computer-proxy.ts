@@ -73,7 +73,7 @@ const CHROME_PROFILE_SETUP = [
   '      echo "failed to copy browser profile: $browser_dir" >&2',
   "      exit 1",
   "    fi",
-  '    mv "$browser_dir" "$browser_dir.pre-opencrew-$(date +%s)-$$"',
+  '    mv "$browser_dir" "$browser_dir.pre-kodbot-$(date +%s)-$$"',
   "  fi",
   '  if [ -L "$browser_dir" ]; then rm -f "$browser_dir"; fi',
   '  ln -s "$profile" "$browser_dir"',
@@ -962,7 +962,7 @@ async function handle(msg: any) {
       result: {
         protocolVersion: msg.params?.protocolVersion ?? "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "opencrew-computer", version: "3" },
+        serverInfo: { name: "kodbot-computer", version: "3" },
       },
     });
   }

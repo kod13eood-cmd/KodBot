@@ -18,6 +18,10 @@ Status keys:
   `opencode` CLIs you already use, with your existing logins and subscriptions.
 - **Local-first.** The harness, transcripts, keys, and events stay on your
   machine (`~/.kodbot`) or on a server you control.
+- **Local or hosted first run.** The desktop app asks whether to run on this
+  computer or connect to a remote server. A remote address can be a KodBot
+  harness or a **KodBot gateway**; the gateway opens its email/password login
+  and keeps the session for the app.
 - **Per-bot model picker with capability icons.** Every model shows small
   **text, vision, audio, image, video, and reasoning** badges so the choice is
   readable before you pick it. OpenCode **Zen** and **Go** are separate sections
@@ -26,17 +30,33 @@ Status keys:
   short simple requests go to the fastest/free one. Each bot can use an
   explicit **Auto model pool** — a hand-picked list that may span engines. An
   empty pool keeps routing inside the current engine.
-- **A real computer per bot.** A cloud Linux desktop, the local machine, or a
-  shared room computer. Watch the live screen or take over.
+- **A real computer per bot.** A cloud Linux desktop, a shared **Local VM**
+  (Cua in Docker/Podman, with one durable workspace), or the local machine.
+  Auto picks a cloud box, then the local computer, then the prepared Local VM.
+  Open the shared desktop in a full-window viewer with full screen, or take
+  over with the mouse and keyboard while the bot watches the same screen.
 - **Approvals before risky actions.** Shell commands, file edits, and questions
-  surface as inline cards: Allow, Deny, or answer in chat.
+  surface as inline cards: Allow, Deny, or answer in chat. Every permission
+  card explains in plain language what the action will do and why it needs
+  approval, with a risk level and task context, and an unanswered card
+  (including a bot-to-bot contact request) can be marked overdue without
+  auto-denying; a late Allow still lets the bot finish the work.
 - **Rooms.** Put several bots in one conversation with a shared bulletin and
   an optional Chief of Staff.
+- **Visible bot-to-bot handoffs.** When a bot hands work to another bot, the
+  source chat gets a result or failure card and the full exchange stays in the
+  shared `A ⇄ B` room.
 - **Tasks and branches.** Each bot keeps separate tasks; edits and rewinds
   branch the transcript instead of destroying history.
 - **Remote mode.** Point the desktop app at a KodBot server that stays on 24/7.
-- **Voice.** Bots can read replies aloud and hold a call-style conversation
-  with an ElevenLabs key. On-device dictation on macOS.
+- **Voice.** Local push-to-talk dictation (faster-whisper) and Piper text to
+  speech on the harness, with no audio leaving the machine. The web composer,
+  the Electron desktop app, and the native Android chat all use it; Android
+  Desktop mode uses the web control. ElevenLabs remains available for cloud
+  voices; macOS also has native on-device dictation.
+- **Record workflow.** Record a human demonstration in the Local VM viewer:
+  pointer/key events plus periodic screenshots are saved under the durable
+  workspace, and the bot can read them into a reusable workflow in memory.
 - **Connected apps.** A marketplace over Composio: Gmail, Slack, GitHub,
   Notion, Linear, Stripe, Aircall, AgentMail, and hundreds more.
 - **Bilingual in-app guide.** A book icon at the bottom of the sidebar opens
@@ -109,7 +129,27 @@ prompt.
 Automations can run once, daily at a chosen time, or **on an interval** — every
 5 minutes up to once a day — optionally only inside a time window (for
 example 09:00–18:00) and on selected weekdays. A slow turn never stacks runs:
-the next slot waits for the current one to finish.
+the next slot waits for the current one to finish. Routine-created tasks are
+marked **Scheduled** in the task picker, and a failed or missed run raises a
+notification and stays in the **needs you** strip until it is opened.
+
+### Worker bots for automations — Live
+
+A schedule or webhook can name a **worker bot**. The owner bot keeps the
+automation; the worker runs each run in its own detached task with its own
+context, so background work never replaces the chat you are using. When the
+worker finishes, the owner gets an `<automation> · Results` task, an unread
+badge, and a notification. A run whose last line is `NOTHING NEW` stays
+silent, and no report is ever injected into an active turn. Old tasks can be
+archived from the task picker without deleting their transcripts.
+
+### Activity — Live
+
+**Activity** in the sidebar collects scheduled, webhook, delegated, and live
+jobs in one place: needs attention, running, and done. Each row names the bot,
+shows the result or error, and links to the task or shared `A ⇄ B` channel.
+This is the single view for “what is running, who owns it, and how did it end?”
+without adding more panels to the chat.
 
 ### Loading feedback — Live
 
@@ -122,11 +162,12 @@ stays responsive while the chat catches up.
 
 A bot that cannot continue — a command or file approval, a question — raises a
 native desktop notification that stays on screen until it is answered, plus a
-persistent **needs you** strip at the top of the app. A finished reply notifies
-too when the window is on another chat or in the background. Clicking a
-notification opens the bot or room that asked; the app title and badge count the
-blocked conversations. Each bot's **Notifications** switch still gates its own
-notifications.
+persistent **needs you** strip at the top of the app. A scheduled run that
+fails or is missed also raises a notification and joins that strip. A finished
+reply notifies too when the window is on another chat or in the background.
+Clicking a notification opens the bot, room, or routine task that asked; the
+app title and badge count the blocked conversations. Each bot's
+**Notifications** switch still gates its own notifications.
 
 ### Shopping cards — Live
 
@@ -171,9 +212,14 @@ there too.
 ### Connected Apps with readable identities — Live
 
 The Connected Apps marketplace now includes **1Password, Stripe, Aircall,
-AgentMail, All Images AI, and HeyGen** under their real names, alongside the
-rest of the catalog. Hover any app to read its full description before
-connecting. These are ordinary Connected Apps, not a separate “Grok” section.
+AgentMail, All Images AI, HeyGen, and Google Search Console** under their real
+names, alongside the rest of the catalog. Hover any app to read its full
+description before connecting. These are ordinary Connected Apps, not a
+separate “Grok” section.
+
+Every new connection asks for a name first. The name is stored as the account
+alias, so several Gmail, Slack, or Search Console accounts stay distinguishable
+in the marketplace and in each bot's access list.
 
 The panel checks the **whole catalog**, not only the first featured rows, so a
 connected app such as Alpaca appears under **Connected** and opens **Details**
@@ -224,9 +270,10 @@ not connected.
 | Memory and import | Bot settings → Memory |
 | Auto model and model pool | Bot settings → Model → Auto model → Choose models |
 | Teams, leaders, membership, team rooms | Sidebar → Plus → Manage teams |
+| Scheduled, delegated, and live jobs | Sidebar → Activity |
 | Connected apps and provider setup | Sidebar → Connected apps (hover an app for its full description) |
 | Shortcuts | `Cmd/Ctrl+/` or App Settings → Keyboard shortcuts |
-| Remote server | App Settings → Server |
+| Remote server or gateway | App Settings → Server |
 | Models and engines | App Settings → Engines / bot Model picker |
 
 ## Demo script for ads and the website

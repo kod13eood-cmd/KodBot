@@ -6,12 +6,14 @@ import {
   BASE_IMAGE_LABEL,
   CONTAINER,
   CUA_DRIVER_VERSION,
+  HOSTNAME,
   CUA_EXECUTABLE,
   CUA_SOCKET,
   DRIVER_LABEL,
   IMAGE,
   IMAGE_LAYER_LABEL,
   IMAGE_LAYER_VERSION,
+  LEGACY_CONTAINER,
   MANAGED_LABEL,
   VM_WORKSPACE_DIR,
   VM_WORKSPACE_GUEST,
@@ -23,8 +25,12 @@ import {
   containerComputerStatus,
   managedImageDockerfile,
   setupCommands,
+  VM_DESKTOP_LOCK,
+  waitForContainerReady,
   type CommandRunner,
+  type ContainerComputerStatus,
 } from "./container-computer.ts";
+import { acquireDesktopLock } from "./desktop-lock.ts";
 
 function runner(responses: Record<string, string | Error>) {
   const calls: string[] = [];
@@ -48,8 +54,8 @@ const statusProbe = `${driverExec} status --socket ${CUA_SOCKET}`;
 const healthProbe = `${driverExec} call health_report {} --socket ${CUA_SOCKET}`;
 const readinessProbe =
   `${driverExec} call get_desktop_state {} --socket ${CUA_SOCKET} ` +
-  "--screenshot-out-file /tmp/opencrew-readiness.png";
-const readinessRead = `docker exec ${CONTAINER} base64 -w0 /tmp/opencrew-readiness.png`;
+  "--screenshot-out-file /tmp/kodbot-readiness.png";
+const readinessRead = `docker exec ${CONTAINER} base64 -w0 /tmp/kodbot-readiness.png`;
 const validPng = Buffer.concat([
   Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
   Buffer.alloc(600),
@@ -134,6 +140,26 @@ describe("containerComputerStatus", () => {
     expect(status.image).toBe(true);
     expect(status.container).toBe("stopped");
     expect(status.network).toBe("loopback");
+  });
+
+  it("surfaces a pre-rename container instead of treating the name as free", async () => {
+    const fake = runner({
+      "/usr/bin/which docker": "docker\n",
+      "docker info --format {{.ServerVersion}}": "27\n",
+      [`docker image inspect ${IMAGE}`]: preparedImageInspect(),
+      [`docker inspect ${CONTAINER}`]: new Error("missing"),
+      [`docker inspect ${LEGACY_CONTAINER}`]: JSON.stringify([
+        { State: { Running: true }, Config: { Env: ["VNC_PW=old-secret"] } },
+      ]),
+    });
+
+    const status = await containerComputerStatus(fake.run, "linux");
+
+    expect(status.legacy).toBe(true);
+    expect(status.container).toBe("running");
+    expect(status.container_name).toBe(LEGACY_CONTAINER);
+    expect(status.ready).toBe(false);
+    expect(status.problem).toMatch(/old OpenCrew name/);
   });
 
   it("uses Apple container's actual system and inspect commands", async () => {
@@ -258,7 +284,7 @@ describe("containerComputerStatus", () => {
       problem: null,
       driver_version: "0.20.0",
     });
-    expect(status.viewer_url).toContain("#autoconnect=true&resize=scale&password=secret123");
+    expect(status.viewer_url).toContain("/api/local-computer/viewer/vnc.html#autoconnect=true&resize=scale&path=api%2Flocal-computer%2Fviewer%2Fwebsockify&password=secret123");
   });
 
   it("reports the bounded desktop startup error instead of waiting forever", async () => {
@@ -371,7 +397,10 @@ describe("Cua integration", () => {
     expect(connection.args.at(-3)).toBe("podman");
     expect(connection.args.at(-2)).toBe(CONTAINER);
     expect(connection.args.at(-1)).toBe(CUA_SOCKET);
-    expect(connection.env).toEqual({ ELECTRON_RUN_AS_NODE: "1" });
+    expect(connection.env).toMatchObject({
+      ELECTRON_RUN_AS_NODE: "1",
+      OC_VM_DESKTOP_LOCK: VM_DESKTOP_LOCK,
+    });
   });
 
   it("builds an exact, checksum-verified Cua Driver 0.20.0 image", () => {
@@ -386,7 +415,9 @@ describe("Cua integration", () => {
     expect(dockerfile).toContain(`cua-driver ${CUA_DRIVER_VERSION}`);
     expect(dockerfile).toContain(`serve --socket ${CUA_SOCKET} --permission-mode standard`);
     expect(dockerfile).toContain("CUA_DRIVER_RS_TELEMETRY_ENABLED=0");
-    expect(dockerfile).toContain("prepare-opencrew-workspace.sh");
+    expect(dockerfile).toContain("apt-get install -y --no-install-recommends chromium chromium-sandbox");
+    expect(dockerfile).toContain("chromium-real --no-sandbox --force-renderer-accessibility");
+    expect(dockerfile).toContain("prepare-kodbot-workspace.sh");
     expect(dockerfile).toContain("migrate_profile google-chrome");
     expect(dockerfile).toContain("migrate_profile chromium");
     expect(dockerfile).toContain("SingletonLock");
@@ -398,7 +429,7 @@ describe("Cua integration", () => {
   it("captures the preview through Cua Driver rather than xdotool or VNC", async () => {
     const screenshotCall =
       `${driverExec} call get_desktop_state {} --socket ${CUA_SOCKET} ` +
-      "--screenshot-out-file /tmp/opencrew-preview.png";
+      "--screenshot-out-file /tmp/kodbot-preview.png";
     const png = validPng;
     const fake = runner({
       "/usr/bin/which docker": "docker\n",
@@ -412,7 +443,7 @@ describe("Cua integration", () => {
       [readinessProbe]: "{}\n",
       [readinessRead]: png.toString("base64"),
       [screenshotCall]: "{}\n",
-      [`docker exec ${CONTAINER} base64 -w0 /tmp/opencrew-preview.png`]: png.toString("base64"),
+      [`docker exec ${CONTAINER} base64 -w0 /tmp/kodbot-preview.png`]: png.toString("base64"),
     });
 
     const image = await containerComputerScreenshot(fake.run, "linux");
@@ -420,6 +451,36 @@ describe("Cua integration", () => {
     expect(image).toBe(`data:image/png;base64,${png.toString("base64")}`);
     expect(fake.calls).toContain(screenshotCall);
     expect(fake.calls.some((call) => /xdotool|scrot|vnc/i.test(call))).toBe(false);
+  });
+});
+
+describe("waitForContainerReady", () => {
+  const status = (ready: boolean, container: "running" | "missing" = "running") =>
+    ({ ready, container } as ContainerComputerStatus);
+
+  it("polls a fresh container instead of reporting its startup probe as a failure", async () => {
+    const sequence = [status(false), status(false), status(true)];
+    const sleeps: number[] = [];
+    let index = 0;
+
+    const result = await waitForContainerReady(
+      async () => sequence[Math.min(index++, sequence.length - 1)],
+      { timeoutMs: 10_000, intervalMs: 250, sleep: async (ms) => void sleeps.push(ms) },
+    );
+
+    expect(result.ready).toBe(true);
+    expect(sleeps).toEqual([250, 250]);
+  });
+
+  it("does not wait when the container never started", async () => {
+    const sleeps: number[] = [];
+    const result = await waitForContainerReady(async () => status(false, "missing"), {
+      timeoutMs: 10_000,
+      sleep: async (ms) => void sleeps.push(ms),
+    });
+
+    expect(result.ready).toBe(false);
+    expect(sleeps).toEqual([]);
   });
 });
 
@@ -437,6 +498,23 @@ describe("containerComputerAction", () => {
       "Prepare the Cua desktop image",
     );
     expect(fake.calls.some((call) => call.startsWith("docker run "))).toBe(false);
+  });
+
+  it("refuses to mutate the desktop while a bot's MCP bridge holds it", async () => {
+    const fake = runner({
+      "/usr/bin/which docker": "docker\n",
+      "/usr/bin/which podman": new Error("missing"),
+      "docker info --format {{.ServerVersion}}": "29\n",
+      [`docker image inspect ${IMAGE}`]: preparedImageInspect(),
+      [`docker inspect ${CONTAINER}`]: new Error("missing container"),
+    });
+    const lock = await acquireDesktopLock(VM_DESKTOP_LOCK, { pollMs: 5 });
+    try {
+      await expect(containerComputerAction("run", fake.run, "linux")).rejects.toThrow("in use by a bot");
+      expect(fake.calls.some((call) => call.startsWith("docker run "))).toBe(false);
+    } finally {
+      lock.release();
+    }
   });
 
   it("never starts a stopped desktop because its stale X lock makes resume unsafe", async () => {
@@ -483,7 +561,8 @@ describe("setupCommands", () => {
     expect(command).toContain(`--label ${MANAGED_LABEL}=1`);
     expect(command).toContain(`--label ${DRIVER_LABEL}=${CUA_DRIVER_VERSION}`);
     expect(command).toContain(`--label ${WORKSPACE_LABEL}=1`);
-    expect(command).toContain(`--hostname ${CONTAINER}`);
+    expect(command).toContain(`--hostname ${HOSTNAME}`);
+    expect(command).toContain("--add-host host.docker.internal:host-gateway");
     expect(command).toContain(
       `--mount type=bind,source=${VM_WORKSPACE_DIR},target=${VM_WORKSPACE_GUEST}`,
     );
@@ -502,9 +581,9 @@ describe("setupCommands", () => {
   });
 
   it("uses an explicit local image name so Podman never resolves the managed build on Docker Hub", () => {
-    expect(IMAGE).toMatch(/^localhost\/opencrew\/cua-local-vm:/);
+    expect(IMAGE).toMatch(/^localhost\/kodbot\/cua-local-vm:/);
     expect(setupCommands("podman", "darwin").run).toContain(IMAGE);
-    expect(setupCommands("podman", "darwin").run).not.toContain("docker.io/opencrew");
+    expect(setupCommands("podman", "darwin").run).not.toContain("docker.io/kodbot");
   });
 
   it("generates Apple container lifecycle commands without Docker-only flags", () => {

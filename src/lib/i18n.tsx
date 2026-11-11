@@ -25,6 +25,12 @@ const BULGARIAN: Record<string, string> = {
   "Settings": "Настройки",
   "Close settings": "Затвори настройките",
   "Cancel": "Отказ",
+  "Name this connection": "Име на връзката",
+  "Give this {service} connection a name you will recognize. It appears in Connected apps and in each bot's access list.":
+    "Дай на тази връзка с {service} име, което ще разпознаваш. То се показва в Свързани приложения и в списъка с достъп на всеки бот.",
+  "Connection name": "Име на връзката",
+  "e.g. Work {service}": "напр. Работен {service}",
+  "Continue to sign in": "Продължи към вход",
   "Close": "Затвори",
   "Back": "Назад",
   "Save": "Запази",
@@ -71,6 +77,31 @@ const BULGARIAN: Record<string, string> = {
   "Close search": "Затвори търсенето",
   "Nothing matches “{query}”": "Няма съвпадения за „{query}“",
   "Automations": "Автоматизации",
+  "Approval timeout": "Таймер за одобрение",
+  "What this means": "Какво означава това",
+  "Why it needs approval": "Защо е нужно разрешение",
+  "Local (free)": "Локално (безплатно)",
+  "ElevenLabs": "ElevenLabs",
+  "Local voice": "Локален глас",
+  "Hold to talk": "Задръж, за да говориш",
+  "Auto (BG / EN)": "Автоматично (BG / EN)",
+  "Read replies aloud and turn speech into text with local models. No audio leaves this computer.":
+    "Чети отговорите на глас и превръщай реч в текст с локални модели. Никакво аудио не напуска компютъра.",
+  "Local voice is not installed on the harness yet. Run scripts/setup-local-voice.sh on the server, then refresh.":
+    "Локалният глас още не е инсталиран на сървъра. Пусни scripts/setup-local-voice.sh на сървъра и опресни.",
+  "Requested action": "Заявено действие",
+  "The timer expired, but the bot is still waiting. You can answer now and it will continue.":
+    "Таймерът изтече, но ботът все още чака. Можеш да отговориш сега и той ще продължи.",
+  "How long a bot waits for your answer before the request is marked overdue. The card stays answerable, so a late Allow still runs the action.":
+    "Колко време ботът чака отговор, преди заявката да бъде маркирана като закъсняла. Картата остава отговорна, така че късно Allow пак изпълнява действието.",
+  "Wait until I answer": "Изчакай до мой отговор",
+  "5 min": "5 мин",
+  "15 min": "15 мин",
+  "30 min": "30 мин",
+  "4 hours": "4 часа",
+  "The bot keeps waiting after the timer; the notification is a reminder, not a denial. Choose “Wait until I answer” to hide the timer entirely.":
+    "Ботът продължава да чака след таймера; известието е напомняне, не отказ. Избери „Изчакай до мой отговор“, за да няма таймер.",
+  "{count} failed runs need attention": "{count} неуспешни задачи чакат внимание",
   "Connected apps": "Свързани приложения",
   "App settings": "Настройки на приложението",
   "Waiting for you…": "Чака теб…",
@@ -228,6 +259,8 @@ const BULGARIAN: Record<string, string> = {
   "needs approval": "иска одобрение",
   "has a question": "има въпрос",
   "is waiting for you": "чака те",
+  "has a failed scheduled run": "има неуспешна планирана задача",
+  "missed a scheduled run": "пропусна планирана задача",
   "Open": "Отвори",
   "Group chats": "Групови чатове",
   "Show group chats": "Показвай груповите чатове",
@@ -264,6 +297,24 @@ const BULGARIAN: Record<string, string> = {
   "Connecting…": "Свързване…",
   "Connect to remote server": "Свържи към отдалечен сървър",
   "Use this computer": "Използвай този компютър",
+  "Where should your bots run?": "Къде да работят ботовете?",
+  "Choose now. You can change this later in App Settings → General → Server.":
+    "Избери сега. Можеш да промениш това по-късно от App Settings → General → Server.",
+  "Create a local server": "Създай локален сървър",
+  "KodBot and the agents run on this computer. The server is built in; install the agent CLIs you want here. Best for one machine.":
+    "KodBot и агентите работят на този компютър. Сървърът е вграден; инсталирай agent CLI-тата, които искаш, тук. Най-добре за една машина.",
+  "Connect to a remote server": "Свържи към отдалечен сървър",
+  "Use KodBot on another computer or a cloud VM. Bots, engines, keys, files and memory stay there. This computer only needs network access.":
+    "Използвай KodBot на друг компютър или cloud VM. Ботовете, engine-ите, ключовете, файловете и паметта остават там. Този компютър се нуждае само от мрежов достъп.",
+  "Remote server address": "Адрес на отдалечения сървър",
+  "Enter the remote server address.": "Въведи адреса на отдалечения сървър.",
+  "Enter an address like https://kodbot.example.com or http://192.168.1.50:8799.":
+    "Въведи адрес като https://kodbot.example.com или http://192.168.1.50:8799.",
+  "Creating the local server…": "Създаване на локалния сървър…",
+  "The remote machine must already be running KodBot.":
+    "Отдалечената машина трябва вече да изпълнява KodBot.",
+  "The server runs on Linux, Windows and macOS. A remote server can be a cloud VM or a machine on your LAN/Tailscale. Use the harness port 8799 (not the phone companion port 8810); HTTPS is best.":
+    "Сървърът работи на Linux, Windows и macOS. Отдалеченият сървър може да е cloud VM или машина в LAN/Tailscale. Използвай harness порта 8799 (не companion порта 8810); HTTPS е за предпочитане.",
   "Switching…": "Превключване…",
   "The remote machine must be reachable over your LAN or Tailscale and must be running KodBot. Keys, engines, and the companion stay on that machine. The app will restart when you switch.":
     "Отдалечената машина трябва да е достъпна през локалната мрежа или Tailscale и да изпълнява KodBot. Ключовете, двигателите и компаньонът остават на нея. Приложението ще се рестартира при превключване.",
@@ -326,6 +377,7 @@ const BULGARIAN: Record<string, string> = {
   "Where this bot's computer runs": "Къде работи компютърът на този бот",
   "currently: auto": "в момента: автоматично",
   "cloud": "облак",
+  "vm": "локална VM",
   "local": "локално",
   "off": "изключено",
   "All bots →": "Всички ботове →",
@@ -481,6 +533,20 @@ const BULGARIAN: Record<string, string> = {
   "This turns on Companion and opens a short, single-use pairing window in one step.":
     "Това включва Компаньон и отваря кратък прозорец за еднократно свързване с една стъпка.",
   "Phone pairing QR code": "QR код за свързване на телефон",
+  "Signed in as {email} on this KodBot server.":
+    "Влязъл си като {email} на този KodBot сървър.",
+  "This hosted workspace is isolated to your account. A paired phone sees only your bots and rooms.":
+    "Това hosted работно пространство е изолирано за твоя акаунт. Свързаният телефон вижда само твоите ботове и стаи.",
+  "Scan the QR with the KodBot Android app, or enter the server address and code manually.":
+    "Сканирай QR с KodBot Android app или въведи адреса на сървъра и кода ръчно.",
+  "Removing a device signs it out immediately.":
+    "Премахването на устройство го отписва веднага.",
+  "Remove this device?": "Да се премахне ли това устройство?",
+  "Remove this device": "Премахни това устройство",
+  "Owner": "Собственик",
+  "Member": "Член",
+  "Signed in as {email} ({role}).": "Влязъл си като {email} ({role}).",
+  "Sign out": "Изход",
   "Manual code": "Ръчен код",
   "Expires in {seconds}s": "Изтича след {seconds} сек.",
   "Or open the mobile app and choose “{name}” under On this network.":
@@ -572,6 +638,24 @@ const BULGARIAN: Record<string, string> = {
   "Cloud VM needs a working Box API key in App Settings before this routine can run.":
     "Облачната VM изисква работещ API ключ за Box в настройките, преди тази рутина да може да се изпълни.",
   "Who does it?": "Кой го изпълнява?",
+  "Worker bot": "Работен бот",
+  "Same bot — runs in a separate task": "Същият бот — изпълнява се в отделна задача",
+  "The owner bot keeps this automation and receives the result in a Results task. The worker runs it in its own task, so the owner’s chat never changes.":
+    "Ботът собственик запазва автоматизацията и получава резултата в задача „Резултати“. Работният бот я изпълнява в своя задача, така че чатът на собственика никога не се променя.",
+  "worker": "работен",
+  "Each request runs on the worker and reports back to the owner.":
+    "Всяка заявка се изпълнява от работния бот и връща резултата на собственика.",
+  "Worker: {name}": "Работен бот: {name}",
+  "Worker": "Работен бот",
+  "Results go to": "Резултатите отиват при",
+  "Copy this command into Terminal and press Return. It starts a real task on the worker {name}; the result comes back here.":
+    "Копирайте тази команда в Терминал и натиснете Enter. Тя стартира истинска задача при работния бот {name}; резултатът се връща тук.",
+  "Archive task": "Архивирай задачата",
+  "Archive this task — keep its messages, hide it from this list":
+    "Архивирай тази задача — съобщенията остават, но задачата се скрива от списъка",
+  "Archived tasks": "Архивирани задачи",
+  "Hide archived": "Скрий архивираните",
+  "Restore this task": "Възстанови тази задача",
   "Assigned from Computer": "Зададен от Компютър",
   "What should this CREW do?": "Какво да направи този CREW?",
   "Check the latest project activity, summarize what changed, and call out anything that needs my attention…":
@@ -634,6 +718,14 @@ const BULGARIAN: Record<string, string> = {
   "Edit settings": "Редактирай настройките",
   "Setup": "Настройка",
   "Activity": "Активност",
+  "Scheduled and delegated work, and what needs you.": "Планирана и делегирана работа и какво чака теб.",
+  "Needs attention": "Чакат внимание",
+  "Done": "Готово",
+  "Delegated": "Делегирано",
+  "Live": "На живо",
+  "Waiting for you": "Чака теб",
+  "No background work here.": "Тук няма фонова работа.",
+  "Scheduled runs, webhooks, delegations, and live turns will appear here.": "Планирани run-ове, webhooks, делегации и активни ходове ще се показват тук.",
   "Send a task": "Изпрати задача",
   "Copy this command into Terminal and press Return. It starts a real task in the chat with {name}; edit the task text for whatever you want done.":
     "Копирайте тази команда в Терминал и натиснете Enter. Тя стартира истинска задача в разговора с {name}; редактирайте текста на задачата според това, което искате да се направи.",

@@ -8,6 +8,7 @@
 // (it scrolls instead), and the buttons ordered least-destructive-last so
 // the primary action sits under your thumb.
 import { memo } from "react";
+import { Info, ShieldAlert } from "lucide-react";
 import { useStore, type Bot } from "@/state/store";
 import { cn } from "@/lib/cn";
 import type { Pending } from "@/lib/approvals";
@@ -22,6 +23,9 @@ function label(tool: string): string {
   const nice: ApprovalLabels = {
     Bash: "Command approval requested",
     shell: "Command approval requested",
+    other: "Command approval requested",
+    unknown: "Tool approval requested",
+    tool: "Tool approval requested",
     Read: "File-read approval requested",
     Write: "File-change approval requested",
     Edit: "File-change approval requested",
@@ -49,10 +53,43 @@ export const PendingApprovalPanel = memo(function PendingApprovalPanel({
           </span>
         )}
         <span className="text-[13px] text-ink">{label(pending.tool)}</span>
-        <span className="font-mono text-[11px] text-ink-secondary">{pending.tool}</span>
+        {pending.tool && !["other", "unknown", "tool"].includes(pending.tool) && (
+          <span className="font-mono text-[11px] text-ink-secondary">{pending.tool}</span>
+        )}
       </div>
+      {pending.explanation && (
+        <div className="mt-2 flex items-start gap-2 rounded-lg border border-accent/25 bg-accent/5 px-3 py-2 text-[12.5px] leading-relaxed text-ink">
+          <Info size={14} className="mt-0.5 shrink-0 text-accent" />
+          <span>
+            <span className="font-medium">What this means: </span>
+            {pending.explanation}
+          </span>
+        </div>
+      )}
+      {pending.risk && (
+        <div
+          className={cn(
+            "mt-2 flex items-start gap-2 rounded-lg border px-3 py-2 text-[12.5px] leading-relaxed",
+            pending.riskLevel === "high"
+              ? "border-danger/35 bg-danger/10 text-danger"
+              : pending.riskLevel === "low"
+                ? "border-success/30 bg-success/10 text-success"
+                : "border-warning/30 bg-warning/10 text-warning",
+          )}
+        >
+          <ShieldAlert size={14} className="mt-0.5 shrink-0" />
+          <span>
+            <span className="font-medium">Why it needs approval: </span>
+            {pending.risk}
+          </span>
+        </div>
+      )}
+      {pending.purpose && (
+        <div className="mt-1.5 text-[11.5px] text-ink-secondary">Task: {pending.purpose}</div>
+      )}
+      <div className="mt-2 text-[10.5px] uppercase tracking-wider text-ink-secondary">Requested action</div>
       {/* never truncated — long commands wrap and scroll */}
-      <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-[12px] leading-relaxed text-ink">
+      <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-[12px] leading-relaxed text-ink">
         {pending.detail}
       </pre>
       {pending.held && <div className="mt-2 text-[12px] text-warning">{pending.held}</div>}

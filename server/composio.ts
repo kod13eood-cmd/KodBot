@@ -682,7 +682,7 @@ export async function authorizeService(
   if (options?.guardExisting && current?.[slug]?.connected) {
     return { alreadyConnected: true as const, status: current[slug].status };
   }
-  let accountAlias = alias?.trim();
+  let accountAlias = alias?.trim().slice(0, 80);
   if (!accountAlias && (current?.[slug]?.accounts?.length ?? 0) > 0) {
     accountAlias = `kodbot-${slug}-${Date.now().toString(36)}`.slice(0, 80);
   }
@@ -733,6 +733,14 @@ const CURATED: ToolkitCard[] = [
   { slug: "googlesheets", label: "Google Sheets", blurb: "Read and update spreadsheets", domain: "sheets.google.com", logo: null },
   { slug: "googledocs", label: "Google Docs", blurb: "Read and write documents", domain: "docs.google.com", logo: null },
   { slug: "googledrive", label: "Google Drive", blurb: "Browse and manage files", domain: "drive.google.com", logo: null },
+  {
+    slug: "google_search_console",
+    label: "Google Search Console",
+    blurb: "Search performance, indexing, and sitemaps",
+    description: "Google Search Console monitors a site's presence in Google Search: query analytics, URL inspection, sitemaps, and property management.",
+    domain: "search.google.com",
+    logo: null,
+  },
   { slug: "notion", label: "Notion", blurb: "Pages and databases", domain: "notion.so", logo: null },
   { slug: "linear", label: "Linear", blurb: "Issues and project tracking", domain: "linear.app", logo: null },
   { slug: "sentry", label: "Sentry", blurb: "Errors and alerts", domain: "sentry.io", logo: null },
@@ -800,6 +808,12 @@ const TOOLKIT_OVERRIDES: Record<string, Partial<ToolkitCard>> = {
   all_images_ai: { label: "All Images AI" },
   aircall: { label: "Aircall", domain: "aircall.io" },
   heygen: { label: "HeyGen", domain: "heygen.com" },
+  google_search_console: {
+    label: "Google Search Console",
+    blurb: "Search performance, indexing, and sitemaps",
+    description: "Google Search Console monitors a site's presence in Google Search: query analytics, URL inspection, sitemaps, and property management.",
+    domain: "search.google.com",
+  },
   stripe: { label: "Stripe", domain: "stripe.com" },
 };
 
@@ -839,6 +853,12 @@ export async function listToolkits(cfg: AppConfig): Promise<{ cards: ToolkitCard
               domain: override.domain ?? null,
             };
           });
+          // The API's first page is usage-sorted and can omit a toolkit.
+          // Keep the curated extras available without duplicating API rows.
+          const seen = new Set(cards.map((card) => card.slug));
+          for (const card of CURATED) {
+            if (!seen.has(card.slug)) cards.push(card);
+          }
           toolkitCache = { at: Date.now(), cards };
           return { cards, source: "api" };
         }

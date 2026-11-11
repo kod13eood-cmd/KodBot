@@ -20,6 +20,7 @@ import { PendingApprovalActions, PendingApprovalPanel, pendingApprovals } from "
 import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { useI18n } from "@/lib/i18n";
 import { promptQueue, queueKeyForBot, queueKeyForGroup } from "@/lib/send-queue";
+import { BrowserPtt, browserPttSupported } from "@/lib/browser-ptt";
 
 /** The active @mention query at the caret: the text between an `@` that
  * starts a word and the caret. null = no mention being typed. */
@@ -102,15 +103,20 @@ export function Composer({
     (id: string) => setAttachments((prev) => prev.filter((a) => a.id !== id)),
     [setAttachments],
   );
-  const [recording, setRecording] = useState(false);
+  const [recording, setRecording] = useState<"native" | "browser" | null>(null);
   const [speechError, setSpeechError] = useState<string | null>(null);
   const [caret, setCaret] = useState(0);
   const [highlight, setHighlight] = useState(0);
   const [dismissedAt, setDismissedAt] = useState<number | null>(null); // Esc'd this @
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const browserPtt = useRef<BrowserPtt | null>(null);
+  const browserStart = useRef<Promise<void> | null>(null);
   // what was typed before the mic went on — partials append after it
   const baseText = useRef("");
+  const nativeMic = capabilities.dictation.available && Boolean(window.ogb?.speechStart);
+  const browserMic = !nativeMic && browserPttSupported();
+  const micAvailable = nativeMic || browserMic;
 
   // ── @mention picker (tag another bot; the agent reaches it via ask_bot) ──
   const mention = mentionQueryAt(text, caret);
@@ -239,10 +245,10 @@ export function Composer({
   // native dictation: partials stream into the input while the Swift
   // helper runs; the final transcript stays in the box, ready to edit/send
   useEffect(() => {
-    if (!recording) return;
+    if (recording !== "native") return;
     const bridge = window.ogb;
     if (!bridge) {
-      setRecording(false);
+      setRecording(null);
       return;
     }
     setSpeechError(null);
@@ -253,7 +259,7 @@ export function Composer({
       }
     });
     const offEnd = bridge.onSpeechEnd(({ code }) => {
-      setRecording(false);
+      setRecording(null);
       if (code === 2) {
         setSpeechError(t("Dictation is only available on macOS for now."));
       } else if (code === 1) {
@@ -271,13 +277,60 @@ export function Composer({
   }, [recording, t]);
 
   const toggleMic = () => {
-    if (!capabilities.dictation.available || !window.ogb) {
+    if (!nativeMic || !window.ogb) {
       setSpeechError(t("Dictation isn't available in this build."));
       return;
     }
     baseText.current = text.trim();
-    setRecording((r) => !r);
+    setRecording((current) => (current === "native" ? null : "native"));
   };
+
+  const startBrowserMic = async () => {
+    if (!browserMic || recording) return;
+    setSpeechError(null);
+    baseText.current = text.trim();
+    const ptt = new BrowserPtt();
+    try {
+      await ptt.start();
+      browserPtt.current = ptt;
+      setRecording("browser");
+    } catch (error) {
+      ptt.cancel();
+      setSpeechError(error instanceof Error ? error.message : String(error));
+      throw error;
+    }
+  };
+
+  const stopBrowserMic = async () => {
+    const ptt = browserPtt.current;
+    browserPtt.current = null;
+    setRecording(null);
+    if (!ptt) return;
+    try {
+      const transcript = await ptt.stop();
+      if (transcript) {
+        const base = baseText.current;
+        setText(base ? `${base} ${transcript}` : transcript);
+      }
+    } catch (error) {
+      setSpeechError(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const finishBrowserPress = () => {
+    const started = browserStart.current;
+    browserStart.current = null;
+    if (started) void started.then(() => stopBrowserMic()).catch(() => {});
+  };
+
+  const cancelBrowserMic = () => {
+    browserStart.current = null;
+    browserPtt.current?.cancel();
+    browserPtt.current = null;
+    setRecording(null);
+  };
+
+  useEffect(() => () => cancelBrowserMic(), []);
 
   return (
     <div className="px-5 pb-5 pt-2">
@@ -499,7 +552,10 @@ export function Composer({
               e.preventDefault();
               send();
             }
-            if (e.key === "Escape" && recording) setRecording(false);
+            if (e.key === "Escape" && recording) {
+              if (recording === "browser") cancelBrowserMic();
+              else setRecording(null);
+            }
           }}
           disabled={Boolean(approval)}
           spellCheck
@@ -536,9 +592,28 @@ export function Composer({
             <Square size={14} className="fill-current" />
           </button>
         )}
-        {!busy && !hasContent && capabilities.dictation.available && (
+        {!busy && !hasContent && micAvailable && (
           <button
-            onClick={toggleMic}
+            onClick={nativeMic ? toggleMic : undefined}
+            onPointerDown={
+              browserMic
+                ? (event) => {
+                    event.preventDefault();
+                    if (browserStart.current) return;
+                    browserStart.current = startBrowserMic().catch(() => {});
+                  }
+                : undefined
+            }
+            onPointerUp={
+              browserMic
+                ? (event) => {
+                    event.preventDefault();
+                    finishBrowserPress();
+                  }
+                : undefined
+            }
+            onPointerLeave={browserMic ? finishBrowserPress : undefined}
+            onPointerCancel={browserMic ? finishBrowserPress : undefined}
             aria-label={recording ? t("Stop dictation") : t("Start dictation")}
             className={cn(
               "flex size-8 shrink-0 items-center justify-center rounded-full",
@@ -546,7 +621,7 @@ export function Composer({
                 ? "animate-pulse bg-danger/20 text-danger"
                 : "text-ink-secondary hover:bg-raised hover:text-ink",
             )}
-            title={recording ? t("Stop dictation (Esc)") : t("Dictate")}
+            title={recording ? t("Stop dictation (Esc)") : browserMic ? t("Hold to talk") : t("Dictate")}
           >
             <Mic size={18} />
           </button>

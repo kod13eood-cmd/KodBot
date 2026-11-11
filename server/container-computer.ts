@@ -1,8 +1,8 @@
 // Cua-backed Local VM lifecycle and health checks.
 //
 // KodBot owns only the sandbox boundary: image preparation, container
-// lifecycle, resource limits, loopback viewer, and the single-bot lease in the
-// harness. Desktop automation itself is Cua Driver. Agents connect directly to
+// lifecycle, resource limits, loopback viewer, and the per-turn desktop lock
+// in the MCP bridge. Desktop automation itself is Cua Driver. Agents connect directly to
 // `cua-driver mcp` inside the container; this module never reimplements clicks,
 // typing, screenshots, accessibility, or window discovery.
 import { execFile } from "node:child_process";
@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { desktopLockHeld } from "./desktop-lock.ts";
 import { augmentedPath } from "./env-path.ts";
 import { DATA_DIR } from "./config.ts";
 import { SPAWNED_PROXIES } from "./proxy-paths.ts";
@@ -35,20 +36,27 @@ export const BASE_IMAGE = `${BASE_IMAGE_REPOSITORY}@${BASE_IMAGE_DIGEST}`;
 // tags, then may otherwise resolve the same name to Docker Hub when running it.
 // Image and container labels below remain the authoritative compatibility
 // check, not the mutable tag.
-export const IMAGE_REPOSITORY = "localhost/opencrew/cua-local-vm";
-export const IMAGE_LAYER_VERSION = "3";
-export const IMAGE_LAYER_LABEL = "com.opencrew.image-layer";
+export const IMAGE_REPOSITORY = "localhost/kodbot/cua-local-vm";
+export const IMAGE_LAYER_VERSION = "7";
+export const IMAGE_LAYER_LABEL = "com.kodbot.image-layer";
 export const IMAGE = `${IMAGE_REPOSITORY}:driver-${CUA_DRIVER_VERSION}-v${IMAGE_LAYER_VERSION}`;
-export const CONTAINER = "opencrew-computer";
-export const MANAGED_LABEL = "com.opencrew.local-vm";
-export const DRIVER_LABEL = "com.opencrew.cua-driver";
-export const BASE_IMAGE_LABEL = "com.opencrew.cua-base";
-export const WORKSPACE_LABEL = "com.opencrew.workspace";
+export const CONTAINER = "kodbot-computer";
+/** The container created before the KodBot rename. It stays visible in the
+ * status so the existing VM can be deleted and recreated instead of leaving
+ * an orphan on the viewer port. */
+export const LEGACY_CONTAINER = "opencrew-computer";
+export const MANAGED_LABEL = "com.kodbot.local-vm";
+export const DRIVER_LABEL = "com.kodbot.cua-driver";
+export const BASE_IMAGE_LABEL = "com.kodbot.cua-base";
+export const WORKSPACE_LABEL = "com.kodbot.workspace";
 export const VM_WORKSPACE_DIR = join(DATA_DIR, "vm-home");
+export const VM_DESKTOP_LOCK = join(DATA_DIR, "vm-desktop.lock");
 export const VM_WORKSPACE_GUEST = "/home/cua/workspace";
 export const DISPLAY = ":1";
-export const CUA_SOCKET = "/run/user/1000/opencrew-cua.sock";
-export const CUA_EXECUTABLE = "/usr/local/libexec/opencrew/cua-driver";
+/** The RFB desktop name is the container hostname; noVNC shows it verbatim. */
+export const HOSTNAME = "KodBot";
+export const CUA_SOCKET = "/run/user/1000/kodbot-cua.sock";
+export const CUA_EXECUTABLE = "/usr/local/libexec/kodbot/cua-driver";
 
 const RUNTIMES = ["docker", "podman", "container"] as const;
 export type Runtime = (typeof RUNTIMES)[number];
@@ -93,6 +101,16 @@ RUN set -eux; \\
     install -D -m 0755 "$driver_bin" ${CUA_EXECUTABLE}; \\
     install -d -o cua -g cua -m 0700 ${VM_WORKSPACE_GUEST}; \\
     test "$(${CUA_EXECUTABLE} --version)" = "cua-driver ${CUA_DRIVER_VERSION}"
+# Chromium gives Cua's semantic browser_* tools a CDP endpoint. Firefox ESR is
+# still installed for ordinary desktop browsing, but its AT-SPI text insertion
+# is unreliable in this image.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends chromium chromium-sandbox; \
+    rm -rf /var/lib/apt/lists/*; \
+    mv /usr/lib/chromium/chromium /usr/lib/chromium/chromium-real; \
+    printf '%s\\n' '#!/bin/sh' 'exec /usr/lib/chromium/chromium-real --no-sandbox --force-renderer-accessibility "$@"' > /usr/lib/chromium/chromium; \
+    chmod 0755 /usr/lib/chromium/chromium
 RUN printf '%s\\n' \\
       '#!/bin/sh' \\
       'set -eu' \\
@@ -113,11 +131,11 @@ RUN printf '%s\\n' \\
       'migrate_profile google-chrome' \\
       'migrate_profile chromium' \\
       'find "$profiles" \\( -name SingletonLock -o -name SingletonSocket -o -name SingletonCookie -o -name .parentlock \\) -delete' \\
-      > /usr/local/bin/prepare-opencrew-workspace.sh \\
-    && chmod 0755 /usr/local/bin/prepare-opencrew-workspace.sh
+      > /usr/local/bin/prepare-kodbot-workspace.sh \\
+    && chmod 0755 /usr/local/bin/prepare-kodbot-workspace.sh
 RUN printf '%s\\n' \\
       '#!/bin/sh' \\
-      '/usr/local/bin/prepare-opencrew-workspace.sh' \\
+      '/usr/local/bin/prepare-kodbot-workspace.sh' \\
       'attempt=0' \\
       'until DISPLAY=:1 xset q >/dev/null 2>&1; do' \\
       '  attempt=$((attempt + 1))' \\
@@ -125,12 +143,12 @@ RUN printf '%s\\n' \\
       '  sleep 1' \\
       'done' \\
       'exec env CUA_DRIVER_INSTALL_CHANNEL=python_package CUA_DRIVER_RS_TELEMETRY_ENABLED=0 ${CUA_EXECUTABLE} serve --socket ${CUA_SOCKET} --permission-mode standard' \\
-      > /usr/local/bin/start-opencrew-cua-driver.sh \\
-    && chmod 0755 /usr/local/bin/start-opencrew-cua-driver.sh
+      > /usr/local/bin/start-kodbot-cua-driver.sh \\
+    && chmod 0755 /usr/local/bin/start-kodbot-cua-driver.sh
 RUN printf '%s\\n' \\
       '' \\
-      '[program:opencrew-cua-driver]' \\
-      'command=/usr/local/bin/start-opencrew-cua-driver.sh' \\
+      '[program:kodbot-cua-driver]' \\
+      'command=/usr/local/bin/start-kodbot-cua-driver.sh' \\
       'user=cua' \\
       'environment=HOME="/home/cua",USER="cua",DISPLAY=":1"' \\
       'autorestart=true' \\
@@ -177,6 +195,8 @@ export interface ContainerComputerStatus {
   image: boolean;
   imageMatches: boolean;
   managed: boolean;
+  /** True when the only VM found is the pre-rename opencrew container. */
+  legacy: boolean;
   container: "running" | "stopped" | "missing";
   network: "loopback" | "unsafe" | "unknown";
   security: "hardened" | "unsafe" | "unknown";
@@ -204,6 +224,7 @@ function emptyStatus(platform: NodeJS.Platform): ContainerComputerStatus {
     image: false,
     imageMatches: false,
     managed: false,
+    legacy: false,
     container: "missing",
     network: "unknown",
     security: "unknown",
@@ -219,7 +240,7 @@ function emptyStatus(platform: NodeJS.Platform): ContainerComputerStatus {
     container_name: CONTAINER,
     workspace_path: VM_WORKSPACE_DIR,
     workspace_guest_path: VM_WORKSPACE_GUEST,
-    viewer_url: `http://127.0.0.1:${HOST_VIEWER_PORT}/vnc.html`,
+    viewer_url: "/api/local-computer/viewer/vnc.html#path=api%2Flocal-computer%2Fviewer%2Fwebsockify",
   };
 }
 
@@ -228,6 +249,7 @@ function statusProblem(status: ContainerComputerStatus): string | null {
   if (!status.daemonUp) return `Start ${status.runtime} first`;
   if (!status.image) return `Prepare the Cua desktop image with Driver ${CUA_DRIVER_VERSION}`;
   if (status.container === "missing") return "Create the Local VM";
+  if (status.legacy) return "The existing Local VM still uses the old OpenCrew name; delete and recreate it as KodBot";
   if (!status.imageMatches) return "The existing Local VM uses an older desktop or Cua Driver; recreate it";
   if (!status.managed) return "The existing container was not created by KodBot; recreate it";
   if (status.network === "unsafe") return "The existing Local VM exposes its viewer publicly; recreate it";
@@ -283,13 +305,23 @@ function viewerPassword(env: string[] | Record<string, string> | undefined): str
 }
 
 function viewerUrl(password: string | null): string {
-  const base = `http://127.0.0.1:${HOST_VIEWER_PORT}/vnc.html`;
-  if (!password) return base;
-  const fragment = new URLSearchParams({ autoconnect: "true", resize: "scale", password });
+  // Relative so a remote app or phone reaches the harness proxy rather than
+  // its own loopback interface. The query fragment never leaves the client.
+  // noVNC builds its WebSocket from `window.location.host + '/' + path`, so
+  // the default `websockify` would land on the harness root. Point it at the
+  // proxied path explicitly; without this the page loads but says "VNC not
+  // connected".
+  const base = "/api/local-computer/viewer/vnc.html";
+  const fragment = new URLSearchParams({
+    autoconnect: "true",
+    resize: "scale",
+    path: "api/local-computer/viewer/websockify",
+  });
+  if (password) fragment.set("password", password);
   return `${base}#${fragment.toString()}`;
 }
 
-function cuaExecArgs(args: string[], interactive = false): string[] {
+export function cuaExecArgs(args: string[], interactive = false): string[] {
   return [
     "exec",
     ...(interactive ? ["-i"] : []),
@@ -425,6 +457,35 @@ export async function containerComputerStatus(
     // No container with this name.
   }
 
+  // A VM created before the KodBot rename is still the same durable desktop.
+  // Surface it instead of pretending the name is free: the user can prepare
+  // the new image and delete/recreate it, and we never leave an orphan on the
+  // viewer port.
+  if (status.container === "missing") {
+    try {
+      const { stdout } = await runner(status.runtime, ["inspect", LEGACY_CONTAINER]);
+      const inspected = JSON.parse(stdout) as Array<{
+        State?: { Running?: boolean };
+        status?: { state?: string };
+        Config?: { Env?: string[] };
+        configuration?: { environment?: string[] | Record<string, string> };
+      }>;
+      const detail = inspected[0];
+      const running =
+        status.runtime === "container"
+          ? detail?.status?.state === "running"
+          : detail?.State?.Running === true;
+      status.container = running ? "running" : "stopped";
+      status.container_name = LEGACY_CONTAINER;
+      status.legacy = true;
+      status.viewer_url = viewerUrl(
+        viewerPassword(detail?.Config?.Env ?? detail?.configuration?.environment),
+      );
+    } catch {
+      // No legacy container either; the name is genuinely free.
+    }
+  }
+
   const canProbe =
     status.container === "running" &&
     status.imageMatches &&
@@ -451,7 +512,7 @@ export async function containerComputerStatus(
       ) {
         throw new Error(`Cua health report is ${report.overall ?? "invalid"}`);
       }
-      const readinessShot = "/tmp/opencrew-readiness.png";
+      const readinessShot = "/tmp/kodbot-readiness.png";
       await runner(
         status.runtime,
         cuaExecArgs([
@@ -598,6 +659,11 @@ export function containerRunArgs(runtime: Runtime, password = "CHANGE_ME"): stri
     "--label",
     `${WORKSPACE_LABEL}=1`,
   );
+  if (runtime !== "container") {
+    // Product testing often starts on a host dev server. Docker's bridge
+    // gateway keeps that reachable without publishing the product to the LAN.
+    common.push("--add-host", "host.docker.internal:host-gateway");
+  }
   if (runtime === "container") {
     // Apple container already places each Linux container in a lightweight VM.
     common.push(
@@ -617,7 +683,7 @@ export function containerRunArgs(runtime: Runtime, password = "CHANGE_ME"): stri
   } else {
     common.push(
       "--hostname",
-      CONTAINER,
+      HOSTNAME,
       "--memory",
       "4g",
       "--memory-swap",
@@ -657,7 +723,7 @@ async function ensureVmWorkspace(platform: NodeJS.Platform): Promise<void> {
 
 async function prepareManagedImage(runtime: Runtime, runner: CommandRunner): Promise<void> {
   await runner(runtime, ["pull", BASE_IMAGE], 10 * 60_000);
-  const context = await mkdtemp(join(tmpdir(), "opencrew-cua-image-"));
+  const context = await mkdtemp(join(tmpdir(), "kodbot-cua-image-"));
   try {
     await writeFile(join(context, "Dockerfile"), managedImageDockerfile(), { mode: 0o600 });
     await runner(runtime, ["build", "-t", IMAGE, context], 10 * 60_000);
@@ -666,10 +732,36 @@ async function prepareManagedImage(runtime: Runtime, runner: CommandRunner): Pro
   }
 }
 
+export interface ReadyWaitOptions {
+  timeoutMs?: number;
+  intervalMs?: number;
+  sleep?: (ms: number) => Promise<void>;
+}
+
+/** A freshly created container answers `docker inspect` before XFCE and the
+ * Cua daemon are listening. Poll briefly instead of returning the startup
+ * error as if the desktop had failed. */
+export async function waitForContainerReady(
+  status: () => Promise<ContainerComputerStatus>,
+  options: ReadyWaitOptions = {},
+): Promise<ContainerComputerStatus> {
+  const timeoutMs = options.timeoutMs ?? 90_000;
+  const intervalMs = options.intervalMs ?? 1_500;
+  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const deadline = Date.now() + timeoutMs;
+  let current = await status();
+  while (!current.ready && current.container === "running" && Date.now() < deadline) {
+    await sleep(intervalMs);
+    current = await status();
+  }
+  return current;
+}
+
 export async function containerComputerAction(
   action: LifecycleAction,
   runner: CommandRunner = sh,
   platform: NodeJS.Platform = process.platform,
+  options: ReadyWaitOptions & { waitForReady?: boolean } = {},
 ): Promise<ContainerComputerStatus> {
   if (runner === sh && platform === process.platform) screenshotStatusCache = null;
   const before = await containerComputerStatus(runner, platform);
@@ -692,17 +784,26 @@ export async function containerComputerAction(
     throw Object.assign(new Error("The Local VM is not running"), { status: 409 });
   }
   if (action === "remove" && before.container === "missing") return before;
+  if ((action === "run" || action === "stop" || action === "remove") && desktopLockHeld(VM_DESKTOP_LOCK)) {
+    throw Object.assign(new Error("the Local VM desktop is in use by a bot — wait for its turn to finish"), {
+      status: 409,
+    });
+  }
 
   if (action === "pull") {
     await prepareManagedImage(runtime, runner);
+  } else if (action === "run") {
+    await ensureVmWorkspace(platform);
+    await runner(runtime, containerRunArgs(runtime, randomBytes(6).toString("base64url")), 2 * 60_000);
+    if (options.waitForReady !== false) {
+      return waitForContainerReady(() => containerComputerStatus(runner, platform), options);
+    }
   } else {
-    if (action === "run") await ensureVmWorkspace(platform);
+    const containerName = before.legacy ? LEGACY_CONTAINER : CONTAINER;
     const args =
-      action === "run"
-        ? containerRunArgs(runtime, randomBytes(6).toString("base64url"))
-        : action === "remove"
-          ? ["rm", runtime === "container" ? "--force" : "-f", CONTAINER]
-          : [action, CONTAINER];
+      action === "remove"
+        ? ["rm", runtime === "container" ? "--force" : "-f", containerName]
+        : [action, containerName];
     await runner(runtime, args, 2 * 60_000);
   }
   return containerComputerStatus(runner, platform);
@@ -742,7 +843,7 @@ export async function containerComputerScreenshot(
   }
   if (cacheable) screenshotStatusCache = { status, expiresAt: now + SCREENSHOT_STATUS_TTL_MS };
   try {
-    const screenshot = "/tmp/opencrew-preview.png";
+    const screenshot = "/tmp/kodbot-preview.png";
     await runner(
       status.runtime,
       cuaExecArgs([
@@ -782,11 +883,15 @@ type ContainerMcpLaunch = {
   env: Record<string, string>;
 };
 
-export function containerComputerMcp(runtime: Runtime): ContainerMcpLaunch {
+export function containerComputerMcp(runtime: Runtime, owner?: string): ContainerMcpLaunch {
   return {
     command: process.execPath,
     args: [containerMcpPath, runtime, CONTAINER, CUA_SOCKET],
-    env: { ELECTRON_RUN_AS_NODE: "1" },
+    env: {
+      ELECTRON_RUN_AS_NODE: "1",
+      OC_VM_DESKTOP_LOCK: VM_DESKTOP_LOCK,
+      ...(owner ? { OC_VM_DESKTOP_OWNER: owner } : {}),
+    },
   };
 }
 

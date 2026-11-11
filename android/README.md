@@ -20,6 +20,16 @@ approval flow. The phone does not receive a general shell endpoint.
   approval, question, completion, and routine-failure events.
 - Long-press any answer to select and copy text, then paste it into the
   composer with the normal Android text controls.
+- **Tablet and wide-window layout:** from 600dp wide the fleet becomes a left
+  navigation column and the chat or settings open on the right. The breakpoint
+  is width-only so opening the keyboard cannot flip the layout and drop the
+  composer focus. Phones keep the single-pane layout. The QR scanner remains
+  portrait-only; the chat shell follows the device.
+- **Desktop mode (web view):** Settings → Display can load the same React UI
+  used by the desktop app in a full-screen WebView. The native foreground
+  service keeps notifications, approvals, and background SSE alive. Hosted
+  sessions are handed to the gateway as an HttpOnly cookie; local QR pairings
+  open the harness web UI directly. Tablets get a one-time suggestion.
 - Attach photos, PDFs, or files from the composer. The phone uploads the bytes
   to the host's `~/.kodbot/uploads` directory and sends the same
   `<attached-file path="…" />` block the desktop composer uses, so the agent

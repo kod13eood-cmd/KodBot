@@ -44,6 +44,15 @@ export interface OptionCardData {
   /** permission cards: the tool being requested, so the card can show what
    * is actually being asked and offer "always allow this tool". */
   tool?: string;
+  /** one plain-language sentence explaining what the tool will do */
+  explanation?: string;
+  /** why this action needs approval and what could go wrong */
+  risk?: string;
+  riskLevel?: "low" | "medium" | "high";
+  /** the task title, so the card has context beyond the raw command */
+  purpose?: string;
+  /** when the soft timer expired; the card stays answerable */
+  overdueAt?: number;
   /** why this stopped despite auto mode (destructive-looking command) */
   held?: string;
   /** the narrow grant "always allow" remembers, e.g. "Bash:git" */
@@ -184,6 +193,9 @@ export interface TaskRecord {
    * a folder that moved under a live session would break resume. `null`
    * = pinned to the default (home); absent = not pinned yet. */
   cwd?: string | null;
+  /** When the person archived this task. The transcript is kept; the picker
+   * hides it until it is restored. Absent = visible. */
+  archivedAt?: number;
 }
 
 export interface TaskUsage {
@@ -279,7 +291,7 @@ export interface BotRecord {
   resumeCursors: Record<string, unknown>;
   /** which computer the bot acts on: its cloud box, this Mac (local CUA),
    * or none. Unset = auto (box when it exists, else local when available). */
-  computer?: "cloud" | "vm" | "local" | "off";
+  computer?: "cloud" | "vm" | "local" | "off" | null;
   /** where NEW tasks run their shell tools; each task pins its own copy
    * on its first turn (TaskRecord.cwd). Absent = the home folder. */
   cwd?: string;
@@ -1353,7 +1365,7 @@ export class Store {
    * exception is an active task with no messages at all: there is nothing to
    * protect, and leaving it visible while the routine runs makes the bot
    * look empty. */
-  createTask(botId: string, title?: string, activate = true): TaskRecord | null {
+  createTask(botId: string, title?: string, activate = true, detached = false): TaskRecord | null {
     const bot = this.bot(botId);
     if (!bot) return null;
     const task: TaskRecord = {
@@ -1366,7 +1378,7 @@ export class Store {
     // A cancelled webhook run can leave an empty task active. The next
     // detached routine task is a better thing to show than a blank chat.
     const activeIsEmpty = this.messagesFor(bot.threadId).length === 0;
-    if (activate || activeIsEmpty) {
+    if (activate || (activeIsEmpty && !detached)) {
       bot.threadId = task.threadId;
       bot.resumeCursors = {}; // legacy mirror follows the active task
     }
@@ -1378,7 +1390,7 @@ export class Store {
   switchTask(botId: string, threadId: string): BotRecord | null {
     const bot = this.bot(botId);
     const task = bot?.tasks?.find((t) => t.threadId === threadId);
-    if (!bot || !task) return null;
+    if (!bot || !task || task.archivedAt) return null;
     bot.threadId = task.threadId;
     bot.resumeCursors = { ...task.resumeCursors };
     this.saveBots();
@@ -1393,6 +1405,31 @@ export class Store {
     this.saveBots();
     this.emit({ type: "bot", botId });
     return task;
+  }
+
+  /** Hide a task without deleting it. The active task can only be archived
+   * when another visible task can take its place, so a bot always has one
+   * reachable chat. Returns the updated bot, or null when the request would
+   * leave nothing to open. */
+  setTaskArchived(botId: string, threadId: string, archivedAt: number | null): BotRecord | null {
+    const bot = this.bot(botId);
+    const task = bot?.tasks?.find((t) => t.threadId === threadId);
+    if (!bot || !task) return null;
+    if (archivedAt == null) {
+      delete task.archivedAt;
+    } else {
+      const remaining = (bot.tasks ?? []).filter((t) => t.threadId !== threadId && !t.archivedAt);
+      if (bot.threadId === threadId && remaining.length === 0) return null;
+      task.archivedAt = archivedAt;
+      if (bot.threadId === threadId) {
+        const next = remaining[0]!;
+        bot.threadId = next.threadId;
+        bot.resumeCursors = { ...next.resumeCursors };
+      }
+    }
+    this.saveBots();
+    this.emit({ type: "bot", botId });
+    return bot;
   }
 
   /** Name a task after its first message, once. */

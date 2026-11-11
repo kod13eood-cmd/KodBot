@@ -23,8 +23,8 @@ Last reviewed: **2026-11-02**.
 | GitHub remote | `git@github.com:kod13eood-cmd/KodBot.git` |
 | Gitea remote | `ssh://git@llm1:2222/deso/kodbot.git` |
 | Android release branch | `android-release` (APK-only branch) |
-| App version | `0.1.28` |
-| Android version | `0.1.12` / versionCode `13` |
+| App version | `0.1.42` |
+| Android version | `0.1.19` / versionCode `20` |
 
 There is also a stale remote checkout at `paperclipi7:~/Developer/OpenBot`;
 it is not the deployment source. The canonical source is the owner working
@@ -138,7 +138,7 @@ once; after that, releases update in place.
 | Harness | `http://paperclipi7.tail89d239.ts.net:8799` (0.0.0.0:8799) |
 | Companion | `paperclipi7.tail89d239.ts.net:8810` |
 | Companion control | `127.0.0.1:8811` (loopback only) |
-| Desktop update feed | `http://paperclipi7.tail89d239.ts.net:8799/updates` |
+| Desktop update feed | `https://github.com/kod13eood-cmd/kodbot-releases/releases` (legacy: `http://paperclipi7.tail89d239.ts.net:8799/updates`) |
 | Data directory | `/home/paperclipi7/.kodbot` |
 | Companion state | `/home/paperclipi7/.kodbot-companion` |
 | Server files | `/opt/kodbot/server` |
@@ -280,10 +280,12 @@ A KodBot maintenance pass then restored the missing state:
   ~20:22 UTC.
 - `groups.json` was written at ~20:26 UTC.
 - `/home/paperclipi7/kodbot-backups/RESTORE.md` documents the restore process.
-- `kodbot-state-snapshot.timer` now snapshots `.kodbot` + `.kodbot-companion`
-  and the live API every 15 minutes.
+- `kodbot-state-snapshot.timer` now snapshots `.kodbot`, `.kodbot-companion`,
+  `.kodbot-gateway` (with a consistent SQLite copy) and `.kodbot-tenants`,
+  plus the live API every 15 minutes.
 - `kodbot-offsite-backup.timer` uploads a daily archive to `llm1:/home/llm1/backups/kodbot/`
-  at 03:30 Europe/Sofia (60-day retention, sha256-verified).
+  at 03:30 Europe/Sofia (60-day retention, sha256-verified). The archive
+  includes the gateway and tenant roots.
 
 Current state:
 
@@ -296,6 +298,8 @@ Current state:
 | `bots.json` | Yes | Current fleet |
 | `messages.db` | Yes | Current transcript DB |
 | `webhooks.json` | Yes | Current webhooks |
+| `~/.kodbot-gateway` | Yes | Gateway DB (accounts, sessions, invites), mode 600 |
+| `~/.kodbot-tenants` | Yes | Tenant root; 0 members as of 2026-11-11 |
 | backups | Yes | `/home/paperclipi7/kodbot-backups` |
 | `~/.config/kodbot.env` | Yes | Managed Composio broker URL/token and companion name |
 
