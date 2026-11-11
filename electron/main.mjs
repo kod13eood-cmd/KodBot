@@ -700,7 +700,9 @@ ipcMain.handle("speech:finish", () => {
 // on and off, look at it, open or cancel a pairing window, and remove a
 // device. It cannot reach the sidecar's control port itself.
 async function remoteCompanion(pathname, method = "GET") {
-  const response = await fetch(`${remoteConnection.url}/api/companion${pathname}`, {
+  // Use the window's session so a gateway cookie authenticates these calls.
+  // Node's global fetch has no cookies and would see 401 on a gateway.
+  const response = await session.defaultSession.fetch(`${remoteConnection.url}/api/companion${pathname}`, {
     method,
     headers: { accept: "application/json" },
     signal: AbortSignal.timeout(8_000),

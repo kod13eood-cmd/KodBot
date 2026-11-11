@@ -31,8 +31,11 @@ live host yet.
   gateway proxies the owner to the existing live harness without starting a
   second process on `~/.kodbot`. New accounts still get their own harness.
 
-The next implementation step is the Android login screen and HTTPS address
-support, then deployment on port 8780 behind TLS.
+The desktop remote probe now recognizes a `kodbot-gateway` health response,
+accepts its login page as a remote target, and sends companion-control calls
+through the window session so the gateway cookie authenticates them. The next
+implementation step is the Android login screen and HTTPS address support,
+then deployment on port 8780 behind TLS.
 
 ### Live deployment (2026-11-08)
 

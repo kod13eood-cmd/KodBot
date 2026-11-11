@@ -18,6 +18,10 @@ Status keys:
   `opencode` CLIs you already use, with your existing logins and subscriptions.
 - **Local-first.** The harness, transcripts, keys, and events stay on your
   machine (`~/.kodbot`) or on a server you control.
+- **Local or hosted first run.** The desktop app asks whether to run on this
+  computer or connect to a remote server. A remote address can be a KodBot
+  harness or a **KodBot gateway**; the gateway opens its email/password login
+  and keeps the session for the app.
 - **Per-bot model picker with capability icons.** Every model shows small
   **text, vision, audio, image, video, and reasoning** badges so the choice is
   readable before you pick it. OpenCode **Zen** and **Go** are separate sections
@@ -269,7 +273,7 @@ not connected.
 | Scheduled, delegated, and live jobs | Sidebar → Activity |
 | Connected apps and provider setup | Sidebar → Connected apps (hover an app for its full description) |
 | Shortcuts | `Cmd/Ctrl+/` or App Settings → Keyboard shortcuts |
-| Remote server | App Settings → Server |
+| Remote server or gateway | App Settings → Server |
 | Models and engines | App Settings → Engines / bot Model picker |
 
 ## Demo script for ads and the website

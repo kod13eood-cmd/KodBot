@@ -189,7 +189,7 @@ The rest of this guide is organized by topic.
 ## Server and remote mode
 
 - By default the desktop app runs a local harness. **Settings → General → Server** lets it use a server that stays on 24/7.
-- The app checks `/api/health` and `/api/bots` before switching; a port that only answers health (the phone companion) is rejected.
+- The app checks `/api/health` and `/api/bots` before switching; a port that only answers health (the phone companion) is rejected. A KodBot gateway is accepted too; it opens its email/password login page, and the session stays in the app.
 - Switching restarts the app. Keys, chats, engines, and the companion stay on the server.
 - The **Updates** row checks the release feed; **Ctrl+Shift+R** reloads the UI after a server update.
 
@@ -376,7 +376,7 @@ KodBot е local-first chat приложение за екип от AI агент
 ## Сървър и отдалечен режим
 
 - По подразбиране десктоп app-ът пуска локален harness. **Settings → General → Server** позволява сървър, който работи 24/7.
-- App-ът проверява `/api/health` и `/api/bots` преди смяна; порт, който отговаря само на health (телефонният companion), се отхвърля.
+- App-ът проверява `/api/health` и `/api/bots` преди смяна; порт, който отговаря само на health (телефонният companion), се отхвърля. KodBot gateway също се приема; той отваря своята email/password login страница и сесията остава в app-а.
 - Смяната рестартира app-а. Ключовете, чатовете, engine-ите и companion-ът остават на сървъра.
 - Редът **Updates** проверява release feed-а; **Ctrl+Shift+R** презарежда UI-а след сървърно обновяване.
 
