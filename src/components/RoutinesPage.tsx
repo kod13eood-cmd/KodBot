@@ -442,7 +442,7 @@ export function RoutineEditor({
       name,
       prompt,
       botId,
-      workerBotId: workerBotId || undefined,
+      workerBotId: workerBotId || "",
       runOn,
       enabled: routine ? undefined : true,
       durationMinutes,

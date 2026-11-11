@@ -124,6 +124,21 @@ describe("WebhookManager", () => {
     expect(h.manager.list()[0]).toMatchObject({ lastRunId: "run-1", deliveryCount: 1 });
   });
 
+  it("clears a worker bot when the editor switches back to the owner", () => {
+    const h = harness();
+    const { webhook } = h.manager.create({
+      name: "Worker alert",
+      prompt: "Handle the alert",
+      botId: "parent-bot",
+      workerBotId: "worker-bot",
+    });
+    expect(h.manager.list()[0]?.workerBotId).toBe("worker-bot");
+
+    h.manager.update(webhook.id, { workerBotId: null });
+    expect(h.manager.list()[0]?.workerBotId).toBeUndefined();
+    expect(new WebhookManager(h.options).list()[0]?.workerBotId).toBeUndefined();
+  });
+
   it("passes a dedicated worker bot through to the queued run and reloads it", () => {
     const h = harness();
     const { webhook, secret } = h.manager.create({

@@ -362,11 +362,14 @@ export class RoutineManager {
   update(id: string, patch: Partial<RoutineInput>): Routine | null {
     const routine = this.routines.find((r) => r.id === id);
     if (!routine) return null;
+    // An explicitly empty worker means "run on the owner again"; `??` alone
+    // would keep the old worker and make the editor unable to clear it.
+    const clearsWorker = Object.prototype.hasOwnProperty.call(patch, "workerBotId") && !String(patch.workerBotId ?? "").trim();
     const clean = sanitizeInput({
       name: patch.name ?? routine.name,
       prompt: patch.prompt ?? routine.prompt,
       botId: patch.botId ?? routine.botId,
-      workerBotId: patch.workerBotId ?? routine.workerBotId,
+      workerBotId: clearsWorker ? undefined : patch.workerBotId ?? routine.workerBotId,
       runOn: patch.runOn ?? routine.runOn,
       enabled: patch.enabled ?? routine.enabled,
       schedule: patch.schedule ?? routine.schedule,
@@ -380,6 +383,7 @@ export class RoutineManager {
       nextRunAt: clean.enabled ? this.initialOccurrence(clean.schedule, this.now()) : null,
       updatedAt: this.now(),
     });
+    if (clearsWorker) delete routine.workerBotId;
     if (patch.enabled === false) {
       for (const run of this.runs) {
         if (run.routineId !== routine.id || run.status !== "queued") continue;

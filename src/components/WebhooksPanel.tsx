@@ -108,7 +108,7 @@ function WebhookEditor({ webhook, bots, onClose, onCredential }: { webhook?: Web
 
   const save = async () => {
     const bot = bots.find((candidate) => candidate.id === botId);
-    const input: WebhookTriggerInput = { name: name.trim() || suggestedName(prompt, bot, t), prompt: prompt.trim(), botId, ...(workerBotId ? { workerBotId } : {}), runOn, ...webhookActivationDefaults(webhook), eventTypes: eventTypes.split(",").map((value) => value.trim()).filter(Boolean) };
+    const input: WebhookTriggerInput = { name: name.trim() || suggestedName(prompt, bot, t), prompt: prompt.trim(), botId, workerBotId: workerBotId || null, runOn, ...webhookActivationDefaults(webhook), eventTypes: eventTypes.split(",").map((value) => value.trim()).filter(Boolean) };
     setSaving(true);
     setError("");
     try {

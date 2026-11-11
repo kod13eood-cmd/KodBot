@@ -26,7 +26,7 @@ export interface WebhookTriggerInput {
   name: string;
   prompt: string;
   botId: string;
-  workerBotId?: string;
+  workerBotId?: string | null;
   runOn?: RoutineRunOn;
   enabled?: boolean;
   verificationPending?: boolean;

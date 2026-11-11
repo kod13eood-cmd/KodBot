@@ -154,6 +154,22 @@ describe("RoutineManager", () => {
     expect(h.taskActivations).toEqual([false]);
   });
 
+  it("clears a worker bot when the editor switches back to the owner", () => {
+    const h = harness();
+    const routine = h.manager.create({
+      name: "Worker review",
+      prompt: "Review the queue",
+      botId: "crew-1",
+      workerBotId: "crew-worker",
+      schedule: { type: "once", at: new Date(2026, 7, 17, 8, 1).getTime() },
+    });
+    expect(routine.workerBotId).toBe("crew-worker");
+
+    const updated = h.manager.update(routine.id, { workerBotId: "" });
+    expect(updated?.workerBotId).toBeUndefined();
+    expect(new RoutineManager(h.options).listRoutines()[0]?.workerBotId).toBeUndefined();
+  });
+
   it("cancels queued work when a routine is paused", async () => {
     const h = harness();
     h.setBot("busy");

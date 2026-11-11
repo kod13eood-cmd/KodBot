@@ -35,7 +35,7 @@ export interface WebhookTriggerInput {
   name: string;
   prompt: string;
   botId: string;
-  workerBotId?: string;
+  workerBotId?: string | null;
   runOn?: RoutineRunOn;
   enabled?: boolean;
   verificationPending?: boolean;
@@ -152,7 +152,7 @@ const triggerInputSchema = z.object({
   name: z.string(),
   prompt: z.string(),
   botId: z.string(),
-  workerBotId: z.string().trim().min(1).max(128).optional(),
+  workerBotId: z.string().trim().max(128).optional().nullable(),
   runOn: runOnSchema.optional(),
   enabled: z.boolean().optional(),
   verificationPending: z.boolean().optional(),
@@ -398,11 +398,13 @@ export class WebhookManager {
     const trigger = this.webhooks.find((candidate) => candidate.id === id);
     if (!trigger) return null;
     const patch = parseTriggerPatch(value);
+    // null or "" explicitly clears the worker; `??` alone would retain it.
+    const clearsWorker = Object.prototype.hasOwnProperty.call(patch, "workerBotId") && !String(patch.workerBotId ?? "").trim();
     const clean = cleanInput({
       name: patch.name ?? trigger.name,
       prompt: patch.prompt ?? trigger.prompt,
       botId: patch.botId ?? trigger.botId,
-      workerBotId: patch.workerBotId ?? trigger.workerBotId,
+      workerBotId: clearsWorker ? undefined : patch.workerBotId ?? trigger.workerBotId,
       runOn: patch.runOn ?? trigger.runOn,
       enabled: patch.enabled ?? trigger.enabled,
       verificationPending: patch.verificationPending ?? trigger.verificationPending,
@@ -410,6 +412,7 @@ export class WebhookManager {
     });
     if (this.options.botState(clean.workerBotId ?? clean.botId) === "missing") fail(400, "That CREW no longer exists");
     Object.assign(trigger, clean, { updatedAt: this.now() });
+    if (clearsWorker) delete trigger.workerBotId;
     if (!clean.eventTypes?.length) delete trigger.eventTypes;
     if (patch.enabled === false) {
       this.options.cancelQueued?.(trigger.id, "The webhook was paused before this delivery started");
