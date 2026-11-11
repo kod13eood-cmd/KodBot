@@ -11,7 +11,9 @@ export function teamImportPreview(manifest: unknown): PendingTeamImport {
     throw new Error("This file does not contain a team.");
   }
   const root = manifest as Record<string, unknown>;
-  if (root.format !== "opencrew.team") throw new Error("This is not a KodBot team file.");
+  if (!["kodbot.team", "opencrew.team", "openmaus.team"].includes(String(root.format))) {
+    throw new Error("This is not a KodBot team file.");
+  }
   if (root.version !== 1 && root.version !== 2) {
     throw new Error(`Team file version ${String(root.version)} is not supported.`);
   }

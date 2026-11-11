@@ -289,13 +289,13 @@ describe("ensureKimiInjectAlias", () => {
 
 describe("ensureDroidInjectModel", () => {
   it("upserts a generic-chat-completion BYOK row and reuses it", () => {
-    const home = mkdtempSync(join(tmpdir(), "omb-droid-inject-"));
+    const home = mkdtempSync(join(tmpdir(), "kodbot-droid-inject-"));
     scratchDirs.push(home);
     mkdirSync(join(home, ".factory"), { recursive: true });
     writeFileSync(join(home, ".factory", "settings.json"), JSON.stringify({ hooks: { Stop: [] } }));
     const first = ensureDroidInjectModel("omlx::MiniMax-M3-4bit", { HOME: home });
     const again = ensureDroidInjectModel("omlx::MiniMax-M3-4bit", { HOME: home });
-    expect(first).toBe("custom:opencrew-omlx-MiniMax-M3-4bit");
+    expect(first).toBe("custom:kodbot-omlx-MiniMax-M3-4bit");
     expect(again).toBe(first);
     const settings = JSON.parse(readFileSync(join(home, ".factory", "settings.json"), "utf8")) as {
       hooks: unknown;
@@ -312,7 +312,7 @@ describe("ensureDroidInjectModel", () => {
   });
 
   it("persists a generated id onto a matching customModels row that has none", () => {
-    const home = mkdtempSync(join(tmpdir(), "omb-droid-inject-noid-"));
+    const home = mkdtempSync(join(tmpdir(), "kodbot-droid-inject-noid-"));
     scratchDirs.push(home);
     mkdirSync(join(home, ".factory"), { recursive: true });
     writeFileSync(
@@ -325,7 +325,7 @@ describe("ensureDroidInjectModel", () => {
     const settings = JSON.parse(readFileSync(join(home, ".factory", "settings.json"), "utf8")) as {
       customModels: Array<{ id?: string; model: string }>;
     };
-    expect(id).toBe("custom:opencrew-omlx-MiniMax-M3-4bit");
+    expect(id).toBe("custom:kodbot-omlx-MiniMax-M3-4bit");
     expect(settings.customModels).toHaveLength(1);
     expect(settings.customModels[0]?.id).toBe(id);
   });

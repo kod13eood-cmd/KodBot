@@ -61,7 +61,8 @@ interface FactorySettings {
   sessionDefaultSettings?: { model?: string };
 }
 
-const INJECT_ID_PREFIX = "custom:opencrew-";
+const INJECT_ID_PREFIX = "custom:kodbot-";
+const LEGACY_INJECT_ID_PREFIX = "custom:opencrew-";
 
 export function droidInjectId(host: string, model: string): string {
   const safe = `${host}-${model}`.replace(/[^a-zA-Z0-9._+-]+/g, "-").replace(/-+/g, "-");
@@ -129,7 +130,7 @@ async function resolveModels(env: Record<string, string | undefined>) {
     const custom = (settings.customModels ?? []).flatMap((m) => {
       // Live inject rows come from mergeLocalInject as host::model. Skip the
       // BYOK copies we wrote so the picker does not list the same model twice.
-      if (m.id?.startsWith(INJECT_ID_PREFIX)) return [];
+      if (m.id?.startsWith(INJECT_ID_PREFIX) || m.id?.startsWith(LEGACY_INJECT_ID_PREFIX)) return [];
       const id = m.id || (m.model ? `custom:${m.model}` : "");
       if (!id) return [];
       return [{ id, label: m.displayName || m.model || id, custom: true as const }];

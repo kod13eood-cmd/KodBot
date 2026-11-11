@@ -29,7 +29,7 @@ describe("team manifests", () => {
     );
 
     expect(manifest).toMatchObject({
-      format: "opencrew.team",
+      format: "kodbot.team",
       version: 2,
       team: {
         name: "Launch Crew",
@@ -38,6 +38,28 @@ describe("team manifests", () => {
     });
     expect(manifest.team).not.toHaveProperty("room");
     expect(JSON.stringify(manifest)).not.toMatch(/bot-a|bot-b|thread|model|permission|message/i);
+  });
+
+  it("accepts the KodBot format and both earlier format ids", () => {
+    for (const format of ["kodbot.team", "opencrew.team", "openmaus.team"]) {
+      const manifest = parseTeamManifest({
+        format,
+        version: 2,
+        team: {
+          name: "Engineering",
+          members: [
+            {
+              key: "lead",
+              name: "Ada",
+              title: "Tech Lead",
+              description: "Coordinates the work",
+              appearance: { color: "purple" },
+            },
+          ],
+        },
+      });
+      expect(manifest.format).toBe("kodbot.team");
+    }
   });
 
   it("parses legacy room files while dropping unrelated settings", () => {
