@@ -94,19 +94,19 @@ intend to update in place.
 
 ## Installing the current stable build
 
-The 0.1.14 APK (`versionCode` 15) is signed with the key above and installs over
-the original 0.1.12 app and the re-signed 0.1.13 fallback without uninstalling:
+The 0.1.19 APK (`versionCode` 20) is signed with the key above and installs over
+the original 0.1.12 app and every stable-key build since without uninstalling:
 
 - <https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-android.apk>
-- <https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.14.apk>
+- <https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.19.apk>
 
 The GitHub release assets for v0.1.39 and v0.1.40 were replaced on 2026-11-08
-with builds signed by the stable key, so every download link now installs over
-the same app. The app's own update check reads `android/latest.json` from
-`main`, which points at the same 0.1.14 build.
+with builds signed by the stable key, and v0.1.41 was built by the release
+workflow with that same key. The app's own update check reads
+`android/latest.json` from `main`, which now points at the 0.1.19 build.
 
 **One-time uninstall:** if the phone installed any GitHub release APK published
-before that repair, uninstall it once before installing 0.1.14. All chats and
+before that repair, uninstall it once before installing 0.1.14 or newer. All chats and
 bots live on the server; only the local pairing/login credential is lost. After
 0.1.14 is installed, future updates install in place.
 
@@ -119,6 +119,7 @@ a different throwaway key each time:
 | --- | --- |
 | v0.1.39 (0.1.13) | `4C:F3:5D:E7:...` |
 | v0.1.40 (0.1.13) | `B3:DF:5B:18:...` |
+| v0.1.41 (0.1.19) | `0B:20:03:5E:...` (stable) |
 | Installed app / `android-release` | `0B:20:03:5E:...` (stable) |
 
 Android returned `INSTALL_FAILED_UPDATE_INCOMPATIBLE` whenever the key changed.

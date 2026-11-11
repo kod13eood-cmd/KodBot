@@ -62,15 +62,16 @@ chmod +x release/KodBot-*-x86_64.AppImage
 
 ## Self-hosted updates
 
-This branch publishes Linux updates from the paperclipi7 harness instead of a
-GitHub release. `electron-builder.yml` points the generic updater at:
+Packaged builds read updates from the public
+[`kodbot-releases`](https://github.com/kod13eood-cmd/kodbot-releases)
+repository. `electron-builder.yml` points at `latest-linux.yml` there, and the
+newest published release is what **Settings → General → Check for updates**
+compares against.
 
-```text
-http://paperclipi7.tail89d239.ts.net:8799/updates
-```
-
-The harness serves only `latest-linux.yml` and `KodBot-*.AppImage` from
-`~/.kodbot/desktop/updates`. To publish a build:
+The older self-hosted feed still exists as a bridge for installs built before
+the GitHub provider switch. The harness serves only `latest-linux.yml` and
+`KodBot-*.AppImage` from `~/.kodbot/desktop/updates`. To publish a build to
+both the GitHub release and the legacy feed:
 
 ```sh
 # bump "version" in package.json first

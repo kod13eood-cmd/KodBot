@@ -23,8 +23,8 @@ Last reviewed: **2026-11-02**.
 | GitHub remote | `git@github.com:kod13eood-cmd/KodBot.git` |
 | Gitea remote | `ssh://git@llm1:2222/deso/kodbot.git` |
 | Android release branch | `android-release` (APK-only branch) |
-| App version | `0.1.28` |
-| Android version | `0.1.12` / versionCode `13` |
+| App version | `0.1.41` |
+| Android version | `0.1.19` / versionCode `20` |
 
 There is also a stale remote checkout at `paperclipi7:~/Developer/OpenBot`;
 it is not the deployment source. The canonical source is the owner working
@@ -138,7 +138,7 @@ once; after that, releases update in place.
 | Harness | `http://paperclipi7.tail89d239.ts.net:8799` (0.0.0.0:8799) |
 | Companion | `paperclipi7.tail89d239.ts.net:8810` |
 | Companion control | `127.0.0.1:8811` (loopback only) |
-| Desktop update feed | `http://paperclipi7.tail89d239.ts.net:8799/updates` |
+| Desktop update feed | `https://github.com/kod13eood-cmd/kodbot-releases/releases` (legacy: `http://paperclipi7.tail89d239.ts.net:8799/updates`) |
 | Data directory | `/home/paperclipi7/.kodbot` |
 | Companion state | `/home/paperclipi7/.kodbot-companion` |
 | Server files | `/opt/kodbot/server` |
