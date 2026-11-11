@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useDeferredValue } f
 import { Loader2, Menu } from "lucide-react";
 import { StoreProvider, useStore, visibleMessages } from "@/state/store";
 import { Onboarding } from "@/components/Onboarding";
+import { ServerSetupGate } from "@/components/ServerSetupGate";
 import { emailGateDone, initAnalytics } from "@/lib/analytics";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatView } from "@/components/ChatView";
@@ -287,11 +288,13 @@ export default function App() {
   return (
     <DesktopCapabilitiesProvider>
       <StoreProvider>
-        <Shell />
+        <ServerSetupGate>
+          <Shell />
+          <SendQueueDrainer />
+          {gated && <Onboarding onDone={() => setGated(false)} />}
+        </ServerSetupGate>
         <WindowControls />
         <PageBridge />
-        <SendQueueDrainer />
-        {gated && <Onboarding onDone={() => setGated(false)} />}
       </StoreProvider>
     </DesktopCapabilitiesProvider>
   );

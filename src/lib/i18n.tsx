@@ -297,6 +297,24 @@ const BULGARIAN: Record<string, string> = {
   "Connecting…": "Свързване…",
   "Connect to remote server": "Свържи към отдалечен сървър",
   "Use this computer": "Използвай този компютър",
+  "Where should your bots run?": "Къде да работят ботовете?",
+  "Choose now. You can change this later in App Settings → General → Server.":
+    "Избери сега. Можеш да промениш това по-късно от App Settings → General → Server.",
+  "Create a local server": "Създай локален сървър",
+  "KodBot and the agents run on this computer. The server is built in; install the agent CLIs you want here. Best for one machine.":
+    "KodBot и агентите работят на този компютър. Сървърът е вграден; инсталирай agent CLI-тата, които искаш, тук. Най-добре за една машина.",
+  "Connect to a remote server": "Свържи към отдалечен сървър",
+  "Use KodBot on another computer or a cloud VM. Bots, engines, keys, files and memory stay there. This computer only needs network access.":
+    "Използвай KodBot на друг компютър или cloud VM. Ботовете, engine-ите, ключовете, файловете и паметта остават там. Този компютър се нуждае само от мрежов достъп.",
+  "Remote server address": "Адрес на отдалечения сървър",
+  "Enter the remote server address.": "Въведи адреса на отдалечения сървър.",
+  "Enter an address like https://kodbot.example.com or http://192.168.1.50:8799.":
+    "Въведи адрес като https://kodbot.example.com или http://192.168.1.50:8799.",
+  "Creating the local server…": "Създаване на локалния сървър…",
+  "The remote machine must already be running KodBot.":
+    "Отдалечената машина трябва вече да изпълнява KodBot.",
+  "The server runs on Linux, Windows and macOS. A remote server can be a cloud VM or a machine on your LAN/Tailscale. Use the harness port 8799 (not the phone companion port 8810); HTTPS is best.":
+    "Сървърът работи на Linux, Windows и macOS. Отдалеченият сървър може да е cloud VM или машина в LAN/Tailscale. Използвай harness порта 8799 (не companion порта 8810); HTTPS е за предпочитане.",
   "Switching…": "Превключване…",
   "The remote machine must be reachable over your LAN or Tailscale and must be running KodBot. Keys, engines, and the companion stay on that machine. The app will restart when you switch.":
     "Отдалечената машина трябва да е достъпна през локалната мрежа или Tailscale и да изпълнява KodBot. Ключовете, двигателите и компаньонът остават на нея. Приложението ще се рестартира при превключване.",

@@ -111,6 +111,8 @@ declare global {
 export interface ServerConnectionState {
   mode: "local" | "remote";
   url?: string;
+  /** False until the user explicitly chose local or remote on this install. */
+  configured?: boolean;
   /** What this window actually loaded. */
   active: "local" | "remote";
   /** Saved remote address was unreachable, so the window fell back to local. */

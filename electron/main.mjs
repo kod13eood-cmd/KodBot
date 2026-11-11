@@ -91,6 +91,18 @@ function readServerConnection() {
   return { mode: "local" };
 }
 
+/** True when the user or an earlier launch saved a valid local/remote choice.
+ * First-run setup uses this so a fresh install gets the wizard once, while an
+ * existing install is not asked again after it updates. */
+function serverConnectionChoiceSaved() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(SERVER_CONNECTION_FILE, "utf8"));
+    return raw?.mode === "local" || raw?.mode === "remote";
+  } catch {
+    return false;
+  }
+}
+
 function writeServerConnection(connection) {
   fs.mkdirSync(path.dirname(SERVER_CONNECTION_FILE), { recursive: true });
   const temporary = `${SERVER_CONNECTION_FILE}.${process.pid}.tmp`;
@@ -700,6 +712,7 @@ async function remoteCompanion(pathname, method = "GET") {
 
 ipcMain.handle("server:get-connection", () => ({
   ...remoteConnection,
+  configured: serverConnectionChoiceSaved(),
   active: remoteMode ? "remote" : "local",
   fallback: remoteConnection.mode === "remote" && !remoteMode,
 }));
