@@ -106,7 +106,7 @@ export interface RoutineManagerOptions {
    * is what lets the server number and replay them. */
   emit?: (payload: Record<string, unknown>) => void;
   botState: (botId: string) => "ready" | "busy" | "missing";
-  createTask: (botId: string, title: string, activate?: boolean) => { threadId: string } | null;
+  createTask: (botId: string, title: string, activate?: boolean, detached?: boolean) => { threadId: string } | null;
   startTurn: (
     botId: string,
     threadId: string,
@@ -602,7 +602,7 @@ export class RoutineManager {
         // Automation work always gets a detached task. Webhooks used to
         // activate the bot's live chat, which made an incoming alert replace
         // whatever the person was typing; that is never allowed.
-        const task = this.options.createTask(workerBotId, run.routineName, false);
+        const task = this.options.createTask(workerBotId, run.routineName, false, true);
         if (!task) {
           run.status = "failed";
           run.error = "Could not create a task for this run";

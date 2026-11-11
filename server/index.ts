@@ -1842,8 +1842,8 @@ routines = new RoutineManager({
     const bot = store.bot(botId);
     return !bot ? "missing" : bot.busy ? "busy" : "ready";
   },
-  createTask: (botId, title, activate = false) => {
-    const task = store.createTask(botId, title, activate);
+  createTask: (botId, title, activate = false, detached = false) => {
+    const task = store.createTask(botId, title, activate, detached);
     const bot = store.bot(botId);
     if (task && bot) broadcast({ kind: "bot", bot: publicBot(bot) });
     return task;
