@@ -1362,7 +1362,7 @@ export class Store {
    * exception is an active task with no messages at all: there is nothing to
    * protect, and leaving it visible while the routine runs makes the bot
    * look empty. */
-  createTask(botId: string, title?: string, activate = true): TaskRecord | null {
+  createTask(botId: string, title?: string, activate = true, detached = false): TaskRecord | null {
     const bot = this.bot(botId);
     if (!bot) return null;
     const task: TaskRecord = {
@@ -1375,7 +1375,7 @@ export class Store {
     // A cancelled webhook run can leave an empty task active. The next
     // detached routine task is a better thing to show than a blank chat.
     const activeIsEmpty = this.messagesFor(bot.threadId).length === 0;
-    if (activate || activeIsEmpty) {
+    if (activate || (activeIsEmpty && !detached)) {
       bot.threadId = task.threadId;
       bot.resumeCursors = {}; // legacy mirror follows the active task
     }

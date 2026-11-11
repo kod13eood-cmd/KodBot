@@ -219,14 +219,15 @@ describe("RoutineManager", () => {
     expect(h.manager.listRoutines()[0]).toMatchObject({ runOn: "crew" });
   });
 
-  it("opens webhook jobs in the assigned bot's live chat", async () => {
+  it("runs a webhook in its worker task without touching the parent chat", async () => {
     const h = harness();
     const receivedAt = new Date(2026, 7, 17, 8, 2).getTime();
     const queued = h.manager.enqueueWebhook({
       webhookId: "hook-1",
       webhookName: "New ticket",
       prompt: "Handle ticket 42",
-      botId: "crew-webhook",
+      botId: "parent-bot",
+      workerBotId: "worker-bot",
       runOn: "cloud",
       deliveryId: "delivery-42",
       receivedAt,
@@ -236,15 +237,45 @@ describe("RoutineManager", () => {
     expect(queued).toMatchObject({
       routineId: "hook-1",
       webhookId: "hook-1",
+      botId: "parent-bot",
+      workerBotId: "worker-bot",
       deliveryId: "delivery-42",
       triggerSource: "webhook",
       scheduledFor: receivedAt,
     });
     expect(queued).not.toHaveProperty("durationMinutes");
-    expect(h.started).toEqual([{ botId: "crew-webhook", threadId: "thread-1", prompt: "Handle ticket 42" }]);
+    expect(h.started).toEqual([{ botId: "worker-bot", threadId: "thread-1", prompt: "Handle ticket 42" }]);
     expect(h.runOns).toEqual(["cloud"]);
     expect(h.triggerSources).toEqual(["webhook"]);
-    expect(h.taskActivations).toEqual([true]);
+    expect(h.taskActivations).toEqual([false]);
+  });
+
+  it("reports a successful worker run to the parent exactly once", async () => {
+    const h = harness();
+    const completed: any[] = [];
+    h.options.onRunCompleted = (run) => completed.push(run);
+    const queued = h.manager.enqueueWebhook({
+      webhookId: "hook-2",
+      webhookName: "Alert",
+      prompt: "Check the alert",
+      botId: "parent-bot",
+      workerBotId: "worker-bot",
+      runOn: "crew",
+      deliveryId: "delivery-43",
+      receivedAt: Date.now(),
+    });
+    await h.manager.tick();
+    h.manager.handleRuntimeEvent({
+      type: "item.completed",
+      itemType: "assistant_text",
+      text: "All clear",
+      threadId: "thread-1",
+    } as any);
+    h.manager.handleRuntimeEvent({ type: "turn.completed", ok: true, threadId: "thread-1" } as any);
+    h.manager.handleRuntimeEvent({ type: "turn.completed", ok: true, threadId: "thread-1" } as any);
+
+    expect(completed).toHaveLength(1);
+    expect(completed[0]).toMatchObject({ id: queued.id, workerBotId: "worker-bot", output: "All clear" });
   });
 
   it("folds provider lifecycle events into the calendar receipt", async () => {

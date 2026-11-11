@@ -39,6 +39,8 @@ export interface Routine {
   name: string;
   prompt: string;
   botId: string;
+  /** Optional dedicated worker. The parent bot owns the automation and receives the report; the worker runs it. */
+  workerBotId?: string;
   runOn: RoutineRunOn;
   enabled: boolean;
   schedule: RoutineSchedule;
@@ -56,6 +58,7 @@ export interface RoutineRun {
   prompt?: string;
   durationMinutes?: number;
   botId: string;
+  workerBotId?: string;
   runOn: RoutineRunOn;
   scheduledFor: number;
   status: RoutineRunStatus;
@@ -75,12 +78,15 @@ export interface RoutineRun {
   seenAt?: number;
   /** When a terminal failure was pushed to the notification path. */
   notifiedAt?: number;
+  /** When a successful run was handed to the parent report path. */
+  reportedAt?: number;
 }
 
 export interface RoutineInput {
   name: string;
   prompt: string;
   botId: string;
+  workerBotId?: string;
   runOn?: RoutineRunOn;
   enabled?: boolean;
   schedule: RoutineSchedule;
@@ -113,6 +119,9 @@ export interface RoutineManagerOptions {
   /** Called once when a run ends in a state a human should hear about.
    * Failures and misses are reported; cancellations and successes are not. */
   onRunTerminal?: (run: RoutineRun) => void;
+  /** Called once when a run succeeds, so the parent bot can receive the
+   * worker's result without taking over the user's chat. */
+  onRunCompleted?: (run: RoutineRun) => void;
 }
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
@@ -247,10 +256,13 @@ function sanitizeInput(input: RoutineInput): Omit<Routine, "id" | "createdAt" | 
   if (!botId) throw new Error("Choose a bot");
   const runOn = input.runOn ?? "crew";
   if (runOn !== "crew" && runOn !== "cloud") throw new Error("Choose where this routine runs");
+  const workerBotId = String(input.workerBotId ?? "").trim() || undefined;
+  if (workerBotId && workerBotId === botId) throw new Error("Choose a different bot to run the automation");
   return {
     name,
     prompt,
     botId,
+    ...(workerBotId ? { workerBotId } : {}),
     runOn,
     enabled: input.enabled !== false,
     schedule: cleanSchedule(input.schedule),
@@ -314,7 +326,9 @@ export class RoutineManager {
 
   activeRunForBot(botId: string): RoutineRun | null {
     const run = this.runs.find(
-      (candidate) => candidate.botId === botId && ["running", "waiting"].includes(candidate.status),
+      (candidate) =>
+        (candidate.botId === botId || candidate.workerBotId === botId) &&
+        ["running", "waiting"].includes(candidate.status),
     );
     return run ? { ...run } : null;
   }
@@ -328,6 +342,9 @@ export class RoutineManager {
   create(input: RoutineInput): Routine {
     const clean = sanitizeInput(input);
     if (this.options.botState(clean.botId) === "missing") throw new Error("That bot no longer exists");
+    if (clean.workerBotId && this.options.botState(clean.workerBotId) === "missing") {
+      throw new Error("That worker bot no longer exists");
+    }
     const at = this.now();
     const routine: Routine = {
       id: randomUUID(),
@@ -349,12 +366,16 @@ export class RoutineManager {
       name: patch.name ?? routine.name,
       prompt: patch.prompt ?? routine.prompt,
       botId: patch.botId ?? routine.botId,
+      workerBotId: patch.workerBotId ?? routine.workerBotId,
       runOn: patch.runOn ?? routine.runOn,
       enabled: patch.enabled ?? routine.enabled,
       schedule: patch.schedule ?? routine.schedule,
       durationMinutes: patch.durationMinutes ?? routine.durationMinutes,
     });
     if (this.options.botState(clean.botId) === "missing") throw new Error("That bot no longer exists");
+    if (clean.workerBotId && this.options.botState(clean.workerBotId) === "missing") {
+      throw new Error("That worker bot no longer exists");
+    }
     Object.assign(routine, clean, {
       nextRunAt: clean.enabled ? this.initialOccurrence(clean.schedule, this.now()) : null,
       updatedAt: this.now(),
@@ -430,11 +451,12 @@ export class RoutineManager {
     webhookName: string;
     prompt: string;
     botId: string;
+    workerBotId?: string;
     runOn: RoutineRunOn;
     deliveryId: string;
     receivedAt: number;
   }): RoutineRun {
-    if (this.options.botState(input.botId) === "missing") {
+    if (this.options.botState(input.workerBotId ?? input.botId) === "missing") {
       throw Object.assign(new Error("The assigned CREW no longer exists"), { status: 410 });
     }
     const run: RoutineRun = {
@@ -443,6 +465,7 @@ export class RoutineManager {
       routineName: input.webhookName,
       prompt: input.prompt,
       botId: input.botId,
+      ...(input.workerBotId ? { workerBotId: input.workerBotId } : {}),
       runOn: input.runOn,
       scheduledFor: input.receivedAt,
       status: "queued",
@@ -486,7 +509,9 @@ export class RoutineManager {
     run.finishedAt = this.now();
     this.save();
     this.emitRun(run);
-    if (run.threadId) await this.options.interruptTurn?.(run.botId, run.threadId, run.runOn ?? "crew").catch(() => {});
+    if (run.threadId) {
+      await this.options.interruptTurn?.(run.workerBotId ?? run.botId, run.threadId, run.runOn ?? "crew").catch(() => {});
+    }
     queueMicrotask(() => void this.tick());
     return { ...run };
   }
@@ -562,20 +587,22 @@ export class RoutineManager {
 
       for (const run of [...this.runs].reverse()) {
         if (run.status !== "queued") continue;
-        const state = this.options.botState(run.botId);
+        const workerBotId = run.workerBotId ?? run.botId;
+        const state = this.options.botState(workerBotId);
         if (state === "busy") continue;
         if (state === "missing") {
           run.status = "failed";
-          run.error = "The assigned bot no longer exists";
+          run.error = "The assigned bot or worker no longer exists";
           run.finishedAt = this.now();
           this.save();
           this.emitRun(run);
           this.notifyTerminal(run);
           continue;
         }
-        // A webhook is an incoming message, so make its task the bot's live
-        // chat immediately. Scheduled work remains detached and unobtrusive.
-        const task = this.options.createTask(run.botId, run.routineName, run.triggerSource === "webhook");
+        // Automation work always gets a detached task. Webhooks used to
+        // activate the bot's live chat, which made an incoming alert replace
+        // whatever the person was typing; that is never allowed.
+        const task = this.options.createTask(workerBotId, run.routineName, false);
         if (!task) {
           run.status = "failed";
           run.error = "Could not create a task for this run";
@@ -598,7 +625,7 @@ export class RoutineManager {
           }
           const triggerSource = run.triggerSource ?? (run.manual ? "manual" : "schedule");
           await this.options.startTurn(
-            run.botId,
+            workerBotId,
             task.threadId,
             prompt,
             run.runOn ?? "crew",
@@ -631,6 +658,10 @@ export class RoutineManager {
       run.error = event.ok ? undefined : (event.stopReason ?? run.error ?? "The bot did not complete this run");
       run.cost = event.cost;
       run.denials = event.denials;
+      if (event.ok && run.reportedAt == null) {
+        run.reportedAt = this.now();
+        this.options.onRunCompleted?.({ ...run });
+      }
     } else {
       return;
     }
@@ -682,6 +713,7 @@ export class RoutineManager {
       prompt: routine.prompt,
       durationMinutes: routine.durationMinutes,
       botId: routine.botId,
+      ...(routine.workerBotId ? { workerBotId: routine.workerBotId } : {}),
       runOn: routine.runOn ?? "crew",
       scheduledFor,
       status: "queued",
