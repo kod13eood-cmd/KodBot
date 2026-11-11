@@ -1,7 +1,7 @@
 {
-  "versionCode": 19,
-  "versionName": "0.1.18",
-  "apkUrl": "https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.18.apk",
-  "notes": "Notification taps now open the exact bot, task, or room, including in Desktop mode. The same approval timer keeps late Allow working for peer bot contacts.",
-  "publishedAt": "2026-11-09T12:30:00Z"
+  "versionCode": 20,
+  "versionName": "0.1.19",
+  "apkUrl": "https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-android.apk",
+  "notes": "Native hold-to-talk in the Android composer, local faster-whisper transcription, the KodBot VM rename, and workflow recording with Analyze with <bot>.",
+  "publishedAt": "2026-11-11T07:16:00Z"
 }
