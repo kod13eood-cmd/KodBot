@@ -405,6 +405,7 @@ export function RoutineEditor({
   const [name, setName] = useState(routine?.name ?? "");
   const [prompt, setPrompt] = useState(routine?.prompt ?? "");
   const [botId, setBotId] = useState(lockedBotId ?? routine?.botId ?? bots[0]?.id ?? "");
+  const [workerBotId, setWorkerBotId] = useState(routine?.workerBotId ?? "");
   const [runOn, setRunOn] = useState<RoutineRunOn>(routine?.runOn ?? defaultRunOn ?? "crew");
   const initialSchedule = routine?.schedule;
   const [kind, setKind] = useState<"once" | "daily" | "interval">(initialSchedule?.type ?? "daily");
@@ -441,6 +442,7 @@ export function RoutineEditor({
       name,
       prompt,
       botId,
+      workerBotId: workerBotId || undefined,
       runOn,
       enabled: routine ? undefined : true,
       durationMinutes,
@@ -526,7 +528,7 @@ export function RoutineEditor({
             <div className="mb-2 text-[12px] font-medium text-ink-secondary">{t("Who does it?")}</div>
             <div className={cn("grid gap-2", lockedBotId ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3")}>
               {bots.map((bot) => (
-                <button key={bot.id} type="button" disabled={Boolean(lockedBotId)} onClick={() => setBotId(bot.id)} className={cn("flex min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-left", botId === bot.id ? "border-accent/70 bg-accent/10" : "border-hairline/50 bg-inset hover:bg-raised/60")}>
+                <button key={bot.id} type="button" disabled={Boolean(lockedBotId)} onClick={() => { setBotId(bot.id); if (workerBotId === bot.id) setWorkerBotId(""); }} className={cn("flex min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-left", botId === bot.id ? "border-accent/70 bg-accent/10" : "border-hairline/50 bg-inset hover:bg-raised/60")}>
                   <CrewAvatar color={bot.color} shape={bot.mascotShape} role={displayRole(bot)} state={botId === bot.id ? "happy" : "idle"} size={38} animated={false} />
                   <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{bot.name}</span>
                   {lockedBotId && <span className="text-[11px] text-ink-secondary">{t("Assigned from Computer")}</span>}
@@ -534,6 +536,16 @@ export function RoutineEditor({
               ))}
             </div>
           </div>
+          <label className="block">
+            <span className="mb-1.5 block text-[12px] font-medium text-ink-secondary">{t("Worker bot")} <span className="font-normal">{t("· optional")}</span></span>
+            <select value={workerBotId} onChange={(event) => setWorkerBotId(event.target.value)} className="w-full rounded-xl border border-hairline/60 bg-inset px-3.5 py-2.5 text-[13px] text-ink outline-none focus:border-accent/70">
+              <option value="">{t("Same bot — runs in a separate task")}</option>
+              {state.bots.filter((candidate) => candidate.id !== botId).map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>{candidate.name}{candidate.hidden ? ` · ${t("worker")}` : ""}</option>
+              ))}
+            </select>
+            <span className="mt-1.5 block text-[10.5px] leading-relaxed text-ink-secondary">{t("The owner bot keeps this automation and receives the result in a Results task. The worker runs it in its own task, so the owner’s chat never changes.")}</span>
+          </label>
           <label className="block">
             <span className="mb-1.5 block text-[12px] font-medium text-ink-secondary">{t("What should this CREW do?")}</span>
             <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={6} placeholder={t("Check the latest project activity, summarize what changed, and call out anything that needs my attention…")} className="w-full resize-y rounded-xl border border-hairline/60 bg-inset px-3.5 py-3 text-[14px] leading-relaxed text-ink outline-none placeholder:text-ink-secondary/60 focus:border-accent/70" />

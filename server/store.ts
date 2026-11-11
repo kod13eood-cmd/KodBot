@@ -193,6 +193,9 @@ export interface TaskRecord {
    * a folder that moved under a live session would break resume. `null`
    * = pinned to the default (home); absent = not pinned yet. */
   cwd?: string | null;
+  /** When the person archived this task. The transcript is kept; the picker
+   * hides it until it is restored. Absent = visible. */
+  archivedAt?: number;
 }
 
 export interface TaskUsage {
@@ -1387,7 +1390,7 @@ export class Store {
   switchTask(botId: string, threadId: string): BotRecord | null {
     const bot = this.bot(botId);
     const task = bot?.tasks?.find((t) => t.threadId === threadId);
-    if (!bot || !task) return null;
+    if (!bot || !task || task.archivedAt) return null;
     bot.threadId = task.threadId;
     bot.resumeCursors = { ...task.resumeCursors };
     this.saveBots();
@@ -1402,6 +1405,31 @@ export class Store {
     this.saveBots();
     this.emit({ type: "bot", botId });
     return task;
+  }
+
+  /** Hide a task without deleting it. The active task can only be archived
+   * when another visible task can take its place, so a bot always has one
+   * reachable chat. Returns the updated bot, or null when the request would
+   * leave nothing to open. */
+  setTaskArchived(botId: string, threadId: string, archivedAt: number | null): BotRecord | null {
+    const bot = this.bot(botId);
+    const task = bot?.tasks?.find((t) => t.threadId === threadId);
+    if (!bot || !task) return null;
+    if (archivedAt == null) {
+      delete task.archivedAt;
+    } else {
+      const remaining = (bot.tasks ?? []).filter((t) => t.threadId !== threadId && !t.archivedAt);
+      if (bot.threadId === threadId && remaining.length === 0) return null;
+      task.archivedAt = archivedAt;
+      if (bot.threadId === threadId) {
+        const next = remaining[0]!;
+        bot.threadId = next.threadId;
+        bot.resumeCursors = { ...next.resumeCursors };
+      }
+    }
+    this.saveBots();
+    this.emit({ type: "bot", botId });
+    return bot;
   }
 
   /** Name a task after its first message, once. */

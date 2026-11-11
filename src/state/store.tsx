@@ -148,6 +148,8 @@ export interface Task {
   /** folder this task's turns run in, pinned on its first turn; null =
    * legacy home-folder session; absent = not pinned yet */
   cwd?: string | null;
+  /** archived tasks keep their transcript but leave the picker */
+  archivedAt?: number;
 }
 
 export interface TaskUsage {
@@ -421,6 +423,8 @@ export type Action =
   | { type: "taskSwitched"; bot: Bot }
   | { type: "renameTask"; botId: string; threadId: string; title: string }
   | { type: "deleteTask"; botId: string; threadId: string }
+  | { type: "archiveTask"; botId: string; threadId: string }
+  | { type: "unarchiveTask"; botId: string; threadId: string }
   | { type: "newBot" }
   | { type: "botAdded"; bot: Bot }
   | { type: "deleteBot"; botId: string }
@@ -955,6 +959,8 @@ export function reducer(state: AppState, action: Action): AppState {
     case "switchTask":
     case "renameTask":
     case "deleteTask":
+    case "archiveTask":
+    case "unarchiveTask":
       return state;
     case "taskSwitched":
       return updateBot(state, action.bot.id, (bot) => ({ ...bot, ...action.bot, messages: action.bot.messages ?? [] }));
@@ -1334,6 +1340,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         case "deleteTask":
           api(`/api/bots/${action.botId}/tasks/${action.threadId}`, { method: "DELETE" })
             .then((r: any) => r?.bot && dispatch({ type: "taskSwitched", bot: r.bot }))
+            .catch(showError);
+          break;
+        case "archiveTask":
+          api(`/api/bots/${action.botId}/tasks/${action.threadId}`, {
+            method: "PATCH",
+            body: JSON.stringify({ archivedAt: Date.now() }),
+          })
+            .then((r: any) => r?.bot && dispatch({ type: "taskSwitched", bot: r.bot }))
+            .catch(showError);
+          break;
+        case "unarchiveTask":
+          api(`/api/bots/${action.botId}/tasks/${action.threadId}`, {
+            method: "PATCH",
+            body: JSON.stringify({ archivedAt: null }),
+          })
+            .then((r: any) => r?.bot && dispatch({ type: "botPatched", bot: r.bot }))
             .catch(showError);
           break;
         case "interruptGroup":

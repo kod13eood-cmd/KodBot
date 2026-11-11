@@ -755,7 +755,7 @@ const MessagesList = memo(function MessagesList({
   // An empty task is not a lost conversation: the bot may have other tasks
   // with transcripts. Show them here so nobody has to discover the task
   // picker in the header while staring at a blank chat.
-  const otherTasks = (bot.tasks ?? []).filter((task) => task.threadId !== bot.threadId).slice(0, 6);
+  const otherTasks = (bot.tasks ?? []).filter((task) => task.threadId !== bot.threadId && !task.archivedAt).slice(0, 6);
   return (
     <>
       {messages.length === 0 && !bot.busy && (

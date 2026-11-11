@@ -5,7 +5,7 @@
 // own transcript and its own provider session — so sensitive work, a
 // long job and a quick question can sit side by side under one agent.
 import { useEffect, useRef, useState } from "react";
-import { CalendarClock, Check, ChevronDown, Plus, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, CalendarClock, Check, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { useStore, formatTime, type Bot, type Task } from "@/state/store";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
@@ -37,9 +37,12 @@ export function TaskPicker({ bot }: { bot: Bot }) {
   const [open, setOpen] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const tasks = bot.tasks ?? [];
+  const allTasks = bot.tasks ?? [];
+  const tasks = allTasks.filter((task) => !task.archivedAt);
+  const archived = allTasks.filter((task) => task.archivedAt);
   const current = tasks.find((t) => t.threadId === bot.threadId);
 
   useEffect(() => {
@@ -59,7 +62,7 @@ export function TaskPicker({ bot }: { bot: Bot }) {
 
   // a bot that has only ever done one thing doesn't need a switcher yet —
   // just the button that gives it a second context
-  if (tasks.length <= 1) {
+  if (tasks.length <= 1 && archived.length === 0) {
     return (
       <button
         onClick={() => dispatch({ type: "newTask", botId: bot.id })}
@@ -152,6 +155,15 @@ export function TaskPicker({ bot }: { bot: Bot }) {
                     </button>
                   )}
                   <button
+                    onClick={() => dispatch({ type: "archiveTask", botId: bot.id, threadId: task.threadId })}
+                    disabled={tasks.length <= 1}
+                    aria-label={t("Archive task")}
+                    title={t("Archive this task — keep its messages, hide it from this list")}
+                    className="rounded p-1 text-ink-secondary opacity-0 hover:bg-raised hover:text-ink group-hover:opacity-100 disabled:opacity-20"
+                  >
+                    <Archive size={13} />
+                  </button>
+                  <button
                     onClick={() => dispatch({ type: "deleteTask", botId: bot.id, threadId: task.threadId })}
                     disabled={bot.busy && active}
                     aria-label={t("Delete task")}
@@ -164,6 +176,33 @@ export function TaskPicker({ bot }: { bot: Bot }) {
               );
             })}
           </div>
+          {archived.length > 0 && (
+            <div className="mt-1 border-t border-hairline/40 pt-1">
+              <button
+                onClick={() => setShowArchived((value) => !value)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-ink-secondary hover:bg-raised/50"
+              >
+                <Archive size={12} /> {showArchived ? t("Hide archived") : t("Archived tasks")}
+                <span className="ml-auto tabular-nums opacity-60">{archived.length}</span>
+              </button>
+              {showArchived && archived.map((task) => (
+                <div key={task.threadId} className="group flex items-center gap-2 px-2.5 py-1.5">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[12.5px] text-ink-secondary">{task.title}</div>
+                    <div className="text-[11px] text-ink-secondary/70">{formatTime(task.createdAt)}</div>
+                  </div>
+                  <button
+                    onClick={() => dispatch({ type: "unarchiveTask", botId: bot.id, threadId: task.threadId })}
+                    aria-label={t("Restore")}
+                    title={t("Restore this task")}
+                    className="rounded p-1 text-ink-secondary hover:bg-raised hover:text-ink"
+                  >
+                    <ArchiveRestore size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <button
             onClick={() => {
               dispatch({ type: "newTask", botId: bot.id });

@@ -3987,11 +3987,23 @@ const server = createServer(async (req, res) => {
     }
     if (m && method === "PATCH") {
       const body = await readBody(req);
-      const task = store.renameTask(m[1], m[2], String(body.title ?? ""));
-      if (!task) return json(res, 404, { error: "no such task" });
+      if (!store.taskByThread(m[1], m[2])) return json(res, 404, { error: "no such task" });
+      if (typeof body.title === "string") {
+        store.renameTask(m[1], m[2], body.title);
+      }
+      if (Object.prototype.hasOwnProperty.call(body, "archivedAt")) {
+        const raw = body.archivedAt;
+        const archivedAt = raw === null ? null : Number(raw);
+        if (archivedAt !== null && (!Number.isFinite(archivedAt) || archivedAt <= 0)) {
+          return json(res, 400, { error: "archivedAt must be a timestamp or null" });
+        }
+        const updated = store.setTaskArchived(m[1], m[2], archivedAt);
+        if (!updated) return json(res, 400, { error: "keep at least one visible task" });
+      }
       const fresh = botWithThread(store.bot(m[1])!);
+      const task = store.taskByThread(m[1], m[2])!;
       broadcast({ kind: "bot", bot: fresh });
-      return json(res, 200, { task: wireTask(task) });
+      return json(res, 200, { task: wireTask(task), bot: fresh });
     }
     if (m && method === "DELETE") {
       const bot = store.bot(m[1]);

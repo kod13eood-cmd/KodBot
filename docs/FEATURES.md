@@ -129,6 +129,16 @@ the next slot waits for the current one to finish. Routine-created tasks are
 marked **Scheduled** in the task picker, and a failed or missed run raises a
 notification and stays in the **needs you** strip until it is opened.
 
+### Worker bots for automations — Live
+
+A schedule or webhook can name a **worker bot**. The owner bot keeps the
+automation; the worker runs each run in its own detached task with its own
+context, so background work never replaces the chat you are using. When the
+worker finishes, the owner gets an `<automation> · Results` task, an unread
+badge, and a notification. A run whose last line is `NOTHING NEW` stays
+silent, and no report is ever injected into an active turn. Old tasks can be
+archived from the task picker without deleting their transcripts.
+
 ### Activity — Live
 
 **Activity** in the sidebar collects scheduled, webhook, delegated, and live

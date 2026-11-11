@@ -638,6 +638,24 @@ const BULGARIAN: Record<string, string> = {
   "Cloud VM needs a working Box API key in App Settings before this routine can run.":
     "Облачната VM изисква работещ API ключ за Box в настройките, преди тази рутина да може да се изпълни.",
   "Who does it?": "Кой го изпълнява?",
+  "Worker bot": "Работен бот",
+  "Same bot — runs in a separate task": "Същият бот — изпълнява се в отделна задача",
+  "The owner bot keeps this automation and receives the result in a Results task. The worker runs it in its own task, so the owner’s chat never changes.":
+    "Ботът собственик запазва автоматизацията и получава резултата в задача „Резултати“. Работният бот я изпълнява в своя задача, така че чатът на собственика никога не се променя.",
+  "worker": "работен",
+  "Each request runs on the worker and reports back to the owner.":
+    "Всяка заявка се изпълнява от работния бот и връща резултата на собственика.",
+  "Worker: {name}": "Работен бот: {name}",
+  "Worker": "Работен бот",
+  "Results go to": "Резултатите отиват при",
+  "Copy this command into Terminal and press Return. It starts a real task on the worker {name}; the result comes back here.":
+    "Копирайте тази команда в Терминал и натиснете Enter. Тя стартира истинска задача при работния бот {name}; резултатът се връща тук.",
+  "Archive task": "Архивирай задачата",
+  "Archive this task — keep its messages, hide it from this list":
+    "Архивирай тази задача — съобщенията остават, но задачата се скрива от списъка",
+  "Archived tasks": "Архивирани задачи",
+  "Hide archived": "Скрий архивираните",
+  "Restore this task": "Възстанови тази задача",
   "Assigned from Computer": "Зададен от Компютър",
   "What should this CREW do?": "Какво да направи този CREW?",
   "Check the latest project activity, summarize what changed, and call out anything that needs my attention…":

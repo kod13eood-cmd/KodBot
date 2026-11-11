@@ -6,6 +6,9 @@ export interface WebhookTrigger {
   name: string;
   prompt: string;
   botId: string;
+  /** optional dedicated worker: the owner keeps the automation and receives
+   * its report, the worker runs it in its own task */
+  workerBotId?: string;
   runOn: RoutineRunOn;
   enabled: boolean;
   createdAt: number;
@@ -23,6 +26,7 @@ export interface WebhookTriggerInput {
   name: string;
   prompt: string;
   botId: string;
+  workerBotId?: string;
   runOn?: RoutineRunOn;
   enabled?: boolean;
   verificationPending?: boolean;

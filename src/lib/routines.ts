@@ -27,6 +27,9 @@ export interface Routine {
   name: string;
   prompt: string;
   botId: string;
+  /** optional dedicated worker: the owner keeps the automation and receives
+   * its report, the worker runs it in its own task */
+  workerBotId?: string;
   runOn: RoutineRunOn;
   enabled: boolean;
   schedule: RoutineSchedule;
@@ -66,6 +69,7 @@ export interface RoutineInput {
   name: string;
   prompt: string;
   botId: string;
+  workerBotId?: string;
   runOn?: RoutineRunOn;
   enabled?: boolean;
   schedule: RoutineSchedule;
