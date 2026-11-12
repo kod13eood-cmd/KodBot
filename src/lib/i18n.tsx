@@ -84,6 +84,21 @@ const BULGARIAN: Record<string, string> = {
   "ElevenLabs": "ElevenLabs",
   "Local voice": "Локален глас",
   "Hold to talk": "Задръж, за да говориш",
+  "Click to talk": "Щракни, за да говориш",
+  "Microphone unavailable": "Микрофонът не е достъпен",
+  "Microphone needs HTTPS. Open {url} or use the desktop app.":
+    "Микрофонът изисква HTTPS. Отвори {url} или използвай desktop app-а.",
+  "This browser can't record audio.": "Този браузър не може да записва аудио.",
+  "Voice test": "Тест на гласа",
+  "Check the microphone and the spoken voice before you rely on them in a chat.":
+    "Провери микрофона и гласа, преди да разчиташ на тях в чат.",
+  "Test microphone": "Тествай микрофона",
+  "Stop and transcribe": "Спри и транскрибирай",
+  "Transcribing…": "Транскрибиране…",
+  "Starting…": "Стартиране…",
+  "No speech detected.": "Не беше разпозната реч.",
+  "Transcript": "Транскрипт",
+  "Play test": "Пусни тест",
   "Auto (BG / EN)": "Автоматично (BG / EN)",
   "Read replies aloud and turn speech into text with local models. No audio leaves this computer.":
     "Чети отговорите на глас и превръщай реч в текст с локални модели. Никакво аудио не напуска компютъра.",

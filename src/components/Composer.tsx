@@ -21,6 +21,7 @@ import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { useI18n } from "@/lib/i18n";
 import { promptQueue, queueKeyForBot, queueKeyForGroup } from "@/lib/send-queue";
 import { BrowserPtt, browserPttSupported } from "@/lib/browser-ptt";
+import { httpsVoiceUrl, microphoneIssue, type MicrophoneIssue } from "@/lib/voice-diagnostics";
 
 /** The active @mention query at the caret: the text between an `@` that
  * starts a word and the caret. null = no mention being typed. */
@@ -104,6 +105,7 @@ export function Composer({
     [setAttachments],
   );
   const [recording, setRecording] = useState<"native" | "browser" | null>(null);
+  const [browserStarting, setBrowserStarting] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
   const [caret, setCaret] = useState(0);
   const [highlight, setHighlight] = useState(0);
@@ -111,12 +113,32 @@ export function Composer({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const browserPtt = useRef<BrowserPtt | null>(null);
-  const browserStart = useRef<Promise<void> | null>(null);
   // what was typed before the mic went on — partials append after it
   const baseText = useRef("");
   const nativeMic = capabilities.dictation.available && Boolean(window.ogb?.speechStart);
   const browserMic = !nativeMic && browserPttSupported();
-  const micAvailable = nativeMic || browserMic;
+  const micIssue: MicrophoneIssue =
+    typeof window === "undefined"
+      ? null
+      : microphoneIssue({
+          secureContext: window.isSecureContext,
+          hostname: window.location.hostname,
+          hasMediaDevices:
+            typeof navigator !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia),
+          hasMediaRecorder: typeof MediaRecorder !== "undefined",
+        });
+  const httpsUrl = httpsVoiceUrl(
+    typeof window === "undefined" ? "https:" : window.location.protocol,
+    typeof window === "undefined" ? "localhost" : window.location.hostname,
+    typeof window === "undefined" ? "" : window.location.port,
+  );
+  const micIssueMessage = (issue: Exclude<MicrophoneIssue, null>) =>
+    issue === "insecure"
+      ? t("Microphone needs HTTPS. Open {url} or use the desktop app.", { url: httpsUrl })
+      : t("This browser can't record audio.");
+  // Keep the mic visible on an HTTP origin too: a button that explains the
+  // HTTPS requirement is more useful than a button that quietly disappears.
+  const micVisible = nativeMic || browserMic || micIssue !== null;
 
   // ── @mention picker (tag another bot; the agent reaches it via ask_bot) ──
   const mention = mentionQueryAt(text, caret);
@@ -286,10 +308,11 @@ export function Composer({
   };
 
   const startBrowserMic = async () => {
-    if (!browserMic || recording) return;
+    if (!browserMic || recording || browserStarting) return;
     setSpeechError(null);
     baseText.current = text.trim();
     const ptt = new BrowserPtt();
+    setBrowserStarting(true);
     try {
       await ptt.start();
       browserPtt.current = ptt;
@@ -298,6 +321,8 @@ export function Composer({
       ptt.cancel();
       setSpeechError(error instanceof Error ? error.message : String(error));
       throw error;
+    } finally {
+      setBrowserStarting(false);
     }
   };
 
@@ -317,17 +342,24 @@ export function Composer({
     }
   };
 
-  const finishBrowserPress = () => {
-    const started = browserStart.current;
-    browserStart.current = null;
-    if (started) void started.then(() => stopBrowserMic()).catch(() => {});
+  const toggleBrowserMic = () => {
+    if (recording === "browser") {
+      void stopBrowserMic();
+      return;
+    }
+    if (browserStarting) return;
+    if (micIssue) {
+      setSpeechError(micIssueMessage(micIssue));
+      return;
+    }
+    void startBrowserMic().catch(() => {});
   };
 
   const cancelBrowserMic = () => {
-    browserStart.current = null;
     browserPtt.current?.cancel();
     browserPtt.current = null;
     setRecording(null);
+    setBrowserStarting(false);
   };
 
   useEffect(() => () => cancelBrowserMic(), []);
@@ -592,28 +624,9 @@ export function Composer({
             <Square size={14} className="fill-current" />
           </button>
         )}
-        {!busy && !hasContent && micAvailable && (
+        {!busy && micVisible && (
           <button
-            onClick={nativeMic ? toggleMic : undefined}
-            onPointerDown={
-              browserMic
-                ? (event) => {
-                    event.preventDefault();
-                    if (browserStart.current) return;
-                    browserStart.current = startBrowserMic().catch(() => {});
-                  }
-                : undefined
-            }
-            onPointerUp={
-              browserMic
-                ? (event) => {
-                    event.preventDefault();
-                    finishBrowserPress();
-                  }
-                : undefined
-            }
-            onPointerLeave={browserMic ? finishBrowserPress : undefined}
-            onPointerCancel={browserMic ? finishBrowserPress : undefined}
+            onClick={nativeMic ? toggleMic : toggleBrowserMic}
             aria-label={recording ? t("Stop dictation") : t("Start dictation")}
             className={cn(
               "flex size-8 shrink-0 items-center justify-center rounded-full",
@@ -621,9 +634,23 @@ export function Composer({
                 ? "animate-pulse bg-danger/20 text-danger"
                 : "text-ink-secondary hover:bg-raised hover:text-ink",
             )}
-            title={recording ? t("Stop dictation (Esc)") : browserMic ? t("Hold to talk") : t("Dictate")}
+            title={
+              recording
+                ? t("Stop dictation (Esc)")
+                : browserMic
+                  ? t("Click to talk")
+                  : nativeMic
+                    ? t("Dictate")
+                    : t("Microphone unavailable")
+            }
           >
-            <Mic size={18} />
+            {browserStarting ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : recording === "browser" ? (
+              <Square size={14} className="fill-current" />
+            ) : (
+              <Mic size={18} />
+            )}
           </button>
         )}
         {hasContent && (

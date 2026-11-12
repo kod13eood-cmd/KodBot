@@ -51,7 +51,11 @@ export class BrowserPtt {
     const recorder = this.recorder;
     if (!recorder) return Promise.resolve("");
     return new Promise((resolve, reject) => {
+      let settled = false;
       const finish = async () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
         const chunks = this.chunks;
         const mime = recorder.mimeType || "audio/webm";
         const cancelled = this.cancelled;
@@ -70,9 +74,26 @@ export class BrowserPtt {
           reject(error);
         }
       };
-      recorder.onstop = () => void finish();
+      // Chromium normally fires `stop`, but a stream that ended elsewhere can
+      // leave the recorder inactive without the event. Never let the UI hang
+      // in "transcribing": settle from the buffered chunks after a short
+      // grace period as well.
+      const timer = setTimeout(() => void finish(), 4_000);
+      recorder.addEventListener("stop", () => void finish(), { once: true });
+      recorder.addEventListener(
+        "error",
+        () => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          this.cleanup();
+          reject(new Error("The microphone stopped unexpectedly."));
+        },
+        { once: true },
+      );
       try {
-        recorder.stop();
+        if (recorder.state === "inactive") void finish();
+        else recorder.stop();
       } catch (error) {
         this.cleanup();
         reject(error);
