@@ -23,6 +23,19 @@ function audioType(): string | undefined {
   ].find((type) => MediaRecorder.isTypeSupported(type));
 }
 
+/** Send one recorded clip to the harness for local transcription. Shared by
+ * dictation and the transcript attached to a voice note. */
+export async function transcribeAudio(blob: Blob, mime: string): Promise<string> {
+  const response = await fetch("/api/voice/transcribe?language=auto", {
+    method: "POST",
+    headers: { "content-type": mime },
+    body: blob,
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error ?? `Transcription failed (${response.status})`);
+  return typeof body.text === "string" ? body.text.trim() : "";
+}
+
 export class BrowserPtt {
   private stream: MediaStream | null = null;
   private recorder: MediaRecorder | null = null;
@@ -47,12 +60,14 @@ export class BrowserPtt {
     this.recorder.start();
   }
 
-  stop(): Promise<string> {
+  /** Stop and return the recorded bytes. Used by voice notes, which need the
+   * clip itself as well as its transcript. */
+  stopRecording(): Promise<{ blob: Blob; mime: string }> {
     const recorder = this.recorder;
-    if (!recorder) return Promise.resolve("");
+    if (!recorder) return Promise.resolve({ blob: new Blob(), mime: "audio/webm" });
     return new Promise((resolve, reject) => {
       let settled = false;
-      const finish = async () => {
+      const finish = () => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
@@ -60,26 +75,14 @@ export class BrowserPtt {
         const mime = recorder.mimeType || "audio/webm";
         const cancelled = this.cancelled;
         this.cleanup();
-        if (cancelled) return resolve("");
-        try {
-          const response = await fetch("/api/voice/transcribe?language=auto", {
-            method: "POST",
-            headers: { "content-type": mime },
-            body: new Blob(chunks, { type: mime }),
-          });
-          const body = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(body.error ?? `Transcription failed (${response.status})`);
-          resolve(typeof body.text === "string" ? body.text.trim() : "");
-        } catch (error) {
-          reject(error);
-        }
+        resolve({ blob: cancelled ? new Blob() : new Blob(chunks, { type: mime }), mime });
       };
       // Chromium normally fires `stop`, but a stream that ended elsewhere can
       // leave the recorder inactive without the event. Never let the UI hang
       // in "transcribing": settle from the buffered chunks after a short
       // grace period as well.
-      const timer = setTimeout(() => void finish(), 4_000);
-      recorder.addEventListener("stop", () => void finish(), { once: true });
+      const timer = setTimeout(finish, 4_000);
+      recorder.addEventListener("stop", finish, { once: true });
       recorder.addEventListener(
         "error",
         () => {
@@ -92,13 +95,19 @@ export class BrowserPtt {
         { once: true },
       );
       try {
-        if (recorder.state === "inactive") void finish();
+        if (recorder.state === "inactive") finish();
         else recorder.stop();
       } catch (error) {
         this.cleanup();
         reject(error);
       }
     });
+  }
+
+  async stop(): Promise<string> {
+    const { blob, mime } = await this.stopRecording();
+    if (!blob.size) return "";
+    return transcribeAudio(blob, mime);
   }
 
   cancel(): void {

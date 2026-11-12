@@ -65,6 +65,14 @@ const ALLOWED: ReadonlyArray<{ method: string; path: RegExp }> = [
   // harness bounds the body; this route exists so the prompt can name a path
   // an agent on this machine can open.
   { method: "POST", path: /^\/api\/uploads$/ },
+  // A recorded voice-note/playback URL and the local voice pipeline used by
+  // the native composer and Android Desktop mode. TTS is bounded to one
+  // utterance by the harness; the phone cannot stream arbitrary audio.
+  { method: "GET", path: /^\/api\/uploads\/[^/]+$/ },
+  { method: "POST", path: /^\/api\/voice\/transcribe$/ },
+  { method: "GET", path: /^\/api\/tts\/voices$/ },
+  { method: "POST", path: /^\/api\/tts\/prepare$/ },
+  { method: "POST", path: /^\/api\/tts\/speak$/ },
 
   // the fleet, and making a bot. Deletion stays on the computer: a phone
   // should not be able to erase a bot and its workspace in one tap.
