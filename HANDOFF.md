@@ -10,7 +10,7 @@ encrypted archive, or a direct `scp`/`rsync` between trusted machines. Never
 paste a private key or API key into a prompt, an issue, a commit, or a chat
 transcript.
 
-Last reviewed: **2026-11-11**.
+Last reviewed: **2026-11-12**.
 
 ## 1. Source of truth
 
@@ -138,6 +138,18 @@ once; after that, releases update in place.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.42>
 - Includes the first-run local/remote server wizard, desktop KodBot gateway
   login, worker-bot automations with Results tasks, and task archiving.
+
+### Release 0.1.43 (2026-11-12)
+
+- Desktop 0.1.43 for Linux (AppImage/deb) and Windows (unsigned NSIS).
+  macOS stays on the separate signed/notarized flow.
+- Voice fixes: the composer microphone works while a bot is busy, uses
+  click-to-talk on Linux/Windows/web, has a microphone/speaker test, and can
+  record a playable voice note with an attached clip and transcript.
+- Android remains **0.1.19 / versionCode 20**; the APK is unchanged. Native
+  dictation is fixed by the companion allowlist (`voice/transcribe`, TTS, and
+  upload playback).
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.43>
 
 ## 4. Remote deployment topology
 
