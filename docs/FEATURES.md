@@ -53,12 +53,15 @@ Status keys:
   speech on the harness, with no audio leaving the machine. The web composer,
   the Electron desktop app, and the native Android chat all use it; Android
   Desktop mode uses the web control. **App Settings → Voice** has a microphone
-  test (records and shows the transcript) and a speaker test. The audio-lines
-  button records a **voice note**, shows a player before sending, and attaches
-  the clip so the bot can open it; a transcript is added when local
-  speech-to-text is available. Voice capture needs HTTPS or the localhost
-  desktop app. ElevenLabs remains available for cloud voices; macOS also has
-  native on-device dictation.
+  test, a speaker test, and an **Auto / Bulgarian / English** recognition
+  language selector. The audio-lines button records a **voice note**, shows a
+  player before sending, and attaches the clip so the bot can open it; a
+  transcript is added when local speech-to-text is available. Android's native
+  composer has its own voice-note button with playback. Voice capture needs
+  HTTPS or the localhost desktop app. Bulgarian recognition uses the small
+  Whisper model and beam search 5, trading CPU time for accuracy. ElevenLabs
+  remains available for cloud voices; macOS also has native on-device
+  dictation.
 - **Record workflow.** Record a human demonstration in the Local VM viewer:
   pointer/key events plus periodic screenshots are saved under the durable
   workspace, and the bot can read them into a reusable workflow in memory.

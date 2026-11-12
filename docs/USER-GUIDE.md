@@ -114,7 +114,7 @@ The rest of this guide is organized by topic.
 ## Voice
 
 - **App Settings → Voice → Local (free)** uses faster-whisper for speech-to-text and Piper for text-to-speech on the harness. Audio stays on the machine; the first setup downloads the models once.
-- **Click the microphone** in the composer to start talking; click it again to stop and transcribe. The transcript lands in the composer so you can edit or send it, even if you already typed something. On Android the native chat composer uses hold-to-talk; Desktop mode uses the web control. Voice capture in a browser needs HTTPS or the localhost desktop app. **App Settings → Voice** has a microphone test and a speaker test.
+- **Click the microphone** in the composer to start talking; click it again to stop and transcribe. The transcript lands in the composer so you can edit or send it, even if you already typed something. On Android the native chat composer uses hold-to-talk; Desktop mode uses the web control. Voice capture in a browser needs HTTPS or the localhost desktop app. **App Settings → Voice** has a microphone test, a speaker test, and a recognition language selector (Auto / Bulgarian / English). Choose Bulgarian when the microphone keeps mishearing Bulgarian words; the small Whisper model is more accurate but slower on CPU. The audio-lines button records a **voice note**, shows a player before sending, and attaches the clip to the message; the bot also gets a transcript when local speech-to-text is installed.
 - **ElevenLabs** is still available if you prefer a cloud voice. It is billed per character by ElevenLabs.
 - Bots with **Speak replies** enabled read settled replies aloud; call mode on macOS uses the native speech service.
 
@@ -189,7 +189,7 @@ The rest of this guide is organized by topic.
 ## Server and remote mode
 
 - By default the desktop app runs a local harness. **Settings → General → Server** lets it use a server that stays on 24/7.
-- The app checks `/api/health` and `/api/bots` before switching; a port that only answers health (the phone companion) is rejected. A KodBot gateway is accepted too; it opens its email/password login page, and the session stays in the app.
+- The app checks `/api/health` and `/api/bots` before switching; a port that only answers health (the phone companion) is rejected.
 - Switching restarts the app. Keys, chats, engines, and the companion stay on the server.
 - The **Updates** row checks the release feed; **Ctrl+Shift+R** reloads the UI after a server update.
 
@@ -206,8 +206,8 @@ The rest of this guide is organized by topic.
 
 ## Data, backups and recovery
 
-- State lives in `~/.kodbot`: `bots.json`, `teams.json`, `groups.json`, `routines.json`, `config.json`, `webhooks.json`, and `messages.db`. Hosted mode adds `~/.kodbot-gateway` (accounts and sessions) and `~/.kodbot-tenants/<id>` (member data).
-- Automatic hot snapshots run every 15 minutes and keep the newest 2 (about 30 minutes); the daily full archive keeps 2 days, and 2 offsite copies are kept, one per day. All archives include the gateway and tenant roots.
+- State lives in `~/.kodbot`: `bots.json`, `teams.json`, `groups.json`, `routines.json`, `config.json`, `webhooks.json`, and `messages.db`.
+- Automatic hot snapshots run every 15 minutes and keep the newest 2 (about 30 minutes); the daily full archive keeps 2 days, and 2 offsite copies are kept, one per day.
 - If the disk fills, SQLite cannot write and the harness stops; free space and restart the service. The app shows no data while the harness is down — the files are still there.
 - Use **Settings → General → Updates** for app updates; the harness and UI update separately.
 
@@ -303,7 +303,7 @@ KodBot е local-first chat приложение за екип от AI агент
 ## Глас
 
 - **App Settings → Voice → Local (free)** използва faster-whisper за реч към текст и Piper за текст към реч на сървъра. Аудиото остава на машината; моделите се изтеглят еднократно при първата настройка.
-- **Щракни микрофона** в composer-а, за да започнеш да говориш; щракни отново, за да спреш и транскрибираш. Транскриптът влиза в полето, за да го редактираш или изпратиш, дори вече да имаш написан текст. На Android native чатът използва hold-to-talk; Desktop mode използва уеб контролата. Гласът в браузър иска HTTPS или localhost desktop app. **App Settings → Voice** има тест на микрофона и тест на гласа.
+- **Щракни микрофона** в composer-а, за да започнеш да говориш; щракни отново, за да спреш и транскрибираш. Транскриптът влиза в полето, за да го редактираш или изпратиш, дори вече да имаш написан текст. На Android native чатът използва hold-to-talk; Desktop mode използва уеб контролата. Гласът в браузър иска HTTPS или localhost desktop app. **App Settings → Voice** има тест на микрофона, тест на гласа и избор на език за разпознаване (Auto / Български / Английски). Избери „Български“, когато микрофонът често разбира грешно български думи; small Whisper моделът е по-точен, но по-бавен на CPU. Бутонът с аудио линии записва **гласово съобщение**, показва плейър преди изпращане и прикача клипа към съобщението; ботът получава и транскрипт, когато локалното разпознаване на реч е инсталирано.
 - **ElevenLabs** остава наличен, ако предпочиташ облачен глас. Таксува се на знак от ElevenLabs.
 - Ботовете с включено **Speak replies** четат готовите отговори на глас; call mode на macOS използва native speech услугата.
 
@@ -376,7 +376,7 @@ KodBot е local-first chat приложение за екип от AI агент
 ## Сървър и отдалечен режим
 
 - По подразбиране десктоп app-ът пуска локален harness. **Settings → General → Server** позволява сървър, който работи 24/7.
-- App-ът проверява `/api/health` и `/api/bots` преди смяна; порт, който отговаря само на health (телефонният companion), се отхвърля. KodBot gateway също се приема; той отваря своята email/password login страница и сесията остава в app-а.
+- App-ът проверява `/api/health` и `/api/bots` преди смяна; порт, който отговаря само на health (телефонният companion), се отхвърля.
 - Смяната рестартира app-а. Ключовете, чатовете, engine-ите и companion-ът остават на сървъра.
 - Редът **Updates** проверява release feed-а; **Ctrl+Shift+R** презарежда UI-а след сървърно обновяване.
 
@@ -393,8 +393,8 @@ KodBot е local-first chat приложение за екип от AI агент
 
 ## Данни, backup и възстановяване
 
-- Състоянието е в `~/.kodbot`: `bots.json`, `teams.json`, `groups.json`, `routines.json`, `config.json`, `webhooks.json` и `messages.db`. Hosted режимът добавя `~/.kodbot-gateway` (акаунти и сесии) и `~/.kodbot-tenants/<id>` (данни на member-ите).
-- Автоматичните hot snapshot-и вървят на всеки 15 минути и пазят последните 2 (около 30 минути); дневният full архив пази 2 дни, а offsite копията са 2, по едно на ден. Всички архиви включват gateway и tenant директориите.
+- Състоянието е в `~/.kodbot`: `bots.json`, `teams.json`, `groups.json`, `routines.json`, `config.json`, `webhooks.json` и `messages.db`.
+- Автоматичните hot snapshot-и вървят на всеки 15 минути и пазят последните 2 (около 30 минути); дневният full архив пази 2 дни, а offsite копията са 2, по едно на ден.
 - Ако дискът се напълни, SQLite не може да пише и harness-ът спира; освободи място и рестартирай услугата. App-ът не показва данни, докато harness-ът е спрян — файловете са там.
 - Използвай **Settings → General → Updates** за обновяване на app-а; harness-ът и UI-ът се обновяват отделно.
 

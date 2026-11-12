@@ -143,8 +143,8 @@ raw = subprocess.check_output([
     "-f", "s16le", "-ac", "1", "-ar", "16000", "-"
 ])
 audio = np.frombuffer(raw, np.int16).astype(np.float32) / 32768.0
-model = WhisperModel("base", device="cpu", compute_type="int8")
-segments, info = model.transcribe(audio, language=language, beam_size=1, vad_filter=True)
+model = WhisperModel("small", device="cpu", compute_type="int8")
+segments, info = model.transcribe(audio, language=language, beam_size=5, vad_filter=True)
 print(" ".join(segment.text.strip() for segment in segments))
 `;
 

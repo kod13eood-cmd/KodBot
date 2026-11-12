@@ -65,7 +65,7 @@ fi
 echo "Downloading faster-whisper base model into the local cache..."
 "${ROOT}/venv/bin/python" - <<'PY'
 from faster_whisper import WhisperModel
-WhisperModel("base", device="cpu", compute_type="int8")
+WhisperModel("small", device="cpu", compute_type="int8")
 PY
 
 echo "Local voice is ready under ${ROOT}"

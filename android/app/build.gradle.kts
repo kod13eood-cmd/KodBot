@@ -12,8 +12,8 @@ android {
         applicationId = "com.kodbot.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 20
-        versionName = "0.1.19"
+        versionCode = 21
+        versionName = "0.1.20"
     }
 
     buildFeatures {

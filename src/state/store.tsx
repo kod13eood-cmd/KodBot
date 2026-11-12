@@ -248,7 +248,13 @@ export interface ConfigStatus {
   /** Voice (ElevenLabs). `configured` = a key is saved; `ready` = a key AND
    * a voice, which is what it takes to actually speak. The key itself is
    * never echoed back. */
-  tts?: { provider: "elevenlabs" | "local"; configured: boolean; ready: boolean; voice: string };
+  tts?: {
+    provider: "elevenlabs" | "local";
+    configured: boolean;
+    ready: boolean;
+    voice: string;
+    language?: "auto" | "bg" | "en";
+  };
   /** who's using the app — collected in onboarding, shown in the sidebar */
   profile?: { name: string; email: string };
   /** minutes before an unanswered ask is marked overdue; null = no timer */

@@ -4419,8 +4419,14 @@ const server = createServer(async (req, res) => {
       const bytes = await readRawBody(req, 12 * 1024 * 1024);
       if (!bytes.byteLength) return json(res, 400, { error: "empty audio" });
       try {
-        const language = url.searchParams.get("language") ?? undefined;
-        const text = await transcribeLocal(new Uint8Array(bytes), mime, language);
+        const requested = url.searchParams.get("language") ?? "auto";
+        const configured = cfg.tts?.language ?? "auto";
+        const language = requested !== "auto" ? requested : configured;
+        const text = await transcribeLocal(
+          new Uint8Array(bytes),
+          mime,
+          language === "auto" ? undefined : language,
+        );
         return json(res, 200, { text });
       } catch (error) {
         return json(res, 409, { error: error instanceof Error ? error.message : String(error) });
