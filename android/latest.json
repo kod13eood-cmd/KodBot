@@ -1,7 +1,7 @@
 {
-  "versionCode": 20,
-  "versionName": "0.1.19",
+  "versionCode": 21,
+  "versionName": "0.1.20",
   "apkUrl": "https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-android.apk",
-  "notes": "Native hold-to-talk in the Android composer, local faster-whisper transcription, the KodBot VM rename, and workflow recording with Analyze with <bot>.",
+  "notes": "Voice notes in the native composer with playback and transcript, a separate audio-lines button, and Bulgarian-focused transcription with the small Whisper model and a language setting.",
   "publishedAt": "2026-11-11T07:16:00Z"
 }

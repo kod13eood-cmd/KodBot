@@ -99,6 +99,12 @@ const BULGARIAN: Record<string, string> = {
   "No speech detected.": "Не беше разпозната реч.",
   "Transcript": "Транскрипт",
   "Play test": "Пусни тест",
+  "Recognition language": "Език за разпознаване",
+  "Auto-detect": "Автоматично",
+  "Bulgarian": "Български",
+  "English": "Английски",
+  "Choose Bulgarian when the microphone keeps mishearing Bulgarian words.":
+    "Избери „Български“, когато микрофонът често разбира грешно български думи.",
   "Record voice note": "Запиши гласово съобщение",
   "Stop voice note": "Спри гласовото съобщение",
   "Stop and send voice note": "Спри и приготви гласовото",

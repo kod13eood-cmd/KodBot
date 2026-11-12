@@ -193,6 +193,24 @@ export function VoiceSettings() {
         ))}
       </div>
 
+      {local && (
+        <label className="mt-4 block">
+          <span className="mb-1.5 block text-[13px] text-ink-secondary">{t("Recognition language")}</span>
+          <select
+            value={tts.language ?? "auto"}
+            onChange={(event) => void save({ language: event.target.value })}
+            className="w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] text-ink focus:border-hairline focus:outline-none"
+          >
+            <option value="auto">{t("Auto-detect")}</option>
+            <option value="bg">{t("Bulgarian")}</option>
+            <option value="en">{t("English")}</option>
+          </select>
+          <span className="mt-1.5 block text-[10.5px] leading-relaxed text-ink-secondary">
+            {t("Choose Bulgarian when the microphone keeps mishearing Bulgarian words.")}
+          </span>
+        </label>
+      )}
+
       {local && !tts.ready && (
         <div className="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-[12px] leading-relaxed text-warning">
           {t("Local voice is not installed on the harness yet. Run scripts/setup-local-voice.sh on the server, then refresh.")}

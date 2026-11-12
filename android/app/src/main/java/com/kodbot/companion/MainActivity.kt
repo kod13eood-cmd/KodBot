@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -1511,12 +1512,24 @@ private fun ChatScreen(
     var recording by remember { mutableStateOf(false) }
     var transcribing by remember { mutableStateOf(false) }
     var micError by remember { mutableStateOf<String?>(null) }
+    val voiceNoteRecorder = remember { VoiceRecorder(context) }
+    var voiceNoteRecording by remember { mutableStateOf(false) }
+    var voiceNoteProcessing by remember { mutableStateOf(false) }
+    var voiceNoteFile by remember { mutableStateOf<File?>(null) }
+    var voiceNoteTranscript by remember { mutableStateOf<String?>(null) }
+    var voiceNotePlaying by remember { mutableStateOf(false) }
+    var voiceNoteError by remember { mutableStateOf<String?>(null) }
+    var voiceNotePlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         micGranted = granted
         micError = if (granted) null else "Microphone permission is needed for voice input."
     }
     DisposableEffect(Unit) {
-        onDispose { recorder.cancel() }
+        onDispose {
+            recorder.cancel()
+            voiceNoteRecorder.cancel()
+            voiceNotePlayer?.release()
+        }
     }
     val acceptPicked: (List<Uri>) -> Unit = { uris ->
         if (uris.isNotEmpty()) {
@@ -1549,18 +1562,38 @@ private fun ChatScreen(
         if (workingItemIndex >= 0) listState.animateScrollToItem(workingItemIndex)
     }
 
-    val canSend = (draft.isNotBlank() || attachments.isNotEmpty()) && !loading && !sending
+    val cleanupVoiceNote: () -> Unit = {
+        voiceNotePlayer?.release()
+        voiceNotePlayer = null
+        voiceNotePlaying = false
+        voiceNoteFile?.delete()
+        voiceNoteFile = null
+        voiceNoteTranscript = null
+        voiceNoteError = null
+        voiceNoteProcessing = false
+        voiceNoteRecording = false
+    }
+    val canSend =
+        (draft.isNotBlank() || attachments.isNotEmpty()) &&
+            !loading && !sending
     // Upload first, then send. The draft and its chips stay put until the
     // host confirms, so a failed upload can be retried without retyping.
     val submit: () -> Unit = {
         if (canSend) {
             sending = true
             attachmentError = null
-            onSend(chat, draft.trim(), attachments) { sent ->
+            val voiceText = voiceNoteTranscript?.takeIf { it.isNotBlank() }?.let { "🎤 $it" }
+                ?: if (voiceNoteFile != null) "🎤 Voice note" else null
+            val outgoing = listOf(draft.trim(), voiceText)
+                .filterNotNull()
+                .filter { it.isNotBlank() }
+                .joinToString("\n\n")
+            onSend(chat, outgoing, attachments) { sent ->
                 sending = false
                 if (sent) {
                     draft = ""
                     attachments = emptyList()
+                    cleanupVoiceNote()
                 }
             }
         }
@@ -1608,6 +1641,85 @@ private fun ChatScreen(
                 file.delete()
                 transcribing = false
             }
+        }
+    }
+
+    fun removeVoiceNote() {
+        voiceNoteRecorder.cancel()
+        cleanupVoiceNote()
+        attachments = attachments.filterNot { it.audio }
+    }
+
+    fun startVoiceNote(): Boolean {
+        if (!micGranted) {
+            micPermission.launch(Manifest.permission.RECORD_AUDIO)
+            return false
+        }
+        if (recording || transcribing || voiceNoteRecording || voiceNoteProcessing) return false
+        micError = null
+        voiceNoteError = null
+        removeVoiceNote()
+        return try {
+            voiceNoteRecorder.start()
+            voiceNoteRecording = true
+            true
+        } catch (error: Exception) {
+            voiceNoteRecorder.cancel()
+            voiceNoteError = error.message ?: "Couldn't start the voice note recorder."
+            false
+        }
+    }
+
+    fun stopVoiceNote() {
+        if (!voiceNoteRecording) return
+        voiceNoteRecording = false
+        val file = voiceNoteRecorder.stop()
+        if (file == null) {
+            voiceNoteError = "Nothing was recorded. Try again."
+            return
+        }
+        voiceNoteFile = file
+        voiceNoteProcessing = true
+        attachments = attachments + PendingAttachment(
+            uri = Uri.fromFile(file).toString(),
+            name = file.name,
+            size = file.length(),
+            mimeType = "audio/mp4",
+            audio = true,
+        )
+        scope.launch {
+            try {
+                val transcript = onTranscribe(file)
+                voiceNoteTranscript = transcript.takeIf { it.isNotBlank() }
+                if (voiceNoteTranscript == null) {
+                    voiceNoteError = "Voice note attached; no speech was recognized."
+                }
+            } catch (error: Exception) {
+                voiceNoteError = "Voice note attached, but transcription failed: " +
+                    (error.message ?: "unknown error")
+            } finally {
+                voiceNoteProcessing = false
+            }
+        }
+    }
+
+    fun toggleVoiceNotePlayback() {
+        val file = voiceNoteFile ?: return
+        try {
+            if (voiceNotePlayer?.isPlaying == true) {
+                voiceNotePlayer?.pause()
+                voiceNotePlaying = false
+                return
+            }
+            val player = voiceNotePlayer ?: MediaPlayer().apply {
+                setDataSource(file.absolutePath)
+                setOnCompletionListener { voiceNotePlaying = false }
+                prepare()
+            }.also { voiceNotePlayer = it }
+            player.start()
+            voiceNotePlaying = true
+        } catch (error: Exception) {
+            voiceNoteError = "Couldn't play the voice note: ${error.message ?: "unknown error"}"
         }
     }
 
@@ -1672,6 +1784,45 @@ private fun ChatScreen(
                 }
             }
         }
+        if (voiceNoteRecording || voiceNoteProcessing || voiceNoteFile != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                when {
+                    voiceNoteRecording -> Text(
+                        "● Recording voice note…",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    voiceNoteFile != null -> {
+                        TextButton(onClick = { toggleVoiceNotePlayback() }) {
+                            Text(if (voiceNotePlaying) "⏸" else "▶")
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Voice note", style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                when {
+                                    voiceNoteProcessing -> "Transcribing…"
+                                    voiceNoteTranscript != null -> voiceNoteTranscript!!
+                                    else -> "No transcript"
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        TextButton(onClick = { removeVoiceNote() }) { Text("✕") }
+                    }
+                    else -> {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Text("Transcribing voice note…", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
         if (attachments.isNotEmpty()) {
             Row(
                 modifier = Modifier
@@ -1680,7 +1831,7 @@ private fun ChatScreen(
                     .padding(horizontal = 12.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                attachments.forEach { attachment ->
+                attachments.filterNot { it.audio }.forEach { attachment ->
                     AttachmentChip(
                         attachment = attachment,
                         enabled = !sending,
@@ -1700,6 +1851,14 @@ private fun ChatScreen(
             )
         }
         micError?.let { message ->
+            Text(
+                message,
+                color = Color(0xFFFF8A80),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+            )
+        }
+        voiceNoteError?.let { message ->
             Text(
                 message,
                 color = Color(0xFFFF8A80),
@@ -1734,6 +1893,31 @@ private fun ChatScreen(
             Box(
                 modifier = Modifier
                     .padding(bottom = 4.dp)
+                    .size(44.dp)
+                    .background(
+                        if (voiceNoteRecording) Color(0x33FF5252) else Color.Transparent,
+                        CircleShape,
+                    )
+                    .clickable(
+                        enabled = !sending && !voiceNoteProcessing && !recording && !transcribing,
+                    ) {
+                        if (voiceNoteRecording) stopVoiceNote() else startVoiceNote()
+                    }
+                    .semantics {
+                        contentDescription =
+                            if (voiceNoteRecording) "Stop voice note" else "Record voice note"
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (voiceNoteProcessing) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(if (voiceNoteRecording) "⏹" else "🎵", fontSize = 20.sp)
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .padding(bottom = 4.dp)
                     .size(48.dp)
                     .background(if (recording) Color(0x33FF5252) else Color.Transparent, CircleShape)
                     .pointerInput(Unit) {
@@ -1743,7 +1927,7 @@ private fun ChatScreen(
                                     micPermission.launch(Manifest.permission.RECORD_AUDIO)
                                     return@detectTapGestures
                                 }
-                                if (transcribing || recording) return@detectTapGestures
+                                if (transcribing || recording || voiceNoteRecording || voiceNoteProcessing) return@detectTapGestures
                                 if (startVoice()) {
                                     tryAwaitRelease()
                                     stopVoice()

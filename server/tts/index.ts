@@ -54,6 +54,7 @@ export function describeVoice(cfg: AppConfig) {
     configured: voiceProvider(cfg) === "local" ? localVoiceReady() : Boolean(cfg.tts?.key),
     ready: voiceConfigured(cfg),
     voice: cfg.tts?.voice ?? "",
+    language: cfg.tts?.language ?? "auto",
   };
 }
 

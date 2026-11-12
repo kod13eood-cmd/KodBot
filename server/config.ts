@@ -34,6 +34,7 @@ const appConfigSchema = z.object({
       key: optionalText,
       voice: optionalText,
       provider: z.enum(["elevenlabs", "local"]).optional(),
+      language: z.enum(["auto", "bg", "en"]).optional(),
     })
     .optional(),
   /** Non-secret profile details shown in the sidebar. */
@@ -51,7 +52,12 @@ export interface AppConfig {
   composio?: { apiKey?: string; userId?: string; sessionId?: string };
   box?: { token?: string };
   opencodeGo?: { apiKey?: string };
-  tts?: { key?: string; voice?: string; provider?: "elevenlabs" | "local" };
+  tts?: {
+    key?: string;
+    voice?: string;
+    provider?: "elevenlabs" | "local";
+    language?: "auto" | "bg" | "en";
+  };
   profile?: { name?: string; email?: string };
   approvalTimeoutMinutes?: number | null;
   instances?: InstanceConfigMap;

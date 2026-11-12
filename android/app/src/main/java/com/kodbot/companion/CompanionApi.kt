@@ -30,6 +30,8 @@ data class PendingAttachment(
     val name: String,
     val size: Long,
     val mimeType: String,
+    /** A recorded voice note: the composer shows a player instead of a file chip. */
+    val audio: Boolean = false,
 ) : java.io.Serializable
 
 /** A file that now exists on the host. `path` is what the prompt names. */
