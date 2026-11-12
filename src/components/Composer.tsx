@@ -1,6 +1,6 @@
 import { track } from "@/lib/analytics";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, Clock, Loader2, Mic, Paperclip, Reply, Square, Users, X } from "lucide-react";
+import { ArrowUp, AudioLines, Clock, Loader2, Mic, Paperclip, Reply, Square, Users, X } from "lucide-react";
 import { useStore, visibleMessages, type Bot, type Group, type Message } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { useComposerDraft } from "@/lib/drafts";
@@ -12,6 +12,7 @@ import {
   isLongPaste,
   pasteAttachment,
   uploadRemoteAttachments,
+  uploadVoiceNote,
   type Attachment,
 } from "@/lib/composer-attachments";
 import { displayRole, normalizeState } from "@/lib/mascot";
@@ -20,7 +21,8 @@ import { PendingApprovalActions, PendingApprovalPanel, pendingApprovals } from "
 import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { useI18n } from "@/lib/i18n";
 import { promptQueue, queueKeyForBot, queueKeyForGroup } from "@/lib/send-queue";
-import { BrowserPtt, browserPttSupported } from "@/lib/browser-ptt";
+import { BrowserPtt, browserPttSupported, transcribeAudio } from "@/lib/browser-ptt";
+import { httpsVoiceUrl, microphoneIssue, type MicrophoneIssue } from "@/lib/voice-diagnostics";
 
 /** The active @mention query at the caret: the text between an `@` that
  * starts a word and the caret. null = no mention being typed. */
@@ -35,6 +37,16 @@ function mentionQueryAt(text: string, caret: number): { start: number; query: st
 }
 
 type MentionChoice = { id: string; name: string; bot?: Bot };
+
+type VoiceNote = {
+  status: "recording" | "processing" | "ready";
+  url?: string;
+  path?: string;
+  name?: string;
+  size?: number;
+  transcript?: string;
+  durationMs?: number;
+};
 
 export function Composer({
   bot,
@@ -77,6 +89,10 @@ export function Composer({
   const [text, setText, attachments, setAttachments] = useComposerDraft(
     group ? `group:${group.id}` : `bot:${bot?.id ?? ""}`,
   );
+  const [voiceNote, setVoiceNote] = useState<VoiceNote | null>(null);
+  const voiceNotePtt = useRef<BrowserPtt | null>(null);
+  const voiceNoteStartedAt = useRef(0);
+  const voiceNoteAttachmentId = useRef<string | null>(null);
   const addAttachments = useCallback(
     (next: Attachment[]) => setAttachments((prev) => [...prev, ...next]),
     [setAttachments],
@@ -100,10 +116,17 @@ export function Composer({
     [addAttachments, t],
   );
   const removeAttachment = useCallback(
-    (id: string) => setAttachments((prev) => prev.filter((a) => a.id !== id)),
+    (id: string) => {
+      if (voiceNoteAttachmentId.current === id) {
+        voiceNoteAttachmentId.current = null;
+        setVoiceNote(null);
+      }
+      setAttachments((prev) => prev.filter((a) => a.id !== id));
+    },
     [setAttachments],
   );
   const [recording, setRecording] = useState<"native" | "browser" | null>(null);
+  const [browserStarting, setBrowserStarting] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
   const [caret, setCaret] = useState(0);
   const [highlight, setHighlight] = useState(0);
@@ -111,12 +134,32 @@ export function Composer({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const browserPtt = useRef<BrowserPtt | null>(null);
-  const browserStart = useRef<Promise<void> | null>(null);
   // what was typed before the mic went on — partials append after it
   const baseText = useRef("");
   const nativeMic = capabilities.dictation.available && Boolean(window.ogb?.speechStart);
   const browserMic = !nativeMic && browserPttSupported();
-  const micAvailable = nativeMic || browserMic;
+  const micIssue: MicrophoneIssue =
+    typeof window === "undefined"
+      ? null
+      : microphoneIssue({
+          secureContext: window.isSecureContext,
+          hostname: window.location.hostname,
+          hasMediaDevices:
+            typeof navigator !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia),
+          hasMediaRecorder: typeof MediaRecorder !== "undefined",
+        });
+  const httpsUrl = httpsVoiceUrl(
+    typeof window === "undefined" ? "https:" : window.location.protocol,
+    typeof window === "undefined" ? "localhost" : window.location.hostname,
+    typeof window === "undefined" ? "" : window.location.port,
+  );
+  const micIssueMessage = (issue: Exclude<MicrophoneIssue, null>) =>
+    issue === "insecure"
+      ? t("Microphone needs HTTPS. Open {url} or use the desktop app.", { url: httpsUrl })
+      : t("This browser can't record audio.");
+  // Keep the mic visible on an HTTP origin too: a button that explains the
+  // HTTPS requirement is more useful than a button that quietly disappears.
+  const micVisible = nativeMic || browserMic || micIssue !== null;
 
   // ── @mention picker (tag another bot; the agent reaches it via ask_bot) ──
   const mention = mentionQueryAt(text, caret);
@@ -203,6 +246,8 @@ export function Composer({
       );
       setText("");
       setAttachments([]);
+      voiceNoteAttachmentId.current = null;
+      setVoiceNote(null);
       onClearReply?.();
       return;
     }
@@ -215,15 +260,28 @@ export function Composer({
     }
     setText("");
     setAttachments([]);
+    voiceNoteAttachmentId.current = null;
+    setVoiceNote(null);
     onClearReply?.();
   };
   const send = () => {
     if (uploading) return;
-    const local = composeMessage(text, attachments);
+    if (voiceNote?.status === "recording" || voiceNote?.status === "processing") return;
+    const absoluteVoiceUrl =
+      voiceNote?.status === "ready" && voiceNote.url
+        ? new URL(voiceNote.url, window.location.origin).toString()
+        : "";
+    const voiceNoteText = absoluteVoiceUrl
+      ? `🎤 ${voiceNote?.transcript?.trim() || t("Voice note")}\n\n[${t("Play voice note")}](${absoluteVoiceUrl})`
+      : "";
+    const body = [text.trim(), voiceNoteText].filter(Boolean).join("\n\n");
+    const local = composeMessage(body, attachments);
     if (!local) return;
     // In remote mode a local path is meaningless to the agent. Upload the
     // bytes first and put the host's stored path in the prompt instead.
-    const needsUpload = capabilities.remoteMode && attachments.some((a) => a.kind === "file");
+    const needsUpload =
+      capabilities.remoteMode &&
+      attachments.some((a) => a.kind === "file" && a.file && !a.remote);
     if (!needsUpload) {
       submit(local);
       return;
@@ -232,7 +290,7 @@ export function Composer({
     setUploadError(null);
     void uploadRemoteAttachments(attachments)
       .then((ready) => {
-        const composed = composeMessage(text, ready);
+        const composed = composeMessage(body, ready);
         if (composed) submit(composed);
       })
       .catch((error) => setUploadError(error instanceof Error ? error.message : String(error)))
@@ -286,10 +344,11 @@ export function Composer({
   };
 
   const startBrowserMic = async () => {
-    if (!browserMic || recording) return;
+    if (!browserMic || recording || browserStarting) return;
     setSpeechError(null);
     baseText.current = text.trim();
     const ptt = new BrowserPtt();
+    setBrowserStarting(true);
     try {
       await ptt.start();
       browserPtt.current = ptt;
@@ -298,6 +357,8 @@ export function Composer({
       ptt.cancel();
       setSpeechError(error instanceof Error ? error.message : String(error));
       throw error;
+    } finally {
+      setBrowserStarting(false);
     }
   };
 
@@ -317,20 +378,139 @@ export function Composer({
     }
   };
 
-  const finishBrowserPress = () => {
-    const started = browserStart.current;
-    browserStart.current = null;
-    if (started) void started.then(() => stopBrowserMic()).catch(() => {});
+  const toggleBrowserMic = () => {
+    if (recording === "browser") {
+      void stopBrowserMic();
+      return;
+    }
+    if (browserStarting) return;
+    if (micIssue) {
+      setSpeechError(micIssueMessage(micIssue));
+      return;
+    }
+    void startBrowserMic().catch(() => {});
   };
 
   const cancelBrowserMic = () => {
-    browserStart.current = null;
     browserPtt.current?.cancel();
     browserPtt.current = null;
     setRecording(null);
+    setBrowserStarting(false);
   };
 
-  useEffect(() => () => cancelBrowserMic(), []);
+  const startVoiceNote = async () => {
+    if (voiceNote?.status === "recording" || voiceNote?.status === "processing") return;
+    if (recording) {
+      setSpeechError(t("Stop dictation first."));
+      return;
+    }
+    if (micIssue) {
+      setSpeechError(micIssueMessage(micIssue));
+      return;
+    }
+    if (!browserMic) {
+      setSpeechError(t("This browser can't record audio."));
+      return;
+    }
+    if (voiceNoteAttachmentId.current) {
+      setAttachments((prev) => prev.filter((a) => a.id !== voiceNoteAttachmentId.current));
+      voiceNoteAttachmentId.current = null;
+    }
+    setSpeechError(null);
+    const ptt = new BrowserPtt();
+    try {
+      await ptt.start();
+      voiceNotePtt.current = ptt;
+      voiceNoteStartedAt.current = Date.now();
+      setVoiceNote({ status: "recording" });
+    } catch (error) {
+      ptt.cancel();
+      setSpeechError(error instanceof Error ? error.message : String(error));
+      setVoiceNote(null);
+    }
+  };
+
+  const stopVoiceNote = async () => {
+    const ptt = voiceNotePtt.current;
+    voiceNotePtt.current = null;
+    if (!ptt) {
+      setVoiceNote(null);
+      return;
+    }
+    const durationMs = Date.now() - voiceNoteStartedAt.current;
+    setVoiceNote({ status: "processing" });
+    try {
+      const { blob, mime } = await ptt.stopRecording();
+      if (!blob.size) throw new Error(t("Nothing was recorded. Try again."));
+      const extension = mime.includes("ogg") ? "ogg" : mime.includes("mp4") ? "m4a" : "webm";
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const stored = await uploadVoiceNote(blob, `voice-note-${stamp}.${extension}`);
+      const id = globalThis.crypto?.randomUUID?.() ?? `voice-${Date.now()}`;
+      voiceNoteAttachmentId.current = id;
+      setAttachments((prev) => [
+        ...prev.filter((a) => a.kind !== "file" || !a.audio),
+        {
+          kind: "file",
+          id,
+          path: stored.path,
+          name: stored.name,
+          size: stored.size,
+          remote: true,
+          audio: true,
+        },
+      ]);
+      // Show the player and let the note be sent immediately. Whisper on a
+      // CPU can take a while; the transcript fills in when it arrives and is
+      // a bonus, not a gate on sending the clip.
+      setVoiceNote({
+        status: "ready",
+        url: stored.url,
+        path: stored.path,
+        name: stored.name,
+        size: stored.size,
+        transcript: "",
+        durationMs,
+      });
+      void transcribeAudio(blob, mime)
+        .then((text) =>
+          setVoiceNote((prev) =>
+            prev && prev.path === stored.path ? { ...prev, transcript: text } : prev,
+          ),
+        )
+        .catch(() => {});
+    } catch (error) {
+      setSpeechError(error instanceof Error ? error.message : String(error));
+      setVoiceNote(null);
+    }
+  };
+
+  const cancelVoiceNote = () => {
+    voiceNotePtt.current?.cancel();
+    voiceNotePtt.current = null;
+    if (voiceNoteAttachmentId.current) {
+      setAttachments((prev) => prev.filter((a) => a.id !== voiceNoteAttachmentId.current));
+      voiceNoteAttachmentId.current = null;
+    }
+    setVoiceNote(null);
+  };
+
+  const toggleVoiceNote = () => {
+    if (voiceNote?.status === "recording") {
+      void stopVoiceNote();
+      return;
+    }
+    if (voiceNote?.status === "processing") return;
+    void startVoiceNote();
+  };
+
+  useEffect(
+    () => () => {
+      cancelBrowserMic();
+      voiceNotePtt.current?.cancel();
+      voiceNotePtt.current = null;
+    },
+    [],
+  );
 
   return (
     <div className="px-5 pb-5 pt-2">
@@ -444,6 +624,43 @@ export function Composer({
                 else if (bot) dispatch({ type: "interrupt", botId: bot.id });
               }}
             />
+          </div>
+        )}
+        {voiceNote && (
+          <div className="mb-2 flex items-center gap-2 rounded-xl border border-hairline/40 bg-raised/60 px-3 py-2">
+            {voiceNote.status === "recording" ? (
+              <>
+                <span className="size-2 animate-pulse rounded-full bg-danger" />
+                <span className="min-w-0 flex-1 truncate text-[12px] text-ink">
+                  {t("Recording voice note…")}
+                </span>
+              </>
+            ) : voiceNote.status === "processing" ? (
+              <>
+                <Loader2 size={14} className="animate-spin text-ink-secondary" />
+                <span className="min-w-0 flex-1 truncate text-[12px] text-ink">
+                  {t("Preparing voice note…")}
+                </span>
+              </>
+            ) : (
+              <>
+                {voiceNote.url && (
+                  <audio controls src={voiceNote.url} className="h-8 min-w-0 flex-1" />
+                )}
+                <span className="max-w-[220px] truncate text-[11.5px] text-ink-secondary">
+                  {voiceNote.transcript || t("Voice note")}
+                </span>
+                <button
+                  type="button"
+                  onClick={cancelVoiceNote}
+                  aria-label={t("Remove voice note")}
+                  title={t("Remove voice note")}
+                  className="shrink-0 rounded p-0.5 text-ink-secondary hover:bg-raised hover:text-ink"
+                >
+                  <X size={12} />
+                </button>
+              </>
+            )}
           </div>
         )}
         <ComposerAttachments
@@ -592,28 +809,10 @@ export function Composer({
             <Square size={14} className="fill-current" />
           </button>
         )}
-        {!busy && !hasContent && micAvailable && (
+        {micVisible && (
           <button
-            onClick={nativeMic ? toggleMic : undefined}
-            onPointerDown={
-              browserMic
-                ? (event) => {
-                    event.preventDefault();
-                    if (browserStart.current) return;
-                    browserStart.current = startBrowserMic().catch(() => {});
-                  }
-                : undefined
-            }
-            onPointerUp={
-              browserMic
-                ? (event) => {
-                    event.preventDefault();
-                    finishBrowserPress();
-                  }
-                : undefined
-            }
-            onPointerLeave={browserMic ? finishBrowserPress : undefined}
-            onPointerCancel={browserMic ? finishBrowserPress : undefined}
+            onClick={nativeMic ? toggleMic : toggleBrowserMic}
+            disabled={voiceNote?.status === "recording" || voiceNote?.status === "processing"}
             aria-label={recording ? t("Stop dictation") : t("Start dictation")}
             className={cn(
               "flex size-8 shrink-0 items-center justify-center rounded-full",
@@ -621,15 +820,59 @@ export function Composer({
                 ? "animate-pulse bg-danger/20 text-danger"
                 : "text-ink-secondary hover:bg-raised hover:text-ink",
             )}
-            title={recording ? t("Stop dictation (Esc)") : browserMic ? t("Hold to talk") : t("Dictate")}
+            title={
+              recording
+                ? t("Stop dictation (Esc)")
+                : browserMic
+                  ? t("Click to talk")
+                  : nativeMic
+                    ? t("Dictate")
+                    : t("Microphone unavailable")
+            }
           >
-            <Mic size={18} />
+            {browserStarting ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : recording === "browser" ? (
+              <Square size={14} className="fill-current" />
+            ) : (
+              <Mic size={18} />
+            )}
+          </button>
+        )}
+        {micVisible && (
+          <button
+            onClick={toggleVoiceNote}
+            disabled={recording !== null || voiceNote?.status === "processing"}
+            aria-label={
+              voiceNote?.status === "recording"
+                ? t("Stop voice note")
+                : t("Record voice note")
+            }
+            title={
+              voiceNote?.status === "recording"
+                ? t("Stop voice note")
+                : t("Record voice note")
+            }
+            className={cn(
+              "flex size-8 shrink-0 items-center justify-center rounded-full",
+              voiceNote?.status === "recording"
+                ? "animate-pulse bg-danger/20 text-danger"
+                : "text-ink-secondary hover:bg-raised hover:text-ink",
+            )}
+          >
+            {voiceNote?.status === "processing" ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : voiceNote?.status === "recording" ? (
+              <Square size={14} className="fill-current" />
+            ) : (
+              <AudioLines size={18} />
+            )}
           </button>
         )}
         {hasContent && (
           <button
             onClick={send}
-            disabled={uploading}
+            disabled={uploading || voiceNote?.status === "recording" || voiceNote?.status === "processing"}
             aria-label={uploading ? t("Uploading attachment") : busy ? t("Queue message") : t("Send message")}
             title={uploading ? t("Uploading attachment…") : busy ? t("Sends when the current turn finishes") : t("Send")}
             className={cn(

@@ -3,7 +3,7 @@
 // first lines instead of flooding the composer; a file dropped anywhere
 // on the window attaches by path.
 import { useEffect, useRef, useState } from "react";
-import { ClipboardPaste, File as FileIcon, X } from "lucide-react";
+import { AudioLines, ClipboardPaste, File as FileIcon, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   attachmentsFromDroppedFiles,
@@ -126,9 +126,13 @@ export function ComposerAttachments({
                 <div className="mt-1 text-[10.5px] text-ink-secondary/70">{pasteSummary(a)}</div>
               </Chip>
             ) : (
-              <Chip key={a.id} label="FILE" title={a.path} onRemove={() => onRemove(a.id)}>
+              <Chip key={a.id} label={a.audio ? "VOICE" : "FILE"} title={a.path} onRemove={() => onRemove(a.id)}>
                 <div className="flex h-[76px] items-center gap-2">
-                  <FileIcon size={16} className="shrink-0 text-ink-secondary" />
+                  {a.audio ? (
+                    <AudioLines size={16} className="shrink-0 text-ink-secondary" />
+                  ) : (
+                    <FileIcon size={16} className="shrink-0 text-ink-secondary" />
+                  )}
                   <div className="min-w-0">
                     <div className="truncate text-[12px] text-ink">{a.name}</div>
                     <div className="text-[10.5px] text-ink-secondary/70">{formatSize(a.size)}</div>
@@ -150,11 +154,11 @@ function Chip({
   onRemove,
 }: {
   children: React.ReactNode;
-  label: "PASTED" | "FILE";
+  label: "PASTED" | "FILE" | "VOICE";
   title: string;
   onRemove: () => void;
 }) {
-  const Icon = label === "PASTED" ? ClipboardPaste : FileIcon;
+  const Icon = label === "PASTED" ? ClipboardPaste : label === "VOICE" ? AudioLines : FileIcon;
   return (
     <div
       title={title}
@@ -174,7 +178,7 @@ function Chip({
           way to drop a chip out of reach of the keyboard */}
       <button
         onClick={onRemove}
-        aria-label={`Remove ${label === "PASTED" ? "pasted text" : "file"}`}
+        aria-label={`Remove ${label === "PASTED" ? "pasted text" : label === "VOICE" ? "voice note" : "file"}`}
         className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full border border-hairline/60 bg-panel text-ink-secondary opacity-0 transition-opacity hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
       >
         <X size={11} />

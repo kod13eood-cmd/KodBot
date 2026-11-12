@@ -5,7 +5,7 @@ import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { readFileSync, unlinkSync, createReadStream, statSync, existsSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { isIP } from "node:net";
-import { extname, join } from "node:path";
+import { basename, extname, join } from "node:path";
 
 import { z } from "zod";
 
@@ -114,7 +114,7 @@ import { memberTurnSelection } from "./member-turn.ts";
 import { WebhookManager } from "./webhooks.ts";
 import { SPAWNED_PROXIES } from "./proxy-paths.ts";
 import { askJev, jevConfigured, jevRequest, type JevError } from "./jev.ts";
-import { MAX_UPLOAD_BYTES, sanitizeUploadName, storeUpload } from "./uploads.ts";
+import { MAX_UPLOAD_BYTES, sanitizeUploadName, storeUpload, UPLOAD_DIR } from "./uploads.ts";
 import {
   changedPages,
   deletePage,
@@ -4106,8 +4106,47 @@ const server = createServer(async (req, res) => {
       const stored = storeUpload(bytes, name);
       return json(res, 200, {
         ...stored,
+        url: `/api/uploads/${encodeURIComponent(basename(stored.path))}`,
         mime: String(req.headers["content-type"] ?? "").split(";")[0].trim() || "application/octet-stream",
       });
+    }
+    // Uploaded files are already on this host and are addressable by the
+    // transcript. Serving them keeps a recorded voice note playable without
+    // copying it anywhere else. The name is one path segment; no traversal.
+    if (method === "GET" && path.startsWith("/api/uploads/")) {
+      const requested = decodeURIComponent(path.slice("/api/uploads/".length));
+      const name = basename(requested);
+      if (!name || name !== requested || name.startsWith(".")) {
+        return json(res, 404, { error: "no such upload" });
+      }
+      const mime =
+        {
+          ".webm": "audio/webm",
+          ".ogg": "audio/ogg",
+          ".wav": "audio/wav",
+          ".mp3": "audio/mpeg",
+          ".m4a": "audio/mp4",
+          ".mp4": "video/mp4",
+          ".png": "image/png",
+          ".jpg": "image/jpeg",
+          ".jpeg": "image/jpeg",
+          ".gif": "image/gif",
+          ".pdf": "application/pdf",
+          ".txt": "text/plain; charset=utf-8",
+        }[extname(name).toLowerCase()] ?? "application/octet-stream";
+      try {
+        const file = join(UPLOAD_DIR, name);
+        const stat = statSync(file);
+        if (!stat.isFile()) return json(res, 404, { error: "no such upload" });
+        res.writeHead(200, {
+          "content-type": mime,
+          "content-length": String(stat.size),
+          "cache-control": "private, max-age=600",
+        });
+        return res.end(readFileSync(file));
+      } catch {
+        return json(res, 404, { error: "no such upload" });
+      }
     }
 
     // Android updates over the paired companion, for phones that cannot

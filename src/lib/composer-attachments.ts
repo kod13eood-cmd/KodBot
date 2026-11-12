@@ -18,6 +18,11 @@ export type FileAttachment = {
   /** The picked bytes, kept in memory so a remote host can receive them.
    * Drafts persist only path/name/size; after a reload the user re-attaches. */
   file?: File;
+  /** Already stored on the harness (a recorded voice note, for example), so
+   * a remote-mode send must not try to upload it a second time. */
+  remote?: boolean;
+  /** Show this as a voice note chip and keep it playable. */
+  audio?: boolean;
 };
 
 export type Attachment = PasteAttachment | FileAttachment;
@@ -168,6 +173,43 @@ export function escapeAttribute(value: string): string {
     .replaceAll("\n", "&#10;");
 }
 
+export interface StoredVoiceNote {
+  path: string;
+  name: string;
+  size: number;
+  /** Same-origin URL that plays the stored clip. */
+  url: string;
+}
+
+/** Store a recorded clip on the harness and return both the path the agent
+ * can open and the URL the transcript can play. Works in local and remote
+ * mode because the bytes go to the harness that owns the workspace. */
+export async function uploadVoiceNote(
+  blob: Blob,
+  name: string,
+  post: typeof fetch = fetch,
+): Promise<StoredVoiceNote> {
+  const response = await post("/api/uploads", {
+    method: "POST",
+    headers: {
+      "content-type": blob.type || "audio/webm",
+      "x-kodbot-filename": encodeURIComponent(name),
+    },
+    body: blob,
+  });
+  const saved = (await response.json().catch(() => null)) as
+    | { path?: string; url?: string; name?: string; size?: number; error?: string }
+    | null;
+  if (!response.ok) throw new Error(saved?.error || `Couldn't store the voice note (HTTP ${response.status}).`);
+  if (!saved?.path || !saved?.url) throw new Error("The server didn't return a path for the voice note.");
+  return {
+    path: saved.path,
+    url: saved.url,
+    name: saved.name || name,
+    size: typeof saved.size === "number" ? saved.size : blob.size,
+  };
+}
+
 /** A remote harness cannot open a path on this laptop. Send the bytes to the
  * host first and rewrite each file attachment to the path it stored. Paste
  * attachments are already text and stay untouched. */
@@ -180,6 +222,10 @@ export async function uploadRemoteAttachments(
   const out: Attachment[] = [];
   for (const attachment of attachments) {
     if (attachment.kind !== "file") {
+      out.push(attachment);
+      continue;
+    }
+    if (attachment.remote) {
       out.push(attachment);
       continue;
     }
