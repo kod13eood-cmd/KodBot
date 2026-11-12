@@ -151,6 +151,18 @@ once; after that, releases update in place.
   upload playback).
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.43>
 
+### Release 0.1.44 (2026-11-12)
+
+- Desktop 0.1.44 for Linux (AppImage/deb) and Windows (unsigned NSIS).
+  macOS stays on the separate signed/notarized flow.
+- Bulgarian STT now uses the **small** Whisper model with beam search 5;
+  App Settings -> Voice has an Auto / Bulgarian / English recognition
+  language. CPU transcription is slower.
+- Android is **0.1.20 / versionCode 21**: native voice-note button with
+  playback, transcript, and attachment. The companion voice routes shipped in
+  0.1.43.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.44>
+
 ## 4. Remote deployment topology
 
 | Item | Value |
