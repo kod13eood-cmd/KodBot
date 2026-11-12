@@ -131,13 +131,13 @@ KodBot е local-first chat приложение за екип от AI агент
       en: `## Voice
 
 - **App Settings → Voice → Local (free)** uses faster-whisper for speech-to-text and Piper for text-to-speech on the harness. Audio stays on the machine; the first setup downloads the models once.
-- **Hold the microphone** in the composer to talk. The transcript lands in the composer so you can edit or send it. On Android the native chat composer has the same hold-to-talk button; Desktop mode uses the web control. Voice capture in a browser needs HTTPS or the localhost desktop app.
+- **Click the microphone** in the composer to start talking; click it again to stop and transcribe. The transcript lands in the composer so you can edit or send it, even if you already typed something. On Android the native chat composer uses hold-to-talk; Desktop mode uses the web control. Voice capture in a browser needs HTTPS or the localhost desktop app. **App Settings → Voice** has a microphone test and a speaker test.
 - **ElevenLabs** is still available if you prefer a cloud voice. It is billed per character by ElevenLabs.
 - Bots with **Speak replies** enabled read settled replies aloud; call mode on macOS uses the native speech service.`,
       bg: `## Глас
 
 - **App Settings → Voice → Local (free)** използва faster-whisper за реч към текст и Piper за текст към реч на сървъра. Аудиото остава на машината; моделите се изтеглят еднократно при първата настройка.
-- **Задръж микрофона** в composer-а, за да говориш. Транскриптът влиза в полето, за да го редактираш или изпратиш. На Android native чатът има същия hold-to-talk бутон; Desktop mode използва уеб контролата. Гласът в браузър иска HTTPS или localhost desktop app.
+- **Щракни микрофона** в composer-а, за да започнеш да говориш; щракни отново, за да спреш и транскрибираш. Транскриптът влиза в полето, за да го редактираш или изпратиш, дори вече да имаш написан текст. На Android native чатът използва hold-to-talk; Desktop mode използва уеб контролата. Гласът в браузър иска HTTPS или localhost desktop app. **App Settings → Voice** има тест на микрофона и тест на гласа.
 - **ElevenLabs** остава наличен, ако предпочиташ облачен глас. Таксува се на знак от ElevenLabs.
 - Ботовете с включено **Speak replies** четат готовите отговори на глас; call mode на macOS използва native speech услугата.`,
     },
