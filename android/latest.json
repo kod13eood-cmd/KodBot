@@ -1,7 +1,7 @@
 {
-  "versionCode": 21,
-  "versionName": "0.1.20",
+  "versionCode": 22,
+  "versionName": "0.1.21",
   "apkUrl": "https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-android.apk",
-  "notes": "Voice notes in the native composer with playback and transcript, a separate audio-lines button, and Bulgarian-focused transcription with the small Whisper model and a language setting.",
+  "notes": "A clear transcription-progress indicator with elapsed seconds after dictation and voice notes, so the app no longer looks frozen while Whisper works.",
   "publishedAt": "2026-11-12T21:01:12Z"
 }
