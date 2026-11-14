@@ -45,6 +45,7 @@ type VoiceNote = {
   name?: string;
   size?: number;
   transcript?: string;
+  transcriptPending?: boolean;
   durationMs?: number;
 };
 
@@ -127,6 +128,8 @@ export function Composer({
   );
   const [recording, setRecording] = useState<"native" | "browser" | null>(null);
   const [browserStarting, setBrowserStarting] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [transcribeSeconds, setTranscribeSeconds] = useState(0);
   const [speechError, setSpeechError] = useState<string | null>(null);
   const [caret, setCaret] = useState(0);
   const [highlight, setHighlight] = useState(0);
@@ -136,6 +139,19 @@ export function Composer({
   const browserPtt = useRef<BrowserPtt | null>(null);
   // what was typed before the mic went on — partials append after it
   const baseText = useRef("");
+  useEffect(() => {
+    if (!transcribing) {
+      setTranscribeSeconds(0);
+      return;
+    }
+    const started = Date.now();
+    const timer = window.setInterval(
+      () => setTranscribeSeconds(Math.floor((Date.now() - started) / 1000)),
+      1000,
+    );
+    return () => window.clearInterval(timer);
+  }, [transcribing]);
+
   const nativeMic = capabilities.dictation.available && Boolean(window.ogb?.speechStart);
   const browserMic = !nativeMic && browserPttSupported();
   const micIssue: MicrophoneIssue =
@@ -367,6 +383,8 @@ export function Composer({
     browserPtt.current = null;
     setRecording(null);
     if (!ptt) return;
+    setTranscribing(true);
+    setSpeechError(null);
     try {
       const transcript = await ptt.stop();
       if (transcript) {
@@ -375,6 +393,8 @@ export function Composer({
       }
     } catch (error) {
       setSpeechError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setTranscribing(false);
     }
   };
 
@@ -469,15 +489,22 @@ export function Composer({
         name: stored.name,
         size: stored.size,
         transcript: "",
+        transcriptPending: true,
         durationMs,
       });
       void transcribeAudio(blob, mime)
         .then((text) =>
           setVoiceNote((prev) =>
-            prev && prev.path === stored.path ? { ...prev, transcript: text } : prev,
+            prev && prev.path === stored.path
+              ? { ...prev, transcript: text, transcriptPending: false }
+              : prev,
           ),
         )
-        .catch(() => {});
+        .catch(() =>
+          setVoiceNote((prev) =>
+            prev && prev.path === stored.path ? { ...prev, transcriptPending: false } : prev,
+          ),
+        );
     } catch (error) {
       setSpeechError(error instanceof Error ? error.message : String(error));
       setVoiceNote(null);
@@ -529,6 +556,16 @@ export function Composer({
       {speechError && (
         <div className="mx-auto mb-2 max-w-[900px] rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-[12px] text-warning">
           {speechError}
+        </div>
+      )}
+      {transcribing && (
+        <div className="mx-auto mb-2 flex max-w-[900px] items-center gap-2 rounded-lg border border-accent/25 bg-accent/10 px-3 py-2 text-[12px] text-ink-secondary">
+          <Loader2 size={14} className="shrink-0 animate-spin text-accent" />
+          <span>{t("Transcribing your voice…")}</span>
+          {transcribeSeconds > 0 && (
+            <span className="shrink-0 tabular-nums text-ink-secondary/70">{transcribeSeconds}s</span>
+          )}
+          <span className="text-ink-secondary/70">{t("This can take a minute on CPU.")}</span>
         </div>
       )}
       <div className="relative mx-auto max-w-[900px]">
@@ -647,9 +684,16 @@ export function Composer({
                 {voiceNote.url && (
                   <audio controls src={voiceNote.url} className="h-8 min-w-0 flex-1" />
                 )}
-                <span className="max-w-[220px] truncate text-[11.5px] text-ink-secondary">
-                  {voiceNote.transcript || t("Voice note")}
-                </span>
+                {voiceNote.transcriptPending ? (
+                  <span className="flex shrink-0 items-center gap-1 text-[11.5px] text-ink-secondary">
+                    <Loader2 size={11} className="animate-spin" />
+                    {t("Transcribing…")}
+                  </span>
+                ) : (
+                  <span className="max-w-[220px] truncate text-[11.5px] text-ink-secondary">
+                    {voiceNote.transcript || t("Voice note")}
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={cancelVoiceNote}
@@ -812,7 +856,11 @@ export function Composer({
         {micVisible && (
           <button
             onClick={nativeMic ? toggleMic : toggleBrowserMic}
-            disabled={voiceNote?.status === "recording" || voiceNote?.status === "processing"}
+            disabled={
+              transcribing ||
+              voiceNote?.status === "recording" ||
+              voiceNote?.status === "processing"
+            }
             aria-label={recording ? t("Stop dictation") : t("Start dictation")}
             className={cn(
               "flex size-8 shrink-0 items-center justify-center rounded-full",
@@ -830,7 +878,7 @@ export function Composer({
                     : t("Microphone unavailable")
             }
           >
-            {browserStarting ? (
+            {transcribing || browserStarting ? (
               <Loader2 size={15} className="animate-spin" />
             ) : recording === "browser" ? (
               <Square size={14} className="fill-current" />

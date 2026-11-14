@@ -95,6 +95,8 @@ const BULGARIAN: Record<string, string> = {
   "Test microphone": "Тествай микрофона",
   "Stop and transcribe": "Спри и транскрибирай",
   "Transcribing…": "Транскрибиране…",
+  "Transcribing your voice…": "Транскрибиране на гласа…",
+  "This can take a minute on CPU.": "Това може да отнеме до минута на CPU.",
   "Starting…": "Стартиране…",
   "No speech detected.": "Не беше разпозната реч.",
   "Transcript": "Транскрипт",
