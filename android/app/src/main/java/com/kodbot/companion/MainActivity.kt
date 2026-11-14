@@ -1520,6 +1520,18 @@ private fun ChatScreen(
     var voiceNotePlaying by remember { mutableStateOf(false) }
     var voiceNoteError by remember { mutableStateOf<String?>(null) }
     var voiceNotePlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+    var transcribingSeconds by remember { mutableStateOf(0) }
+    LaunchedEffect(transcribing, voiceNoteProcessing) {
+        if (!transcribing && !voiceNoteProcessing) {
+            transcribingSeconds = 0
+            return@LaunchedEffect
+        }
+        val startedAt = System.currentTimeMillis()
+        while (true) {
+            transcribingSeconds = ((System.currentTimeMillis() - startedAt) / 1000).toInt()
+            delay(1000)
+        }
+    }
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         micGranted = granted
         micError = if (granted) null else "Microphone permission is needed for voice input."
@@ -1781,6 +1793,26 @@ private fun ChatScreen(
             if (chat.busy) {
                 item(key = "kodbot-working-indicator") {
                     WorkingBubble(group = chat.kind == "group")
+                }
+            }
+        }
+        if (transcribing || voiceNoteProcessing) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                Column {
+                    Text(
+                        if (transcribing) "Transcribing your voice…" else "Transcribing your voice note…",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        "${transcribingSeconds}s · This can take a minute on CPU.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }

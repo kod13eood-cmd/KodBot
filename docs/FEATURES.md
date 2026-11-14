@@ -58,8 +58,10 @@ Status keys:
   player before sending, and attaches the clip so the bot can open it; a
   transcript is added when local speech-to-text is available. Android's native
   composer has its own voice-note button with playback. Voice capture needs
-  HTTPS or the localhost desktop app. Bulgarian recognition uses the small
-  Whisper model and beam search 5, trading CPU time for accuracy. ElevenLabs
+  HTTPS or the localhost desktop app. While Whisper works, the composer shows
+  a transcribing spinner, elapsed seconds, and a CPU-time hint; Android shows
+  the same progress row. Bulgarian recognition uses the small Whisper model
+  and beam search 5, trading CPU time for accuracy. ElevenLabs
   remains available for cloud voices; macOS also has native on-device
   dictation.
 - **Record workflow.** Record a human demonstration in the Local VM viewer:
