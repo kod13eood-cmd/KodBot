@@ -163,6 +163,13 @@ once; after that, releases update in place.
   0.1.43.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.44>
 
+### Release 0.1.45 (2026-11-14)
+
+- Desktop 0.1.45 for Linux/Windows; Android **0.1.21 / versionCode 22**.
+- After dictation or a voice note, the composer shows a transcription spinner,
+  elapsed seconds, and a CPU-time hint; Android has the same progress row.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.45>
+
 ## 4. Remote deployment topology
 
 | Item | Value |
