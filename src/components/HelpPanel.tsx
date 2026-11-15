@@ -6,6 +6,7 @@ import { BookOpen, X } from "lucide-react";
 import { GUIDE_SECTIONS, type GuideLocale } from "@/lib/guide";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
+import { windowsTitlebarInset } from "@/lib/window-chrome";
 import { useStore } from "@/state/store";
 import { ChatMarkdown } from "./ChatMarkdown";
 
@@ -111,7 +112,7 @@ export function HelpPanel() {
         </nav>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex items-center justify-between gap-3 border-b border-hairline/40 px-5 py-3">
+          <header className={cn("flex items-center justify-between gap-3 border-b border-hairline/40 px-5 py-3", windowsTitlebarInset())}>
             <div className="flex min-w-0 items-center gap-2">
               <BookOpen size={16} className="shrink-0 text-accent md:hidden" />
               <span className="truncate text-[15px] font-semibold text-ink">

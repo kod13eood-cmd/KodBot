@@ -7,6 +7,7 @@ import { Coins, KeyRound, Monitor, Smartphone, Terminal, User, Volume2, X } from
 import { useStore, type AppSettingsSection } from "@/state/store";
 import { ApiKeyRow } from "./ApiKeys";
 import { useUpdaterState } from "@/lib/updater";
+import { windowsTitlebarInset } from "@/lib/window-chrome";
 import { EnginesSettings } from "./EnginesSettings";
 import { LocalComputerSection } from "./LocalComputerSection";
 import { CompanionSection } from "./CompanionSection";
@@ -518,7 +519,7 @@ export function SettingsModal() {
         </nav>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center justify-between px-5 py-3">
+          <div className={cn("flex items-center justify-between px-5 py-3", windowsTitlebarInset())}>
             <span className="text-[15px] font-semibold text-ink">
               {t(sections.find((s) => s.id === section)?.label ?? "")}
             </span>

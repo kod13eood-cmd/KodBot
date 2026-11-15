@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { api, useStore } from "@/state/store";
 import { cn } from "@/lib/cn";
+import { windowsTitlebarInset } from "@/lib/window-chrome";
 import { copyText } from "@/lib/clipboard";
 import { useI18n } from "@/lib/i18n";
 import { ConnectionNameDialog } from "@/components/ConnectionNameDialog";
@@ -391,7 +392,7 @@ function ServiceDetails({
         aria-labelledby="service-details-title"
         className="animate-pop-in flex max-h-[min(760px,calc(100dvh-2rem))] w-full max-w-[600px] flex-col overflow-hidden rounded-[22px] border border-hairline/50 bg-panel shadow-2xl shadow-black/50"
       >
-        <header className="flex items-start gap-3 border-b border-hairline/40 px-5 py-4">
+        <header className={cn("flex items-start gap-3 border-b border-hairline/40 px-5 py-4", windowsTitlebarInset())}>
           <ServiceIcon card={card} />
           <div className="min-w-0 flex-1">
             <h3 id="service-details-title" className="truncate text-[18px] font-semibold text-ink">
@@ -841,7 +842,7 @@ export function PluginsPanel() {
         tabIndex={-1}
         className="animate-pop-in flex h-[min(780px,calc(100dvh-2rem))] w-full max-w-[1040px] flex-col overflow-hidden rounded-[24px] border border-hairline/50 bg-panel shadow-2xl shadow-black/50"
       >
-        <header className="flex items-start justify-between gap-4 px-6 pb-3 pt-6 sm:px-8 sm:pt-7">
+        <header className={cn("flex items-start justify-between gap-4 px-6 pb-3 pt-6 sm:px-8 sm:pt-7", windowsTitlebarInset())}>
           <div>
             <h2 id="connected-apps-title" className="text-[22px] font-semibold tracking-[-0.01em] text-ink">{t("Connected apps")}</h2>
             <p className="mt-1 text-[13px] text-ink-secondary">{t("Connect the apps your bots can use.")}</p>
