@@ -1,7 +1,7 @@
 {
-  "versionCode": 23,
-  "versionName": "0.1.22",
+  "versionCode": 24,
+  "versionName": "0.1.23",
   "apkUrl": "https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-android.apk",
-  "notes": "Automation summaries now open the full run in the native chat, and the fleet badge counts report dots on a bot's tasks until you open the chat. Bots can also ask with tappable answers.",
-  "publishedAt": "2026-11-15T12:40:54Z"
+  "notes": "Bot pages now open in the app: a Pages list in a bot's chat, page cards in the transcript, and a full-screen viewer. Page links use the server's public address instead of 127.0.0.1.",
+  "publishedAt": "2026-11-15T14:57:00Z"
 }
