@@ -22,6 +22,19 @@ class CompanionProtocolTest {
     }
 
     @Test
+    fun pageMessageNeedsBotAndName() {
+        val page = parsePageArtifact(
+            JSONObject(
+                """{"botId":"bot_1","name":"report.html","title":"Report","bytes":120,"updatedAt":5}""",
+            ),
+        )
+        assertEquals("Report", page?.title)
+        assertEquals(120L, page?.bytes)
+        assertNull(parsePageArtifact(JSONObject("""{"botId":"bot_1"}""")))
+        assertNull(parsePageArtifact(null))
+    }
+
+    @Test
     fun taskUnreadDrivesTheFleetBadge() {
         val tasks = parseTaskSummaries(
             JSONArray(

@@ -95,7 +95,17 @@ opens the page in an in-app viewer; the small top-right icon opens it in the
 normal browser. The same list remains under **Bot settings → Pages**. The bot
 also receives the page title, file path, and a bounded text excerpt in its
 conversation context, so a later turn can continue from what it built without
-re-reading the file. A page can submit a form back to its bot: the answers
+re-reading the file.
+
+**Public address** (App Settings → General) is the origin other devices use to
+reach this harness. Page cards, copied links, and the links bots write use it,
+so a page opens on a phone or another computer instead of pointing at
+`127.0.0.1`; an empty setting falls back to the address the window was opened
+with. The in-app preview keeps the window's own origin so it still works when
+the public name is only resolvable elsewhere. Android has the same page cards
+plus a **Pages** list in a bot's chat header, opening each page in a full-screen
+WebView through the paired companion. Those companion routes are read-only;
+the phone cannot create, edit, or delete a page. A page can submit a form back to its bot: the answers
 arrive as a user message in that bot's chat and the in-app viewer closes.
 
 ### Queued prompts — Live

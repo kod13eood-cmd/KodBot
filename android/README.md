@@ -44,6 +44,10 @@ approval flow. The phone does not receive a general shell endpoint.
   reasoning), search, and separate **OpenCode Zen** / **OpenCode Go** sections.
 - Each bot can turn on Auto routing and choose an explicit Auto model pool. An
   empty pool keeps Auto inside the bot's current engine.
+- **Pages:** a bot's chat header has a **Pages** list. Pages the bot wrote open
+  in a full-screen WebView through the paired companion, read-only; page
+  messages in the transcript render as their own cards. The link used for
+  external browsers comes from **App Settings → General → Public address**.
 - **Automation reports:** a scheduled or manual run lands as a compact summary
   in the owner's main chat with a **See full run** button. It switches the
   hidden worker bot to the task that produced the report and opens that

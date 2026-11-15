@@ -110,6 +110,11 @@ const ALLOWED: ReadonlyArray<{ method: string; path: RegExp }> = [
   { method: "POST", path: /^\/api\/groups\/[\w-]+\/messages$/ },
   { method: "POST", path: /^\/api\/groups\/[\w-]+\/read$/ },
 
+  // Bot pages, read-only. The phone lists them and shows the self-contained
+  // HTML; creating, editing, and deleting stay on the computer.
+  { method: "GET", path: /^\/api\/bots\/[\w-]+\/pages$/ },
+  { method: "GET", path: /^\/api\/bots\/[\w-]+\/pages\/[\w.-]+$/ },
+
   // a transcript, its images, and answering an approval
   { method: "GET", path: /^\/api\/threads\/[\w-]+\/messages$/ },
   { method: "GET", path: /^\/api\/threads\/[\w-]+\/messages\/[\w-]+\/image$/ },

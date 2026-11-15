@@ -267,6 +267,8 @@ export interface ConfigStatus {
   };
   /** who's using the app — collected in onboarding, shown in the sidebar */
   profile?: { name: string; email: string };
+  /** the address other devices use to reach this server; page links use it */
+  publicUrl?: string;
   /** minutes before an unanswered ask is marked overdue; null = no timer */
   approvalTimeoutMinutes?: number | null;
 }

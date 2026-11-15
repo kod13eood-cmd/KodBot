@@ -20,6 +20,7 @@ import { LOCALE_OPTIONS, useI18n } from "@/lib/i18n";
 import { setDeveloperMode, useDeveloperMode } from "@/lib/dev-mode";
 import { setShowGroupChats, useShowGroupChats } from "@/lib/show-groups";
 import { remoteSwitchAvailable } from "@/lib/server-switch";
+import { publicBase } from "@/lib/public-url";
 import type { ServerConnectionState } from "@/types/ogb";
 
 const SECTIONS: Array<{ id: AppSettingsSection; label: string; icon: typeof User }> = [
@@ -125,6 +126,60 @@ function ShortcutsRow() {
           {SHORTCUTS_KEY_LABEL}
         </kbd>
       </button>
+    </Card>
+  );
+}
+
+/** The origin other devices use to reach this harness. Bots and page cards
+ *  build their links from it; empty falls back to the window's own origin,
+ *  which is right in a browser and wrong for a phone when the desktop app is
+ *  on loopback. */
+function PublicAddressCard() {
+  const { state, dispatch } = useStore();
+  const { t } = useI18n();
+  const [value, setValue] = useState(state.config?.publicUrl ?? "");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => setValue(state.config?.publicUrl ?? ""), [state.config?.publicUrl]);
+
+  const save = () => {
+    const next = value.trim();
+    if (next === (state.config?.publicUrl ?? "")) return;
+    setError(null);
+    void fetch("/api/config", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ publicUrl: next }),
+    })
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body.error ?? t("Couldn't save the address."));
+        dispatch({ type: "configStatus", config: body });
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  };
+
+  return (
+    <Card
+      title={t("Public address")}
+      subtitle={t("How other devices reach this server. Used in page links and when a bot opens a page in the browser.")}
+    >
+      <div className="flex flex-col gap-2">
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={save}
+          placeholder="http://paperclipi7.tail89d239.ts.net:8799"
+          spellCheck={false}
+          className="w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 font-mono text-[13px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none"
+        />
+        <div className="text-[12px] text-ink-secondary">
+          {t("Leave empty to use the address this window was opened with ({origin}).", {
+            origin: publicBase(state.config),
+          })}
+        </div>
+        {error && <div className="text-[12px] text-danger">{error}</div>}
+      </div>
     </Card>
   );
 }
@@ -540,6 +595,7 @@ export function SettingsModal() {
                   <ProfileFields />
                 </Card>
                 <ServerCard />
+                <PublicAddressCard />
                 <ApprovalTimeoutCard />
                 <DeveloperCard />
                 <GroupChatsCard />
