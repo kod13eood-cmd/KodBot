@@ -221,6 +221,19 @@ once; after that, releases update in place.
   hides under the system buttons.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.49>
 
+### Release 0.1.50 (2026-11-15)
+
+- Desktop 0.1.50 for Linux/Windows; Android stays **0.1.22 / versionCode 23**.
+- App-only guide fix: Electron treats the chat and sidebar headers as window
+  drag strips. The guide dialog opens over the chat header's strip, so a real
+  mouse press on its X started a window drag instead of a click (no hover,
+  no close). Browsers and synthetic clicks bypassed the frame, which hid the
+  bug from browser tests. Dialogs and the needs-you bar are now marked
+  `-webkit-app-region: no-drag`.
+- Verified with a real X11 pointer under Xvfb: hover changes and the click
+  closes the guide; the side-panel X was already clear.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.50>
+
 ## 4. Remote deployment topology
 
 | Item | Value |
