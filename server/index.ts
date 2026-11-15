@@ -363,6 +363,22 @@ async function defaultSelection() {
 }
 let bootSelection = { instanceId: "", model: "" };
 const store = new Store(() => bootSelection);
+// A previous process can die mid-turn (a deploy, a crash, a machine restart).
+// The transcript must say so: otherwise the activity chips just stop and the
+// bot looks idle with no answer until the person asks again.
+for (const botId of store.interruptedBots) {
+  const bot = store.bot(botId);
+  if (!bot) continue;
+  store.appendMessage(bot.threadId, {
+    role: "bot",
+    kind: "activity",
+    tool: {
+      name: "error: the server restarted while this turn was running — the work may be incomplete. Send a message to continue.",
+      ok: false,
+    },
+  });
+  store.patchBot(bot.id, { unread: true });
+}
 bootSelection = await defaultSelection();
 store.seedIfEmpty();
 
