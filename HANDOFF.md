@@ -191,6 +191,23 @@ once; after that, releases update in place.
   and Results tasks were archived.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.47>
 
+### Release 0.1.48 (2026-11-15)
+
+- Desktop 0.1.48 for Linux/Windows; Android **0.1.22 / versionCode 23**.
+- Bots ask with 2-5 tappable answers on every engine. OpenCode's `question`
+  tool now reaches the same options card as Claude and Codex through an ACP
+  form-elicitation bridge; multi-question forms are asked one card at a time,
+  the approval timeout applies, and the chosen answer is stored on the card.
+- Opening a bot clears the unread report dot on the task it is showing; other
+  tasks keep theirs. New: `PATCH /api/bots/:id/tasks/:threadId` with `{unread}`.
+- Android: **See full run** opens the worker's run in the native chat; the
+  fleet badge counts report dots on a bot's tasks and clears them when the
+  chat is opened.
+- The first noisy Watcher manual report was removed from the live main chat
+  after a stopped-server backup and `PRAGMA integrity_check`; the clean
+  summary remains.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.48>
+
 ## 4. Remote deployment topology
 
 | Item | Value |
