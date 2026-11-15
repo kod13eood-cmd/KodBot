@@ -10,6 +10,7 @@ import {
   listPages,
   PAGE_MAX_BYTES,
   pageExcerpt,
+  pageForRun,
   pageSnapshot,
   readPage,
   writePage,
@@ -69,6 +70,16 @@ describe("pages", () => {
     const before = pageSnapshot(pages.slice(0, 1));
     expect(changedPages(before, pages).map((page) => page.name)).toEqual(["new.html", "edited.html"]);
     expect(changedPages(before, pages.slice(0, 1))).toEqual([]);
+  });
+
+  it("finds the page a run wrote, not an older one", () => {
+    const pages = [
+      { name: "old.html", title: "Old", bytes: 10, updatedAt: 100 },
+      { name: "new.html", title: "New", bytes: 20, updatedAt: 500 },
+    ];
+    expect(pageForRun(pages, 400, 900)?.name).toBe("new.html");
+    expect(pageForRun(pages, 600, 900)).toBeUndefined();
+    expect(pageForRun(pages)?.name).toBe("new.html");
   });
 
   it("tells the bot where pages live without leaking secrets", () => {

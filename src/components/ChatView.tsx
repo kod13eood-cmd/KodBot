@@ -847,17 +847,22 @@ const MessagesList = memo(function MessagesList({
               return m.page ? <PageArtifactCard page={m.page} /> : null;
             default:
               return (
-                <Bubble
-                  bot={bot}
-                  message={m}
-                  editing={editingId === m.id}
-                  isLastBotText={m.id === lastBotTextId}
-                  onStartEdit={() => onStartEdit(m.id)}
-                  onCancelEdit={onCancelEdit}
-                  onSubmitEdit={(text) => onSubmitEdit(m.id, text)}
-                  onRegenerate={onRegenerate}
-                  onReply={onReply}
-                />
+                <>
+                  <Bubble
+                    bot={bot}
+                    message={m}
+                    editing={editingId === m.id}
+                    isLastBotText={m.id === lastBotTextId}
+                    onStartEdit={() => onStartEdit(m.id)}
+                    onCancelEdit={onCancelEdit}
+                    onSubmitEdit={(text) => onSubmitEdit(m.id, text)}
+                    onRegenerate={onRegenerate}
+                    onReply={onReply}
+                  />
+                  {/* an automation report can carry the page it wrote; the
+                      card belongs under the summary, not in a separate task */}
+                  {m.page && <PageArtifactCard page={m.page} />}
+                </>
               );
           }
         })();
