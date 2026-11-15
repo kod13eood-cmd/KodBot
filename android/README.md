@@ -44,6 +44,11 @@ approval flow. The phone does not receive a general shell endpoint.
   reasoning), search, and separate **OpenCode Zen** / **OpenCode Go** sections.
 - Each bot can turn on Auto routing and choose an explicit Auto model pool. An
   empty pool keeps Auto inside the bot's current engine.
+- **Automation reports:** a scheduled or manual run lands as a compact summary
+  in the owner's main chat with a **See full run** button. It switches the
+  hidden worker bot to the task that produced the report and opens that
+  conversation; Back returns to the fleet. The fleet badge counts report dots
+  on the bot's tasks, and opening a chat clears them.
 - `products` blocks in replies render as tappable merchant cards. **Buy now**
   opens the merchant page; the phone never claims a checkout happened.
 - Bot deletion is desktop-only. The phone intentionally has no delete action

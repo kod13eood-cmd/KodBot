@@ -195,7 +195,9 @@ export function permissionSocketPath(threadId: string) {
 function createPermissionBroker(opts: {
   socketPath: string;
   onAsk: (ask: Ask) => void;
-  onResolve: (resolved: Ask & { behavior: AskBehavior; source: AskResolutionSource }) => void;
+  onResolve: (
+    resolved: Ask & { behavior: AskBehavior; source: AskResolutionSource; message?: string },
+  ) => void;
   onOverdue?: (ask: Ask) => void;
   timeoutMs?: number | (() => number);
 }) {
@@ -249,7 +251,7 @@ function createPermissionBroker(opts: {
           try {
             conn.write(JSON.stringify({ t: "answer", id: askId, behavior, message }) + "\n");
           } catch {}
-          opts.onResolve({ ...ask, behavior, source });
+          opts.onResolve({ ...ask, behavior, source, ...(message ? { message } : {}) });
         };
         const timeoutMs = resolveApprovalTimeoutMs(opts.timeoutMs);
         if (timeoutMs > 0) {
@@ -472,6 +474,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
               requestId: resolved.id,
               behavior: resolved.behavior,
               source: resolved.source,
+              ...(resolved.message ? { message: resolved.message } : {}),
             }),
         });
         args.push("--permission-prompt-tool", "mcp__ogb__approve");

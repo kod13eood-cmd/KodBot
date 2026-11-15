@@ -15,7 +15,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ensureDirs } from "../../config.ts";
 import type { ProviderInstance } from "../../contracts.ts";
 import { recordEvents, type EventRecorder } from "../../testing/events.ts";
-import { createAcpDriver, type AcpSupport } from "./core.ts";
+import { createAcpDriver, parseElicitationForm, type AcpSupport } from "./core.ts";
 import { GrokAgentDriver } from "./grok.ts";
 import { GeminiAgentDriver } from "./gemini.ts";
 import { KimiAgentDriver } from "./kimi.ts";
@@ -70,6 +70,65 @@ const ClassifiedErrorDriver = createAcpDriver({
     error && typeof error === "object" && (error as { code?: unknown }).code === -32000
       ? "invalid_credentials"
       : undefined,
+});
+
+describe("parseElicitationForm", () => {
+  it("reads opencode's oneOf option list and pairs the custom-answer field", () => {
+    expect(
+      parseElicitationForm({
+        type: "object",
+        properties: {
+          q0: {
+            type: "string",
+            title: "Color",
+            description: "Which color do you prefer?",
+            oneOf: [
+              { const: "Red", title: "Red", description: "warm" },
+              { const: "Blue", title: "deep blue" },
+            ],
+          },
+          q0_custom: { type: "string", title: "Color (other)" },
+        },
+      }),
+    ).toEqual([
+      {
+        key: "q0",
+        question: "Which color do you prefer?",
+        choices: [
+          { label: "Red", value: "Red" },
+          { label: "deep blue", value: "Blue" },
+        ],
+        customKey: "q0_custom",
+      },
+    ]);
+  });
+
+  it("accepts a plain enum with enumNames and keeps free-text fields", () => {
+    expect(
+      parseElicitationForm({
+        properties: {
+          size: { type: "string", title: "Size", enum: ["s", "m"], enumNames: ["Small", "Medium"] },
+          note: { type: "string", description: "Anything else?" },
+          risky: { type: "boolean", title: "Delete?" },
+        },
+      }),
+    ).toEqual([
+      {
+        key: "size",
+        question: "Size",
+        choices: [
+          { label: "Small", value: "s" },
+          { label: "Medium", value: "m" },
+        ],
+      },
+      { key: "note", question: "Anything else?", choices: [] },
+    ]);
+  });
+
+  it("returns nothing for a schema it cannot render", () => {
+    expect(parseElicitationForm(undefined)).toEqual([]);
+    expect(parseElicitationForm({ properties: { go: { type: "boolean" } } })).toEqual([]);
+  });
 });
 
 describe("ACP decodeConfig", () => {
@@ -341,6 +400,36 @@ describe("ACP turns (fake CLI)", () => {
     expect(resolved).toMatchObject({ behavior: "allow", source: "user" });
     const done = await recorder.until((e) => e.type === "turn.completed");
     expect(done).toMatchObject({ ok: true });
+  });
+
+  it("turns an ACP form elicitation into a question card and returns the picked option", async () => {
+    await create(GrokAgentDriver, "question");
+    await instance.adapter.sendTurn({ threadId: "t-question", text: "go" });
+
+    const opened = await recorder.until((e) => e.type === "request.opened");
+    expect(opened).toMatchObject({
+      requestType: "question",
+      tool: "ask_user",
+      summary: "Which color do you prefer?",
+      choices: ["Red", "Green"],
+    });
+
+    const outcome = await instance.adapter.respondToRequest(
+      "t-question",
+      (opened as any).requestId,
+      { behavior: "answer", message: "Green" },
+    );
+    expect(outcome).toBe("answered");
+    const resolved = await recorder.until((e) => e.type === "request.resolved");
+    expect(resolved).toMatchObject({ behavior: "answer", source: "user", message: "Green" });
+
+    const done = await recorder.until((e) => e.type === "turn.completed");
+    expect(done).toMatchObject({ ok: true });
+    const text = recorder.events
+      .filter((e) => e.type === "content.delta")
+      .map((e) => (e as any).delta)
+      .join("");
+    expect(text).toContain('"q0":"Green"');
   });
 
   it("grok fails closed when the CLI advertises no cached_token (needs login)", async () => {

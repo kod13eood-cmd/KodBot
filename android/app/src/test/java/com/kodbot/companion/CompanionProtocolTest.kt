@@ -1,11 +1,39 @@
 package com.kodbot.companion
 
+import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CompanionProtocolTest {
+    @Test
+    fun reportLinkNeedsBothABotAndARunTask() {
+        assertEquals(
+            MessageLinkRecord("See full run", "worker-1", "run-thread"),
+            parseRunLink(
+                JSONObject("""{"label":"See full run","botId":"worker-1","threadId":"run-thread"}"""),
+            ),
+        )
+        assertNull(parseRunLink(JSONObject("""{"botId":"worker-1"}""")))
+        assertNull(parseRunLink(null))
+    }
+
+    @Test
+    fun taskUnreadDrivesTheFleetBadge() {
+        val tasks = parseTaskSummaries(
+            JSONArray(
+                """[{"title":"Главен чат","threadId":"main","unread":true},{"title":"Reports","threadId":"reports","unread":false,"archivedAt":123}]""",
+            ),
+        )
+        assertEquals(2, tasks.size)
+        assertTrue(tasks[0].unread)
+        assertTrue(tasks[1].archived)
+        assertEquals(false, tasks[1].unread)
+    }
+
     @Test
     fun sseParserJoinsDataAndIgnoresKeepalives() {
         val parser = SseParser()

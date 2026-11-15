@@ -232,6 +232,7 @@ class MainActivity : ComponentActivity() {
                     onSelectModel = ::selectModel,
                     onSetAutoModel = ::setAutoModel,
                     onCreateTeam = ::createTeam,
+                    onOpenReport = ::openReport,
                     onJoinTeam = ::joinTeam,
                     onLeaveTeam = ::leaveTeam,
                     onTransferTeam = ::transferTeam,
@@ -666,6 +667,28 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** "See full run" on an automation summary: point the worker bot at the
+     * task that produced it, then open that conversation. Back returns to the
+     * fleet, where the owner's main chat is one tap away. */
+    private fun openReport(link: MessageLinkRecord) {
+        val saved = connection ?: return
+        lifecycleScope.launch {
+            loading = true
+            actionError = null
+            try {
+                val api = CompanionApi(saved)
+                api.switchTask(link.botId, link.threadId)
+                chats = api.fleet()
+                activeChatKey = "bot:${link.botId}"
+                settingsOpen = false
+            } catch (error: Exception) {
+                actionError = error.message ?: "Couldn't open that run."
+            } finally {
+                loading = false
+            }
+        }
+    }
+
     private fun send(
         chat: ConversationRecord,
         text: String,
@@ -884,6 +907,7 @@ private fun KodBotScreen(
     onSelectModel: (ConversationRecord, EngineRecord, ModelOptionRecord) -> Unit,
     onSetAutoModel: (ConversationRecord, Boolean, List<ModelSelectionRecord>) -> Unit,
     onCreateTeam: (ConversationRecord, String) -> Unit,
+    onOpenReport: (MessageLinkRecord) -> Unit,
     onJoinTeam: (ConversationRecord, String) -> Unit,
     onLeaveTeam: (ConversationRecord, String) -> Unit,
     onTransferTeam: (String, String) -> Unit,
@@ -952,6 +976,7 @@ private fun KodBotScreen(
                         onRespond = onRespond,
                         onInterrupt = onInterrupt,
                         onTranscribe = onTranscribe,
+                        onOpenLink = onOpenReport,
                     )
                 }
                 val settingsContent: @Composable () -> Unit = {
@@ -1270,9 +1295,9 @@ private fun FleetChatCard(
             }
             if (chat.busy) {
                 WorkingBadge()
-                if (chat.unread) Spacer(Modifier.width(8.dp))
+                if (chat.unreadBadge) Spacer(Modifier.width(8.dp))
             }
-            if (chat.unread) Surface(modifier = Modifier.size(9.dp), shape = CircleShape, color = CrewGreen) {}
+            if (chat.unreadBadge) Surface(modifier = Modifier.size(9.dp), shape = CircleShape, color = CrewGreen) {}
         }
     }
 }
@@ -1393,7 +1418,7 @@ private fun FleetScreen(
             }
         } else {
             val sortedChats = visibleChats.sortedWith(
-                compareByDescending<ConversationRecord> { it.unread }.thenByDescending { it.busy },
+                compareByDescending<ConversationRecord> { it.unreadBadge }.thenByDescending { it.busy },
             )
             val rooms = sortedChats.filter { it.kind == "group" }
             val bots = sortedChats.filter { it.kind == "bot" }
@@ -1494,6 +1519,7 @@ private fun ChatScreen(
     onRespond: (ConversationRecord, ApprovalCard, String) -> Unit,
     onInterrupt: (ConversationRecord) -> Unit,
     onTranscribe: suspend (File) -> String,
+    onOpenLink: (MessageLinkRecord) -> Unit,
 ) {
     var draft by rememberSaveable(chat.key) { mutableStateOf("") }
     var attachments by rememberSaveable(chat.key) { mutableStateOf(emptyList<PendingAttachment>()) }
@@ -1785,6 +1811,7 @@ private fun ChatScreen(
                 MessageItem(
                     message = message,
                     onRespond = { card, answer -> onRespond(chat, card, answer) },
+                    onOpenLink = onOpenLink,
                 )
             }
             if (chat.messages.isEmpty() && !chat.busy) {
@@ -2229,6 +2256,7 @@ private fun WorkingDots(
 private fun MessageItem(
     message: TranscriptMessage,
     onRespond: (ApprovalCard, String) -> Unit,
+    onOpenLink: (MessageLinkRecord) -> Unit,
 ) {
     when {
         message.kind == "options" && message.card != null -> ApprovalItem(message.card, onRespond)
@@ -2273,6 +2301,12 @@ private fun MessageItem(
                         if (block.items.isNotEmpty()) {
                             Spacer(Modifier.size(8.dp))
                             ProductCards(block.items)
+                        }
+                        message.link?.let { link ->
+                            Spacer(Modifier.size(8.dp))
+                            OutlinedButton(onClick = { onOpenLink(link) }) {
+                                Text(link.label)
+                            }
                         }
                     }
                 }

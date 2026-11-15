@@ -116,6 +116,73 @@ export interface AcpSupport {
   }): Promise<void>;
 }
 
+/** permission asks answer allow/deny; form questions answer with the human's
+ *  words. One resolver shape so settlement cancels both the same way. */
+type AskOutcome = "allow" | "deny" | "cancel" | "answer";
+type AskResolver = (outcome: AskOutcome, source?: "user" | "timeout" | "system", message?: string) => void;
+
+/** One question inside an ACP form elicitation (opencode's `question` tool
+ *  sends these). `choices` is empty for a free-text question. */
+export interface FormQuestion {
+  key: string;
+  question: string;
+  choices: Array<{ label: string; value: string }>;
+  /** schema key for the optional "type your own answer" field */
+  customKey?: string;
+}
+
+/** Flatten the JSON-schema form an ACP agent sends into the cards KodBot
+ *  already knows how to render. Accepts both opencode's `oneOf` shape and a
+ *  plain `enum`/`enumNames` list; ignores non-string fields (a boolean has no
+ *  one-tap mapping) so the caller cancels instead of guessing. */
+export function parseElicitationForm(schema: unknown): FormQuestion[] {
+  const properties = (schema as { properties?: unknown } | undefined)?.properties;
+  if (!properties || typeof properties !== "object") return [];
+  const entries = Object.entries(properties as Record<string, any>);
+  const custom = new Map<string, string>();
+  for (const [key, spec] of entries) {
+    if (key.endsWith("_custom") && spec && typeof spec === "object") {
+      custom.set(key.slice(0, -"_custom".length), key);
+    }
+  }
+  const questions: FormQuestion[] = [];
+  for (const [key, spec] of entries) {
+    if (!spec || typeof spec !== "object" || key.endsWith("_custom")) continue;
+    if (spec.type === "boolean") continue;
+    const choices: Array<{ label: string; value: string }> = [];
+    if (Array.isArray(spec.oneOf)) {
+      for (const option of spec.oneOf) {
+        if (!option || typeof option !== "object") continue;
+        const value =
+          typeof option.const === "string"
+            ? option.const
+            : Array.isArray(option.enum) && typeof option.enum[0] === "string"
+              ? option.enum[0]
+              : undefined;
+        if (value === undefined) continue;
+        const label = typeof option.title === "string" && option.title.trim() ? option.title : value;
+        choices.push({ label, value });
+      }
+    } else if (Array.isArray(spec.enum)) {
+      spec.enum.forEach((value: unknown, index: number) => {
+        if (typeof value !== "string") return;
+        const label =
+          Array.isArray(spec.enumNames) && typeof spec.enumNames[index] === "string"
+            ? spec.enumNames[index]
+            : value;
+        choices.push({ label, value });
+      });
+    }
+    questions.push({
+      key,
+      question: String(spec.description ?? spec.title ?? key),
+      choices,
+      ...(custom.has(key) ? { customKey: custom.get(key) } : {}),
+    });
+  }
+  return questions;
+}
+
 const INIT_TIMEOUT = 20_000;
 const SESSION_CONFIG_TIMEOUT = 20_000; // configureSession's per-request default
 const NEW_SESSION_TIMEOUT = 30_000;
@@ -191,7 +258,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
         stop: () => void;
         interrupt: () => void;
         turnId: string;
-        asks: Map<string, (behavior: string, source?: "user" | "timeout" | "system") => void>;
+        asks: Map<string, AskResolver>;
       }
       const active = new Map<string, Turn>();
 
@@ -274,7 +341,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
         });
 
         const state = { settled: false, promptSent: false, text: "" };
-        const asks = new Map<string, (behavior: string, source?: "user" | "timeout" | "system") => void>();
+        const asks = new Map<string, AskResolver>();
         let nextId = 1;
         let sessionId: string | null = null;
         let interruptTimer: ReturnType<typeof setTimeout> | null = null;
@@ -324,8 +391,95 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
           stop(); // the agent process does not exit on its own
         };
 
-        // server→client permission request → canonical request.opened
+        /** An ACP form elicitation (opencode's `question` tool) becomes the
+         * same question card as a provider-native ask. Multi-question forms
+         * are asked one card at a time so each answer maps to its own field. */
+        const handleElicitation = (msg: any) => {
+          const params = msg.params ?? {};
+          const questions = parseElicitationForm(params.requestedSchema);
+          const answers: Record<string, string> = {};
+          let index = 0;
+          let currentId: string | null = null;
+          let timer: ReturnType<typeof setTimeout> | null = null;
+          const reply = (result: unknown) => send({ jsonrpc: "2.0", id: msg.id, result });
+          const settleForm = (action: "accept" | "cancel") => {
+            if (timer) clearTimeout(timer);
+            timer = null;
+            if (currentId) asks.delete(currentId);
+            currentId = null;
+            reply(action === "accept" ? { action, content: answers } : { action: "cancel" });
+          };
+          if (!questions.length) return settleForm("cancel");
+
+          const askNext = () => {
+            if (index >= questions.length) return settleForm("accept");
+            const field = questions[index];
+            const requestId = newId();
+            currentId = requestId;
+            const timeoutMs = resolveApprovalTimeoutMs(input.approvalTimeoutMs);
+            if (timeoutMs > 0) {
+              timer = setTimeout(() => {
+                timer = null;
+                emit({
+                  ...base(threadId, turnId),
+                  type: "request.overdue",
+                  requestId,
+                  requestType: "question",
+                  tool: "ask_user",
+                  summary: field.question,
+                  minutes: Math.max(1, Math.round(timeoutMs / 60_000)),
+                });
+                finish("cancel", "timeout");
+              }, timeoutMs);
+              timer.unref?.();
+            }
+            asks.set(requestId, finish);
+            emit({
+              ...base(threadId, turnId),
+              type: "request.opened",
+              requestId,
+              requestType: "question",
+              tool: "ask_user",
+              summary: field.question,
+              ...(field.choices.length ? { choices: field.choices.map((choice) => choice.label) } : {}),
+            });
+          };
+
+          const finish: AskResolver = (outcome, source = "user", message) => {
+            const requestId = currentId;
+            if (!requestId) return;
+            const field = questions[index];
+            asks.delete(requestId);
+            if (timer) clearTimeout(timer);
+            timer = null;
+            currentId = null;
+            if (outcome !== "answer") {
+              emit({ ...base(threadId, turnId), type: "request.resolved", requestId, behavior: "deny", source });
+              return settleForm("cancel");
+            }
+            const answer = (message ?? "").trim();
+            const picked = field.choices.find((choice) => choice.label === answer || choice.value === answer);
+            if (picked) answers[field.key] = picked.value;
+            else if (field.customKey) answers[field.customKey] = answer;
+            else answers[field.key] = answer;
+            emit({
+              ...base(threadId, turnId),
+              type: "request.resolved",
+              requestId,
+              behavior: "answer",
+              source,
+              ...(answer ? { message: answer } : {}),
+            });
+            index += 1;
+            askNext();
+          };
+
+          askNext();
+        };
+
+        // server→client requests: permission asks and form questions
         const handleServerRequest = (msg: any) => {
+          if (msg.method === "elicitation/create") return handleElicitation(msg);
           if (msg.method !== "session/request_permission") {
             // never leave an unknown server request hanging — the agent blocks
             return send({ jsonrpc: "2.0", id: msg.id, error: { code: -32601, message: "method not found" } });
@@ -357,13 +511,13 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
           const summary = String(toolCall.rawInput?.command ?? toolCall.title ?? tool).slice(0, 200);
           const requestId = newId();
           let timer: ReturnType<typeof setTimeout> | null = null;
-          const finish = (behavior: string, source: "user" | "timeout" | "system" = "user") => {
+          const finish: AskResolver = (outcome, source = "user") => {
             if (!asks.delete(requestId)) return;
             if (timer) clearTimeout(timer);
             timer = null;
-            const want = behavior === "allow" ? "allow" : "reject";
-            const optionId = behavior === "cancel" ? null : optionFor(want);
-            if (behavior !== "cancel" && !optionId) missing(want);
+            const want = outcome === "allow" ? "allow" : "reject";
+            const optionId = outcome === "cancel" ? null : optionFor(want);
+            if (outcome !== "cancel" && !optionId) missing(want);
             send({
               jsonrpc: "2.0",
               id: msg.id,
@@ -373,7 +527,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
               ...base(threadId, turnId),
               type: "request.resolved",
               requestId,
-              behavior: optionId && behavior === "allow" ? "allow" : "deny",
+              behavior: optionId && outcome === "allow" ? "allow" : "deny",
               source: optionId ? source : "system",
             });
           };
@@ -525,7 +679,17 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
           try {
             const init = await request(
               "initialize",
-              { protocolVersion: 1, clientCapabilities: { fs: { readTextFile: false, writeTextFile: false } } },
+              {
+                protocolVersion: 1,
+                // form: the agent may ask the human a structured question
+                // (opencode's `question` tool renders as tapping one option
+                // instead of typing; without this it gives up and asks in
+                // prose). Only a capability bit — the agent still decides.
+                clientCapabilities: {
+                  fs: { readTextFile: false, writeTextFile: false },
+                  elicitation: { form: {} },
+                },
+              },
               INIT_TIMEOUT,
             );
             const methods: Array<{ id?: string }> = Array.isArray(init?.authMethods) ? init.authMethods : [];
@@ -699,7 +863,11 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
             const turn = active.get(threadId);
             const finish = turn?.asks.get(requestId);
             if (!finish) return "unavailable"; // settled, timed out, or turn gone
-            finish(decision.behavior === "allow" ? "allow" : "deny", "user");
+            if (decision.behavior === "answer") {
+              finish("answer", "user", decision.message);
+              return "answered";
+            }
+            finish(decision.behavior, "user");
             return decision.behavior === "allow" ? "allowed-once" : "rejected";
           },
           hasSession: (threadId) => active.has(threadId),

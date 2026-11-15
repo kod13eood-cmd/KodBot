@@ -1079,6 +1079,35 @@ describe("message pages", () => {
     expect(res.status).toBe(404);
   });
 
+  it("clears the active task's report dot when the bot is opened, leaving other tasks alone", async () => {
+    const created = await api("POST", "/api/bots");
+    const botId = created.body.bot.id;
+    const main = created.body.bot.threadId;
+    try {
+      const second = await api("POST", `/api/bots/${botId}/tasks`, { title: "Automation reports" });
+      const other = second.body.task.threadId;
+      // creating a task activates it; go back so the main task is the one
+      // the person is looking at when /read lands
+      expect((await api("POST", `/api/bots/${botId}/tasks/${main}`)).status).toBe(200);
+      await api("PATCH", `/api/bots/${botId}/tasks/${main}`, { unread: true });
+      await api("PATCH", `/api/bots/${botId}/tasks/${other}`, { unread: true });
+
+      const opened = await api("POST", `/api/bots/${botId}/read`);
+      expect(opened.status).toBe(200);
+      const listed = async () =>
+        (await api("GET", "/api/bots")).body.bots.find((bot: { id: string }) => bot.id === botId);
+      const afterRead = await listed();
+      expect(afterRead.tasks.find((task: { threadId: string }) => task.threadId === main)?.unread).toBeFalsy();
+      expect(afterRead.tasks.find((task: { threadId: string }) => task.threadId === other)?.unread).toBe(true);
+
+      await api("PATCH", `/api/bots/${botId}/tasks/${other}`, { unread: false });
+      const fresh = await listed();
+      expect(fresh.tasks.find((task: { threadId: string }) => task.threadId === other)?.unread).toBeFalsy();
+    } finally {
+      await api("DELETE", `/api/bots/${botId}`);
+    }
+  });
+
   it("404s an image on a conversation that does not exist, without inventing one", async () => {
     // `messagesFor` materialises and caches a ThreadState for any id it is
     // given, so an unguarded route lets a client grow that map by asking

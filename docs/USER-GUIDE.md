@@ -114,7 +114,7 @@ The rest of this guide is organized by topic.
 ## Voice
 
 - **App Settings → Voice → Local (free)** uses faster-whisper for speech-to-text and Piper for text-to-speech on the harness. Audio stays on the machine; the first setup downloads the models once.
-- **Click the microphone** in the composer to start talking; click it again to stop and transcribe. The transcript lands in the composer so you can edit or send it, even if you already typed something. On Android the native chat composer uses hold-to-talk; Desktop mode uses the web control. Voice capture in a browser needs HTTPS or the localhost desktop app. **App Settings → Voice** has a microphone test, a speaker test, and a recognition language selector (Auto / Bulgarian / English). Choose Bulgarian when the microphone keeps mishearing Bulgarian words; the small Whisper model is more accurate but slower on CPU. After you stop recording, a transcribing indicator with elapsed seconds shows that the computer is still working. The audio-lines button records a **voice note**, shows a player before sending, and attaches the clip to the message; the bot also gets a transcript when local speech-to-text is installed.
+- **Click the microphone** in the composer to start talking; click it again to stop and transcribe. The transcript lands in the composer so you can edit or send it, even if you already typed something. On Android the native chat composer uses hold-to-talk; Desktop mode uses the web control. Voice capture in a browser needs HTTPS or the localhost desktop app. **App Settings → Voice** has a microphone test, a speaker test, and a recognition language selector (Auto / Bulgarian / English). The audio-lines button records a **voice note**, shows a player before sending, and attaches the clip to the message; the bot also gets a transcript when local speech-to-text is installed. Android's native composer has its own voice-note button with playback. After you stop recording, a transcribing indicator with elapsed seconds shows that the CPU is still working.
 - **ElevenLabs** is still available if you prefer a cloud voice. It is billed per character by ElevenLabs.
 - Bots with **Speak replies** enabled read settled replies aloud; call mode on macOS uses the native speech service.
 
@@ -126,6 +126,7 @@ The rest of this guide is organized by topic.
 - Each permission card includes a plain-language **What this means** explanation, a **Why it needs approval** risk note, the task context, and then the exact command, path, recipient, or amount.
 - App Settings → General → **Approval timeout** controls when an unanswered card is marked overdue. It never denies automatically; a late **Allow** still lets the bot finish the work. The same timer covers a bot asking permission to contact another bot. Choose **Wait until I answer** to remove the timer.
 - Auto mode can answer routine requests; destructive actions still stop and ask.
+- A bot's own question can offer 2–5 one-tap answers; tap one instead of typing, or use the text field for something else. Claude, Codex, and OpenCode's `question` tool all use the same card.
 - **Stop** rejects the pending action. A stopped turn does not run queued follow-ups.
 
 ---
@@ -303,7 +304,7 @@ KodBot е local-first chat приложение за екип от AI агент
 ## Глас
 
 - **App Settings → Voice → Local (free)** използва faster-whisper за реч към текст и Piper за текст към реч на сървъра. Аудиото остава на машината; моделите се изтеглят еднократно при първата настройка.
-- **Щракни микрофона** в composer-а, за да започнеш да говориш; щракни отново, за да спреш и транскрибираш. Транскриптът влиза в полето, за да го редактираш или изпратиш, дори вече да имаш написан текст. На Android native чатът използва hold-to-talk; Desktop mode използва уеб контролата. Гласът в браузър иска HTTPS или localhost desktop app. **App Settings → Voice** има тест на микрофона, тест на гласа и избор на език за разпознаване (Auto / Български / Английски). Избери „Български“, когато микрофонът често разбира грешно български думи; small Whisper моделът е по-точен, но по-бавен на CPU. След като спреш записа, индикатор с изминало време показва, че компютърът още работи. Бутонът с аудио линии записва **гласово съобщение**, показва плейър преди изпращане и прикача клипа към съобщението; ботът получава и транскрипт, когато локалното разпознаване на реч е инсталирано.
+- **Щракни микрофона** в composer-а, за да започнеш да говориш; щракни отново, за да спреш и транскрибираш. Транскриптът влиза в полето, за да го редактираш или изпратиш, дори вече да имаш написан текст. На Android native чатът използва hold-to-talk; Desktop mode използва уеб контролата. Гласът в браузър иска HTTPS или localhost desktop app. **App Settings → Voice** има тест на микрофона, тест на гласа и избор на език за разпознаване (Auto / Български / Английски). Бутонът с аудио линии записва **гласово съобщение**, показва плейър преди изпращане и прикача клипа към съобщението; ботът получава и транскрипт, когато локалното разпознаване на реч е инсталирано. Android native composer-ът има собствен бутон за voice note с playback. След като спреш записа, индикатор с изминало време показва, че CPU-ът още работи.
 - **ElevenLabs** остава наличен, ако предпочиташ облачен глас. Таксува се на знак от ElevenLabs.
 - Ботовете с включено **Speak replies** четат готовите отговори на глас; call mode на macOS използва native speech услугата.
 
@@ -313,6 +314,7 @@ KodBot е local-first chat приложение за екип от AI агент
 
 - Ботът може да пита преди рискова команда, промяна на файл или външно действие. Картата заема composer-а: **Allow**, **Deny** или **Always allow** за конкретното действие.
 - Auto mode отговаря на рутинните заявки; destructive действията пак спират и питат.
+- Въпросът на бота може да предложи 2–5 отговора с едно докосване; избери един или напиши свой в полето. Claude, Codex и `question` инструментът на OpenCode използват същата карта.
 - **Stop** отказва чакащото действие. Спрян ход не изпълнява следващите на опашката.
 - Прочети точната команда, път, получател или сума на картата, преди да разрешиш.
 

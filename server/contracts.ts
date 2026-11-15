@@ -120,6 +120,9 @@ export type RuntimeEvent = RuntimeEventBase &
     | {
         type: "request.resolved";
         behavior: "allow" | "deny" | "answer";
+        /** the human's words for an answered question, so every client can
+         * show what was chosen instead of the bare behavior */
+        message?: string;
         /** who decided: a person, auto mode, the ask's own timeout, the
          * harness (turn ended / settings changed), or nobody — the answerer
          * was already gone and the action never ran */

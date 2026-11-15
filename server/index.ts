@@ -1108,7 +1108,13 @@ bus.subscribe((event: RuntimeEvent) => {
         const existing = store.messagesFor(event.threadId).find((m) => m.id === messageId);
         if (existing?.card && !existing.card.answered) {
           store.patchMessage(event.threadId, messageId, {
-            card: { ...existing.card, answered: event.behavior, dismissed: event.source !== "user" },
+            card: {
+              ...existing.card,
+              // a question stores what the person picked; a permission stores
+              // allow/deny because there is no text to show
+              answered: event.behavior === "answer" ? (event.message ?? event.behavior) : event.behavior,
+              dismissed: event.source !== "user",
+            },
           });
         }
         if (event.requestId) askMessageByRequest.delete(`${event.threadId}:${event.requestId}`);
@@ -3515,6 +3521,9 @@ const server = createServer(async (req, res) => {
     if (m && method === "POST") {
       const bot = store.patchBot(m[1], { unread: false });
       if (!bot) return json(res, 404, { error: "no such bot" });
+      // the active task is what the client is showing, so its report dot is
+      // seen too — otherwise it lingers on a task the person already reads
+      store.markTaskUnread(bot.id, bot.threadId, false);
       const visible = wireBot(bot);
       broadcast({ kind: "bot", bot: visible });
       return json(res, 200, { bot: visible });
@@ -3763,6 +3772,9 @@ const server = createServer(async (req, res) => {
       }
       const bot = store.patchBot(m[1], patch);
       if (!bot) return json(res, 404, { error: "no such bot" });
+      // selecting a bot shows its active task, so a report dot on that task
+      // counts as seen; other tasks keep theirs until they are opened
+      if (body.unread === false) store.markTaskUnread(bot.id, bot.threadId, false);
       const chiefChanges =
         body.chiefOfStaff === true
           ? store.setChiefOfStaff(bot.id)
@@ -4080,6 +4092,11 @@ const server = createServer(async (req, res) => {
       if (!store.taskByThread(m[1], m[2])) return json(res, 404, { error: "no such task" });
       if (typeof body.title === "string") {
         store.renameTask(m[1], m[2], body.title);
+      }
+      // mark one task's automation report seen/unseen, independent of the
+      // bot-level dot (the desktop picker and the phone both use this)
+      if (typeof body.unread === "boolean") {
+        store.markTaskUnread(m[1], m[2], body.unread);
       }
       if (Object.prototype.hasOwnProperty.call(body, "archivedAt")) {
         const raw = body.archivedAt;
