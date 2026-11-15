@@ -23,7 +23,7 @@ Last reviewed: **2026-11-12**.
 | GitHub remote | `git@github.com:kod13eood-cmd/KodBot.git` |
 | Gitea remote | `ssh://git@llm1:2222/deso/kodbot.git` |
 | Android release branch | `android-release` (APK-only branch) |
-| App version | `0.1.49` |
+| App version | `0.1.50` |
 | Android version | `0.1.22` / versionCode `23` |
 
 There is also a stale remote checkout at `paperclipi7:~/Developer/OpenBot`;
