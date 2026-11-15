@@ -10,7 +10,7 @@ encrypted archive, or a direct `scp`/`rsync` between trusted machines. Never
 paste a private key or API key into a prompt, an issue, a commit, or a chat
 transcript.
 
-Last reviewed: **2026-11-02**.
+Last reviewed: **2026-11-12**.
 
 ## 1. Source of truth
 
@@ -23,7 +23,7 @@ Last reviewed: **2026-11-02**.
 | GitHub remote | `git@github.com:kod13eood-cmd/KodBot.git` |
 | Gitea remote | `ssh://git@llm1:2222/deso/kodbot.git` |
 | Android release branch | `android-release` (APK-only branch) |
-| App version | `0.1.48` |
+| App version | `0.1.49` |
 | Android version | `0.1.22` / versionCode `23` |
 
 There is also a stale remote checkout at `paperclipi7:~/Developer/OpenBot`;
@@ -128,6 +128,85 @@ before publishing the next APK.
 All GitHub release APKs were replaced with builds signed by this key on
 2026-11-08. Anyone who installed an earlier CI-signed APK must uninstall it
 once; after that, releases update in place.
+
+### Release 0.1.42 (2026-11-11)
+
+- Desktop 0.1.42 for Linux (AppImage/deb) and Windows (unsigned NSIS).
+  macOS stays on the separate signed/notarized flow.
+- Android remains **0.1.19 / versionCode 20**: no native Android changes; the
+  new server UI is delivered through the app.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.42>
+- Includes the first-run local/remote server wizard, desktop KodBot gateway
+  login, worker-bot automations with Results tasks, and task archiving.
+
+### Release 0.1.43 (2026-11-12)
+
+- Desktop 0.1.43 for Linux (AppImage/deb) and Windows (unsigned NSIS).
+  macOS stays on the separate signed/notarized flow.
+- Voice fixes: the composer microphone works while a bot is busy, uses
+  click-to-talk on Linux/Windows/web, has a microphone/speaker test, and can
+  record a playable voice note with an attached clip and transcript.
+- Android remains **0.1.19 / versionCode 20**; the APK is unchanged. Native
+  dictation is fixed by the companion allowlist (`voice/transcribe`, TTS, and
+  upload playback).
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.43>
+
+### Release 0.1.44 (2026-11-12)
+
+- Desktop 0.1.44 for Linux (AppImage/deb) and Windows (unsigned NSIS).
+  macOS stays on the separate signed/notarized flow.
+- Bulgarian STT now uses the **small** Whisper model with beam search 5;
+  App Settings -> Voice has an Auto / Bulgarian / English recognition
+  language. CPU transcription is slower.
+- Android is **0.1.20 / versionCode 21**: native voice-note button with
+  playback, transcript, and attachment. The companion voice routes shipped in
+  0.1.43.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.44>
+
+### Release 0.1.45 (2026-11-14)
+
+- Desktop 0.1.45 for Linux/Windows; Android **0.1.21 / versionCode 22**.
+- After dictation or a voice note, the composer shows a transcription spinner,
+  elapsed seconds, and a CPU-time hint; Android has the same progress row.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.45>
+
+### Release 0.1.46 (2026-11-15)
+
+- Desktop 0.1.46 for Linux/Windows; Android stays **0.1.21 / versionCode 22**.
+- Persistent Whisper worker keeps the small model warm: warm transcriptions
+  are roughly 15-20 seconds instead of about 50 on the same CPU. The first
+  request still pays the model load.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.46>
+
+### Release 0.1.47 (2026-11-15)
+
+- Desktop 0.1.47 for Linux/Windows; Android stays **0.1.21 / versionCode 22**.
+- Scheduled/manual automation reports now append a compact summary with
+  **See full run** to the owner's permanent main chat; webhook alerts keep
+  their Results task. Reports wait for an active turn and show a task unread
+  dot until opened.
+- Workers end with a SUMMARY / NEEDS YOU block; the main chat shows that block
+  instead of the whole run.
+- Watcher and Skye were migrated to hidden worker bots; their old daily tasks
+  and Results tasks were archived.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.47>
+
+### Release 0.1.48 (2026-11-15)
+
+- Desktop 0.1.48 for Linux/Windows; Android **0.1.22 / versionCode 23**.
+- Bots ask with 2-5 tappable answers on every engine. OpenCode's `question`
+  tool now reaches the same options card as Claude and Codex through an ACP
+  form-elicitation bridge; multi-question forms are asked one card at a time,
+  the approval timeout applies, and the chosen answer is stored on the card.
+- Opening a bot clears the unread report dot on the task it is showing; other
+  tasks keep theirs. New: `PATCH /api/bots/:id/tasks/:threadId` with `{unread}`.
+- Android: **See full run** opens the worker's run in the native chat; the
+  fleet badge counts report dots on a bot's tasks and clears them when the
+  chat is opened.
+- The first noisy Watcher manual report was removed from the live main chat
+  after a stopped-server backup and `PRAGMA integrity_check`; the clean
+  summary remains.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.48>
 
 ## 4. Remote deployment topology
 

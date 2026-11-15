@@ -8,7 +8,7 @@
 
 <sub>An open-source version of **Grok Bot** — bring-your-own-agent, local-first, on the models you already have.</sub>
 
-<sub>[Website](https://kod13eood-cmd.github.io/KodBot) · [Discussions](https://github.com/kod13eood-cmd/KodBot/discussions) · [Releases](https://github.com/kod13eood-cmd/kodbot-releases/releases)</sub>
+<sub>[Website](https://kodbot.kod13.com/) · [Discussions](https://github.com/kod13eood-cmd/KodBot/discussions) · [Releases](https://github.com/kod13eood-cmd/kodbot-releases/releases)</sub>
 
 Every bot in the sidebar is a real agent — Claude, Codex, or OpenCode running locally under the hood — with its own
 personality, its own model, its own cloud computer, and its own connected apps.
@@ -177,7 +177,7 @@ Secrets are write-only: the UI only ever sees "configured" flags.
   per-bot Auto pools, and tappable product cards.
 
 The factual, marketing-ready catalog is [docs/FEATURES.md](docs/FEATURES.md).
-Website and ad copy lives in [docs/marketing/product-page.md](docs/marketing/product-page.md).
+Website and ad copy lives in [docs/marketing/product-page.md](docs/marketing/product-page.md). The live site ([kodbot.kod13.com](https://kodbot.kod13.com/)) is maintained in a separate private repository and deployed with Cloudflare Pages; this repository is the open-source application only.
 For dogfooding KodBot on its own repository, see
 [docs/developing-kodbot-with-kodbot.md](docs/developing-kodbot-with-kodbot.md).
 For a maintainer or agent handoff, start with [HANDOFF.md](HANDOFF.md) and

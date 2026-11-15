@@ -94,16 +94,16 @@ intend to update in place.
 
 ## Installing the current stable build
 
-The 0.1.19 APK (`versionCode` 20) is signed with the key above and installs over
+The 0.1.22 APK (`versionCode` 23) is signed with the key above and installs over
 the original 0.1.12 app and every stable-key build since without uninstalling:
 
 - <https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-android.apk>
-- <https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.19.apk>
+- <https://raw.githubusercontent.com/kod13eood-cmd/KodBot/android-release/KodBot-android-0.1.22.apk>
 
 The GitHub release assets for v0.1.39 and v0.1.40 were replaced on 2026-11-08
 with builds signed by the stable key, and v0.1.41 was built by the release
 workflow with that same key. The app's own update check reads
-`android/latest.json` from `main`, which now points at the 0.1.19 build.
+`android/latest.json` from `main`, which now points at the 0.1.22 build.
 
 **One-time uninstall:** if the phone installed any GitHub release APK published
 before that repair, uninstall it once before installing 0.1.14 or newer. All chats and

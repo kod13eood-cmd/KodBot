@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Crown, DoorOpen, Loader2, Pencil, Plus, Trash2, UserMinus, UserPlus, Users, X } from "lucide-react";
 import { api, useStore, type Bot, type Team } from "@/state/store";
 import { useI18n } from "@/lib/i18n";
+import { cn } from "@/lib/cn";
+import { windowsTitlebarInset } from "@/lib/window-chrome";
 import { CrewAvatar } from "./Avatar";
 import { displayRole } from "@/lib/mascot";
 
@@ -288,7 +290,7 @@ export function TeamsPanel({ onClose }: { onClose: () => void }) {
         aria-labelledby="teams-title"
         className="flex max-h-[min(780px,90vh)] w-full max-w-[660px] flex-col overflow-hidden rounded-2xl border border-hairline/60 bg-panel shadow-2xl"
       >
-        <header className="flex items-start justify-between gap-3 border-b border-hairline/40 px-5 py-4">
+        <header className={cn("flex items-start justify-between gap-3 border-b border-hairline/40 px-5 py-4", windowsTitlebarInset())}>
           <div>
             <h2 id="teams-title" className="text-[17px] font-semibold text-ink">{t("Teams")}</h2>
             <p className="mt-0.5 text-[12px] leading-relaxed text-ink-secondary">

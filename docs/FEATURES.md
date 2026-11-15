@@ -123,8 +123,11 @@ pressing Alt no longer drops a File/Edit/View bar over the window.
 
 On Linux the desktop window is frameless: minimize, restore, and close float in
 the top-right corner over the app instead of sitting in a system title bar. The
-header strips are the drag handle. The application menu stays removed, so Alt
-does not open it, while **Ctrl+R** reloads, **Ctrl+Shift+R** force-reloads
+floating controls step aside while a side panel (bot settings, computer,
+inspector) or a full-screen modal (guide, app settings, connected apps) owns
+that corner, so the panel's own X is the only one there and stays clickable.
+The header strips are the drag handle. The application menu stays removed, so
+Alt does not open it, while **Ctrl+R** reloads, **Ctrl+Shift+R** force-reloads
 (useful after a server UI update), and **Ctrl+Shift+I** opens the developer
 tools.
 

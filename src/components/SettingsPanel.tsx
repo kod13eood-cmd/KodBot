@@ -24,6 +24,7 @@ import { requestNotificationPermission } from "@/lib/notify";
 import { botUsage, costCaption, formatTokens, formatUsd } from "@/lib/usage";
 import { shortPath } from "@/lib/short-path";
 import { useI18n } from "@/lib/i18n";
+import { windowsTitlebarInset } from "@/lib/window-chrome";
 import { useDeveloperMode, setDeveloperMode } from "@/lib/dev-mode";
 import { setShowGroupChats, useShowGroupChats } from "@/lib/show-groups";
 
@@ -847,9 +848,9 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
   }, [state.config?.tts?.configured]);
 
   return (
-    <aside className="animate-panel-in flex h-full w-[400px] shrink-0 flex-col border-l border-hairline/40 bg-panel">
+    <aside className="animate-panel-in relative z-40 flex h-full w-[400px] shrink-0 flex-col border-l border-hairline/40 bg-panel">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className={cn("flex items-center justify-between px-4 py-3", windowsTitlebarInset())}>
         <button
           onClick={() => dispatch({ type: "toggleSettings", open: false })}
           className="rounded-md p-1 text-ink-secondary hover:bg-raised hover:text-ink"
