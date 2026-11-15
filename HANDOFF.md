@@ -246,6 +246,17 @@ once; after that, releases update in place.
   is set to `http://paperclipi7.tail89d239.ts.net:8799`.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.51>
 
+### Release 0.1.52 (2026-11-15)
+
+- Desktop 0.1.52; Android **0.1.24 / versionCode 25**.
+- Automation reports carry the newest page the worker wrote during the run as
+  a page card under the summary, on the web and on Android. Text messages that
+  carry a page now render the card too. The 15 Nov Watcher report was
+  backfilled with its Competitor Radar page.
+- Android stacks the voice-note and hold-to-talk buttons above Send so the
+  composer's text field keeps its width.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.52>
+
 ## 4. Remote deployment topology
 
 | Item | Value |
