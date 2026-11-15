@@ -13,6 +13,8 @@ import remarkGfm from "remark-gfm";
 import { Check, Copy } from "lucide-react";
 import { copyText } from "@/lib/clipboard";
 import { useI18n } from "@/lib/i18n";
+import { publicBase, rewriteLocalPageLinks } from "@/lib/public-url";
+import { useStore } from "@/state/store";
 import { parseProductCards } from "@/lib/product-cards";
 import { ProductCards } from "./ProductCards";
 
@@ -120,6 +122,8 @@ function CodeBlock({ code, lang, streaming }: { code: string; lang: string; stre
 }
 
 function ChatMarkdownComponent({ text, streaming = false }: { text: string; streaming?: boolean }) {
+  const { state } = useStore();
+  const base = publicBase(state.config);
   return (
     <div className="chat-md min-w-0 [&>*+*]:mt-2">
       <Markdown
@@ -157,14 +161,20 @@ function ChatMarkdownComponent({ text, streaming = false }: { text: string; stre
             );
           },
           a({ href, children }: { href?: string; children?: ReactNode }) {
+            // Bots sometimes paste the harness's loopback page URL. The page is
+            // the same document at the public address; fix both the target and
+            // the visible URL when the label is the URL itself.
+            const fixedHref = href ? rewriteLocalPageLinks(href, base) : href;
+            const label =
+              typeof children === "string" ? rewriteLocalPageLinks(children, base) : children;
             return (
               <a
-                href={href}
+                href={fixedHref}
                 target="_blank"
                 rel="noreferrer"
                 className="break-words text-accent underline decoration-accent/40 hover:decoration-accent"
               >
-                {children}
+                {label}
               </a>
             );
           },

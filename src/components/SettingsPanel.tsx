@@ -23,6 +23,7 @@ import { copyText } from "@/lib/clipboard";
 import { requestNotificationPermission } from "@/lib/notify";
 import { botUsage, costCaption, formatTokens, formatUsd } from "@/lib/usage";
 import { shortPath } from "@/lib/short-path";
+import { publicBase } from "@/lib/public-url";
 import { useI18n } from "@/lib/i18n";
 import { windowsTitlebarInset } from "@/lib/window-chrome";
 import { useDeveloperMode, setDeveloperMode } from "@/lib/dev-mode";
@@ -506,6 +507,7 @@ interface PageSummary {
  * served with a sandbox CSP and framed without same-origin access. */
 function PagesCard({ bot }: { bot: Bot }) {
   const { t } = useI18n();
+  const { state } = useStore();
   const [open, setOpen] = useState(false);
   const [pages, setPages] = useState<PageSummary[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -513,7 +515,12 @@ function PagesCard({ bot }: { bot: Bot }) {
   const [selected, setSelected] = useState<PageSummary | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
+  // copying/opening uses the address other devices can reach; the in-app
+  // preview stays on this window's origin so it works even when the public
+  // name (Tailscale, reverse proxy) is not resolvable from this machine
   const pageUrl = (name: string) =>
+    `${publicBase(state.config)}/api/bots/${encodeURIComponent(bot.id)}/pages/${encodeURIComponent(name)}`;
+  const previewUrl = (name: string) =>
     `${window.location.origin}/api/bots/${encodeURIComponent(bot.id)}/pages/${encodeURIComponent(name)}`;
 
   const load = async () => {
@@ -675,7 +682,7 @@ function PagesCard({ bot }: { bot: Bot }) {
               </button>
             </header>
             <iframe
-              src={pageUrl(selected.name)}
+              src={previewUrl(selected.name)}
               title={selected.title}
               data-kodbot-page
               data-kodbot-bot={bot.id}

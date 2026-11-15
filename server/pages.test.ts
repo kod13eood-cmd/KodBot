@@ -78,6 +78,20 @@ describe("pages", () => {
     expect(prompt).not.toContain("Existing pages");
   });
 
+  it("gives the bot a public page link and forbids loopback", () => {
+    const prompt = pagesSystemPrompt(BOT, "https://kb.example.com:8799/");
+    expect(prompt).toContain(
+      `https://kb.example.com:8799/api/bots/${BOT}/pages/<filename>.html`,
+    );
+    expect(prompt).toContain("never with 127.0.0.1 or localhost");
+  });
+
+  it("tells the bot not to invent a URL when no public address is set", () => {
+    const prompt = pagesSystemPrompt(BOT);
+    expect(prompt).toContain("never 127.0.0.1 or localhost");
+    expect(prompt).not.toContain("kb.example.com");
+  });
+
   it("names the pages that already exist so a new session can reuse them", () => {
     const prompt = pagesSystemPrompt(BOT);
     expect(prompt).not.toContain("Existing pages");

@@ -43,6 +43,12 @@ const BULGARIAN: Record<string, string> = {
   "Send": "Изпрати",
   "Stop": "Спри",
   "Unread": "Непрочетено",
+  "Public address": "Публичен адрес",
+  "How other devices reach this server. Used in page links and when a bot opens a page in the browser.":
+    "Как други устройства достигат този сървър. Използва се в линковете към страници и когато бот отваря страница в браузъра.",
+  "Leave empty to use the address this window was opened with ({origin}).":
+    "Остави празно, за да се използва адресът, с който е отворен този прозорец ({origin}).",
+  "Couldn't save the address.": "Адресът не можа да се запази.",
   "See full run": "Виж пълния отчет",
   "Restore": "Възстанови",
   "Restore all": "Възстанови всички",

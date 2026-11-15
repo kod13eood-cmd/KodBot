@@ -29,6 +29,15 @@ describe("configuration boundaries", () => {
     expect(() => parseConfigPatch({ approvalTimeoutMinutes: 24 * 60 + 1 })).toThrow("approvalTimeoutMinutes");
   });
 
+  it("carries the public address used for page links", () => {
+    expect(parseConfigPatch({ publicUrl: "http://paperclipi7.tail89d239.ts.net:8799" })).toEqual({
+      publicUrl: "http://paperclipi7.tail89d239.ts.net:8799",
+    });
+    expect(parseStoredConfig({ publicUrl: "http://paperclipi7:8799" })).toEqual({
+      publicUrl: "http://paperclipi7:8799",
+    });
+  });
+
   it("rejects malformed stored instances and API patches", () => {
     expect(() => parseStoredConfig({ instances: { claude: { driver: 42 } } })).toThrow("instances.claude.driver");
     expect(() => parseConfigPatch({ opencodeGo: { apiKey: 42 } })).toThrow("opencodeGo.apiKey");
