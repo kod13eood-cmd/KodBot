@@ -187,6 +187,8 @@ chat is never activated or switched; if the owner is mid-turn, the report waits
 until the turn settles. Webhook automations keep a separate `· Results` task so
 an external alert stream cannot flood the main chat. The task carries an unread
 dot until its report is opened, and the full worker run stays one click away.
+If the worker wrote a dashboard or report page during the run, the summary
+carries it as a page card, so the page opens right where the report is.
 
 ### Activity — Live
 

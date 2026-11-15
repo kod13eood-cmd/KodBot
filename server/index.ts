@@ -123,6 +123,7 @@ import {
   PAGE_MAX_BYTES,
   PAGE_NAME,
   pageExcerpt,
+  pageForRun,
   pageSnapshot,
   readPage,
   writePage,
@@ -637,6 +638,8 @@ interface MainChatReport {
   text: string;
   summary: string;
   link?: { label: string; botId: string; threadId: string };
+  /** a page this run wrote, shown as a card under the summary */
+  page?: { botId: string; name: string; title: string; bytes: number; updatedAt: number };
 }
 
 /** Reports held while the parent is mid-turn. Appending a bot message to a
@@ -652,6 +655,7 @@ function deliverMainChatReport(report: MainChatReport) {
     kind: "text",
     text: report.text,
     ...(report.link ? { link: report.link } : {}),
+    ...(report.page ? { page: report.page } : {}),
   });
   store.markTaskUnread(report.botId, report.threadId, true);
   if (parent.threadId !== report.threadId) store.patchBot(report.botId, { unread: true });
@@ -697,6 +701,12 @@ function reportAutomationRun(run: RoutineRun) {
   const link = run.threadId
     ? { label: "See full run", botId: worker.id, threadId: run.threadId }
     : undefined;
+  // A dashboard/report the worker wrote during this run belongs next to the
+  // summary, not only in the hidden run task.
+  const written = pageForRun(listPages(worker.id), run.startedAt, run.finishedAt);
+  const page = written
+    ? { botId: worker.id, name: written.name, title: written.title, bytes: written.bytes, updatedAt: written.updatedAt }
+    : undefined;
 
   if (run.triggerSource === "webhook") {
     const title = `${run.routineName} · Results`;
@@ -711,6 +721,7 @@ function reportAutomationRun(run: RoutineRun) {
       kind: "text",
       text: `📊 ${run.routineName} · ${date}\n\n${summaryText}\n\n— ${worker.name} · ${trigger}`,
       ...(link ? { link } : {}),
+      ...(page ? { page } : {}),
     });
     store.markTaskUnread(parent.id, task.threadId, true);
     if (parent.threadId !== task.threadId) store.patchBot(parent.id, { unread: true });
@@ -729,6 +740,7 @@ function reportAutomationRun(run: RoutineRun) {
     text: `📊 ${run.routineName} · ${date}\n\n${summaryText}\n\n— ${worker.name} · ${trigger}`,
     summary: `${run.routineName}: ${summaryText}`,
     link,
+    page,
   };
   if (parent.busy) {
     const queued = pendingMainChatReports.get(parent.id) ?? [];

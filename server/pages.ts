@@ -69,6 +69,21 @@ export function changedPages(
     .slice(-limit);
 }
 
+/** The newest page a run wrote, if the run wrote one. The worker's page
+ *  mtime is the cheapest honest signal: pages are written by the same turn
+ *  that the run is timing, and nothing else touches the workspace. */
+export function pageForRun(
+  pages: PageSummary[],
+  startedAt?: number | null,
+  finishedAt?: number | null,
+): PageSummary | undefined {
+  const start = startedAt ?? 0;
+  const end = (finishedAt ?? Date.now()) + 2_000; // mtimes can round up
+  return pages
+    .filter((page) => page.updatedAt >= start && page.updatedAt <= end)
+    .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+}
+
 export function listPages(botId: string): PageSummary[] {
   const dir = pageDir(botId);
   try {
