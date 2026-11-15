@@ -49,7 +49,9 @@ Status keys:
   source chat gets a result or failure card and the full exchange stays in the
   shared `A ⇄ B` room.
 - **Tasks and branches.** Each bot keeps separate tasks; edits and rewinds
-  branch the transcript instead of destroying history.
+  branch the transcript instead of destroying history. On desktop, right-click
+  a task for **Rename / Archive / Delete**. Android's bot menu lists **Tasks**
+  with the same actions, new-task and archived-task restore, next to **Pages**.
 - **Remote mode.** Point the desktop app at a KodBot server that stays on 24/7.
 - **Voice.** Local click-to-talk dictation (faster-whisper) and Piper text to
   speech on the harness, with no audio leaving the machine. The web composer,
