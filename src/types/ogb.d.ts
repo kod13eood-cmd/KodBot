@@ -104,6 +104,21 @@ declare global {
       clipboard?: {
         writeText(text: string): Promise<boolean>;
       };
+      /** Files downloaded from a page: save dialog in the main process,
+       * progress and a reveal action here. */
+      downloads?: {
+        onState(
+          cb: (state: {
+            id: number;
+            filename: string;
+            path?: string;
+            received: number;
+            total: number;
+            state: "started" | "downloading" | "done" | "interrupted" | "cancelled";
+          }) => void,
+        ): () => void;
+        showInFolder(path: string): Promise<boolean>;
+      };
     };
   }
 }

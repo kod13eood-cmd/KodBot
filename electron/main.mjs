@@ -474,6 +474,64 @@ function createTray() {
   return tray;
 }
 
+/** Files the person chose to save. Only these can be revealed in the OS file
+ *  manager, so the renderer cannot ask the main process to reveal arbitrary
+ *  paths. */
+const allowedDownloadPaths = new Set();
+let downloadSeq = 0;
+
+/** Page links can download a file (a test APK, an export). Electron's default
+ *  is a silent save into Downloads; ask where it should go and stream progress
+ *  back to the window instead. */
+function installDownloadHandler(win) {
+  win.webContents.session.on("will-download", async (_event, item) => {
+    const id = ++downloadSeq;
+    const filename = item.getFilename() || "download";
+    const send = (payload) => {
+      if (!win.isDestroyed()) win.webContents.send("download:state", { id, filename, ...payload });
+    };
+    item.pause();
+    let filePath;
+    try {
+      const result = await dialog.showSaveDialog(win, {
+        title: `Save ${filename}`,
+        defaultPath: path.join(app.getPath("downloads"), filename),
+        buttonLabel: "Save",
+      });
+      if (result.canceled || !result.filePath) {
+        item.cancel();
+        send({ state: "cancelled" });
+        return;
+      }
+      filePath = result.filePath;
+    } catch {
+      item.cancel();
+      send({ state: "cancelled" });
+      return;
+    }
+    allowedDownloadPaths.add(filePath);
+    item.setSavePath(filePath);
+    send({ state: "started", path: filePath, received: 0, total: item.getTotalBytes() });
+    item.on("updated", (_event, state) => {
+      send({
+        state: state === "interrupted" ? "interrupted" : "downloading",
+        path: filePath,
+        received: item.getReceivedBytes(),
+        total: item.getTotalBytes(),
+      });
+    });
+    item.once("done", (_event, state) => {
+      send({
+        state: state === "completed" ? "done" : state,
+        path: filePath,
+        received: item.getReceivedBytes(),
+        total: item.getTotalBytes(),
+      });
+    });
+    item.resume();
+  });
+}
+
 function createWindow(remoteUrl = null) {
   const isMac = process.platform === "darwin";
   const isLinux = process.platform === "linux";
@@ -510,6 +568,7 @@ function createWindow(remoteUrl = null) {
   });
 
   installContextMenu(win);
+  installDownloadHandler(win);
 
   // The application menu is gone on Linux and Windows, which also removed
   // its built-in accelerators. Keep the three people actually use: reload,
@@ -646,6 +705,12 @@ ipcMain.handle("desktop:open-external", async (_event, rawUrl) => {
     throw new Error("Only web links can be opened");
   }
   await shell.openExternal(url.toString());
+  return true;
+});
+
+ipcMain.handle("download:show", (_event, rawPath) => {
+  if (typeof rawPath !== "string" || !allowedDownloadPaths.has(rawPath)) return false;
+  shell.showItemInFolder(rawPath);
   return true;
 });
 

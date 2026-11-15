@@ -17,6 +17,7 @@ import { PageBridge } from "@/components/PageBridge";
 import { HelpPanel } from "@/components/HelpPanel";
 import { BootScreen, ChatLoadingSkeleton } from "@/components/LoadingScreens";
 import { WindowControls } from "@/components/WindowControls";
+import { DownloadProgress } from "@/components/DownloadProgress";
 import { SendQueueDrainer } from "@/components/SendQueueDrainer";
 import { DesktopCapabilitiesProvider } from "@/components/DesktopCapabilities";
 import { RoutinesPage } from "@/components/RoutinesPage";
@@ -294,6 +295,7 @@ export default function App() {
           {gated && <Onboarding onDone={() => setGated(false)} />}
         </ServerSetupGate>
         <WindowControls />
+        <DownloadProgress />
         <PageBridge />
       </StoreProvider>
     </DesktopCapabilitiesProvider>

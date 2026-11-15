@@ -119,4 +119,14 @@ contextBridge.exposeInMainWorld("ogb", {
   clipboard: {
     writeText: (text) => ipcRenderer.invoke("clipboard:write", text),
   },
+  /** Downloads started inside a sandboxed page: the main process asks where
+   * to save and streams progress for the in-app card. */
+  downloads: {
+    onState: (cb) => {
+      const handler = (_event, state) => cb(state);
+      ipcRenderer.on("download:state", handler);
+      return () => ipcRenderer.removeListener("download:state", handler);
+    },
+    showInFolder: (filePath) => ipcRenderer.invoke("download:show", filePath),
+  },
 });
