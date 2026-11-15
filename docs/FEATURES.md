@@ -36,7 +36,9 @@ Status keys:
   Open the shared desktop in a full-window viewer with full screen, or take
   over with the mouse and keyboard while the bot watches the same screen.
 - **Approvals before risky actions.** Shell commands, file edits, and questions
-  surface as inline cards: Allow, Deny, or answer in chat. Every permission
+  surface as inline cards: Allow, Deny, or answer in chat. A bot's own question
+  can offer 2–5 one-tap answers, with a free-text field for anything else.
+  Claude, Codex, and OpenCode's `question` tool share the same card. Every permission
   card explains in plain language what the action will do and why it needs
   approval, with a risk level and task context, and an unanswered card
   (including a bot-to-bot contact request) can be marked overdue without
@@ -152,6 +154,16 @@ worker finishes, the owner gets an `<automation> · Results` task, an unread
 badge, and a notification. A run whose last line is `NOTHING NEW` stays
 silent, and no report is ever injected into an active turn. Old tasks can be
 archived from the task picker without deleting their transcripts.
+
+### Questions with one-tap answers — Live
+
+A bot that needs a decision asks with 2–5 tappable options instead of a
+paragraph you have to answer in prose. Claude's `ask_user`, Codex's question
+requests, and OpenCode's `question` tool all land in the same card: tap an
+option, or type a different answer. OpenCode needed an ACP form-elicitation
+bridge; without it the model was told the client could not show the question
+and silently fell back to text. Multi-question forms are asked one card at a
+time, and an unanswered question follows the same approval timeout.
 
 ### Automation reports — Live
 

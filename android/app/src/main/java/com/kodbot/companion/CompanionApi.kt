@@ -78,6 +78,19 @@ data class ApprovalCard(
     val permission: Boolean get() = !tool.isNullOrBlank()
 }
 
+data class MessageLinkRecord(
+    val label: String,
+    val botId: String,
+    val threadId: String,
+)
+
+data class TaskSummaryRecord(
+    val title: String,
+    val threadId: String,
+    val unread: Boolean,
+    val archived: Boolean,
+)
+
 data class TranscriptMessage(
     val id: String,
     val role: String,
@@ -86,6 +99,8 @@ data class TranscriptMessage(
     val toolName: String,
     val senderName: String?,
     val card: ApprovalCard?,
+    /** A compact automation report points at the worker task that ran it. */
+    val link: MessageLinkRecord? = null,
 )
 
 data class ModelSelectionRecord(
@@ -139,8 +154,18 @@ data class ConversationRecord(
     val autoModel: Boolean = false,
     val autoModelPool: List<ModelSelectionRecord> = emptyList(),
     val busyBotId: String? = null,
+    val tasks: List<TaskSummaryRecord> = emptyList(),
 ) {
     val key: String get() = "$kind:$id"
+
+    /** A report can land in a task while the bot-level flag stays false
+     * (the report is in the task the owner is already looking at). The fleet
+     * badge has to count both, or the phone shows nothing. */
+    val unreadBadge: Boolean get() = unread || tasks.any { it.unread }
+
+    /** True when the task currently on screen has an unseen report. This is
+     * what the "new report" chip in the chat header keys off. */
+    val activeTaskUnread: Boolean get() = tasks.any { it.threadId == threadId && it.unread }
 }
 
 data class AgentNotification(
@@ -426,9 +451,27 @@ class CompanionApi(private val connection: CompanionConnection) {
             ?: throw IOException("The computer didn't return the new bot.")
     }
 
+    /** Follow a report's "See full run" link: make the worker's run task the
+     * one its conversation shows, so the next fleet refresh carries it. */
+    suspend fun switchTask(botId: String, threadId: String) = withContext(Dispatchers.IO) {
+        request("POST", "/api/bots/${encodePath(botId)}/tasks/${encodePath(threadId)}")
+    }
+
     suspend fun markRead(chat: ConversationRecord) = withContext(Dispatchers.IO) {
         val route = if (chat.kind == "group") "/api/groups" else "/api/bots"
         request("POST", "$route/${encodePath(chat.id)}/read")
+        // The phone has no per-task picker yet: a report parked in a side
+        // task (a webhook Results task) would otherwise keep the fleet dot
+        // lit forever after the chat was opened, with no way to clear it.
+        if (chat.kind == "bot") {
+            for (task in chat.tasks.filter { it.unread }) {
+                request(
+                    "PATCH",
+                    "/api/bots/${encodePath(chat.id)}/tasks/${encodePath(task.threadId)}",
+                    JSONObject().put("unread", false),
+                )
+            }
+        }
     }
 
     suspend fun interrupt(chat: ConversationRecord) = withContext(Dispatchers.IO) {
@@ -723,6 +766,7 @@ class CompanionApi(private val connection: CompanionConnection) {
                 teamName = team?.name,
                 teamIsLeader = team?.leaderBotId == optString("id"),
                 autoModel = optBoolean("autoModel"),
+                tasks = parseTaskSummaries(optJSONArray("tasks")),
                 autoModelPool = optJSONArray("autoModelPool")?.let { pool ->
                     (0 until pool.length()).mapNotNull { index ->
                         pool.optJSONObject(index)?.let { entry ->
@@ -806,6 +850,7 @@ class CompanionApi(private val connection: CompanionConnection) {
                     dismissed = it.optBoolean("dismissed"),
                 )
             }
+            val link = parseRunLink(optJSONObject("link"))
             return TranscriptMessage(
                 id = optString("id"),
                 role = optString("role", "bot"),
@@ -814,6 +859,33 @@ class CompanionApi(private val connection: CompanionConnection) {
                 toolName = toolJson?.optString("name").orEmpty(),
                 senderName = senderJson?.optString("name")?.takeIf(String::isNotBlank),
                 card = card,
+                link = link,
+            )
+        }
+    }
+}
+
+/** A report link has to name both the worker bot and the run task; a
+ *  half-filled object cannot be opened, so treat it as absent. */
+internal fun parseRunLink(json: JSONObject?): MessageLinkRecord? {
+    if (json == null) return null
+    val botId = json.optString("botId")
+    val threadId = json.optString("threadId")
+    if (botId.isBlank() || threadId.isBlank()) return null
+    return MessageLinkRecord(json.optString("label", "See full run"), botId, threadId)
+}
+
+internal fun parseTaskSummaries(json: JSONArray?): List<TaskSummaryRecord> {
+    if (json == null) return emptyList()
+    return (0 until json.length()).mapNotNull { index ->
+        json.optJSONObject(index)?.let { task ->
+            val threadId = task.optString("threadId")
+            if (threadId.isBlank()) null
+            else TaskSummaryRecord(
+                title = task.optString("title", "Task"),
+                threadId = threadId,
+                unread = task.optBoolean("unread"),
+                archived = task.optLong("archivedAt", 0L) > 0L,
             )
         }
     }

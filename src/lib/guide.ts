@@ -152,11 +152,13 @@ KodBot е local-first chat приложение за екип от AI агент
 - Each permission card includes a plain-language **What this means** explanation, a **Why it needs approval** risk note, the task context, and then the exact command, path, recipient, or amount.
 - App Settings → General → **Approval timeout** controls when an unanswered card is marked overdue. It never denies automatically; a late **Allow** still lets the bot finish the work. The same timer covers a bot asking permission to contact another bot. Choose **Wait until I answer** to remove the timer.
 - Auto mode can answer routine requests; destructive actions still stop and ask.
+- A bot's own question can offer 2–5 one-tap answers; tap one instead of typing, or use the text field for something else. Claude, Codex, and OpenCode's \`question\` tool all use the same card.
 - **Stop** rejects the pending action. A stopped turn does not run queued follow-ups.`,
       bg: `## Одобрения и безопасност
 
 - Ботът може да пита преди рискова команда, промяна на файл или външно действие. Картата заема composer-а: **Allow**, **Deny** или **Always allow** за конкретното действие.
 - Auto mode отговаря на рутинните заявки; destructive действията пак спират и питат.
+- Въпросът на бота може да предложи 2–5 отговора с едно докосване; избери един или напиши свой в полето. Claude, Codex и \`question\` инструментът на OpenCode използват същата карта.
 - **Stop** отказва чакащото действие. Спрян ход не изпълнява следващите на опашката.
 - Прочети точната команда, път, получател или сума на картата, преди да разрешиш.`,
     },
