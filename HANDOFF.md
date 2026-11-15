@@ -178,6 +178,19 @@ once; after that, releases update in place.
   request still pays the model load.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.46>
 
+### Release 0.1.47 (2026-11-15)
+
+- Desktop 0.1.47 for Linux/Windows; Android stays **0.1.21 / versionCode 22**.
+- Scheduled/manual automation reports now append a compact summary with
+  **See full run** to the owner's permanent main chat; webhook alerts keep
+  their Results task. Reports wait for an active turn and show a task unread
+  dot until opened.
+- Workers end with a SUMMARY / NEEDS YOU block; the main chat shows that block
+  instead of the whole run.
+- Watcher and Skye were migrated to hidden worker bots; their old daily tasks
+  and Results tasks were archived.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.47>
+
 ## 4. Remote deployment topology
 
 | Item | Value |
