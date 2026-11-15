@@ -43,6 +43,10 @@ const BULGARIAN: Record<string, string> = {
   "Send": "Изпрати",
   "Stop": "Спри",
   "Unread": "Непрочетено",
+  "Saved": "Записано",
+  "Downloading…": "Сваляне…",
+  "Download interrupted": "Свалянето е прекъснато",
+  "Show in folder": "Покажи в папката",
   "Rename": "Преименувай",
   "Right-click a task to rename, archive, or delete it.":
     "Десен клик върху задача за преименуване, архивиране или изтриване.",

@@ -162,6 +162,7 @@ The rest of this guide is organized by topic.
 - The bot receives the page title, path, and a bounded excerpt in its context.
 - A page can submit a form back to its bot: the answer arrives as a user message and the viewer closes.
 - Pages are sandboxed: they cannot read the chat, credentials, or your files.
+- A page can offer a file to download. On desktop, choose where to save it and follow the progress card; **Show in folder** reveals it afterwards.
 
 ---
 
@@ -351,6 +352,7 @@ KodBot е local-first chat приложение за екип от AI агент
 - Ботът получава заглавие, път и ограничен откъс от страницата в контекста си.
 - Страницата може да изпрати формуляр обратно към бота: отговорът пристига като user съобщение и визията се затваря.
 - Страниците са sandbox-нати: не могат да четат чата, ключовете или файловете ти.
+- Страницата може да предлага файл за сваляне. На desktop избери къде да се запише и следи картата с прогреса; **Show in folder** го показва после.
 
 ---
 
