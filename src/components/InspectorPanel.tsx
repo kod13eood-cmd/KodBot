@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bug, ChevronDown, ChevronRight, RefreshCw, X } from "lucide-react";
 import { useStore, type Bot } from "@/state/store";
 import { cn } from "@/lib/cn";
+import { windowsTitlebarInset } from "@/lib/window-chrome";
 import { formatTime, toRows, type InspectorEntry, type InspectorPage, type InspectorRow } from "@/lib/inspector";
 import type { RuntimeEvent } from "../../server/contracts.ts";
 
@@ -119,7 +120,7 @@ export function InspectorPanel({ bot }: { bot: Bot }) {
 
   return (
     <aside className="animate-panel-in relative z-40 flex h-full w-[460px] shrink-0 flex-col border-l border-hairline/40 bg-panel">
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className={cn("flex items-center justify-between px-4 py-3", windowsTitlebarInset())}>
         <span className="flex items-center gap-2 text-[15px] font-semibold text-ink">
           <Bug size={16} className="text-ink-secondary" /> Inspector
         </span>

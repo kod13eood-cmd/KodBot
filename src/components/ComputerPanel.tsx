@@ -21,6 +21,7 @@ import { useStore, type Bot } from "@/state/store";
 import type { Routine } from "@/lib/routines";
 import { ApiKeyRow } from "./ApiKeys";
 import { cn } from "@/lib/cn";
+import { windowsTitlebarInset } from "@/lib/window-chrome";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { LocalVmViewer } from "./LocalVmViewer";
 import { RoutineEditor } from "./RoutinesPage";
@@ -391,7 +392,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
     <>
     <aside className="animate-panel-in relative z-40 flex h-full w-[400px] shrink-0 flex-col border-l border-hairline/40 bg-panel">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className={cn("flex items-center justify-between px-4 py-3", windowsTitlebarInset())}>
         <button
           onClick={() => dispatch({ type: "toggleSettings", open: true })}
           className="rounded-md p-1 text-ink-secondary hover:bg-raised hover:text-ink"
