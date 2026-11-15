@@ -268,6 +268,17 @@ once; after that, releases update in place.
   their own section.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.53>
 
+### Release 0.1.54 (2026-11-15)
+
+- Desktop 0.1.54; Android **0.1.26 / versionCode 27**.
+- Page downloads open a save dialog with the suggested filename, then a
+  progress card shows percent, the final path, and **Show in folder**.
+  Browsers keep their native download UI. Verified against Zuko's Lode Runner
+  page: the sandboxed page's generated APK saved with progress.
+- Android file links inside a page go through DownloadManager (notification
+  progress, file in Downloads).
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.54>
+
 ## 4. Remote deployment topology
 
 | Item | Value |
