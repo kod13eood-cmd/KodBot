@@ -2639,6 +2639,49 @@ private fun PageViewer(connection: CompanionConnection, page: PageArtifactRecord
                                 settings.allowFileAccess = false
                                 settings.allowContentAccess = false
                                 setBackgroundColor(android.graphics.Color.WHITE)
+                                setDownloadListener { url, _, contentDisposition, mimeType, _ ->
+                                    // A page can link a test APK or an export. The system
+                                    // DownloadManager owns the progress notification; the
+                                    // device token only travels to the paired companion.
+                                    try {
+                                        val fileName = android.webkit.URLUtil.guessFileName(
+                                            url,
+                                            contentDisposition,
+                                            mimeType,
+                                        )
+                                        val request = android.app.DownloadManager.Request(android.net.Uri.parse(url))
+                                            .setMimeType(mimeType)
+                                            .setTitle(fileName)
+                                            .setNotificationVisibility(
+                                                android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED,
+                                            )
+                                        if (url.startsWith(connection.baseUrl)) {
+                                            request.addRequestHeader("Authorization", "Bearer ${connection.token}")
+                                        }
+                                        try {
+                                            request.setDestinationInExternalPublicDir(
+                                                android.os.Environment.DIRECTORY_DOWNLOADS,
+                                                fileName,
+                                            )
+                                        } catch (_: Exception) {
+                                            // DownloadManager picks its own Downloads location.
+                                        }
+                                        val manager = context.applicationContext
+                                            .getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+                                        manager.enqueue(request)
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "Downloading $fileName…",
+                                            android.widget.Toast.LENGTH_SHORT,
+                                        ).show()
+                                    } catch (_: Exception) {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "Couldn't start the download",
+                                            android.widget.Toast.LENGTH_LONG,
+                                        ).show()
+                                    }
+                                }
                                 webViewClient = object : WebViewClient() {
                                     override fun onPageFinished(view: WebView?, url: String?) {
                                         loading = false

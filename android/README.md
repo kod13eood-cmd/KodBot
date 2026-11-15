@@ -46,6 +46,8 @@ approval flow. The phone does not receive a general shell endpoint.
   empty pool keeps Auto inside the bot's current engine.
 - **Tasks:** the bot menu in a chat lists tasks (switch, rename, archive,
   restore, delete, new task) next to Pages.
+- **Downloads:** file links in a page use Android's DownloadManager, with
+  progress in the notification shade and the file in Downloads.
 - **Pages:** a bot's chat header has a **Pages** list. Pages the bot wrote open
   in a full-screen WebView through the paired companion, read-only; page
   messages in the transcript render as their own cards. The link used for
