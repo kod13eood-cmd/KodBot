@@ -59,6 +59,8 @@ describe("what the app may do", () => {
     ["PATCH", "/api/bots/bot_123/tasks/th_1"],
     ["DELETE", "/api/bots/bot_123/tasks/th_1"],
     ["POST", "/api/bots/bot_123/computer/join"],
+    ["GET", "/api/bots/bot_123/pages"],
+    ["GET", "/api/bots/bot_123/pages/report.html"],
     ["GET", "/api/teams"],
     ["POST", "/api/teams"],
     ["PATCH", "/api/teams/team_1"],
@@ -135,6 +137,10 @@ describe("what it may not", () => {
     expect(allowed("PATCH", "/api/bots/bot_123")).toBe(false);
     expect(allowed("PATCH", "/api/bots/bot_123/model/autoApprove")).toBe(false);
     expect(allowed("PATCH", "/api/groups/room-1")).toBe(false);
+    // pages are read-only from the phone, even though the GETs are allowed
+    expect(allowed("PUT", "/api/bots/bot_123/pages/report.html")).toBe(false);
+    expect(allowed("DELETE", "/api/bots/bot_123/pages/report.html")).toBe(false);
+    expect(allowed("POST", "/api/bots/bot_123/pages")).toBe(false);
   });
 
   // Patterns are anchored, so a path that merely starts right is still a

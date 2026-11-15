@@ -675,6 +675,32 @@ describe("harness HTTP API", () => {
     expect(nothing.status).toBe(400);
   });
 
+  it("normalizes the public address used for page links", async () => {
+    const saved = await api("PUT", "/api/config", {
+      publicUrl: "http://paperclipi7.tail89d239.ts.net:8799/",
+    });
+    expect(saved.status).toBe(200);
+    expect(saved.body.publicUrl).toBe("http://paperclipi7.tail89d239.ts.net:8799");
+    expect((await api("GET", "/api/config")).body.publicUrl).toBe(
+      "http://paperclipi7.tail89d239.ts.net:8799",
+    );
+
+    for (const bad of [
+      "paperclipi7:8799",
+      "ftp://paperclipi7",
+      "http://user:pass@paperclipi7:8799",
+      "http://paperclipi7:8799/?q=1",
+      "http://paperclipi7:8799/#x",
+    ]) {
+      const rejected = await api("PUT", "/api/config", { publicUrl: bad });
+      expect(rejected.status, bad).toBe(400);
+    }
+
+    const cleared = await api("PUT", "/api/config", { publicUrl: "" });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.publicUrl).toBe("");
+  });
+
   it("validates a Composio project key, creates a Session, and keeps externally stored secrets off disk", async () => {
     const oldKey = await api("PUT", "/api/config", { composio: { apiKey: "old_key" } });
     expect(oldKey.status).toBe(400);

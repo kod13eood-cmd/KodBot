@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { costCaption, formatTokens, formatUsd, usageChip } from "@/lib/usage";
+import { publicBase } from "@/lib/public-url";
 import {
   useStore,
   useStreaming,
@@ -575,10 +576,15 @@ function ScreenFrame({ png, mime }: { png: string; mime?: string }) {
  * chat around it. */
 function PageArtifactCard({ page }: { page: NonNullable<Message["page"]> }) {
   const { t } = useI18n();
+  const { state } = useStore();
   const [previewOpen, setPreviewOpen] = useState(false);
-  const url = `${window.location.origin}/api/bots/${encodeURIComponent(page.botId)}/pages/${encodeURIComponent(page.name)}`;
+  const path = `/api/bots/${encodeURIComponent(page.botId)}/pages/${encodeURIComponent(page.name)}`;
+  // preview from the window's own origin (works on loopback); open in the
+  // browser at the address other devices can reach
+  const url = `${window.location.origin}${path}`;
+  const externalUrl = `${publicBase(state.config)}${path}`;
   const size = page.bytes < 1024 ? `${page.bytes} B` : `${Math.round(page.bytes / 102.4) / 10} KB`;
-  const openInBrowser = () => window.open(url, "_blank", "noopener,noreferrer");
+  const openInBrowser = () => window.open(externalUrl, "_blank", "noopener,noreferrer");
 
   useEffect(() => {
     if (!previewOpen) return;

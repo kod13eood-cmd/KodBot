@@ -39,6 +39,10 @@ const appConfigSchema = z.object({
     .optional(),
   /** Non-secret profile details shown in the sidebar. */
   profile: z.object({ name: optionalText, email: optionalText }).optional(),
+  /** The origin the owner reaches this harness at (Tailscale, LAN, reverse
+   *  proxy). Page links and bot replies use it instead of loopback. Empty
+   *  means "use whatever origin the client was loaded from". */
+  publicUrl: optionalText,
   /** Minutes before an unanswered permission/question is marked overdue.
    * null or 0 means wait without a timer. The request stays answerable. */
   approvalTimeoutMinutes: z.number().int().min(0).max(24 * 60).nullable().optional(),
@@ -59,6 +63,7 @@ export interface AppConfig {
     language?: "auto" | "bg" | "en";
   };
   profile?: { name?: string; email?: string };
+  publicUrl?: string;
   approvalTimeoutMinutes?: number | null;
   instances?: InstanceConfigMap;
 }
@@ -162,6 +167,9 @@ export function saveConfig(patch: Partial<AppConfig>): void {
   }
   if (checkedPatch.approvalTimeoutMinutes !== undefined) {
     disk.approvalTimeoutMinutes = checkedPatch.approvalTimeoutMinutes;
+  }
+  if (checkedPatch.publicUrl !== undefined) {
+    disk.publicUrl = checkedPatch.publicUrl;
   }
   if (checkedPatch.instances) {
     const currentInstances = jsonObjectSchema.safeParse(disk.instances);

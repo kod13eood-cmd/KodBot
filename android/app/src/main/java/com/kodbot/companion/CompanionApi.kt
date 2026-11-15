@@ -78,6 +78,21 @@ data class ApprovalCard(
     val permission: Boolean get() = !tool.isNullOrBlank()
 }
 
+data class PageSummaryRecord(
+    val name: String,
+    val title: String,
+    val bytes: Long,
+    val updatedAt: Long,
+)
+
+data class PageArtifactRecord(
+    val botId: String,
+    val name: String,
+    val title: String,
+    val bytes: Long,
+    val updatedAt: Long,
+)
+
 data class MessageLinkRecord(
     val label: String,
     val botId: String,
@@ -101,6 +116,8 @@ data class TranscriptMessage(
     val card: ApprovalCard?,
     /** A compact automation report points at the worker task that ran it. */
     val link: MessageLinkRecord? = null,
+    /** A self-contained page the bot wrote this turn. */
+    val page: PageArtifactRecord? = null,
 )
 
 data class ModelSelectionRecord(
@@ -456,6 +473,30 @@ class CompanionApi(private val connection: CompanionConnection) {
     suspend fun switchTask(botId: String, threadId: String) = withContext(Dispatchers.IO) {
         request("POST", "/api/bots/${encodePath(botId)}/tasks/${encodePath(threadId)}")
     }
+
+    /** Pages this bot wrote, newest first. Read-only: the phone never edits a
+     *  workspace file. */
+    suspend fun pages(botId: String): List<PageSummaryRecord> = withContext(Dispatchers.IO) {
+        val root = JSONObject(request("GET", "/api/bots/${encodePath(botId)}/pages"))
+        val pages = root.optJSONArray("pages") ?: JSONArray()
+        (0 until pages.length()).mapNotNull { index ->
+            pages.optJSONObject(index)?.let { page ->
+                val name = page.optString("name")
+                if (name.isBlank()) null
+                else PageSummaryRecord(
+                    name = name,
+                    title = page.optString("title", name),
+                    bytes = page.optLong("bytes"),
+                    updatedAt = page.optLong("updatedAt"),
+                )
+            }
+        }
+    }
+
+    fun pageUrl(botId: String, name: String): String =
+        "${connection.baseUrl}/api/bots/${encodePath(botId)}/pages/${encodePath(name)}"
+
+    fun authHeaders(): Map<String, String> = mapOf("Authorization" to "Bearer ${connection.token}")
 
     suspend fun markRead(chat: ConversationRecord) = withContext(Dispatchers.IO) {
         val route = if (chat.kind == "group") "/api/groups" else "/api/bots"
@@ -851,6 +892,7 @@ class CompanionApi(private val connection: CompanionConnection) {
                 )
             }
             val link = parseRunLink(optJSONObject("link"))
+            val page = parsePageArtifact(optJSONObject("page"))
             return TranscriptMessage(
                 id = optString("id"),
                 role = optString("role", "bot"),
@@ -860,6 +902,7 @@ class CompanionApi(private val connection: CompanionConnection) {
                 senderName = senderJson?.optString("name")?.takeIf(String::isNotBlank),
                 card = card,
                 link = link,
+                page = page,
             )
         }
     }
@@ -889,4 +932,18 @@ internal fun parseTaskSummaries(json: JSONArray?): List<TaskSummaryRecord> {
             )
         }
     }
+}
+
+internal fun parsePageArtifact(json: JSONObject?): PageArtifactRecord? {
+    if (json == null) return null
+    val botId = json.optString("botId")
+    val name = json.optString("name")
+    if (botId.isBlank() || name.isBlank()) return null
+    return PageArtifactRecord(
+        botId = botId,
+        name = name,
+        title = json.optString("title", name),
+        bytes = json.optLong("bytes"),
+        updatedAt = json.optLong("updatedAt"),
+    )
 }

@@ -23,8 +23,8 @@ Last reviewed: **2026-11-12**.
 | GitHub remote | `git@github.com:kod13eood-cmd/KodBot.git` |
 | Gitea remote | `ssh://git@llm1:2222/deso/kodbot.git` |
 | Android release branch | `android-release` (APK-only branch) |
-| App version | `0.1.50` |
-| Android version | `0.1.22` / versionCode `23` |
+| App version | `0.1.51` |
+| Android version | `0.1.23` / versionCode `24` |
 
 There is also a stale remote checkout at `paperclipi7:~/Developer/OpenBot`;
 it is not the deployment source. The canonical source is the owner working
@@ -207,6 +207,32 @@ once; after that, releases update in place.
   after a stopped-server backup and `PRAGMA integrity_check`; the clean
   summary remains.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.48>
+
+### Release 0.1.49 (2026-11-15)
+
+- Desktop 0.1.49 for Linux/Windows; Android stays **0.1.22 / versionCode 23**.
+- Frameless-window fix: the floating minimize/maximize/close controls step
+  aside while a side panel (bot settings, computer, inspector) or a
+  full-screen modal (guide, app settings, connected apps) is open, and they
+  sit below the modal tier. The panel's own X is now the only one in that
+  corner and stays clickable.
+- Windows reserves the native caption area (148px) in panel and dialog
+  headers, the same way the chat header already did, so their X no longer
+  hides under the system buttons.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.49>
+
+### Release 0.1.50 (2026-11-15)
+
+- Desktop 0.1.50 for Linux/Windows; Android stays **0.1.22 / versionCode 23**.
+- App-only guide fix: Electron treats the chat and sidebar headers as window
+  drag strips. The guide dialog opens over the chat header's strip, so a real
+  mouse press on its X started a window drag instead of a click (no hover,
+  no close). Browsers and synthetic clicks bypassed the frame, which hid the
+  bug from browser tests. Dialogs and the needs-you bar are now marked
+  `-webkit-app-region: no-drag`.
+- Verified with a real X11 pointer under Xvfb: hover changes and the click
+  closes the guide; the side-panel X was already clear.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.50>
 
 ## 4. Remote deployment topology
 
