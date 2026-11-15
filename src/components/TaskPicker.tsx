@@ -5,7 +5,8 @@
 // own transcript and its own provider session — so sensitive work, a
 // long job and a quick question can sit side by side under one agent.
 import { useEffect, useRef, useState } from "react";
-import { Archive, ArchiveRestore, CalendarClock, Check, ChevronDown, Plus, Trash2 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Archive, CalendarClock, Check, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
 import { useStore, formatTime, type Bot, type Task } from "@/state/store";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
@@ -38,6 +39,8 @@ export function TaskPicker({ bot }: { bot: Bot }) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  /** right-click menu: the three task actions, anchored at the pointer */
+  const [menu, setMenu] = useState<{ task: Task; x: number; y: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   const allTasks = bot.tasks ?? [];
@@ -59,6 +62,20 @@ export function TaskPicker({ bot }: { bot: Bot }) {
       window.removeEventListener("keydown", onKey);
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("mousedown", close);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [menu]);
 
   // a bot that has only ever done one thing doesn't need a switcher yet —
   // just the button that gives it a second context
@@ -115,6 +132,10 @@ export function TaskPicker({ bot }: { bot: Bot }) {
               return (
                 <div
                   key={task.threadId}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    setMenu({ task, x: event.clientX, y: event.clientY });
+                  }}
                   className={cn("group flex items-center gap-2 px-2.5 py-2", active ? "bg-raised/60" : "hover:bg-raised/40")}
                 >
                   <Check size={13} className={cn("shrink-0", active ? "text-accent" : "opacity-0")} />
@@ -160,24 +181,6 @@ export function TaskPicker({ bot }: { bot: Bot }) {
                       </div>
                     </button>
                   )}
-                  <button
-                    onClick={() => dispatch({ type: "archiveTask", botId: bot.id, threadId: task.threadId })}
-                    disabled={tasks.length <= 1}
-                    aria-label={t("Archive task")}
-                    title={t("Archive this task — keep its messages, hide it from this list")}
-                    className="rounded p-1 text-ink-secondary opacity-0 hover:bg-raised hover:text-ink group-hover:opacity-100 disabled:opacity-20"
-                  >
-                    <Archive size={13} />
-                  </button>
-                  <button
-                    onClick={() => dispatch({ type: "deleteTask", botId: bot.id, threadId: task.threadId })}
-                    disabled={bot.busy && active}
-                    aria-label={t("Delete task")}
-                    title={t("Delete this task and its conversation")}
-                    className="rounded p-1 text-ink-secondary opacity-0 hover:bg-raised hover:text-danger group-hover:opacity-100 disabled:opacity-20"
-                  >
-                    <Trash2 size={13} />
-                  </button>
                 </div>
               );
             })}
@@ -192,35 +195,90 @@ export function TaskPicker({ bot }: { bot: Bot }) {
                 <span className="ml-auto tabular-nums opacity-60">{archived.length}</span>
               </button>
               {showArchived && archived.map((task) => (
-                <div key={task.threadId} className="group flex items-center gap-2 px-2.5 py-1.5">
+                <div
+                  key={task.threadId}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    setMenu({ task, x: event.clientX, y: event.clientY });
+                  }}
+                  className="group flex items-center gap-2 px-2.5 py-1.5"
+                >
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[12.5px] text-ink-secondary">{task.title}</div>
                     <div className="text-[11px] text-ink-secondary/70">{formatTime(task.createdAt)}</div>
                   </div>
-                  <button
-                    onClick={() => dispatch({ type: "unarchiveTask", botId: bot.id, threadId: task.threadId })}
-                    aria-label={t("Restore")}
-                    title={t("Restore this task")}
-                    className="rounded p-1 text-ink-secondary hover:bg-raised hover:text-ink"
-                  >
-                    <ArchiveRestore size={13} />
-                  </button>
                 </div>
               ))}
             </div>
           )}
+          <div className="border-t border-hairline/30 px-3 pb-1 pt-2 text-[10.5px] text-ink-secondary/70">
+            {t("Right-click a task to rename, archive, or delete it.")}
+          </div>
           <button
             onClick={() => {
               dispatch({ type: "newTask", botId: bot.id });
               setOpen(false);
             }}
             disabled={bot.busy}
-            className="mt-1 flex w-full items-center gap-2 border-t border-hairline/40 px-3 py-2 text-left text-[13px] text-ink hover:bg-raised/50 disabled:opacity-40"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink hover:bg-raised/50 disabled:opacity-40"
           >
             <Plus size={13} className="text-ink-secondary" /> {t("New task")}
           </button>
         </div>
       )}
+      {menu &&
+        createPortal(
+          <div
+            role="menu"
+            onMouseDown={(event) => event.stopPropagation()}
+            style={{
+              left: Math.min(menu.x, window.innerWidth - 190),
+              top: Math.min(menu.y, window.innerHeight - 132),
+            }}
+            className="fixed z-[90] w-[180px] overflow-hidden rounded-lg border border-hairline/60 bg-card py-1 shadow-2xl shadow-black/60"
+          >
+            <button
+              role="menuitem"
+              onClick={() => {
+                setDraft(menu.task.title);
+                setRenaming(menu.task.threadId);
+                setOpen(true);
+                setMenu(null);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink hover:bg-raised"
+            >
+              <Pencil size={13} className="text-ink-secondary" /> {t("Rename")}
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => {
+                dispatch(
+                  menu.task.archivedAt
+                    ? { type: "unarchiveTask", botId: bot.id, threadId: menu.task.threadId }
+                    : { type: "archiveTask", botId: bot.id, threadId: menu.task.threadId },
+                );
+                setMenu(null);
+              }}
+              disabled={!menu.task.archivedAt && tasks.length <= 1}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink hover:bg-raised disabled:opacity-40"
+            >
+              <Archive size={13} className="text-ink-secondary" />
+              {menu.task.archivedAt ? t("Restore") : t("Archive")}
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => {
+                dispatch({ type: "deleteTask", botId: bot.id, threadId: menu.task.threadId });
+                setMenu(null);
+              }}
+              disabled={bot.busy && menu.task.threadId === bot.threadId}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-danger hover:bg-danger/10 disabled:opacity-40"
+            >
+              <Trash2 size={13} /> {t("Delete")}
+            </button>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
