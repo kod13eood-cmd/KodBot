@@ -82,6 +82,12 @@ export interface MessageReply {
   fromName?: string;
 }
 
+export interface MessageLink {
+  label: string;
+  botId: string;
+  threadId: string;
+}
+
 export interface Message {
   id: string;
   role: "bot" | "user";
@@ -89,6 +95,8 @@ export interface Message {
   text?: string;
   /** A user message can point at the message it answers. */
   replyTo?: MessageReply;
+  /** A compact report can open the worker task that produced it. */
+  link?: MessageLink;
   card?: OptionCardData;
   connector?: ConnectorCardData;
   /** page messages: a self-contained HTML artifact the bot wrote this turn. */
@@ -196,6 +204,8 @@ export interface TaskRecord {
   /** When the person archived this task. The transcript is kept; the picker
    * hides it until it is restored. Absent = visible. */
   archivedAt?: number;
+  /** A new automation summary landed here and has not been opened yet. */
+  unread?: boolean;
 }
 
 export interface TaskUsage {
@@ -1391,6 +1401,7 @@ export class Store {
     const bot = this.bot(botId);
     const task = bot?.tasks?.find((t) => t.threadId === threadId);
     if (!bot || !task || task.archivedAt) return null;
+    if (task.unread) delete task.unread;
     bot.threadId = task.threadId;
     bot.resumeCursors = { ...task.resumeCursors };
     this.saveBots();
@@ -1402,6 +1413,19 @@ export class Store {
     const task = this.bot(botId)?.tasks?.find((t) => t.threadId === threadId);
     if (!task) return null;
     task.title = title.trim().slice(0, 80) || UNTITLED_TASK;
+    this.saveBots();
+    this.emit({ type: "bot", botId });
+    return task;
+  }
+
+  /** Mark one task's automation report as seen/unseen. The sidebar badge is
+   * separate: this is what keeps a Results or main-chat report visible until
+   * the person opens that exact task. */
+  markTaskUnread(botId: string, threadId: string, unread: boolean): TaskRecord | null {
+    const task = this.bot(botId)?.tasks?.find((t) => t.threadId === threadId);
+    if (!task) return null;
+    if (unread) task.unread = true;
+    else delete task.unread;
     this.saveBots();
     this.emit({ type: "bot", botId });
     return task;

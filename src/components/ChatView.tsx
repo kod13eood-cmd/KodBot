@@ -420,6 +420,22 @@ function Bubble({
               <MessageBoundary fallbackText={text}>
                 <ChatMarkdown text={text} />
               </MessageBoundary>
+              {message.link && (
+                <button
+                  onClick={() => {
+                    dispatch({ type: "select", id: message.link!.botId });
+                    dispatch({
+                      type: "switchTask",
+                      botId: message.link!.botId,
+                      threadId: message.link!.threadId,
+                    });
+                  }}
+                  className="mt-2 inline-flex items-center gap-1 rounded-lg border border-hairline/40 px-2.5 py-1 text-[11.5px] font-medium text-ink-secondary hover:bg-raised hover:text-ink"
+                >
+                  <ExternalLink size={11} />
+                  {t(message.link.label)}
+                </button>
+              )}
             </>
           )}
         </div>

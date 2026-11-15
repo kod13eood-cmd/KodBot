@@ -620,10 +620,59 @@ function notify(notification: Notification | null) {
   if (notification) broadcast({ kind: "notify", notification });
 }
 
-/** A worker finished an automation. Put the result in the parent bot's
- * Results task, notify, and hand a short summary to the parent's next turn.
- * Never touch the parent's active task: automation must not replace the chat
- * the person is using. */
+/** The permanently visible conversation for a bot. New bots seed one task;
+ * older fleets may have a task explicitly renamed to "Главен чат". */
+function mainTaskFor(botId: string) {
+  const tasks = store
+    .tasks(botId)
+    .filter((task) => !task.archivedAt)
+    .sort((a, b) => a.createdAt - b.createdAt);
+  return tasks.find((task) => task.title === "Главен чат") ?? tasks[0] ?? null;
+}
+
+interface MainChatReport {
+  botId: string;
+  threadId: string;
+  text: string;
+  summary: string;
+  link?: { label: string; botId: string; threadId: string };
+}
+
+/** Reports held while the parent is mid-turn. Appending a bot message to a
+ * running transcript would interleave the summary with the answer the person
+ * is already reading, so the parent's turn completion drains this queue. */
+const pendingMainChatReports = new Map<string, MainChatReport[]>();
+
+function deliverMainChatReport(report: MainChatReport) {
+  const parent = store.bot(report.botId);
+  if (!parent) return;
+  store.appendMessage(report.threadId, {
+    role: "bot",
+    kind: "text",
+    text: report.text,
+    ...(report.link ? { link: report.link } : {}),
+  });
+  store.markTaskUnread(report.botId, report.threadId, true);
+  if (parent.threadId !== report.threadId) store.patchBot(report.botId, { unread: true });
+  const pending = pendingAutomationReports.get(report.botId) ?? [];
+  pending.push(report.summary);
+  pendingAutomationReports.set(report.botId, pending.slice(-5));
+  notify(buildNotification("done", parent, report.threadId, report.text));
+}
+
+function drainMainChatReports(botId: string) {
+  const parent = store.bot(botId);
+  if (!parent || parent.busy) return;
+  const queued = pendingMainChatReports.get(botId);
+  if (!queued?.length) return;
+  pendingMainChatReports.delete(botId);
+  for (const report of queued) deliverMainChatReport(report);
+}
+
+/** A worker finished an automation. Scheduled and manual summaries land in
+ * the owner's permanent main chat; webhook alerts keep their Results task so
+ * a busy external trigger cannot flood the conversation. Neither path ever
+ * activates or switches the main chat. */
 function reportAutomationRun(run: RoutineRun) {
   const parent = store.bot(run.botId);
   const worker = store.bot(run.workerBotId ?? run.botId);
@@ -632,26 +681,57 @@ function reportAutomationRun(run: RoutineRun) {
   if (!text) return;
   const lastLine = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).at(-1) ?? "";
   if (/^nothing new$/i.test(lastLine.replace(/^[*_`"'.!\-\s]+|[*_`"'.!\-\s]+$/g, ""))) return;
-  const title = `${run.routineName} · Results`;
-  let task = store.tasks(parent.id).find((candidate) => candidate.title === title);
-  if (!task) {
-    const created = store.createTask(parent.id, title, false, true);
-    if (!created) return;
-    task = created;
-  }
+
   const trigger = run.triggerSource === "webhook" ? "Webhook" : run.manual ? "Manual" : "Schedule";
-  const report = store.appendMessage(task.threadId, {
-    role: "bot",
-    kind: "text",
-    text: `${run.routineName} · ${trigger}\n\n${text}\n\n— ${worker.name}`,
+  const date = new Date(run.finishedAt ?? Date.now()).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   });
-  store.patchBot(parent.id, { unread: true });
-  broadcast({ kind: "bot", bot: publicBot(store.bot(parent.id)!) });
-  broadcast({ kind: "message", threadId: task.threadId, message: report });
-  const pending = pendingAutomationReports.get(parent.id) ?? [];
-  pending.push(`${run.routineName} (${trigger.toLowerCase()}): ${summarize(text, 600)}`);
-  pendingAutomationReports.set(parent.id, pending.slice(-5));
-  notify(buildNotification("done", parent, task.threadId, `${run.routineName}: ${text}`));
+  const summary = summarize(text, 1200);
+  const link = run.threadId
+    ? { label: "See full run", botId: worker.id, threadId: run.threadId }
+    : undefined;
+
+  if (run.triggerSource === "webhook") {
+    const title = `${run.routineName} · Results`;
+    let task = store.tasks(parent.id).find((candidate) => candidate.title === title);
+    if (!task) {
+      const created = store.createTask(parent.id, title, false, true);
+      if (!created) return;
+      task = created;
+    }
+    store.appendMessage(task.threadId, {
+      role: "bot",
+      kind: "text",
+      text: `📊 ${run.routineName} · ${date}\n\n${summary}\n\n— ${worker.name} · ${trigger}`,
+      ...(link ? { link } : {}),
+    });
+    store.markTaskUnread(parent.id, task.threadId, true);
+    if (parent.threadId !== task.threadId) store.patchBot(parent.id, { unread: true });
+    const pending = pendingAutomationReports.get(parent.id) ?? [];
+    pending.push(summary);
+    pendingAutomationReports.set(parent.id, pending.slice(-5));
+    notify(buildNotification("done", parent, task.threadId, `${run.routineName}: ${summary}`));
+    return;
+  }
+
+  const main = mainTaskFor(parent.id);
+  if (!main) return;
+  const report: MainChatReport = {
+    botId: parent.id,
+    threadId: main.threadId,
+    text: `📊 ${run.routineName} · ${date}\n\n${summary}\n\n— ${worker.name} · ${trigger}`,
+    summary: `${run.routineName}: ${summary}`,
+    link,
+  };
+  if (parent.busy) {
+    const queued = pendingMainChatReports.get(parent.id) ?? [];
+    queued.push(report);
+    pendingMainChatReports.set(parent.id, queued);
+    return;
+  }
+  deliverMainChatReport(report);
 }
 
 // Group threads: the fold needs to know WHO is talking — the turn engine
@@ -1097,6 +1177,7 @@ bus.subscribe((event: RuntimeEvent) => {
         // settled → idle; a setup failure already marked it dead, keep that
         if (store.bot(bot.id)?.activity !== "dead") store.setActivity(bot.id, "idle");
         store.patchBot(bot.id, { unread: true });
+        drainMainChatReports(bot.id);
         notify(buildNotification("done", bot, event.threadId, reply));
         if (screenPollers.has(bot.id)) {
           // the last live frame becomes a settled inline screen message —

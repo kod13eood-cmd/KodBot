@@ -743,3 +743,43 @@ describe("Store task archive", () => {
     expect(reloaded.taskByThread(bot.id, second.threadId)?.archivedAt).toBe(777);
   });
 });
+
+describe("Store task unread", () => {
+  beforeEach(() => {
+    rmSync(DATA_DIR, { recursive: true, force: true });
+  });
+
+  it("marks one task unread and clears it when that task is opened", () => {
+    const store = new Store(selection);
+    const bot = store.createBot();
+    const main = bot.threadId;
+    const second = store.createTask(bot.id, "Automation reports")!;
+    store.switchTask(bot.id, main);
+
+    store.markTaskUnread(bot.id, second.threadId, true);
+    expect(store.taskByThread(bot.id, second.threadId)?.unread).toBe(true);
+    expect(new Store(selection).taskByThread(bot.id, second.threadId)?.unread).toBe(true);
+
+    store.switchTask(bot.id, second.threadId);
+    expect(store.taskByThread(bot.id, second.threadId)?.unread).toBeUndefined();
+  });
+
+  it("persists the link a compact automation report carries", () => {
+    const store = new Store(selection);
+    const bot = store.createBot();
+    const message = store.appendMessage(bot.threadId, {
+      role: "bot",
+      kind: "text",
+      text: "report",
+      link: { label: "See full run", botId: "worker-1", threadId: "thread-worker" },
+    });
+    expect(message.link).toEqual({
+      label: "See full run",
+      botId: "worker-1",
+      threadId: "thread-worker",
+    });
+    expect(new Store(selection).messagesFor(bot.threadId).find((m) => m.id === message.id)?.link).toEqual(
+      message.link,
+    );
+  });
+});

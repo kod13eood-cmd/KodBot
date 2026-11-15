@@ -60,6 +60,12 @@ export interface ConnectorCardData {
   resumed?: boolean;
 }
 
+export interface MessageLink {
+  label: string;
+  botId: string;
+  threadId: string;
+}
+
 export interface Message {
   id: string;
   role: "bot" | "user";
@@ -68,6 +74,8 @@ export interface Message {
   /** A user message can point at the message it answers. `text` is a
    * server-bounded excerpt, not a copy of the whole message. */
   replyTo?: { id: string; role: "bot" | "user"; text: string; fromName?: string };
+  /** A compact automation report can open the worker run that produced it. */
+  link?: MessageLink;
   card?: OptionCardData;
   connector?: ConnectorCardData;
   /** page messages: a self-contained HTML artifact the bot wrote this turn. */
@@ -150,6 +158,8 @@ export interface Task {
   cwd?: string | null;
   /** archived tasks keep their transcript but leave the picker */
   archivedAt?: number;
+  /** an automation summary landed here and has not been opened yet */
+  unread?: boolean;
 }
 
 export interface TaskUsage {

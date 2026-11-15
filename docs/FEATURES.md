@@ -153,6 +153,16 @@ badge, and a notification. A run whose last line is `NOTHING NEW` stays
 silent, and no report is ever injected into an active turn. Old tasks can be
 archived from the task picker without deleting their transcripts.
 
+### Automation reports — Live
+
+Scheduled and manual automations run on a dedicated worker bot when one is
+assigned. When a run finishes, a compact summary — date, the useful result, and
+**See full run** — is appended to the owner’s permanent **Главен чат**. The main
+chat is never activated or switched; if the owner is mid-turn, the report waits
+until the turn settles. Webhook automations keep a separate `· Results` task so
+an external alert stream cannot flood the main chat. The task carries an unread
+dot until its report is opened, and the full worker run stays one click away.
+
 ### Activity — Live
 
 **Activity** in the sidebar collects scheduled, webhook, delegated, and live
