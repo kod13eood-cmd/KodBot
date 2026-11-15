@@ -197,6 +197,10 @@ carries it as a page card, so the page opens right where the report is.
 
 ### Activity — Live
 
+If the harness restarts while a turn is running (a deploy, a crash, a machine
+restart), the bot's transcript gets a visible interruption note instead of
+going quiet with no answer; the next message continues from there.
+
 **Activity** in the sidebar collects scheduled, webhook, delegated, and live
 jobs in one place: needs attention, running, and done. Each row names the bot,
 shows the result or error, and links to the task or shared `A ⇄ B` channel.

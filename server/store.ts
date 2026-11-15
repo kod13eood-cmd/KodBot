@@ -520,6 +520,9 @@ export class Store {
   private threads = new Map<string, ThreadState>();
   private defaultSelection: () => ModelSelection;
   private listeners = new Set<(change: StoreChange) => void>();
+  /** Bots a previous process left mid-turn. Startup turns this into a visible
+   *  interruption note instead of silently dropping the work. */
+  interruptedBots: string[] = [];
 
   constructor(defaultSelection: () => ModelSelection) {
     this.defaultSelection = defaultSelection;
@@ -549,7 +552,10 @@ export class Store {
       // transient state never survives a restart — and if a previous
       // process died mid-turn, bots.json still says busy/working; persist
       // the reset so the next load does not read it again
-      if (b.busy || (b.activity !== undefined && b.activity !== "idle")) botsMigrated = true;
+      if (b.busy || (b.activity !== undefined && b.activity !== "idle")) {
+        botsMigrated = true;
+        this.interruptedBots.push(b.id);
+      }
       b.busy = false;
       b.activity = "idle";
       // Bots created before silhouettes existed get a stable body once. An
