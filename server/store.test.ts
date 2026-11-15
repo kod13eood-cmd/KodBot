@@ -783,3 +783,21 @@ describe("Store task unread", () => {
     );
   });
 });
+
+describe("Store interruption note", () => {
+  beforeEach(() => {
+    rmSync(DATA_DIR, { recursive: true, force: true });
+  });
+
+  it("reports a bot a previous process left mid-turn and clears busy", () => {
+    const store = new Store(selection);
+    const bot = store.createBot();
+    store.setActivity(bot.id, "working");
+    expect(store.bot(bot.id)?.busy).toBe(true);
+
+    const reloaded = new Store(selection);
+    expect(reloaded.interruptedBots).toEqual([bot.id]);
+    expect(reloaded.bot(bot.id)?.busy).toBe(false);
+    expect(reloaded.bot(bot.id)?.activity).toBe("idle");
+  });
+});
