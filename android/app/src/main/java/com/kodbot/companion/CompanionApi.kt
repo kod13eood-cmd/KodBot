@@ -104,6 +104,7 @@ data class TaskSummaryRecord(
     val threadId: String,
     val unread: Boolean,
     val archived: Boolean,
+    val createdAt: Long,
 )
 
 data class TranscriptMessage(
@@ -472,6 +473,30 @@ class CompanionApi(private val connection: CompanionConnection) {
      * one its conversation shows, so the next fleet refresh carries it. */
     suspend fun switchTask(botId: String, threadId: String) = withContext(Dispatchers.IO) {
         request("POST", "/api/bots/${encodePath(botId)}/tasks/${encodePath(threadId)}")
+    }
+
+    suspend fun createTask(botId: String) = withContext(Dispatchers.IO) {
+        request("POST", "/api/bots/${encodePath(botId)}/tasks", JSONObject())
+    }
+
+    suspend fun renameTask(botId: String, threadId: String, title: String) = withContext(Dispatchers.IO) {
+        request(
+            "PATCH",
+            "/api/bots/${encodePath(botId)}/tasks/${encodePath(threadId)}",
+            JSONObject().put("title", title),
+        )
+    }
+
+    suspend fun setTaskArchived(botId: String, threadId: String, archived: Boolean) = withContext(Dispatchers.IO) {
+        request(
+            "PATCH",
+            "/api/bots/${encodePath(botId)}/tasks/${encodePath(threadId)}",
+            JSONObject().put("archivedAt", if (archived) System.currentTimeMillis() else JSONObject.NULL),
+        )
+    }
+
+    suspend fun deleteTask(botId: String, threadId: String) = withContext(Dispatchers.IO) {
+        request("DELETE", "/api/bots/${encodePath(botId)}/tasks/${encodePath(threadId)}")
     }
 
     /** Pages this bot wrote, newest first. Read-only: the phone never edits a
@@ -929,6 +954,7 @@ internal fun parseTaskSummaries(json: JSONArray?): List<TaskSummaryRecord> {
                 threadId = threadId,
                 unread = task.optBoolean("unread"),
                 archived = task.optLong("archivedAt", 0L) > 0L,
+                createdAt = task.optLong("createdAt"),
             )
         }
     }
