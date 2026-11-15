@@ -26,6 +26,7 @@ export function NeedsYouBar({ items }: { items: NeedsYouItem[] }) {
   return (
     <div
       role="status"
+      data-window-no-drag
       className="animate-panel-in fixed left-1/2 top-2 z-40 flex max-w-[calc(100vw-160px)] -translate-x-1/2 items-center gap-3 rounded-xl border border-warning/40 bg-panel/95 px-3.5 py-2 shadow-2xl shadow-black/50 backdrop-blur"
     >
       <span className="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning">

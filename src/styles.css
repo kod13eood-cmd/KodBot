@@ -657,3 +657,12 @@ body {
     animation: reduced-loader-pulse 1.6s ease-in-out infinite !important;
   }
 }
+
+/* Electron reserves the title-bar strips as window drag handles. A dialog
+   drawn over one gets no real pointer events — the OS starts a window drag
+   instead, so its close button never hovers or clicks, while the same UI in
+   a browser is fine. Dialogs opt out explicitly; browsers ignore the rule. */
+[role="dialog"],
+[data-window-no-drag] {
+  -webkit-app-region: no-drag;
+}
