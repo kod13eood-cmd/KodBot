@@ -43,6 +43,9 @@ const BULGARIAN: Record<string, string> = {
   "Send": "Изпрати",
   "Stop": "Спри",
   "Unread": "Непрочетено",
+  "Rename": "Преименувай",
+  "Right-click a task to rename, archive, or delete it.":
+    "Десен клик върху задача за преименуване, архивиране или изтриване.",
   "Public address": "Публичен адрес",
   "How other devices reach this server. Used in page links and when a bot opens a page in the browser.":
     "Как други устройства достигат този сървър. Използва се в линковете към страници и когато бот отваря страница в браузъра.",

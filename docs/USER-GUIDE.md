@@ -91,7 +91,7 @@ The rest of this guide is organized by topic.
 ## Tasks and branches
 
 - A **task** is a separate conversation with its own context, provider session, working folder, and token usage. The bot's identity, model, memory, and workspace stay the same.
-- The **Task** chip in the header appears when a bot has more than one task. Click it to switch, double-click a name to rename, and use the trash icon to delete (the bot keeps at least one).
+- The **Task** chip in the header appears when a bot has more than one task. Click it to switch, and right-click a task for **Rename**, **Archive**, or **Delete** (archived tasks restore from the same menu; the bot keeps at least one). Android's bot menu has **Tasks** and **Pages**.
 - **New task** starts a clean context for a new job; it does not delete the old conversation.
 - Routines and webhooks run in **detached tasks**, so unattended work does not mix with your main chat.
 - Branches (‹ 2/3 ›) are versions inside one task. Switching a branch does not switch tasks.
@@ -282,7 +282,7 @@ KodBot е local-first chat приложение за екип от AI агент
 ## Задачи и разклонения
 
 - **Задача** е отделен разговор със свой контекст, provider сесия, работна папка и изразходвани токени. Самоличността, моделът, паметта и workspace-ът на бота остават същите.
-- Chip-ът **Task** в хедъра се появява, когато ботът има повече от една задача. Клик сменя, двойно кликване преименува, кошчето трие (ботът пази поне една).
+- Chip-ът **Task** в хедъра се появява, когато ботът има повече от една задача. Клик сменя, а десен клик върху задача дава **Преименувай**, **Архивирай** или **Изтрий** (архивираните се възстановяват от същото меню; ботът пази поне една). В Android менюто на бота има **Tasks** и **Pages**.
 - **New task** започва чист контекст за нова работа; старият разговор не се трие.
 - Автоматизациите и webhook-овете работят в **отделни задачи**, така че фоновата работа не се смесва с основния чат.
 - Разклоненията (‹ 2/3 ›) са версии в една задача. Смяната на branch не сменя задачата.

@@ -56,12 +56,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -984,6 +988,7 @@ private fun KodBotScreen(
                         onInterrupt = onInterrupt,
                         onTranscribe = onTranscribe,
                         onOpenLink = onOpenReport,
+                        onRefresh = onRefresh,
                     )
                 }
                 val settingsContent: @Composable () -> Unit = {
@@ -1528,9 +1533,12 @@ private fun ChatScreen(
     onInterrupt: (ConversationRecord) -> Unit,
     onTranscribe: suspend (File) -> String,
     onOpenLink: (MessageLinkRecord) -> Unit,
+    onRefresh: () -> Unit,
 ) {
     var draft by rememberSaveable(chat.key) { mutableStateOf("") }
     var pagesOpen by remember(chat.key) { mutableStateOf(false) }
+    var tasksOpen by remember(chat.key) { mutableStateOf(false) }
+    var botMenuOpen by remember(chat.key) { mutableStateOf(false) }
     var pageViewer by remember(chat.key) { mutableStateOf<PageArtifactRecord?>(null) }
     var attachments by rememberSaveable(chat.key) { mutableStateOf(emptyList<PendingAttachment>()) }
     var sending by rememberSaveable(chat.key) { mutableStateOf(false) }
@@ -1806,12 +1814,33 @@ private fun ChatScreen(
                 )
             }
             if (chat.kind == "bot") {
-                IconButton(onClick = { pagesOpen = true }) {
-                    Icon(
-                        Icons.Filled.List,
-                        contentDescription = "Pages",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                Box {
+                    IconButton(onClick = { botMenuOpen = true }) {
+                        Icon(
+                            Icons.Filled.MoreVert,
+                            contentDescription = "Bot menu",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = botMenuOpen,
+                        onDismissRequest = { botMenuOpen = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Tasks") },
+                            onClick = {
+                                botMenuOpen = false
+                                tasksOpen = true
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Pages") },
+                            onClick = {
+                                botMenuOpen = false
+                                pagesOpen = true
+                            },
+                        )
+                    }
                 }
             }
             if (chat.busy) {
@@ -2083,6 +2112,14 @@ private fun ChatScreen(
             },
         )
     }
+    if (tasksOpen) {
+        TasksDialog(
+            connection = connection,
+            chat = chat,
+            onClose = { tasksOpen = false },
+            onChanged = onRefresh,
+        )
+    }
     if (pagesOpen) {
         PagesDialog(
             connection = connection,
@@ -2255,6 +2292,253 @@ private fun WorkingBubble(group: Boolean) {
             }
         }
     }
+}
+
+@Composable
+private fun TasksDialog(
+    connection: CompanionConnection,
+    chat: ConversationRecord,
+    onClose: () -> Unit,
+    onChanged: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val api = remember(connection) { CompanionApi(connection) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var showArchived by remember { mutableStateOf(false) }
+    var menuFor by remember { mutableStateOf<String?>(null) }
+    var renameTarget by remember { mutableStateOf<TaskSummaryRecord?>(null) }
+    var renameText by remember { mutableStateOf("") }
+    var deleteTarget by remember { mutableStateOf<TaskSummaryRecord?>(null) }
+
+    val tasks = chat.tasks.filterNot { it.archived }
+    val archived = chat.tasks.filter { it.archived }
+
+    fun run(block: suspend () -> Unit, after: (() -> Unit)? = null) {
+        if (busy) return
+        busy = true
+        error = null
+        scope.launch {
+            try {
+                block()
+                after?.invoke()
+            } catch (failure: Exception) {
+                error = failure.message ?: "That task action failed."
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Tasks", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                    if (busy) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Filled.Close, contentDescription = "Close")
+                    }
+                }
+                error?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+                LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(tasks, key = { it.threadId }) { task ->
+                        val active = task.threadId == chat.threadId
+                        Card(
+                            modifier = Modifier.fillMaxWidth().clickable(enabled = !busy) {
+                                run(
+                                    block = { api.switchTask(chat.id, task.threadId) },
+                                    after = {
+                                        onChanged()
+                                        onClose()
+                                    },
+                                )
+                            },
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(start = 12.dp, end = 2.dp, top = 6.dp, bottom = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                if (active) {
+                                    Icon(
+                                        Icons.Filled.Check,
+                                        contentDescription = "Current task",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                } else {
+                                    Spacer(Modifier.size(16.dp))
+                                }
+                                Column(modifier = Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                                    Text(
+                                        task.title,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Text(
+                                        formatTaskTime(task.createdAt) + if (task.unread) " · New" else "",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                Box {
+                                    IconButton(onClick = { menuFor = task.threadId }) {
+                                        Icon(Icons.Filled.MoreVert, contentDescription = "Task actions")
+                                    }
+                                    DropdownMenu(
+                                        expanded = menuFor == task.threadId,
+                                        onDismissRequest = { menuFor = null },
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Rename") },
+                                            onClick = {
+                                                menuFor = null
+                                                renameTarget = task
+                                                renameText = task.title
+                                            },
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Archive") },
+                                            enabled = tasks.size > 1,
+                                            onClick = {
+                                                menuFor = null
+                                                run(
+                                                    block = { api.setTaskArchived(chat.id, task.threadId, true) },
+                                                    after = { onChanged() },
+                                                )
+                                            },
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                                            onClick = {
+                                                menuFor = null
+                                                deleteTarget = task
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (archived.isNotEmpty()) {
+                        item {
+                            TextButton(onClick = { showArchived = !showArchived }) {
+                                Text(if (showArchived) "Hide archived" else "Archived tasks (${archived.size})")
+                            }
+                        }
+                        if (showArchived) {
+                            items(archived, key = { it.threadId }) { task ->
+                                Card(modifier = Modifier.fillMaxWidth()) {
+                                    Row(
+                                        modifier = Modifier.padding(start = 12.dp, end = 2.dp, top = 6.dp, bottom = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
+                                            Text(task.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Text(
+                                                formatTaskTime(task.createdAt),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        TextButton(
+                                            onClick = {
+                                                run(
+                                                    block = { api.setTaskArchived(chat.id, task.threadId, false) },
+                                                    after = { onChanged() },
+                                                )
+                                            },
+                                        ) { Text("Restore") }
+                                        TextButton(
+                                            onClick = { deleteTarget = task },
+                                        ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Button(
+                    onClick = {
+                        run(
+                            block = { api.createTask(chat.id) },
+                            after = {
+                                onChanged()
+                                onClose()
+                            },
+                        )
+                    },
+                    enabled = !busy && !chat.busy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("New task") }
+            }
+        }
+    }
+
+    renameTarget?.let { task ->
+        AlertDialog(
+            onDismissRequest = { renameTarget = null },
+            title = { Text("Rename task") },
+            text = {
+                OutlinedTextField(
+                    value = renameText,
+                    onValueChange = { renameText = it },
+                    singleLine = true,
+                    label = { Text("Task name") },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = renameText.isNotBlank() && !busy,
+                    onClick = {
+                        run(
+                            block = { api.renameTask(chat.id, task.threadId, renameText.trim()) },
+                            after = {
+                                renameTarget = null
+                                onChanged()
+                            },
+                        )
+                    },
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { renameTarget = null }) { Text("Cancel") }
+            },
+        )
+    }
+
+    deleteTarget?.let { task ->
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = { Text("Delete this task?") },
+            text = { Text("Its messages will be removed permanently. Archiving keeps them.") },
+            confirmButton = {
+                TextButton(
+                    enabled = !busy,
+                    onClick = {
+                        run(
+                            block = { api.deleteTask(chat.id, task.threadId) },
+                            after = {
+                                deleteTarget = null
+                                onChanged()
+                            },
+                        )
+                    },
+                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTarget = null }) { Text("Cancel") }
+            },
+        )
+    }
+}
+
+private fun formatTaskTime(value: Long): String {
+    if (value <= 0L) return ""
+    return java.text.SimpleDateFormat("d MMM, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(value))
 }
 
 @Composable
