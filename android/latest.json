@@ -1,7 +1,7 @@
 {
-  "versionCode": 25,
-  "versionName": "0.1.24",
+  "versionCode": 26,
+  "versionName": "0.1.25",
   "apkUrl": "https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-android.apk",
-  "notes": "Automation reports now show the page the run wrote as a card under the summary, and the voice-note and hold-to-talk buttons sit above Send.",
-  "publishedAt": "2026-11-15T16:28:26Z"
+  "notes": "The bot menu now has Tasks next to Pages: switch, rename, archive, restore, delete, or start a new task without leaving the chat.",
+  "publishedAt": "2026-11-15T16:51:50Z"
 }
