@@ -279,6 +279,16 @@ once; after that, releases update in place.
   progress, file in Downloads).
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.54>
 
+### Release 0.1.55 (2026-11-15)
+
+- Desktop 0.1.55; Android stays **0.1.26 / versionCode 27**.
+- A server restart or crash mid-turn no longer looks like a silent stop:
+  startup appends a visible interruption note to the bot's transcript and marks
+  it unread, so the next message continues from a state the person can see.
+  (The 16:15 deploy restart during Zuko's Lode Runner turn is the case that
+  exposed it; the session resumed on the next message.)
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.55>
+
 ## 4. Remote deployment topology
 
 | Item | Value |
