@@ -95,6 +95,10 @@ const configCalls: Array<{ method: string; params: unknown }> = [];
 let pendingPermissionId: number | null = null;
 let onPermissionAnswered: (() => void) | null = null;
 
+// pending server→client form elicitation id → resolver (question mode)
+let pendingElicitationId: number | null = null;
+let onElicitationAnswered: ((result: any) => void) | null = null;
+
 // ask-peer mode: the "agents" MCP server entry from session/new's mcpServers
 type McpEntry = { command: string; args?: string[]; env?: Array<{ name: string; value: string }> };
 let agentsMcp: McpEntry | null = null;
@@ -178,6 +182,14 @@ function handle(msg: any) {
   if (msg.id !== undefined && (msg.result !== undefined || msg.error !== undefined) && msg.id === pendingPermissionId) {
     pendingPermissionId = null;
     onPermissionAnswered?.();
+    return;
+  }
+  // client's response to our form elicitation (question mode)
+  if (msg.id !== undefined && (msg.result !== undefined || msg.error !== undefined) && msg.id === pendingElicitationId) {
+    pendingElicitationId = null;
+    const handler = onElicitationAnswered;
+    onElicitationAnswered = null;
+    handler?.(msg.result ?? {});
     return;
   }
   if (!msg.method) return;
@@ -345,6 +357,51 @@ function handle(msg: any) {
             out({ jsonrpc: "2.0", method: "session/update", params: { update: { sessionUpdate: "agent_message_chunk", content: { text: `delegate error: ${(e as Error).message}` } } } });
             complete();
           });
+        return;
+      }
+      if (mode === "question") {
+        // opencode's question tool in ACP: a form elicitation the client can
+        // render as one-tap options, then reply with what the human picked.
+        pendingElicitationId = 8001;
+        onElicitationAnswered = (formResult) => {
+          out({
+            jsonrpc: "2.0",
+            method: "session/update",
+            params: {
+              update: {
+                sessionUpdate: "agent_message_chunk",
+                content: { text: `answer: ${JSON.stringify(formResult?.content ?? null)}` },
+              },
+            },
+          });
+          complete();
+        };
+        out({
+          jsonrpc: "2.0",
+          id: pendingElicitationId,
+          method: "elicitation/create",
+          params: {
+            mode: "form",
+            sessionId: "fake-acp-session",
+            message: "Questions",
+            requestedSchema: {
+              type: "object",
+              properties: {
+                q0: {
+                  type: "string",
+                  title: "Color",
+                  description: "Which color do you prefer?",
+                  oneOf: [
+                    { const: "Red", title: "Red" },
+                    { const: "Green", title: "Green" },
+                  ],
+                },
+                q0_custom: { type: "string", title: "Color (other)" },
+              },
+              required: [],
+            },
+          },
+        });
         return;
       }
       if (mode !== "empty-reply") playTurn();
