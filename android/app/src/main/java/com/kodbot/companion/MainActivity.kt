@@ -10,6 +10,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -55,6 +57,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -98,6 +101,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -969,6 +975,7 @@ private fun KodBotScreen(
                 val chatContent: @Composable (ConversationRecord, Boolean) -> Unit = { chat, compact ->
                     ChatScreen(
                         chat = chat,
+                        connection = activeConnection,
                         compact = compact,
                         loading = loading,
                         onBack = onBackToFleet,
@@ -1512,6 +1519,7 @@ private fun TabletEmptyState() {
 @Composable
 private fun ChatScreen(
     chat: ConversationRecord,
+    connection: CompanionConnection,
     compact: Boolean = true,
     loading: Boolean,
     onBack: () -> Unit,
@@ -1522,6 +1530,8 @@ private fun ChatScreen(
     onOpenLink: (MessageLinkRecord) -> Unit,
 ) {
     var draft by rememberSaveable(chat.key) { mutableStateOf("") }
+    var pagesOpen by remember(chat.key) { mutableStateOf(false) }
+    var pageViewer by remember(chat.key) { mutableStateOf<PageArtifactRecord?>(null) }
     var attachments by rememberSaveable(chat.key) { mutableStateOf(emptyList<PendingAttachment>()) }
     var sending by rememberSaveable(chat.key) { mutableStateOf(false) }
     var attachmentError by rememberSaveable(chat.key) { mutableStateOf<String?>(null) }
@@ -1795,6 +1805,15 @@ private fun ChatScreen(
                     maxLines = 1,
                 )
             }
+            if (chat.kind == "bot") {
+                IconButton(onClick = { pagesOpen = true }) {
+                    Icon(
+                        Icons.Filled.List,
+                        contentDescription = "Pages",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             if (chat.busy) {
                 WorkingStopButton(
                     enabled = !loading,
@@ -1812,6 +1831,7 @@ private fun ChatScreen(
                     message = message,
                     onRespond = { card, answer -> onRespond(chat, card, answer) },
                     onOpenLink = onOpenLink,
+                    onOpenPage = { pageViewer = it },
                 )
             }
             if (chat.messages.isEmpty() && !chat.busy) {
@@ -2054,6 +2074,20 @@ private fun ChatScreen(
             },
         )
     }
+    if (pagesOpen) {
+        PagesDialog(
+            connection = connection,
+            botId = chat.id,
+            onClose = { pagesOpen = false },
+            onOpen = { page ->
+                pagesOpen = false
+                pageViewer = PageArtifactRecord(chat.id, page.name, page.title, page.bytes, page.updatedAt)
+            },
+        )
+    }
+    pageViewer?.let { page ->
+        PageViewer(connection = connection, page = page, onClose = { pageViewer = null })
+    }
 }
 
 /** Read the display name, byte size, and MIME type a document provider
@@ -2215,6 +2249,154 @@ private fun WorkingBubble(group: Boolean) {
 }
 
 @Composable
+private fun PagesDialog(
+    connection: CompanionConnection,
+    botId: String,
+    onClose: () -> Unit,
+    onOpen: (PageSummaryRecord) -> Unit,
+) {
+    var pages by remember(botId) { mutableStateOf<List<PageSummaryRecord>?>(null) }
+    var error by remember(botId) { mutableStateOf<String?>(null) }
+    LaunchedEffect(botId) {
+        try {
+            pages = CompanionApi(connection).pages(botId)
+        } catch (failure: Exception) {
+            error = failure.message ?: "Couldn't load the pages."
+        }
+    }
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Pages", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Filled.Close, contentDescription = "Close")
+                    }
+                }
+                when {
+                    error != null -> Text(
+                        error ?: "Couldn't load the pages.",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 12.dp),
+                    )
+                    pages == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                    pages.isNullOrEmpty() -> Text(
+                        "No pages yet. Ask this bot to build a dashboard, checklist, or report.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 12.dp),
+                    )
+                    else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(pages.orEmpty(), key = { it.name }) { page ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth().clickable { onOpen(page) },
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(page.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(
+                                            "${page.name} · ${formatPageSize(page.bytes)}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    Text("Open", color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PageViewer(connection: CompanionConnection, page: PageArtifactRecord, onClose: () -> Unit) {
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Filled.Close, contentDescription = "Close")
+                    }
+                    Text(
+                        page.title,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AndroidView(
+                        factory = { context ->
+                            WebView(context).apply {
+                                settings.javaScriptEnabled = true
+                                settings.domStorageEnabled = false
+                                settings.allowFileAccess = false
+                                settings.allowContentAccess = false
+                                setBackgroundColor(android.graphics.Color.WHITE)
+                                webViewClient = object : WebViewClient() {
+                                    override fun onPageFinished(view: WebView?, url: String?) {
+                                        loading = false
+                                    }
+
+                                    override fun onReceivedError(
+                                        view: WebView?,
+                                        request: android.webkit.WebResourceRequest?,
+                                        errorResponse: android.webkit.WebResourceError?,
+                                    ) {
+                                        if (request?.isForMainFrame == true) {
+                                            error = errorResponse?.description?.toString()
+                                                ?: "Couldn't open the page."
+                                            loading = false
+                                        }
+                                    }
+                                }
+                                val api = CompanionApi(connection)
+                                loadUrl(api.pageUrl(page.botId, page.name), api.authHeaders())
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    if (loading) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    error?.let { message ->
+                        Column(
+                            modifier = Modifier.fillMaxSize().padding(24.dp),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text("Couldn't open the page", style = MaterialTheme.typography.titleMedium)
+                            Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatPageSize(bytes: Long): String = when {
+    bytes < 1024 -> "$bytes B"
+    bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+    else -> String.format("%.1f MB", bytes / (1024.0 * 1024.0))
+}
+
+@Composable
 private fun WorkingDots(
     modifier: Modifier = Modifier,
     color: Color = CrewGreen,
@@ -2257,8 +2439,10 @@ private fun MessageItem(
     message: TranscriptMessage,
     onRespond: (ApprovalCard, String) -> Unit,
     onOpenLink: (MessageLinkRecord) -> Unit,
+    onOpenPage: (PageArtifactRecord) -> Unit,
 ) {
     when {
+        message.page != null -> PageMessageCard(message.page, onOpenPage)
         message.kind == "options" && message.card != null -> ApprovalItem(message.card, onRespond)
         message.kind == "activity" -> Text(
             "⚒ ${message.toolName.ifBlank { message.text.ifBlank { "Working" } }}",
@@ -2311,6 +2495,31 @@ private fun MessageItem(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PageMessageCard(page: PageArtifactRecord, onOpen: (PageArtifactRecord) -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Filled.List,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                Text(page.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    page.name,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            TextButton(onClick = { onOpen(page) }) { Text("Open") }
         }
     }
 }
