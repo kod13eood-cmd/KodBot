@@ -234,6 +234,18 @@ once; after that, releases update in place.
   closes the guide; the side-panel X was already clear.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.50>
 
+### Release 0.1.51 (2026-11-15)
+
+- Desktop 0.1.51; Android **0.1.23 / versionCode 24**.
+- Bot pages are readable on Android: a **Pages** list in a bot's chat and
+  page cards in the transcript open a full-screen WebView through the paired
+  companion. The companion allows only `GET` list/HTML; writes stay denied.
+- **App Settings -> General -> Public address** is used by page cards, copied
+  links, bot-written page links, and the pages prompt. Empty falls back to the
+  window's origin; in-app previews stay on the current origin. The live server
+  is set to `http://paperclipi7.tail89d239.ts.net:8799`.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.51>
+
 ## 4. Remote deployment topology
 
 | Item | Value |
