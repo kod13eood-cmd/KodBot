@@ -146,6 +146,12 @@ export function TaskPicker({ bot }: { bot: Bot }) {
                       <div className="flex min-w-0 items-center gap-1.5 text-[13px] text-ink">
                         {scheduled && <CalendarClock size={11} className="shrink-0 text-accent" aria-label={t("Scheduled")} />}
                         <span className="truncate">{task.title}</span>
+                        {task.unread && (
+                          <span
+                            className="size-1.5 shrink-0 rounded-full bg-accent"
+                            aria-label={t("Unread")}
+                          />
+                        )}
                       </div>
                       <div className="text-[11px] text-ink-secondary">
                         {scheduled && <span className="text-accent">{t("Scheduled")} · </span>}

@@ -145,8 +145,8 @@ The rest of this guide is organized by topic.
 - **Automations** schedules work for a bot. Open it from the sidebar.
 - **Once**: a date and time. **Daily**: a time and weekdays. **Interval**: every 5–720 minutes, optionally only between two times (for example 09:00–18:00) and on chosen weekdays.
 - Interval slots are wall-clock anchored: 09:00, 09:15, 09:30… A slow turn never stacks runs; the next slot waits for it.
-- Every run creates a separate task with its own result; the calendar shows the schedule and the latest receipts.
-- A routine task is marked **Scheduled** in the task picker, so it is not confused with a chat you started.
+- Scheduled and manual runs execute on a dedicated worker bot when one is assigned. The compact result is appended to the owner bot's permanent **Главен чат** with a **See full run** link; the main chat is never switched. Webhook runs keep a separate Results task.
+- While the owner is mid-turn, a finished report waits until the turn settles. The task shows an unread dot until you open the report.
 - **Activity** (sidebar) collects scheduled, webhook, delegated, and live jobs with status, bot, result, and error.
 - A run that fails or is missed raises a notification and stays in the **needs you** strip until you open it.
 - Pause/resume a schedule, or open a run to see its output. Webhooks are the event-driven sibling.
@@ -332,8 +332,8 @@ KodBot е local-first chat приложение за екип от AI агент
 - **Automations** планира работа за бот. Отваря се от страничната лента.
 - **Once**: дата и час. **Daily**: час и дни. **Interval**: на всеки 5–720 минути, по желание само между два часа (например 09:00–18:00) и в избрани дни.
 - Интервалите са вързани за wall-clock: 09:00, 09:15, 09:30… Бавен ход не трупа опашка; следващият слот го изчаква.
-- Всеки run създава отделна задача с резултат; календарът показва графика и последните разписки.
-- Задача от routine е маркирана като **Scheduled** в task picker-а, за да не се бърка с чат, който си започнал.
+- Scheduled и manual run-овете се изпълняват на отделен worker bot, когато има зададен такъв. Компактният резултат се добавя в постоянния **Главен чат** на собственика с линк **See full run**; главният чат никога не се сменя. Webhook run-овете пазят отделна Results задача.
+- Докато собственикът е в активен turn, готовият отчет изчаква turn-ът да приключи. Задачата показва unread точка, докато не отвориш отчета.
 - **Activity** (страничната лента) събира scheduled, webhook, delegated и live задачи със статус, бот, резултат и грешка.
 - Run, който е failed или missed, вдига известие и остава в лентата **needs you**, докато не го отвориш.
 - Можеш да паузираш/пуснеш графика или да отвориш run, за да видиш изхода. Webhooks са event-driven варианта.

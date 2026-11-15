@@ -42,6 +42,8 @@ const BULGARIAN: Record<string, string> = {
   "Search": "Търсене",
   "Send": "Изпрати",
   "Stop": "Спри",
+  "Unread": "Непрочетено",
+  "See full run": "Виж пълния отчет",
   "Restore": "Възстанови",
   "Restore all": "Възстанови всички",
   "Restoring…": "Възстановяване…",
