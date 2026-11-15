@@ -257,6 +257,17 @@ once; after that, releases update in place.
   composer's text field keeps its width.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.52>
 
+### Release 0.1.53 (2026-11-15)
+
+- Desktop 0.1.53; Android **0.1.25 / versionCode 26**.
+- Desktop task actions are a right-click menu: **Rename / Archive (Restore) /
+  Delete**. The inline archive/delete icons are gone; renaming no longer hides
+  behind a double-click.
+- Android's chat top-right menu holds **Tasks** and **Pages**. Tasks switch,
+  rename, archive, restore, delete, and start a new task; archived tasks keep
+  their own section.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.53>
+
 ## 4. Remote deployment topology
 
 | Item | Value |
