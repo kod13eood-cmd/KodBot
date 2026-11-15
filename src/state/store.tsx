@@ -648,7 +648,15 @@ export function reducer(state: AppState, action: Action): AppState {
       return updateBot(
         withMascotMotion({ ...state, activeView: "chat", selectedId: action.id }, action.id, "switch"),
         action.id,
-        (b) => ({ ...b, unread: false }),
+        (b) => ({
+          ...b,
+          unread: false,
+          // selecting a bot shows its active task, so that report dot is seen;
+          // other tasks keep theirs until they are opened
+          tasks: b.tasks?.map((task) =>
+            task.threadId === b.threadId && task.unread ? { ...task, unread: false } : task,
+          ),
+        }),
       );
     }
     // optimistic card settle; the server's message.patch confirms it later
@@ -1287,7 +1295,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         case "select": {
           const bot = stateRef.current.bots.find((b) => b.id === action.id);
           const group = stateRef.current.groups.find((g) => g.id === action.id);
-          if (bot?.unread) {
+          // the bot dot OR the dot on the task it is showing: the server
+          // clears the active task too, so one PATCH covers both
+          const activeTaskUnread = bot?.tasks?.some(
+            (task) => task.threadId === bot.threadId && task.unread,
+          );
+          if (bot && (bot.unread || activeTaskUnread)) {
             api(`/api/bots/${action.id}`, { method: "PATCH", body: JSON.stringify({ unread: false }) }).catch(() => {});
           } else if (group?.unread) {
             api(`/api/groups/${action.id}`, { method: "PATCH", body: JSON.stringify({ unread: false }) }).catch(() => {});

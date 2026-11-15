@@ -244,7 +244,14 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
               result: { decision: behavior === "allow" ? (legacy ? "approved" : "accept") : legacy ? "denied" : "decline" },
             });
           }
-          emit({ ...base(threadId, turnId), type: "request.resolved", requestId, behavior, source });
+          emit({
+            ...base(threadId, turnId),
+            type: "request.resolved",
+            requestId,
+            behavior,
+            source,
+            ...(isQuestion && behavior === "answer" && message ? { message } : {}),
+          });
         };
         const timeoutMs = resolveApprovalTimeoutMs(approvalTimeout);
         if (timeoutMs > 0) {

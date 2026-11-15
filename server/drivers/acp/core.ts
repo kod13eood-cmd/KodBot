@@ -462,7 +462,14 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
             if (picked) answers[field.key] = picked.value;
             else if (field.customKey) answers[field.customKey] = answer;
             else answers[field.key] = answer;
-            emit({ ...base(threadId, turnId), type: "request.resolved", requestId, behavior: "answer", source });
+            emit({
+              ...base(threadId, turnId),
+              type: "request.resolved",
+              requestId,
+              behavior: "answer",
+              source,
+              ...(answer ? { message: answer } : {}),
+            });
             index += 1;
             askNext();
           };

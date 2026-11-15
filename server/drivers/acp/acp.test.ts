@@ -421,7 +421,7 @@ describe("ACP turns (fake CLI)", () => {
     );
     expect(outcome).toBe("answered");
     const resolved = await recorder.until((e) => e.type === "request.resolved");
-    expect(resolved).toMatchObject({ behavior: "answer", source: "user" });
+    expect(resolved).toMatchObject({ behavior: "answer", source: "user", message: "Green" });
 
     const done = await recorder.until((e) => e.type === "turn.completed");
     expect(done).toMatchObject({ ok: true });
