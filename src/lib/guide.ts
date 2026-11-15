@@ -215,14 +215,16 @@ KodBot е local-first chat приложение за екип от AI агент
       en: `## Pages
 
 - A bot can write a self-contained HTML page (dashboard, checklist, report) into its workspace.
-- Pages appear as a card in the chat; click to open the in-app viewer, or the icon to open it in your browser.
+- Pages appear as a card in the chat; click to open the in-app viewer, or the icon to open it in your browser. Android has the same card and a **Pages** list in the chat header.
+- App Settings → General → **Public address** is the address other devices use to reach this server. Page links and the links bots write use it; leave it empty to use the address this window was opened with.
 - The bot receives the page title, path, and a bounded excerpt in its context.
 - A page can submit a form back to its bot: the answer arrives as a user message and the viewer closes.
 - Pages are sandboxed: they cannot read the chat, credentials, or your files.`,
       bg: `## Страници
 
 - Ботът може да напише самостоятелна HTML страница (dashboard, checklist, report) в workspace-а си.
-- Страниците се показват като карта в чата; клик отваря вградената визия, а иконата — в браузъра.
+- Страниците се показват като карта в чата; клик отваря вградената визия, а иконата — в браузъра. Android има същата карта и списък **Pages** в header-а на чата.
+- App Settings → General → **Public address** е адресът, с който други устройства достигат този сървър. Линковете към страници и линковете, които ботовете пишат, го използват; остави празно, за да се ползва адресът, с който е отворен прозорецът.
 - Ботът получава заглавие, път и ограничен откъс от страницата в контекста си.
 - Страницата може да изпрати формуляр обратно към бота: отговорът пристига като user съобщение и визията се затваря.
 - Страниците са sandbox-нати: не могат да четат чата, ключовете или файловете ти.`,
