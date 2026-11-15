@@ -1969,71 +1969,80 @@ private fun ChatScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { submit() }),
             )
-            Box(
-                modifier = Modifier
-                    .padding(bottom = 4.dp)
-                    .size(44.dp)
-                    .background(
-                        if (voiceNoteRecording) Color(0x33FF5252) else Color.Transparent,
-                        CircleShape,
-                    )
-                    .clickable(
-                        enabled = !sending && !voiceNoteProcessing && !recording && !transcribing,
-                    ) {
-                        if (voiceNoteRecording) stopVoiceNote() else startVoiceNote()
-                    }
-                    .semantics {
-                        contentDescription =
-                            if (voiceNoteRecording) "Stop voice note" else "Record voice note"
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                if (voiceNoteProcessing) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                } else {
-                    Text(if (voiceNoteRecording) "⏹" else "🎵", fontSize = 20.sp)
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .padding(bottom = 4.dp)
-                    .size(48.dp)
-                    .background(if (recording) Color(0x33FF5252) else Color.Transparent, CircleShape)
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onPress = {
-                                if (!micGranted) {
-                                    micPermission.launch(Manifest.permission.RECORD_AUDIO)
-                                    return@detectTapGestures
-                                }
-                                if (transcribing || recording || voiceNoteRecording || voiceNoteProcessing) return@detectTapGestures
-                                if (startVoice()) {
-                                    tryAwaitRelease()
-                                    stopVoice()
-                                }
-                            },
-                        )
-                    }
-                    .semantics {
-                        contentDescription = if (recording) "Stop recording" else "Hold to talk"
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                if (transcribing) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                } else {
-                    Text(if (recording) "⏹" else "🎙", fontSize = 20.sp)
-                }
-            }
-            Button(
-                onClick = submit,
-                enabled = canSend,
+            // Voice actions sit above Send: the composer stays narrow on a
+            // phone, and a row of four controls squeezed the text field.
+            Column(
                 modifier = Modifier.padding(bottom = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                if (sending) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                } else {
-                    Text("Send")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                if (voiceNoteRecording) Color(0x33FF5252) else Color.Transparent,
+                                CircleShape,
+                            )
+                            .clickable(
+                                enabled = !sending && !voiceNoteProcessing && !recording && !transcribing,
+                            ) {
+                                if (voiceNoteRecording) stopVoiceNote() else startVoiceNote()
+                            }
+                            .semantics {
+                                contentDescription =
+                                    if (voiceNoteRecording) "Stop voice note" else "Record voice note"
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (voiceNoteProcessing) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        } else {
+                            Text(if (voiceNoteRecording) "⏹" else "🎵", fontSize = 19.sp)
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(if (recording) Color(0x33FF5252) else Color.Transparent, CircleShape)
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onPress = {
+                                        if (!micGranted) {
+                                            micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                                            return@detectTapGestures
+                                        }
+                                        if (transcribing || recording || voiceNoteRecording || voiceNoteProcessing) return@detectTapGestures
+                                        if (startVoice()) {
+                                            tryAwaitRelease()
+                                            stopVoice()
+                                        }
+                                    },
+                                )
+                            }
+                            .semantics {
+                                contentDescription = if (recording) "Stop recording" else "Hold to talk"
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (transcribing) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        } else {
+                            Text(if (recording) "⏹" else "🎙", fontSize = 19.sp)
+                        }
+                    }
+                }
+                Button(
+                    onClick = submit,
+                    enabled = canSend,
+                ) {
+                    if (sending) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("Send")
+                    }
                 }
             }
         }
