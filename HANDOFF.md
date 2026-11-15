@@ -208,6 +208,19 @@ once; after that, releases update in place.
   summary remains.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.48>
 
+### Release 0.1.49 (2026-11-15)
+
+- Desktop 0.1.49 for Linux/Windows; Android stays **0.1.22 / versionCode 23**.
+- Frameless-window fix: the floating minimize/maximize/close controls step
+  aside while a side panel (bot settings, computer, inspector) or a
+  full-screen modal (guide, app settings, connected apps) is open, and they
+  sit below the modal tier. The panel's own X is now the only one in that
+  corner and stays clickable.
+- Windows reserves the native caption area (148px) in panel and dialog
+  headers, the same way the chat header already did, so their X no longer
+  hides under the system buttons.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.49>
+
 ## 4. Remote deployment topology
 
 | Item | Value |
