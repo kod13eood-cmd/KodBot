@@ -71,7 +71,8 @@ The rest of this guide is organized by topic.
 ## Bots, models and chats
 
 - Create a bot with **+ → New Bot**. Open **Bot settings** from its avatar to change the name, role, model, memory, working folder, voice, and notifications.
-- The model picker in the chat header chooses the engine/model for new turns. **Auto** picks from the bot's model pool.
+- The model picker in the chat header chooses the engine/model for new turns. **Auto** picks from the bot's model pool. **Economy mode** (Bot settings, under Auto) lets a short simple question use a faster or free model; code and screen work stay on a strong model.
+- **Settings → Language** switches the app between English and Bulgarian. The Android app follows the phone language on first run and has the same switch.
 - **Enter** sends; **Shift+Enter** adds a line.
 - **Ctrl+Enter** while the bot is busy puts the prompt in the floating queue above the composer. It sends one prompt after the current turn finishes; you can discard an item.
 - **Stop** interrupts the running turn. Editing your own message rewinds the conversation and keeps the old version as a branch.
@@ -105,6 +106,7 @@ The rest of this guide is organized by topic.
 
 - A bot can use a real desktop through its computer tools: a cloud box, the shared **Local VM** on the machine running KodBot, or the local computer (desktop app only; the Linux harness does not expose its own desktop).
 - **Auto** picks a configured cloud box first, then this computer when available, then the prepared Local VM. Choose an explicit destination in Bot settings → Computer when a bot must not fall back.
+- A bot in a team can turn on **Share the cloud computer with the team** in Bot settings → Computer. Teammates then use the same Box machine, browser logins, and files; off keeps the computer private.
 - The Local VM is a Cua Linux desktop in Docker or Podman. Only `/home/cua/workspace` is durable; save downloads, repositories, and browser profiles there. Set it up once in App Settings → Local VM. Chromium and Firefox are installed for real browser work.
 - **Open computer** in App Settings → Local VM (or the Computer panel) opens the shared desktop in a full-window view with a **Full screen** button. You can click, type, and scroll directly; the bot sees the same screen and can take over or observe with a screenshot.
 - **Record** in the viewer saves your pointer/key actions and periodic screenshots under the durable workspace. Stop and choose **Analyze with <bot>** to have the bot write the workflow into its memory.
@@ -145,6 +147,7 @@ The rest of this guide is organized by topic.
 
 ## Automations
 
+- After a finished turn with several tool steps, the bot may offer **Save this as a routine?** with an editable prompt and time. Saving keeps the routine paused until you turn it on.
 - **Automations** schedules work for a bot. Open it from the sidebar.
 - **Once**: a date and time. **Daily**: a time and weekdays. **Interval**: every 5–720 minutes, optionally only between two times (for example 09:00–18:00) and on chosen weekdays.
 - Interval slots are wall-clock anchored: 09:00, 09:15, 09:30… A slow turn never stacks runs; the next slot waits for it.
@@ -300,6 +303,7 @@ KodBot е local-first chat приложение за екип от AI агент
 
 - Ботът може да използва реален десктоп чрез computer инструментите: cloud box, споделената **Local VM** на машината с KodBot, или локалния компютър (само desktop app; Linux harness-ът не дава собствения си десктоп).
 - **Auto** избира първо конфигуриран cloud box, после този компютър, ако е наличен, и накрая подготвената Local VM. Избери конкретна дестинация в Bot settings → Computer, ако ботът не трябва да пада към друга.
+- Бот в екип може да включи **Share the cloud computer with the team** от Bot settings → Computer. Съотборниците ползват същата Box машина, входове в браузъра и файлове; изключено пази компютъра личен.
 - Local VM е Cua Linux десктоп в Docker или Podman. Само `/home/cua/workspace` е трайна; пази изтеглянията, repository-тата и browser профилите там. Настройва се веднъж от App Settings → Local VM. Chromium и Firefox са инсталирани за реална browser работа.
 - **Open computer** от App Settings → Local VM (или Computer панела) отваря споделения десктоп в прозорец на цял екран с бутон **Full screen**. Можеш да кликаш, пишеш и скролваш директно; ботът вижда същия екран и може да поеме или да наблюдава със screenshot.
 - **Record** във viewer-а запазва движенията/кликовете/клавишите и периодични screenshot-и в трайния workspace. Спри и избери **Analyze with <bot>**, за да запише ботът workflow-а в паметта си.
@@ -338,6 +342,7 @@ KodBot е local-first chat приложение за екип от AI агент
 
 ## Автоматизации
 
+- След завършен ход с няколко tool стъпки ботът може да предложи **Save this as a routine?** с редактируем текст и час. Запазената рутина остава на пауза, докато не я включиш.
 - **Automations** планира работа за бот. Отваря се от страничната лента.
 - **Once**: дата и час. **Daily**: час и дни. **Interval**: на всеки 5–720 минути, по желание само между два часа (например 09:00–18:00) и в избрани дни.
 - Интервалите са вързани за wall-clock: 09:00, 09:15, 09:30… Бавен ход не трупа опашка; следващият слот го изчаква.

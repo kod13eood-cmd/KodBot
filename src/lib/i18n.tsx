@@ -1283,7 +1283,6 @@ const BULGARIAN: Record<string, string> = {
   "Prompt": "Текст",
   "Time": "Час",
   "Share the cloud computer with the team": "Сподели облачния компютър с екипа",
-  "Bot settings": "Настройки на бота",
   "{name}'s screen": "Екранът на {name}",
   "Open the shared Local VM desktop": "Отвори споделения Local VM десктоп",
   "this computer": "този компютър",

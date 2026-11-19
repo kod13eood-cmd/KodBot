@@ -26,10 +26,12 @@ Status keys:
   **text, vision, audio, image, video, and reasoning** badges so the choice is
   readable before you pick it. OpenCode **Zen** and **Go** are separate sections
   in both the picker and the Auto pool.
-- **Auto model routing.** Complex work goes to the strongest configured model;
-  short simple requests go to the fastest/free one. Each bot can use an
-  explicit **Auto model pool** — a hand-picked list that may span engines. An
-  empty pool keeps routing inside the current engine.
+- **Auto model routing.** Code and screen work go to the strongest available
+  model (screen work prefers a vision model). A short simple question stays on
+  that model unless the bot's **Economy mode** is on, then it may use a
+  faster/free one. Each bot can use an explicit **Auto model pool** — a
+  hand-picked list that may span engines. An empty pool keeps routing inside
+  the current engine.
 - **A real computer per bot.** A cloud Linux desktop, a shared **Local VM**
   (Cua in Docker/Podman, with one durable workspace), or the local machine.
   Auto picks a cloud box, then the local computer, then the prepared Local VM.
@@ -79,6 +81,42 @@ Status keys:
   agents can read the same guide and answer how-to questions with exact steps.
 
 ## What's new in this build
+
+### Skill routing and Economy — Live
+
+- Each Auto turn is classified as **code**, **screen**, **translate**, or
+  **general**. Code stays on a strong model; screen work prefers a model with
+  vision; a short translation or simple question drops to a fast/free model
+  only when **Economy mode** is on.
+- Economy is a per-bot toggle under **Auto model**, off by default, on desktop
+  and Android. The last skill and model are recorded on the task and shown in
+  the usage chip.
+
+### Paused routine offers — Live
+
+- After a finished turn with at least two tool steps, the bot offers **Save
+  this as a routine?** with an editable prompt and time.
+- Saving creates a **paused** one-time routine; it does not arm the clock.
+  Skipping leaves the transcript untouched. Scheduled and automated runs never
+  offer one.
+
+### Team-shared cloud computer — Live
+
+- A bot that belongs to a team can turn on **Share the cloud computer with the
+  team** in Bot settings. Teammates then use the same Box machine, browser
+  logins, and files.
+- Off by default; every bot without a share keeps its private computer. The
+  scope is resolved on the server for status, provisioning, exec, and
+  screenshots.
+
+### Bulgarian on Android — Live
+
+- The Android app has a full Bulgarian interface and a **Language** switch in
+  Settings. A fresh install follows the phone language; the choice is stored on
+  the device.
+- The desktop already had EN/BG; this release fills the remaining main panels,
+  approval cards, update banner, room settings, calls, and server-authored
+  cards (Work alone and routine offers).
 
 ### Faster follow-up turns — Live
 

@@ -1,7 +1,7 @@
 {
-  "versionCode": 27,
-  "versionName": "0.1.26",
+  "versionCode": 28,
+  "versionName": "0.1.27",
   "apkUrl": "https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-android.apk",
-  "notes": "File links inside a page now download through Android's DownloadManager, with progress in the notification shade and the file in Downloads.",
-  "publishedAt": "2026-11-15T17:16:04Z"
+  "notes": "Български интерфейс с превключвател в Settings. Икономичен режим в Auto, Work alone, routine offer и споделен екипен компютър идват от KodBot 0.1.58.",
+  "publishedAt": "2026-11-19T22:00:00Z"
 }
