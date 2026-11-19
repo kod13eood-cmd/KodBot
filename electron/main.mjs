@@ -708,6 +708,15 @@ ipcMain.handle("desktop:open-external", async (_event, rawUrl) => {
   return true;
 });
 
+ipcMain.handle("desktop:about", () => ({
+  version: app.getVersion(),
+  electron: process.versions.electron ?? null,
+  chromium: process.versions.chrome ?? null,
+  node: process.versions.node ?? null,
+  platform: process.platform,
+  arch: process.arch,
+}));
+
 ipcMain.handle("download:show", (_event, rawPath) => {
   if (typeof rawPath !== "string" || !allowedDownloadPaths.has(rawPath)) return false;
   shell.showItemInFolder(rawPath);

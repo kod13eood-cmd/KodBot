@@ -374,6 +374,7 @@ KodBot е local-first chat приложение за екип от AI агент
     body: {
       en: `## Troubleshooting
 
+- **Which versions am I running?** Settings → About lists KodBot, Node, the desktop shell (Electron/Chromium), every available engine CLI, and the local speech components.
 - **Nothing happens when I click Connect or open a link:** the browser may have failed to launch. Use **Copy link** and paste it into Firefox/Chromium. On Linux, launch KodBot from the desktop, not from a restricted terminal.
 - **Copied text pastes nothing:** update to 0.1.38+; the app uses the desktop clipboard bridge and only shows a check after a real copy.
 - **Notifications are missing:** check the bot's Notifications switch and the system notification permission; the needs-you strip is the in-app fallback.
@@ -381,6 +382,7 @@ KodBot е local-first chat приложение за екип от AI агент
 - **A page does not send answers:** open it in KodBot (not a browser tab), then submit; the viewer closes on success.`,
       bg: `## Проблеми
 
+- **Кои версии ползвам?** Settings → About показва KodBot, Node, desktop обвивката (Electron/Chromium), всички налични engine CLI-та и локалните гласови компоненти.
 - **Нищо не се случва при Connect или отваряне на линк:** браузърът може да не се е стартирал. Използвай **Copy link** и го постави във Firefox/Chromium. На Linux стартирай KodBot от десктопа, не от ограничен терминал.
 - **Копиран текст не се поставя:** обнови до 0.1.38+; app-ът ползва desktop clipboard bridge и показва чекмарка само след реално копиране.
 - **Липсват известия:** провери Notifications превключвателя на бота и системното разрешение; needs-you лентата е вградената резерва.

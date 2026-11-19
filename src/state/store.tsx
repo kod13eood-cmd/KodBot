@@ -325,7 +325,8 @@ export type AppSettingsSection =
   | "companion"
   | "voice"
   | "computer"
-  | "usage";
+  | "usage"
+  | "about";
 
 export interface AuthUser {
   id: string;
