@@ -215,6 +215,8 @@ export interface TaskUsage {
    * written by builds before cost existed lack the field; read as null. */
   costUsd: number | null;
   turns: number;
+  /** The skill router's last choice for this task. Older records omit it. */
+  route?: { skill: string; instanceId: string; model: string };
 }
 
 /** Everything the BOT authored is scrubbed of content-shaped secrets before
@@ -312,6 +314,9 @@ export interface BotRecord {
   /** Choose the strongest available model for each task instead of pinning
    * one model forever. The last routed choice remains visible in the UI. */
   autoModel?: boolean;
+  /** When auto routing is on, short questions may use a faster or free
+   * model. Off by default so a short prompt stays on the strongest model. */
+  economyModel?: boolean;
   /** When a turn stops with work still open, continue it once on its own.
    * This never widens approvals: risky tools still ask a person. */
   workAlone?: boolean;
@@ -1309,10 +1314,26 @@ export class Store {
       output: prev.output + clean(turn.output),
       costUsd: cost === null ? prevCost : (prevCost ?? 0) + cost,
       turns: prev.turns + 1,
+      ...(prev.route ? { route: prev.route } : {}),
     };
     this.saveBots();
     this.emit({ type: "bot", botId });
     return task.usage;
+  }
+
+  /** Remember which skill and model Auto picked, without counting a turn.
+   * The settled turn keeps this field when it banks the tokens. */
+  noteTaskRoute(
+    botId: string,
+    threadId: string,
+    route: { skill: string; instanceId: string; model: string },
+  ): void {
+    const task = this.taskByThread(botId, threadId);
+    if (!task) return;
+    const prev: TaskUsage = { input: 0, output: 0, costUsd: null, turns: 0, ...task.usage };
+    task.usage = { ...prev, route };
+    this.saveBots();
+    this.emit({ type: "bot", botId });
   }
 
   /** The folder a task's turn runs in. Pins on first call from the bot's

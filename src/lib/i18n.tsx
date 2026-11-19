@@ -1024,10 +1024,13 @@ const BULGARIAN: Record<string, string> = {
     "Браузърът блокира клипборда. Текстът е избран — натиснете Ctrl+C или ⌘C.",
   // Auto model
   "Auto model": "Автоматичен модел",
-  "Pick the best available model for each task. Complex work gets the strongest engine; short requests get the fastest one.":
-    "Избира най-добрия наличен модел за всяка задача. Сложната работа получава най-силния двигател; кратките заявки — най-бързия.",
   "The picker shows the last routed model; the next task is routed again.":
     "Изборът показва последния използван модел; следващата задача се маршрутизира отново.",
+  "Pick the strongest available model for each task. A short question stays on that model unless Economy mode is on.":
+    "Избира най-силния наличен модел за всяка задача. Краткият въпрос остава на него, освен ако икономичният режим е включен.",
+  "Economy mode": "Икономичен режим",
+  "Short, simple questions use a faster or free model. Code and the screen stay on a strong one.":
+    "Кратките и прости въпроси ползват по-бърз или безплатен модел. Кодът и екранът остават на силен модел.",
   // Work alone
   "Work alone": "Работи самостоятелно",
   "When a turn stops with work still open, the bot continues once by itself. It still asks before anything destructive, secret, sudo, or outbound.":

@@ -63,6 +63,7 @@ fun SettingsScreen(
     onShowGroups: (Boolean) -> Unit,
     onSelectModel: (ConversationRecord, EngineRecord, ModelOptionRecord) -> Unit,
     onSetAutoModel: (ConversationRecord, Boolean, List<ModelSelectionRecord>) -> Unit,
+    onSetEconomyModel: (ConversationRecord, Boolean) -> Unit,
     onCreateTeam: (ConversationRecord, String) -> Unit,
     onJoinTeam: (ConversationRecord, String) -> Unit,
     onLeaveTeam: (ConversationRecord, String) -> Unit,
@@ -364,6 +365,26 @@ fun SettingsScreen(
                                         onClick = { poolBotKey = bot.key },
                                         enabled = !busy,
                                     ) { Text("Pool") }
+                                }
+                                if (bot.autoModel) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(start = 40.dp, bottom = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("Economy", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                                            Text(
+                                                "Short questions use a faster or free model. Code and the screen stay on a strong one.",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        Switch(
+                                            checked = bot.economyModel,
+                                            onCheckedChange = { onSetEconomyModel(bot, it) },
+                                            enabled = !busy,
+                                        )
+                                    }
                                 }
                             }
                         }

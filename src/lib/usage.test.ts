@@ -24,6 +24,23 @@ describe("usage formatting", () => {
     expect(usageChip({ input: 0, output: 0, costUsd: null, turns: 0 })).toBe("");
     expect(usageChip({ input: 10_000, output: 2_400, costUsd: null, turns: 3 })).toBe("12.4k tok");
     expect(usageChip({ input: 10_000, output: 2_400, costUsd: 0.06, turns: 3 })).toBe("12.4k tok · $0.06");
+    expect(
+      usageChip({
+        input: 10_000,
+        output: 2_400,
+        costUsd: null,
+        turns: 3,
+        route: { skill: "code", instanceId: "strong", model: "opus-5" },
+      }),
+    ).toBe("12.4k tok · code");
+  });
+
+  it("keeps the latest route when summing tasks", () => {
+    const sum = sumUsage([
+      { input: 1, output: 0, costUsd: null, turns: 1, route: { skill: "general", instanceId: "a", model: "m1" } },
+      { input: 2, output: 0, costUsd: null, turns: 1, route: { skill: "screen", instanceId: "b", model: "m2" } },
+    ]);
+    expect(sum.route).toEqual({ skill: "screen", instanceId: "b", model: "m2" });
   });
 
   it("sums across tasks and leaves cost null until one reports it", () => {

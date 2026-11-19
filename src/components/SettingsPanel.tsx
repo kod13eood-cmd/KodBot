@@ -815,6 +815,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
         | "role"
         | "autoApprove"
         | "autoModel"
+        | "economyModel"
         | "workAlone"
         | "autoModelPool"
         | "speakReplies"
@@ -1205,7 +1206,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
                 <div className="text-[15px] font-medium text-ink">{t("Auto model")}</div>
                 <div className="mt-0.5 text-[13px] text-ink-secondary">
                   {t(
-                    "Pick the best available model for each task. Complex work gets the strongest engine; short requests get the fastest one.",
+                    "Pick the strongest available model for each task. A short question stays on that model unless Economy mode is on.",
                   )}
                 </div>
                 {bot.autoModel && (
@@ -1232,6 +1233,33 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
                 />
               </button>
             </div>
+            {bot.autoModel && (
+              <div className="mt-3 flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-[13.5px] font-medium text-ink">{t("Economy mode")}</div>
+                  <div className="mt-0.5 text-[12.5px] text-ink-secondary">
+                    {t("Short, simple questions use a faster or free model. Code and the screen stay on a strong one.")}
+                  </div>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={Boolean(bot.economyModel)}
+                  aria-label={t("Economy mode")}
+                  onClick={() => patch({ economyModel: !bot.economyModel })}
+                  className={cn(
+                    "relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors",
+                    bot.economyModel ? "bg-accent" : "bg-raised",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "absolute top-[3px] size-5 rounded-full bg-white transition-all",
+                      bot.economyModel ? "left-[21px]" : "left-[3px]",
+                    )}
+                  />
+                </button>
+              </div>
+            )}
             <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-inset px-3 py-2">
               <div className="min-w-0 text-[11.5px] leading-snug text-ink-secondary">
                 {bot.autoModelPool?.length

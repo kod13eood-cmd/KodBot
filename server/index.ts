@@ -134,7 +134,7 @@ import {
   pagesSystemPrompt,
 } from "./pages.ts";
 import { productCardsSystemPrompt } from "./product-cards.ts";
-import { chooseAutoModel } from "./model-routing.ts";
+import { routeAutoModel } from "./model-routing.ts";
 import { createAutoModelCatalog } from "./auto-model-catalog.ts";
 
 const PORT = Number(process.env.OC_PORT || 8799);
@@ -1692,11 +1692,22 @@ async function startTurn(
                   group: option.group,
                 })),
               );
-        const choice = pool.length
+        const economy = bot.economyModel === true;
+        const routed = pool.length
           ? options.length
-            ? chooseAutoModel(text, options)
+            ? routeAutoModel(text, options, undefined, { economy })
             : null
-          : chooseAutoModel(text, options, bot.modelSelection);
+          : routeAutoModel(text, options, bot.modelSelection, { economy });
+        const choice = routed?.selection ?? null;
+        if (routed && choice) {
+          // Persist the skill beside the running tally so the task can say
+          // what Auto chose; addTaskUsage keeps this field on settle.
+          store.noteTaskRoute(bot.id, threadId, {
+            skill: routed.skill,
+            instanceId: choice.instanceId,
+            model: choice.model,
+          });
+        }
         if (choice && (choice.instanceId !== bot.modelSelection.instanceId || choice.model !== bot.modelSelection.model)) {
           store.patchBot(bot.id, { modelSelection: choice });
         }
@@ -3743,13 +3754,19 @@ const server = createServer(async (req, res) => {
     if (m && method === "PATCH") {
       const parsed = z.object({
         autoModel: z.boolean().optional(),
+        economyModel: z.boolean().optional(),
         autoModelPool: z
           .array(z.object({ instanceId: z.string().trim().min(1).max(128), model: z.string().trim().min(1).max(512) }).strict())
           .max(24)
           .optional(),
       }).strict().safeParse(await readBody(req));
-      if (!parsed.success || (parsed.data.autoModel === undefined && parsed.data.autoModelPool === undefined)) {
-        return json(res, 400, { error: "autoModel or autoModelPool is required" });
+      if (
+        !parsed.success ||
+        (parsed.data.autoModel === undefined &&
+          parsed.data.economyModel === undefined &&
+          parsed.data.autoModelPool === undefined)
+      ) {
+        return json(res, 400, { error: "autoModel, economyModel, or autoModelPool is required" });
       }
       const bot = store.bot(m[1]);
       if (!bot) return json(res, 404, { error: "no such bot" });
@@ -3764,6 +3781,7 @@ const server = createServer(async (req, res) => {
         });
       }
       if (parsed.data.autoModel !== undefined) patch.autoModel = parsed.data.autoModel;
+      if (parsed.data.economyModel !== undefined) patch.economyModel = parsed.data.economyModel;
       const updated = store.patchBot(bot.id, patch);
       if (!updated) return json(res, 404, { error: "no such bot" });
       const visible = wireBot(updated);
@@ -3844,6 +3862,10 @@ const server = createServer(async (req, res) => {
       if (body.autoModel !== undefined) {
         if (typeof body.autoModel !== "boolean") return json(res, 400, { error: "autoModel must be true or false" });
         patch.autoModel = body.autoModel;
+      }
+      if (body.economyModel !== undefined) {
+        if (typeof body.economyModel !== "boolean") return json(res, 400, { error: "economyModel must be true or false" });
+        patch.economyModel = body.economyModel;
       }
       if (body.workAlone !== undefined) {
         if (typeof body.workAlone !== "boolean") return json(res, 400, { error: "workAlone must be true or false" });

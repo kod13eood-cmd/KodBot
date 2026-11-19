@@ -169,6 +169,8 @@ export interface TaskUsage {
    * from builds before cost existed lack the field entirely */
   costUsd: number | null;
   turns: number;
+  /** Last skill-router choice. Older records omit it. */
+  route?: { skill: string; instanceId: string; model: string };
 }
 
 export interface Bot {
@@ -199,6 +201,8 @@ export interface Bot {
   autoApprove?: boolean;
   /** route each task to the strongest available model */
   autoModel?: boolean;
+  /** in Auto mode, short questions may use a faster or free model */
+  economyModel?: boolean;
   /** continue an unfinished turn once on its own; approvals stay as they are */
   workAlone?: boolean;
   /** explicit models auto routing may choose from; empty = current engine */
@@ -486,6 +490,7 @@ export type Action =
           | "role"
           | "autoApprove"
           | "autoModel"
+          | "economyModel"
           | "workAlone"
           | "autoModelPool"
           | "speakReplies"

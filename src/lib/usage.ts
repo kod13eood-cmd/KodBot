@@ -13,6 +13,7 @@ export function sumUsage(items: Array<TaskUsage | undefined>): TaskUsage {
     out.output += u.output;
     out.turns += u.turns;
     if (typeof u.costUsd === "number") out.costUsd = (out.costUsd ?? 0) + u.costUsd;
+    if (u.route) out.route = u.route;
   }
   return out;
 }
@@ -44,6 +45,7 @@ export function formatUsd(usd: number | null | undefined): string {
 export function usageChip(u: TaskUsage): string {
   if (u.turns === 0 && u.input + u.output === 0) return "";
   const parts = [`${formatTokens(u.input + u.output)} tok`];
+  if (u.route?.skill) parts.push(u.route.skill);
   if (typeof u.costUsd === "number") parts.push(formatUsd(u.costUsd));
   return parts.join(" · ");
 }

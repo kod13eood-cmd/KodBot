@@ -582,6 +582,16 @@ describe("Store task usage", () => {
     expect(store.taskByThread(bot.id, bot.threadId)?.usage).toEqual({ input: 150, output: 25, costUsd: 0.015, turns: 2 });
   });
 
+  it("keeps the router's skill when the turn banks tokens", () => {
+    const store = new Store(selection);
+    const bot = store.createBot();
+    const route = { skill: "code", instanceId: "strong", model: "opus-5" };
+    store.noteTaskRoute(bot.id, bot.threadId, route);
+    const banked = store.addTaskUsage(bot.id, bot.threadId, { input: 10, output: 2, costUsd: null });
+    expect(banked).toMatchObject({ input: 10, output: 2, turns: 1, route });
+    expect(store.taskByThread(bot.id, bot.threadId)?.usage?.route).toEqual(route);
+  });
+
   it("keeps cost null until some turn reports one, then sums only reported costs", () => {
     const store = new Store(selection);
     const bot = store.createBot();

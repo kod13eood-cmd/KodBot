@@ -170,6 +170,7 @@ data class ConversationRecord(
     val teamName: String? = null,
     val teamIsLeader: Boolean = false,
     val autoModel: Boolean = false,
+    val economyModel: Boolean = false,
     val autoModelPool: List<ModelSelectionRecord> = emptyList(),
     val busyBotId: String? = null,
     val tasks: List<TaskSummaryRecord> = emptyList(),
@@ -573,6 +574,16 @@ class CompanionApi(private val connection: CompanionConnection) {
             )
         }
 
+    /** Economy only changes which model Auto picks for a short question.
+     * It does not change approvals, and it rides the same narrow route. */
+    suspend fun setEconomyModel(botId: String, economyModel: Boolean) = withContext(Dispatchers.IO) {
+        request(
+            "PATCH",
+            "/api/bots/${encodePath(botId)}/auto-model",
+            JSONObject().put("economyModel", economyModel),
+        )
+    }
+
     suspend fun createTeam(name: String, creatorBotId: String) = withContext(Dispatchers.IO) {
         request(
             "POST",
@@ -832,6 +843,7 @@ class CompanionApi(private val connection: CompanionConnection) {
                 teamName = team?.name,
                 teamIsLeader = team?.leaderBotId == optString("id"),
                 autoModel = optBoolean("autoModel"),
+                economyModel = optBoolean("economyModel"),
                 tasks = parseTaskSummaries(optJSONArray("tasks")),
                 autoModelPool = optJSONArray("autoModelPool")?.let { pool ->
                     (0 until pool.length()).mapNotNull { index ->

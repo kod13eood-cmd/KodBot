@@ -241,6 +241,7 @@ class MainActivity : ComponentActivity() {
                     },
                     onSelectModel = ::selectModel,
                     onSetAutoModel = ::setAutoModel,
+                    onSetEconomyModel = ::setEconomyModel,
                     onCreateTeam = ::createTeam,
                     onOpenReport = ::openReport,
                     onJoinTeam = ::joinTeam,
@@ -541,6 +542,29 @@ class MainActivity : ComponentActivity() {
                 settingsMessage = "${chat.name} will use ${engine.displayName} · ${model.label}."
             } catch (error: Exception) {
                 settingsError = error.message ?: "Couldn't change this bot's model."
+            } finally {
+                settingsBusy = false
+            }
+        }
+    }
+
+    private fun setEconomyModel(chat: ConversationRecord, enabled: Boolean) {
+        if (chat.kind != "bot") return
+        val saved = connection ?: return
+        lifecycleScope.launch {
+            settingsBusy = true
+            settingsError = null
+            settingsMessage = null
+            try {
+                CompanionApi(saved).setEconomyModel(chat.id, enabled)
+                refreshFleet()
+                settingsMessage = if (enabled) {
+                    "${chat.name} uses a faster model for short questions."
+                } else {
+                    "${chat.name} keeps the strongest model for short questions."
+                }
+            } catch (error: Exception) {
+                settingsError = error.message ?: "Couldn't change economy mode."
             } finally {
                 settingsBusy = false
             }
@@ -916,6 +940,7 @@ private fun KodBotScreen(
     onTranscribe: suspend (File) -> String,
     onSelectModel: (ConversationRecord, EngineRecord, ModelOptionRecord) -> Unit,
     onSetAutoModel: (ConversationRecord, Boolean, List<ModelSelectionRecord>) -> Unit,
+    onSetEconomyModel: (ConversationRecord, Boolean) -> Unit,
     onCreateTeam: (ConversationRecord, String) -> Unit,
     onOpenReport: (MessageLinkRecord) -> Unit,
     onJoinTeam: (ConversationRecord, String) -> Unit,
@@ -1011,6 +1036,7 @@ private fun KodBotScreen(
                         onShowGroups = onShowGroups,
                         onSelectModel = onSelectModel,
                         onSetAutoModel = onSetAutoModel,
+                        onSetEconomyModel = onSetEconomyModel,
                         onCreateTeam = onCreateTeam,
                         onJoinTeam = onJoinTeam,
                         onLeaveTeam = onLeaveTeam,

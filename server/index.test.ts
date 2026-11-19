@@ -564,7 +564,32 @@ describe("harness HTTP API", () => {
     expect(reread.autoModel).toBe(true);
     expect(reread.autoModelPool).toHaveLength(2);
 
+    const economy = await api("PATCH", `/api/bots/${bot.id}/auto-model`, { economyModel: true });
+    expect(economy.status).toBe(200);
+    expect(economy.body.bot.economyModel).toBe(true);
+    const rereadEconomy = (await api("GET", "/api/bots")).body.bots.find(
+      (candidate: { id: string }) => candidate.id === bot.id,
+    );
+    expect(rereadEconomy.economyModel).toBe(true);
+
+    expect((await api("PATCH", `/api/bots/${bot.id}/auto-model`, { economyModel: "yes" })).status).toBe(400);
+
     expect((await api("PATCH", "/api/bots/missing/auto-model", { autoModel: false })).status).toBe(404);
+  });
+
+  it("round-trips Economy mode on the general bot PATCH", async () => {
+    const bot = (await api("POST", "/api/bots")).body.bot;
+    expect(bot.economyModel).toBeUndefined();
+
+    const bad = await api("PATCH", `/api/bots/${bot.id}`, { economyModel: "yes" });
+    expect(bad.status).toBe(400);
+
+    const on = await api("PATCH", `/api/bots/${bot.id}`, { economyModel: true });
+    expect(on.status).toBe(200);
+    expect(on.body.bot.economyModel).toBe(true);
+    const off = await api("PATCH", `/api/bots/${bot.id}`, { economyModel: false });
+    expect(off.status).toBe(200);
+    expect(off.body.bot.economyModel).toBe(false);
   });
 
   it("keeps Work alone off by default and round-trips the opt-in", async () => {
