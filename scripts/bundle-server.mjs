@@ -18,12 +18,13 @@
 // drivers/ nested; import.meta.url still resolves to the same location, so
 // that lookup is unaffected.
 import { build } from "esbuild";
-import { copyFileSync, existsSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const server = join(root, "server");
+const appVersion = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version;
 
 // Every file run as its own process. Keep in sync with the spawn sites above.
 const ENTRY_POINTS = [
@@ -48,6 +49,9 @@ await build({
   // Written after tsc, replacing its output for these entry points.
   allowOverwrite: true,
   logLevel: "info",
+  // About must show the version of the code actually running, not a file that
+  // may not ship beside the packaged harness.
+  define: { "process.env.OC_APP_VERSION": JSON.stringify(appVersion) },
 });
 
 // The server copies this next to each bot's MEMORY.md at runtime. It must ride

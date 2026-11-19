@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld("ogb", {
   /** Host platform ("darwin" | "win32" | "linux") — for platform-aware UI. */
   platform: process.platform,
   getCapabilities: () => ipcRenderer.invoke("desktop:capabilities"),
+  /** Settings → About: the desktop shell's own version and runtimes. */
+  about: () => ipcRenderer.invoke("desktop:about"),
   /** The companion sidecar: the one part of this app that listens off the
    * machine, so it runs as its own process and is off until switched on.
    * Every call answers with the whole state, so the panel never has to
