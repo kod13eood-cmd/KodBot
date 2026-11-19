@@ -567,6 +567,26 @@ describe("harness HTTP API", () => {
     expect((await api("PATCH", "/api/bots/missing/auto-model", { autoModel: false })).status).toBe(404);
   });
 
+  it("keeps Work alone off by default and round-trips the opt-in", async () => {
+    const bot = (await api("POST", "/api/bots")).body.bot;
+    expect(bot.workAlone).toBeUndefined();
+
+    const bad = await api("PATCH", `/api/bots/${bot.id}`, { workAlone: "yes" });
+    expect(bad.status).toBe(400);
+
+    const on = await api("PATCH", `/api/bots/${bot.id}`, { workAlone: true });
+    expect(on.status).toBe(200);
+    expect(on.body.bot.workAlone).toBe(true);
+    const reread = (await api("GET", "/api/bots")).body.bots.find((candidate: { id: string }) => candidate.id === bot.id);
+    expect(reread.workAlone).toBe(true);
+
+    const off = await api("PATCH", `/api/bots/${bot.id}`, { workAlone: false });
+    expect(off.status).toBe(200);
+    expect(off.body.bot.workAlone).toBe(false);
+
+    expect((await api("PATCH", "/api/bots/missing", { workAlone: true })).status).toBe(404);
+  });
+
   it("persists an answered onboarding card", async () => {
     const { body } = await api("GET", "/api/bots");
     const bot = body.bots[0];

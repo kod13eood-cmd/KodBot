@@ -1,3 +1,4 @@
+import { userPrompt } from "../../prompt-once.ts";
 // Qwen Code — Alibaba's `qwen --acp` CLI. Custom-only in KodBot:
 // the official pane has no Qwen Cloud catalog; live local hosts land in
 // Custom and are written into ~/.qwen/settings.json modelProviders.
@@ -107,7 +108,7 @@ const support: AcpSupport = {
   pickAuthMethod: () => null,
   authFailure: "continue",
   isAuthenticated: () => true,
-  buildPromptText: (turn) => (turn.system ? `${turn.system}\n\n${turn.text}` : turn.text),
+  buildPromptText: (turn, ctx) => userPrompt(turn.system, turn.text, ctx?.resumed === true, turn.systemUpdate),
 };
 
 export const QwenAgentDriver = createAcpDriver(support);

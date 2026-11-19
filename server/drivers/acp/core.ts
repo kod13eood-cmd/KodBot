@@ -17,6 +17,8 @@ import { homedir } from "node:os";
 
 import { describeSpawnFailure, execCli, killCliTree, spawnCli } from "../../procs.ts";
 import { resolveApprovalTimeoutMs } from "../approval-timeout.ts";
+import { userPrompt } from "../../prompt-once.ts";
+import { ACP_WARM_MAX, ACP_WARM_MS, sameWarmSession, warmFingerprint, type WarmFingerprint } from "./warm.ts";
 
 import type {
   DriverCreateInput,
@@ -96,7 +98,7 @@ export interface AcpSupport {
   /** Classify provider-native failures without coupling the core to messages. */
   classifyError?(error: unknown): ProviderErrorCode | undefined;
   /** Compose the session/prompt text. Default prepends the persona. */
-  buildPromptText?(turn: SendTurnInput): string;
+  buildPromptText?(turn: SendTurnInput, ctx?: { resumed?: boolean }): string;
   /** Rewrite a picker id (`omlx::model`) into the CLI-native id before spawn
    * and session/select. Local inject writers live here so the child sees a
    * model it already knows. */
@@ -260,7 +262,16 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
         turnId: string;
         asks: Map<string, AskResolver>;
       }
+      interface Parked {
+        fingerprint: WarmFingerprint;
+        since: number;
+        alive: () => boolean;
+        stop: () => void;
+        begin: (turn: SendTurnInput) => { turnId: string };
+      }
       const active = new Map<string, Turn>();
+      /** Processes kept warm after a successful turn, by thread. */
+      const warm = new Map<string, Parked>();
 
       const emit = (event: RuntimeEvent) => {
         for (const l of [...listeners]) l(event);
@@ -324,7 +335,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
       const sendTurn = async (turn: SendTurnInput) => {
         const { threadId } = turn;
         if (active.has(threadId)) throw new Error("a turn is already running on this thread");
-        const turnId = newId();
+        let turnId = newId();
         const cwd = turn.cwd ?? config.workspace ?? homedir();
         const env = childEnv();
         const resolvedModel = support.resolveTurnModel?.(turn.model, env);
@@ -333,6 +344,26 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
             ? { ...turn, model: resolvedModel }
             : turn;
         const mcpServers = acpMcpServers(turn);
+        const fingerprint = warmFingerprint(
+          cwd,
+          cliTurn.model,
+          mcpServers,
+          `${config.cli}\u0000${config.fullAuto ? "1" : "0"}`,
+        );
+
+        const parked = warm.get(threadId);
+        if (
+          parked &&
+          parked.alive() &&
+          sameWarmSession(parked.fingerprint, fingerprint) &&
+          typeof turn.resumeCursor === "string"
+        ) {
+          return parked.begin(turn);
+        }
+        if (parked) {
+          warm.delete(threadId);
+          parked.stop();
+        }
 
         const child = spawnCli(config.cli, support.spawnArgs(config, cliTurn), {
           cwd,
@@ -340,11 +371,12 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
           stdio: ["pipe", "pipe", "pipe"],
         });
 
-        const state = { settled: false, promptSent: false, text: "" };
-        const asks = new Map<string, AskResolver>();
+        let state = { settled: false, promptSent: false, text: "" };
+        let asks = new Map<string, AskResolver>();
         let nextId = 1;
         let sessionId: string | null = null;
         let interruptTimer: ReturnType<typeof setTimeout> | null = null;
+        let warmTimer: ReturnType<typeof setTimeout> | null = null;
         const rpcPending = new Map<
           number,
           { resolve: (v: any) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> | null }
@@ -373,7 +405,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
 
         const stop = () => killCliTree(child);
 
-        const settle = (ok: boolean, stopReason: string | null) => {
+        const settle = (ok: boolean, stopReason: string | null, keep = false) => {
           if (state.settled) return;
           state.settled = true;
           if (interruptTimer) clearTimeout(interruptTimer);
@@ -388,7 +420,103 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
             emit({ ...base(threadId, turnId), type: "item.completed", itemType: "assistant_text", text: state.text });
           }
           emit({ ...base(threadId, turnId), type: "turn.completed", ok, stopReason, cost: null });
+          const alive = child.exitCode == null && child.signalCode == null;
+          if (keep && ok && sessionId && alive) {
+            if (warmTimer) clearTimeout(warmTimer);
+            warmTimer = setTimeout(() => {
+              warmTimer = null;
+              if (warm.get(threadId)?.fingerprint === fingerprint) {
+                warm.delete(threadId);
+                stop();
+              }
+            }, ACP_WARM_MS);
+            warmTimer.unref?.();
+            // Evict the oldest parked process rather than growing the fleet.
+            if (warm.size >= ACP_WARM_MAX) {
+              const oldest = [...warm.entries()].sort((a, b) => a[1].since - b[1].since)[0];
+              if (oldest) {
+                warm.delete(oldest[0]);
+                oldest[1].stop();
+              }
+            }
+            warm.set(threadId, {
+              fingerprint,
+              since: Date.now(),
+              alive: () => child.exitCode == null && child.signalCode == null,
+              stop: () => {
+                if (warmTimer) clearTimeout(warmTimer);
+                warmTimer = null;
+                stop();
+              },
+              begin: (next) => runWarmTurn(next),
+            });
+            return;
+          }
+          if (warm.get(threadId)?.fingerprint === fingerprint) warm.delete(threadId);
+          if (warmTimer) clearTimeout(warmTimer);
+          warmTimer = null;
           stop(); // the agent process does not exit on its own
+        };
+
+        /** Prompt the process parked for this thread again. The session and
+         * its stable system text are already there; only the changing layer
+         * and this turn's text go out. */
+        const runWarmTurn = (next: SendTurnInput): { turnId: string } => {
+          warm.delete(threadId);
+          if (warmTimer) clearTimeout(warmTimer);
+          warmTimer = null;
+          state = { settled: false, promptSent: false, text: "" };
+          asks = new Map();
+          turnId = newId();
+          if (interruptTimer) clearTimeout(interruptTimer);
+          interruptTimer = null;
+          const interrupt = () => {
+            if (sessionId) send({ jsonrpc: "2.0", method: "session/cancel", params: { sessionId } });
+            else stop();
+            if (interruptTimer) clearTimeout(interruptTimer);
+            interruptTimer = setTimeout(() => settle(true, "cancelled"), 5_000);
+            interruptTimer.unref?.();
+          };
+          active.set(threadId, { stop, interrupt, turnId, asks });
+          emit({ ...base(threadId, turnId), type: "turn.started" });
+          emit({
+            ...base(threadId, turnId),
+            type: "session.started",
+            sessionId,
+            model: cliTurn.model ?? null,
+          });
+          void (async () => {
+            try {
+              state.promptSent = true;
+              const text = support.buildPromptText
+                ? support.buildPromptText(next, { resumed: true })
+                : userPrompt(next.system, next.text, true, next.systemUpdate);
+              const result = await request("session/prompt", {
+                sessionId,
+                prompt: [{ type: "text", text }],
+              });
+              const usage = result?.usage ?? result?._meta ?? {};
+              if (typeof usage.inputTokens === "number" || typeof usage.outputTokens === "number") {
+                emit({
+                  ...base(threadId, turnId),
+                  type: "thread.token-usage.updated",
+                  input: usage.inputTokens ?? 0,
+                  output: usage.outputTokens ?? 0,
+                });
+              }
+              const reason = result?.stopReason;
+              if (reason === "end_turn") settle(true, null, true);
+              else if (reason === "cancelled") settle(true, "cancelled");
+              else settle(false, reason ?? "failed");
+            } catch (e) {
+              if (!state.settled) {
+                const message = e instanceof Error ? e.message : String(e);
+                emit({ ...base(threadId, turnId), type: "runtime.error", message });
+                settle(false, "rpc_error");
+              }
+            }
+          })();
+          return { turnId };
         };
 
         /** An ACP form elicitation (opencode's `question` tool) becomes the
@@ -479,6 +607,18 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
 
         // server→client requests: permission asks and form questions
         const handleServerRequest = (msg: any) => {
+          // A parked process has no live turn: a late request cannot be shown
+          // to a person, and blocking on it would freeze the next warm turn.
+          if (state.settled) {
+            if (msg.method === "session/request_permission") {
+              return send({
+                jsonrpc: "2.0",
+                id: msg.id,
+                result: { outcome: { outcome: "cancelled" } },
+              });
+            }
+            return send({ jsonrpc: "2.0", id: msg.id, error: { code: -32601, message: "turn settled" } });
+          }
           if (msg.method === "elicitation/create") return handleElicitation(msg);
           if (msg.method !== "session/request_permission") {
             // never leave an unknown server request hanging — the agent blocks
@@ -561,6 +701,9 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
         const handleNotification = (msg: any) => {
           // Vendor side-channels (e.g. grok's `_x.ai/*`) are teed to the
           // native log but never normalized: the prompt result is the settle.
+          // A parked process must not leak a late chunk into the finished
+          // turn's transcript.
+          if (state.settled) return;
           if (msg.method !== "session/update") return;
           const p = msg.params ?? {};
           if (!state.promptSent || p._meta?.isReplay === true) return;
@@ -707,6 +850,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
 
             const cursor = typeof turn.resumeCursor === "string" ? turn.resumeCursor : null;
             let sessionResult: any = null;
+            let loadedFromCursor = false;
             if (cursor) {
               try {
                 sessionResult = await request(
@@ -715,6 +859,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
                   LOAD_SESSION_TIMEOUT,
                 );
                 sessionId = cursor;
+                loadedFromCursor = true;
               } catch {
                 /* session gone, load unsupported, or too slow — start fresh */
               }
@@ -779,11 +924,12 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
             }
             emitSessionStarted();
             state.promptSent = true;
+            // A failed session/load starts a brand-new session: it must
+            // receive the standing layer even though a cursor was offered.
+            const resumed = loadedFromCursor;
             const text = support.buildPromptText
-              ? support.buildPromptText(turn)
-              : turn.system
-                ? `${turn.system}\n\n${turn.text}`
-                : turn.text;
+              ? support.buildPromptText(turn, { resumed })
+              : userPrompt(turn.system, turn.text, resumed, turn.systemUpdate);
             const result = await request("session/prompt", {
               sessionId,
               prompt: [{ type: "text", text }],
@@ -800,7 +946,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
               });
             }
             const reason = result?.stopReason;
-            if (reason === "end_turn") settle(true, null);
+            if (reason === "end_turn") settle(true, null, true);
             else if (reason === "cancelled") settle(true, "cancelled");
             else settle(false, reason ?? "failed");
           } catch (e) {
@@ -855,6 +1001,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
             jevMcp: true,
             computerMcp: true,
             composioMcp: true,
+            systemChannel: "prompt",
             effortLevels: support.effortLevels,
           },
           sendTurn,
@@ -873,6 +1020,8 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
           hasSession: (threadId) => active.has(threadId),
           stopAll: async () => {
             for (const { stop } of active.values()) stop();
+            for (const parked of warm.values()) parked.stop();
+            warm.clear();
           },
           onEvent: (listener) => {
             listeners.add(listener);
@@ -881,6 +1030,8 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
         },
         dispose: async () => {
           for (const { stop } of active.values()) stop();
+          for (const parked of warm.values()) parked.stop();
+          warm.clear();
           listeners.clear();
         },
       };

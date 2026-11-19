@@ -1028,6 +1028,10 @@ const BULGARIAN: Record<string, string> = {
     "Избира най-добрия наличен модел за всяка задача. Сложната работа получава най-силния двигател; кратките заявки — най-бързия.",
   "The picker shows the last routed model; the next task is routed again.":
     "Изборът показва последния използван модел; следващата задача се маршрутизира отново.",
+  // Work alone
+  "Work alone": "Работи самостоятелно",
+  "When a turn stops with work still open, the bot continues once by itself. It still asks before anything destructive, secret, sudo, or outbound.":
+    "Когато ходът спре с незавършена работа, ботът продължава веднъж сам. Пак пита преди нещо разрушително, тайно, sudo или изходящо.",
   // Keyboard shortcuts
   "Keyboard shortcuts": "Клавишни комбинации",
   "Work faster with the keyboard. These shortcuts work anywhere in KodBot.":

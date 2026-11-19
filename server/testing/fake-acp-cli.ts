@@ -29,10 +29,12 @@
 //                        core.ts has something to catch
 //   FAKE_ACP_USAGE_ROOT  put the prompt result's usage at the root instead of
 //                        under _meta (what opencode 1.18.18 actually does)
+//   FAKE_ACP_LOAD_FAIL   reject session/load, so a cursor-resuming turn must
+//                        fall back to session/new and resend the standing layer
 //
 // Keep this file dependency-free — it runs as a bare `node` subprocess.
 import { spawn } from "node:child_process";
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const mode = process.env.FAKE_ACP_MODE ?? "happy";
 // opencode-shaped surface: the session carries its own model catalog and the
@@ -227,6 +229,10 @@ function handle(msg: any) {
       break;
     }
     case "session/load": {
+      if (process.env.FAKE_ACP_LOAD_FAIL) {
+        out({ jsonrpc: "2.0", id: msg.id, error: { code: -32601, message: "session/load unsupported" } });
+        break;
+      }
       const opts = configOptions();
       result(msg.id, opts ? { configOptions: opts } : {});
       break;
@@ -275,6 +281,13 @@ function handle(msg: any) {
       break;
     }
     case "session/prompt": {
+      if (process.env.FAKE_ACP_PROMPT_DUMP) {
+        const file = process.env.FAKE_ACP_PROMPT_DUMP;
+        const prior = existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as unknown) : [];
+        const prompts = Array.isArray(prior) ? prior : [];
+        prompts.push(String(msg.params?.prompt?.[0]?.text ?? ""));
+        writeFileSync(file, JSON.stringify(prompts));
+      }
       if (mode === "hang") {
         // never resolve the prompt — lets tests exercise interrupt
         setInterval(() => {}, 1_000);

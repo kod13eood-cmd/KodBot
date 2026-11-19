@@ -815,6 +815,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
         | "role"
         | "autoApprove"
         | "autoModel"
+        | "workAlone"
         | "autoModelPool"
         | "speakReplies"
         | "voice"
@@ -1242,6 +1243,36 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
                 className="shrink-0 rounded-lg bg-raised px-2.5 py-1.5 text-[11.5px] text-ink hover:bg-raised-hover"
               >
                 {t("Choose models")}
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-card p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[15px] font-medium text-ink">{t("Work alone")}</div>
+                <div className="mt-0.5 text-[13px] text-ink-secondary">
+                  {t(
+                    "When a turn stops with work still open, the bot continues once by itself. It still asks before anything destructive, secret, sudo, or outbound.",
+                  )}
+                </div>
+              </div>
+              <button
+                role="switch"
+                aria-checked={Boolean(bot.workAlone)}
+                aria-label={t("Work alone")}
+                onClick={() => patch({ workAlone: !bot.workAlone })}
+                className={cn(
+                  "relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors",
+                  bot.workAlone ? "bg-accent" : "bg-raised",
+                )}
+              >
+                <span
+                  className={cn(
+                    "absolute top-[3px] size-5 rounded-full bg-white transition-all",
+                    bot.workAlone ? "left-[21px]" : "left-[3px]",
+                  )}
+                />
               </button>
             </div>
           </div>

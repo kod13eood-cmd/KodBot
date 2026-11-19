@@ -1,3 +1,4 @@
+import { userPrompt } from "../../prompt-once.ts";
 // Hermes Agent — Nous Research's `hermes acp` CLI. Custom-only: Hermes is
 // a BYOK/local harness. ACP ignores `hermes -m` (cmd_acp does not forward
 // it), and setting OPENAI_API_KEY makes provider:auto resolve to OpenRouter
@@ -147,7 +148,7 @@ const support: AcpSupport = {
       `model "${native}"`,
     );
   },
-  buildPromptText: (turn) => (turn.system ? `${turn.system}\n\n${turn.text}` : turn.text),
+  buildPromptText: (turn, ctx) => userPrompt(turn.system, turn.text, ctx?.resumed === true, turn.systemUpdate),
 };
 
 export const HermesAgentDriver = createAcpDriver(support);

@@ -1,3 +1,4 @@
+import { userPrompt } from "../../prompt-once.ts";
 // Kimi Code harness support — Moonshot's `kimi` CLI over ACP stdio
 // (`kimi acp`), on the Kimi Code subscription login
 // (~/.kimi-code/credentials/kimi-code.json), not a Moonshot API key.
@@ -191,7 +192,7 @@ const support: AcpSupport = {
   // KIMI_CODE_HOME must not be checked against the server user's home instead.
   isAuthenticated: (env) => existsSync(credentialsPath(env)),
 
-  buildPromptText: (turn) => (turn.system ? `${turn.system}\n\n${turn.text}` : turn.text),
+  buildPromptText: (turn, ctx) => userPrompt(turn.system, turn.text, ctx?.resumed === true, turn.systemUpdate),
 };
 
 export const KimiAgentDriver = createAcpDriver(support);

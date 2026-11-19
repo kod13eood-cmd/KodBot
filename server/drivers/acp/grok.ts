@@ -1,3 +1,4 @@
+import { userPrompt } from "../../prompt-once.ts";
 // Grok Build harness support — the official `grok` CLI over ACP stdio
 // (`grok … agent stdio`), on the grok.com subscription login
 // (~/.grok/auth.json), NOT the xAI API key (that driver is drivers/grok.ts).
@@ -234,7 +235,7 @@ const support: AcpSupport = {
   // `--append-system-prompt`/`--rules` are accepted by the CLI but do NOT
   // reach the agent-stdio system prompt (verified against 1.0.0), so the
   // persona is prepended codex-style.
-  buildPromptText: (turn) => (turn.system ? `${turn.system}\n\n${turn.text}` : turn.text),
+  buildPromptText: (turn, ctx) => userPrompt(turn.system, turn.text, ctx?.resumed === true, turn.systemUpdate),
 };
 
 export const GrokAgentDriver = createAcpDriver(support);

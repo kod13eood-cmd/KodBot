@@ -312,6 +312,9 @@ export interface BotRecord {
   /** Choose the strongest available model for each task instead of pinning
    * one model forever. The last routed choice remains visible in the UI. */
   autoModel?: boolean;
+  /** When a turn stops with work still open, continue it once on its own.
+   * This never widens approvals: risky tools still ask a person. */
+  workAlone?: boolean;
   /** Optional allowlist for auto routing. Entries are explicit consent to
    * send a turn to that engine/model; empty means the current engine. */
   autoModelPool?: ModelSelection[];

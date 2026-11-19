@@ -1,3 +1,4 @@
+import { userPrompt } from "../../prompt-once.ts";
 // Gemini CLI harness support — Google's `gemini` CLI over ACP stdio
 // (`gemini --experimental-acp`). Rides the generic runtime in acp/core.ts.
 //
@@ -54,7 +55,7 @@ const support: AcpSupport = {
     Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY) ||
     existsSync(join(homedir(), ".gemini", "oauth_creds.json")),
 
-  buildPromptText: (turn) => (turn.system ? `${turn.system}\n\n${turn.text}` : turn.text),
+  buildPromptText: (turn, ctx) => userPrompt(turn.system, turn.text, ctx?.resumed === true, turn.systemUpdate),
 };
 
 export const GeminiAgentDriver = createAcpDriver(support);

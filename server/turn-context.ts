@@ -15,6 +15,8 @@ export interface TurnContextInput {
   fresh: boolean;
   /** transcript-replay drivers get history via SendTurnInput.transcript instead */
   replaysNatively: boolean;
+  /** Tool chips to attach when the native session cannot be resumed. */
+  trace?: string;
 }
 
 /** Does this engine need the thread replayed to it? True when a DIFFERENT
@@ -49,7 +51,7 @@ export function buildTurnContext(input: TurnContextInput): {
   /** false when the native session must not be resumed */
   resume: boolean;
 } {
-  const { text, transcript, rewound, fresh, replaysNatively } = input;
+  const { text, transcript, rewound, fresh, replaysNatively, trace } = input;
   const resume = !rewound && !fresh;
   const replay = !resume && !replaysNatively && transcript.length > 0;
   if (!replay) return { turnText: text, resume };
@@ -58,6 +60,7 @@ export function buildTurnContext(input: TurnContextInput): {
       rewound ? REWOUND_PREAMBLE : FRESH_PREAMBLE,
       "",
       ...transcript.map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.text}`),
+      ...(trace?.trim() ? ["", trace.trim()] : []),
       "",
       "[Now reply to the user's latest message:]",
       "",

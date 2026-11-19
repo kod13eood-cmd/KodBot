@@ -155,8 +155,12 @@ export interface SendTurnInput {
   resumeCursor?: unknown;
   /** Prior turns for transcript-replay providers (API-backed drivers). */
   transcript?: Array<{ role: "user" | "assistant"; text: string }>;
-  /** Bot persona (name/title/description) as a system prompt. */
+  /** Stable system text (persona, guide, contracts). Prompt-only drivers
+   * send it once per session; system-channel drivers send it every turn. */
   system?: string;
+  /** The part that changes between turns: memory, pages, a webhook note, a
+   * tagged teammate. Prompt-only drivers send it on every turn, warm too. */
+  systemUpdate?: string;
   /** Per-bot integrations the driver may hand to the agent as tools. */
   integrations?: {
     /** A local stdio bridge owns the remote Composio transport. Keeping the
@@ -189,6 +193,10 @@ export interface ProviderAdapter {
   readonly provider: DriverKind;
   readonly capabilities: {
     sessionModelSwitch: "in-session" | "unsupported";
+    /** Where the stable system text goes. "prompt" drivers receive it in the
+     * prompt (so it can be sent once per session); others use a real system
+     * channel and get the joined text every turn. Defaults to a channel. */
+    systemChannel?: "prompt" | "system";
     /** True when the driver mounts turn.integrations.agents as MCP tools —
      * the harness only offers agents tooling (and prompts about it) to
      * drivers that can actually hand it to the agent. */

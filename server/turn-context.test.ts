@@ -30,6 +30,22 @@ describe("buildTurnContext", () => {
     expect(out.turnText.endsWith("hi")).toBe(true);
   });
 
+  it("adds the recent tool trace to an inline replay", () => {
+    const trace = "[Recent tool activity, newest last:]\nok npm test\nfailed npm run build";
+    const out = buildTurnContext({
+      text: "hi",
+      transcript,
+      rewound: false,
+      fresh: true,
+      replaysNatively: false,
+      trace,
+    });
+    expect(out.turnText).toContain("ok npm test");
+    expect(out.turnText).toContain("failed npm run build");
+    expect(out.turnText.indexOf(trace)).toBeGreaterThan(out.turnText.indexOf("Assistant: Noted"));
+    expect(out.turnText.endsWith("hi")).toBe(true);
+  });
+
   it("never wraps for native-replay drivers — they get history via SendTurnInput.transcript", () => {
     for (const flags of [{ rewound: true, fresh: false }, { rewound: false, fresh: true }]) {
       const out = buildTurnContext({ text: "hi", transcript, ...flags, replaysNatively: true });

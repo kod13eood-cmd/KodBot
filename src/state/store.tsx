@@ -199,6 +199,8 @@ export interface Bot {
   autoApprove?: boolean;
   /** route each task to the strongest available model */
   autoModel?: boolean;
+  /** continue an unfinished turn once on its own; approvals stay as they are */
+  workAlone?: boolean;
   /** explicit models auto routing may choose from; empty = current engine */
   autoModelPool?: ModelSelection[];
   /** tools this bot may always use without asking */
@@ -484,6 +486,7 @@ export type Action =
           | "role"
           | "autoApprove"
           | "autoModel"
+          | "workAlone"
           | "autoModelPool"
           | "speakReplies"
           | "voice"

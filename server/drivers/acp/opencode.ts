@@ -1,3 +1,4 @@
+import { userPrompt } from "../../prompt-once.ts";
 // Unified OpenCode engine: one picker entry over the maintained OpenCode
 // CLI's ACP stdio interface, merging the Zen and Go model catalogs (including
 // the free models) behind a single provider. Zen and Go share one
@@ -113,7 +114,7 @@ const support = (fetcher: typeof fetch): AcpSupport => ({
     ]);
     return mergeLocalInject(mergeOpenCodeCatalogs([zen, go]), environment);
   },
-  buildPromptText: (turn) => turn.system ? `${turn.system}\n\n${turn.text}` : turn.text,
+  buildPromptText: (turn, ctx) => userPrompt(turn.system, turn.text, ctx?.resumed === true, turn.systemUpdate),
 });
 
 export function createOpenCodeDriver(fetcher: typeof fetch = fetch) {

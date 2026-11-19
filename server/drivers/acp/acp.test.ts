@@ -221,6 +221,9 @@ describe("ACP turns (fake CLI)", () => {
     delete process.env.FAKE_ACP_DUMP;
     delete process.env.XAI_API_KEY;
     delete process.env.OPENCODE_API_KEY;
+    delete process.env.FAKE_ACP_RPC_DUMP;
+    delete process.env.FAKE_ACP_PROMPT_DUMP;
+    delete process.env.FAKE_ACP_LOAD_FAIL;
     delete process.env.FAKE_ACP_MODELS;
     delete process.env.FAKE_ACP_MODEL_STICKS;
     delete process.env.FAKE_ACP_USAGE_ROOT;
@@ -430,6 +433,133 @@ describe("ACP turns (fake CLI)", () => {
       .map((e) => (e as any).delta)
       .join("");
     expect(text).toContain('"q0":"Green"');
+  });
+
+  it("prompts a warm process again without initialize or session/new", async () => {
+    const dump = join(scratch, "rpc.json");
+    process.env.FAKE_ACP_RPC_DUMP = dump;
+    await create();
+    await instance.adapter.sendTurn({ threadId: "t-warm", text: "hi", cwd: scratch, model: "grok-4.5" });
+    await recorder.until((e) => e.type === "turn.completed");
+    expect(instance.adapter.hasSession("t-warm")).toBe(false);
+    await instance.adapter.sendTurn({
+      threadId: "t-warm",
+      text: "next",
+      cwd: scratch,
+      model: "grok-4.5",
+      resumeCursor: "fake-acp-session",
+      system: "STANDING instructions",
+    });
+    await recorder.until(() => recorder.events.filter((e) => e.type === "turn.completed").length >= 2);
+    const methods = JSON.parse(readFileSync(dump, "utf8")) as string[];
+    expect(methods.filter((method) => method === "initialize")).toEqual(["initialize"]);
+    expect(methods.filter((method) => method === "session/new")).toEqual(["session/new"]);
+    expect(methods.filter((method) => method === "session/load")).toEqual([]);
+    expect(methods.filter((method) => method === "session/prompt")).toHaveLength(2);
+    expect(instance.adapter.hasSession("t-warm")).toBe(false);
+  });
+
+  it("repeats the changing layer on a warm turn and leaves the standing block behind", async () => {
+    const dump = join(scratch, "prompts.json");
+    process.env.FAKE_ACP_PROMPT_DUMP = dump;
+    await create();
+    await instance.adapter.sendTurn({
+      threadId: "t-warm-memory",
+      text: "hi",
+      cwd: scratch,
+      model: "grok-4.5",
+      system: "STANDING instructions",
+      systemUpdate: "Your memory (MEMORY.md):\nprefers short answers",
+    });
+    await recorder.until((e) => e.type === "turn.completed");
+    await instance.adapter.sendTurn({
+      threadId: "t-warm-memory",
+      text: "next",
+      cwd: scratch,
+      model: "grok-4.5",
+      resumeCursor: "fake-acp-session",
+      system: "STANDING instructions",
+      systemUpdate: "Your memory (MEMORY.md):\nprefers short answers\n\nExisting pages: Dashboard",
+    });
+    await recorder.until(() => recorder.events.filter((e) => e.type === "turn.completed").length >= 2);
+    const prompts = JSON.parse(readFileSync(dump, "utf8")) as string[];
+    expect(prompts).toHaveLength(2);
+    expect(prompts[0]).toContain("STANDING instructions");
+    expect(prompts[0]).toContain("prefers short answers");
+    expect(prompts[1]).toBe("Your memory (MEMORY.md):\nprefers short answers\n\nExisting pages: Dashboard\n\nnext");
+    expect(prompts[1]).not.toContain("STANDING");
+  });
+
+  it("starts a new process when the parked model no longer matches", async () => {
+    const dump = join(scratch, "rpc-model.json");
+    process.env.FAKE_ACP_RPC_DUMP = dump;
+    await create();
+    await instance.adapter.sendTurn({ threadId: "t-warm-model", text: "hi", cwd: scratch, model: "grok-4.5" });
+    await recorder.until((e) => e.type === "turn.completed");
+    await instance.adapter.sendTurn({
+      threadId: "t-warm-model",
+      text: "next",
+      cwd: scratch,
+      model: "grok-4.1",
+      resumeCursor: "fake-acp-session",
+    });
+    await recorder.until(() => recorder.events.filter((e) => e.type === "turn.completed").length >= 2);
+    const methods = JSON.parse(readFileSync(dump, "utf8")) as string[];
+    expect(methods.filter((method) => method === "initialize")).toEqual(["initialize"]);
+    expect(methods.filter((method) => method === "session/load")).toEqual(["session/load"]);
+    expect(methods.filter((method) => method === "session/prompt")).toEqual(["session/prompt"]);
+    expect(instance.adapter.hasSession("t-warm-model")).toBe(false);
+  });
+
+  it("resends the standing layer when a resume cursor cannot be loaded", async () => {
+    const dump = join(scratch, "prompts-fallback.json");
+    process.env.FAKE_ACP_PROMPT_DUMP = dump;
+    process.env.FAKE_ACP_LOAD_FAIL = "1";
+    await create();
+    await instance.adapter.sendTurn({
+      threadId: "t-load-fallback",
+      text: "hi",
+      cwd: scratch,
+      model: "grok-4.5",
+      system: "STANDING instructions",
+    });
+    await recorder.until((e) => e.type === "turn.completed");
+    await instance.adapter.sendTurn({
+      threadId: "t-load-fallback",
+      text: "next",
+      cwd: scratch,
+      model: "grok-4.1",
+      resumeCursor: "fake-acp-session",
+      system: "STANDING instructions",
+      systemUpdate: "Your memory (MEMORY.md):\nprefers short answers",
+    });
+    await recorder.until(() => recorder.events.filter((e) => e.type === "turn.completed").length >= 2);
+    const prompts = JSON.parse(readFileSync(dump, "utf8")) as string[];
+    expect(prompts).toHaveLength(2);
+    expect(prompts[0]).toContain("STANDING instructions");
+    expect(prompts[1]).toContain("STANDING instructions");
+    expect(prompts[1]).toContain("prefers short answers");
+  });
+
+  it("starts a new process on rewind, when there is no resume cursor", async () => {
+    const dump = join(scratch, "rpc-rewind.json");
+    process.env.FAKE_ACP_RPC_DUMP = dump;
+    await create();
+    await instance.adapter.sendTurn({ threadId: "t-warm-rewind", text: "hi", cwd: scratch, model: "grok-4.5" });
+    await recorder.until((e) => e.type === "turn.completed");
+    await instance.adapter.sendTurn({
+      threadId: "t-warm-rewind",
+      text: "next",
+      cwd: scratch,
+      model: "grok-4.5",
+    });
+    await recorder.until(() => recorder.events.filter((e) => e.type === "turn.completed").length >= 2);
+    const methods = JSON.parse(readFileSync(dump, "utf8")) as string[];
+    expect(methods.filter((method) => method === "initialize")).toEqual(["initialize"]);
+    expect(methods.filter((method) => method === "session/new")).toEqual(["session/new"]);
+    expect(methods.filter((method) => method === "session/load")).toEqual([]);
+    expect(methods.filter((method) => method === "session/prompt")).toEqual(["session/prompt"]);
+    expect(instance.adapter.hasSession("t-warm-rewind")).toBe(false);
   });
 
   it("grok fails closed when the CLI advertises no cached_token (needs login)", async () => {

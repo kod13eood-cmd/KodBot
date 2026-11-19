@@ -1,3 +1,4 @@
+import { userPrompt } from "../../prompt-once.ts";
 // OpenCode Go subscription/API product through the maintained OpenCode CLI's
 // ACP stdio interface. The generic protocol runtime lives in core.ts; the
 // shared credential/catalog/error helpers live in opencode-shared.ts.
@@ -98,7 +99,7 @@ const support = (fetcher: typeof fetch): AcpSupport => ({
   isAuthenticated: (env) => Boolean(env.OPENCODE_API_KEY) || hasStoredOpenCodeAuth(env, [OPENCODE_GO_PROVIDER_ID]),
   classifyError: classifyOpenCodeError,
   resolveModels: async (environment) => mergeLocalInject(await fetchOpenCodeGoModels(fetcher), environment),
-  buildPromptText: (turn) => turn.system ? `${turn.system}\n\n${turn.text}` : turn.text,
+  buildPromptText: (turn, ctx) => userPrompt(turn.system, turn.text, ctx?.resumed === true, turn.systemUpdate),
 });
 
 export function createOpenCodeGoDriver(fetcher: typeof fetch = fetch) {

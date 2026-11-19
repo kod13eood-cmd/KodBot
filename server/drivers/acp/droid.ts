@@ -1,3 +1,4 @@
+import { userPrompt } from "../../prompt-once.ts";
 // Factory Droid harness support — the `droid` CLI over ACP stdio
 // (`droid exec -o acp`), on the Factory login (~/.factory/auth.v2.file) or a
 // FACTORY_API_KEY. The generic protocol runtime lives in acp/core.ts; this
@@ -247,7 +248,7 @@ const support: AcpSupport = {
 
   // House convention for ACP harnesses (grok, gemini, kimi all do this): the
   // persona rides in the prompt text rather than a CLI system-prompt flag.
-  buildPromptText: (turn) => (turn.system ? `${turn.system}\n\n${turn.text}` : turn.text),
+  buildPromptText: (turn, ctx) => userPrompt(turn.system, turn.text, ctx?.resumed === true, turn.systemUpdate),
 };
 
 export const DroidAgentDriver = createAcpDriver(support);
