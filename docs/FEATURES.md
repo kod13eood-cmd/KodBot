@@ -80,6 +80,20 @@ Status keys:
 
 ## What's new in this build
 
+### Faster follow-up turns — Live
+
+- ACP engines (Grok, Gemini, Kimi, Droid, Hermes, Qwen, OpenCode, OpenCode Go) keep their process warm for 10 minutes after a successful turn. The next message prompts the same session instead of spawning the CLI and loading the session again.
+- Up to four processes stay parked per engine. A different working folder, model, MCP tool set or environment, or permission policy starts a fresh process; an idle or failed session is evicted.
+- The stable system layer (persona, guide, contracts) is sent once per prompt-style session. Memory, page lists, computer notes, tagged teammates and webhook notes ride every turn; resumed sessions no longer repeat the standing block as if the user had typed it.
+- When a fresh engine has to replay the thread, a short recent-tool trace is included, so the model knows what was already tried without a screenshot replay.
+
+### Work alone — Live
+
+- A per-bot toggle in **Bot settings**. When a turn stops with an open checklist or a denied tool, the bot continues once on its own after two seconds.
+- It does not widen approvals. Destructive commands, secrets, sudo, payments and outbound calls still ask a person; the follow-up turn is marked unattended, which turns automatic approval **off** rather than on.
+- If the follow-up is still unfinished, the bot posts a **This still needs you** card and waits for the person. A new message from the person resets the one-retry budget.
+- Off by default; desktop setting only for now (Android parity is planned).
+
 ### Bot body shapes — Live
 
 Ten silhouettes instead of one triangle: **Orb, Bubble, Pill, Hex, Diamond,

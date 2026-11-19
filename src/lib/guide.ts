@@ -49,7 +49,9 @@ KodBot е local-first chat приложение за екип от AI агент
 - **Enter** sends; **Shift+Enter** adds a line.
 - **Ctrl+Enter** while the bot is busy puts the prompt in the floating queue above the composer. It sends one prompt after the current turn finishes; you can discard an item.
 - **Stop** interrupts the running turn. Editing your own message rewinds the conversation and keeps the old version as a branch.
-- **Reply** (arrow on a message) quotes that message. The bot receives the quoted excerpt, so it knows which answer you mean.`,
+- **Reply** (arrow on a message) quotes that message. The bot receives the quoted excerpt, so it knows which answer you mean.
+- **Bot settings → Work alone** lets a bot continue an unfinished turn once — for example, a remaining checklist or a denied command. It never widens permissions: destructive, secret, sudo, and outbound actions still ask. If the second attempt is still unfinished, a **This still needs you** card asks you to decide.
+- Follow-up turns keep the engine process warm for up to 10 minutes, so the bot continues the same session without loading it again. Up to four processes stay parked; a different folder, model, tool set, or permission policy starts a fresh one.`,
       bg: `## Ботове, модели и чатове
 
 - Създай бот с **+ → New Bot**. Отвори **Bot settings** от аватара му, за да смениш име, роля, модел, памет, работна папка, глас и известия.
@@ -57,7 +59,9 @@ KodBot е local-first chat приложение за екип от AI агент
 - **Enter** изпраща; **Shift+Enter** добавя нов ред.
 - **Ctrl+Enter**, докато ботът е зает, слага промпта в плаващата опашка над composer-а. Изпраща се по един след края на текущия ход; можеш да изхвърлиш елемент.
 - **Stop** прекъсва текущия ход. Редакцията на твое съобщение връща разговора назад и пази старата версия като branch.
-- **Reply** (стрелката на съобщение) цитира това съобщение. Ботът получава цитата и знае за кой отговор става дума.`,
+- **Reply** (стрелката на съобщение) цитира това съобщение. Ботът получава цитата и знае за кой отговор става дума.
+- **Bot settings → Work alone** позволява на бота да довърши незавършен ход веднъж — например останал checklist или отказана команда. Не разширява права: разрушителни, секретни, sudo и изходящи действия пак питат. Ако и вторият опит е незавършен, карта **This still needs you** те пита да решиш.
+- Следващите ходове пазят engine процеса топъл до 10 минути, така че ботът продължава същата сесия без ново зареждане. До четири процеса стоят паркирани; различна папка, модел, набор инструменти или permission политика стартират нов.`,
     },
   },
   {
