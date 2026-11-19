@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bug, ChevronDown, ChevronRight, RefreshCw, X } from "lucide-react";
 import { useStore, type Bot } from "@/state/store";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n";
 import { windowsTitlebarInset } from "@/lib/window-chrome";
 import { formatTime, toRows, type InspectorEntry, type InspectorPage, type InspectorRow } from "@/lib/inspector";
 import type { RuntimeEvent } from "../../server/contracts.ts";
@@ -20,6 +21,7 @@ import type { RuntimeEvent } from "../../server/contracts.ts";
 type Lens = "events" | "raw";
 
 export function InspectorPanel({ bot }: { bot: Bot }) {
+  const { t } = useI18n();
   const { dispatch } = useStore();
   const threadId = bot.threadId;
   const [lens, setLens] = useState<Lens>("events");
@@ -122,12 +124,12 @@ export function InspectorPanel({ bot }: { bot: Bot }) {
     <aside className="animate-panel-in relative z-40 flex h-full w-[460px] shrink-0 flex-col border-l border-hairline/40 bg-panel">
       <div className={cn("flex items-center justify-between px-4 py-3", windowsTitlebarInset())}>
         <span className="flex items-center gap-2 text-[15px] font-semibold text-ink">
-          <Bug size={16} className="text-ink-secondary" /> Inspector
+          <Bug size={16} className="text-ink-secondary" /> {t("Inspector")}
         </span>
         <button
           onClick={() => dispatch({ type: "toggleInspector", open: false })}
-          aria-label="Close the Inspector"
-          title="Close the Inspector"
+          aria-label={t("Close the Inspector")}
+          title={t("Close the Inspector")}
           className="rounded-md p-1 text-ink-secondary hover:bg-raised hover:text-ink"
         >
           <X size={18} />

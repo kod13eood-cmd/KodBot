@@ -103,6 +103,14 @@ export function AboutSection() {
             {t("Desktop and server versions differ.")}
           </div>
         )}
+        <a
+          href="/changelog"
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 inline-flex text-[12.5px] font-medium text-accent hover:underline"
+        >
+          {t("Public changelog")} ↗
+        </a>
         {error && <div className="mt-2 text-[12px] text-danger">{error}</div>}
         {server && (
           <div className="mt-3">

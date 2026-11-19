@@ -3,7 +3,7 @@
 // is the stuff shared by every bot: who you are, your keys, and the
 // machine your bots can borrow.
 import { useEffect, useRef, useState } from "react";
-import { Coins, Info, KeyRound, Monitor, Smartphone, Terminal, User, Volume2, X } from "lucide-react";
+import { BookOpen, Coins, Info, KeyRound, Monitor, Smartphone, Terminal, User, Volume2, X } from "lucide-react";
 import { useStore, type AppSettingsSection } from "@/state/store";
 import { ApiKeyRow } from "./ApiKeys";
 import { useUpdaterState } from "@/lib/updater";
@@ -14,6 +14,7 @@ import { CompanionSection } from "./CompanionSection";
 import { Card } from "./SettingsPrimitives";
 import { UsageSection } from "./UsageSection";
 import { AboutSection } from "./AboutSection";
+import { KnowledgeSettings } from "./KnowledgeSettings";
 import { VoiceSettings } from "./VoiceSettings";
 import { openShortcutsSheet, SHORTCUTS_KEY_LABEL } from "./ShortcutsSheet";
 import { cn } from "@/lib/cn";
@@ -30,6 +31,7 @@ const SECTIONS: Array<{ id: AppSettingsSection; label: string; icon: typeof User
   { id: "engines", label: "Engines", icon: Terminal },
   { id: "companion", label: "Companion", icon: Smartphone },
   { id: "computer", label: "Local VM", icon: Monitor },
+  { id: "knowledge", label: "Knowledge", icon: BookOpen },
   { id: "voice", label: "Voice", icon: Volume2 },
   { id: "usage", label: "Usage", icon: Coins },
   { id: "about", label: "About", icon: Info },
@@ -642,6 +644,8 @@ export function SettingsModal() {
             {section === "voice" && <VoiceSettings />}
 
             {section === "computer" && <LocalComputerSection />}
+
+            {section === "knowledge" && <KnowledgeSettings />}
 
             {section === "usage" && <UsageSection />}
 

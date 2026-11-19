@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   ArrowDown,
+  BookOpen,
   Brain,
   Check,
   ChevronDown,
@@ -27,6 +28,7 @@ import {
 import { costCaption, formatTokens, formatUsd, usageChip } from "@/lib/usage";
 import { publicBase } from "@/lib/public-url";
 import {
+  api,
   useStore,
   useStreaming,
   formatTime,
@@ -371,6 +373,9 @@ function Bubble({
         )}
         {user && message.kind === "text" && <ReactionBar threadId={bot.threadId} message={message} />}
         {user && <CopyButton text={visibleText} />}
+        {!user && message.kind === "text" && Boolean(text.trim()) && (
+          <SaveKnowledgeButton bot={bot} message={message} />
+        )}
         <div
           className={cn(
             "max-w-[70%] rounded-2xl text-[15px] leading-relaxed",
@@ -1318,5 +1323,124 @@ function WorkingFolderChip({ bot }: { bot: Bot }) {
       <Folder size={12} />
       <span className="truncate font-mono">{name}</span>
     </button>
+  );
+}
+
+function SaveKnowledgeButton({ bot, message }: { bot: Bot; message: Message }) {
+  const { state } = useStore();
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [scope, setScope] = useState("global");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const teams = state.teams;
+  const team = teams.find((entry) => entry.memberIds.includes(bot.id) || entry.leaderBotId === bot.id);
+  const text = message.text ?? "";
+
+  const start = () => {
+    setTitle(text.split(/\r?\n/).find((line) => line.trim())?.replace(/\s+/g, " ").trim().slice(0, 80) ?? "");
+    setBody(text);
+    setScope("global");
+    setError(null);
+    setOpen(true);
+  };
+
+  const save = async () => {
+    if (!title.trim() || !body.trim() || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const data = (await api("/api/knowledge")) as {
+        global: { core: string; topics: Array<Record<string, unknown>> };
+        teams: Array<{ id: string; book: { core: string; topics: Array<Record<string, unknown>> } }>;
+      };
+      const book = scope === "global" ? data.global : data.teams.find((entry) => entry.id === scope)?.book;
+      if (!book) throw new Error(t("That team no longer exists."));
+      const topics = [...book.topics, { title: title.trim(), body: body.trim() }];
+      const path = scope === "global" ? "/api/knowledge/global" : `/api/knowledge/teams/${scope}`;
+      await api(path, { method: "PUT", body: JSON.stringify({ core: book.core, topics }) });
+      setOpen(false);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        onClick={start}
+        aria-label={t("Save to knowledge")}
+        title={t("Save to knowledge")}
+        className="rounded-md p-1.5 text-ink-secondary opacity-0 transition-opacity hover:bg-raised hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+      >
+        <BookOpen size={14} />
+      </button>
+      {open &&
+        createPortal(
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]">
+            <div className="w-full max-w-[620px] rounded-2xl border border-hairline/50 bg-panel p-5 shadow-2xl">
+              <div className="text-[16px] font-semibold text-ink">{t("Save this to shared knowledge?")}</div>
+              <div className="mt-1 text-[12.5px] leading-relaxed text-ink-secondary">
+                {t("A person decides what becomes durable company or team knowledge. Secrets never belong here.")}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  onClick={() => setScope("global")}
+                  className={scope === "global" ? "rounded-full bg-accent px-3 py-1.5 text-[12px] font-medium text-white" : "rounded-full bg-raised px-3 py-1.5 text-[12px] text-ink-secondary"}
+                >
+                  {t("All bots")}
+                </button>
+                {team && (
+                  <button
+                    onClick={() => setScope(team.id)}
+                    className={scope === team.id ? "rounded-full bg-accent px-3 py-1.5 text-[12px] font-medium text-white" : "rounded-full bg-raised px-3 py-1.5 text-[12px] text-ink-secondary"}
+                  >
+                    {team.name}
+                  </button>
+                )}
+              </div>
+              <label className="mt-3 block text-[12px] text-ink-secondary" htmlFor={`knowledge-title-${message.id}`}>
+                {t("Title")}
+              </label>
+              <input
+                id={`knowledge-title-${message.id}`}
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                maxLength={160}
+                className="mt-1 w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13.5px] text-ink focus:border-hairline focus:outline-none"
+              />
+              <label className="mt-3 block text-[12px] text-ink-secondary" htmlFor={`knowledge-body-${message.id}`}>
+                {t("Text")}
+              </label>
+              <textarea
+                id={`knowledge-body-${message.id}`}
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+                rows={7}
+                className="mt-1 w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] leading-relaxed text-ink focus:border-hairline focus:outline-none"
+              />
+              {error && <div className="mt-2 rounded-lg bg-danger/10 px-3 py-2 text-[12px] text-danger">{error}</div>}
+              <div className="mt-4 flex justify-end gap-2">
+                <button onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-[13px] text-ink-secondary hover:bg-raised">
+                  {t("Cancel")}
+                </button>
+                <button
+                  onClick={() => void save()}
+                  disabled={saving || !title.trim() || !body.trim()}
+                  className="rounded-lg bg-accent px-4 py-2 text-[13px] font-medium text-white disabled:opacity-50"
+                >
+                  {saving ? t("Saving…") : t("Save knowledge")}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }

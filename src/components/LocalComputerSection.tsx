@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Card, CommandLine } from "./SettingsPrimitives";
+import { useI18n } from "@/lib/i18n";
 import { LocalVmViewer } from "./LocalVmViewer";
 import { cn } from "@/lib/cn";
 
@@ -100,6 +101,7 @@ function ActionButton({
 }
 
 export function LocalComputerSection() {
+  const { t } = useI18n();
   const [status, setStatus] = useState<Status | null>(null);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<Action | null>(null);
@@ -157,11 +159,11 @@ export function LocalComputerSection() {
   const act = async (action: Action) => {
     if (
       action === "remove" &&
-      !window.confirm("Delete the Local VM? Files and browser sign-ins in its durable workspace will remain.")
+      !window.confirm(t("Delete the Local VM? Files and browser sign-ins in its durable workspace will remain."))
     ) return;
     if (
       action === "recreate" &&
-      !window.confirm("Replace the existing Local VM with the pinned image and safety limits? Files and browser sign-ins in its durable workspace will remain.")
+      !window.confirm(t("Replace the existing Local VM with the pinned image and safety limits? Files and browser sign-ins in its durable workspace will remain."))
     ) return;
     setPending(action);
     setError(null);
@@ -211,7 +213,7 @@ export function LocalComputerSection() {
             )}
           >
             {loading ? <Loader2 size={12} className="animate-spin" /> : ready ? <Check size={12} /> : <Circle size={9} />}
-            {loading ? "Checking…" : unavailable ? "Status unavailable" : ready ? "Ready" : (status?.problem ?? "Not ready")}
+            {loading ? t("Checking…") : unavailable ? t("Status unavailable") : ready ? t("Ready") : (status?.problem ?? t("Not ready"))}
           </span>
           <button
             onClick={() => {
@@ -221,7 +223,7 @@ export function LocalComputerSection() {
             disabled={loading || pending !== null}
             className="flex items-center gap-1.5 rounded-lg border border-hairline/40 px-2.5 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40"
           >
-            <RefreshCw size={12} /> Re-check
+            <RefreshCw size={12} /> {t("Re-check")}
           </button>
           {ready && (
             <button
@@ -229,7 +231,7 @@ export function LocalComputerSection() {
               onClick={() => setViewerOpen(true)}
               className="flex items-center gap-1.5 rounded-lg border border-hairline/40 px-2.5 py-1 text-[12.5px] text-ink hover:bg-raised"
             >
-              <Monitor size={12} /> Open computer
+              <Monitor size={12} /> {t("Open computer")}
             </button>
           )}
         </div>
@@ -238,39 +240,39 @@ export function LocalComputerSection() {
 
       <Card title="Setup" subtitle="Once a container runtime is open, KodBot prepares Cua and the VM for you.">
         <div className="flex flex-col gap-4">
-          <Step n={1} title="Install a container runtime" done={Boolean(status?.runtime)}>
+          <Step n={1} title={t("Install a container runtime")} done={Boolean(status?.runtime)}>
             <div className="text-[13px] leading-relaxed text-ink-secondary">
-              Podman and Colima are free. Docker Desktop may require a paid licence for larger companies and government use.
+              {t("Podman and Colima are free. Docker Desktop may require a paid licence for larger companies and government use.")}
             </div>
             {c?.install ? (
               <CommandLine command={c.install} />
             ) : (
               <a href="https://podman.io/docs/installation" target="_blank" rel="noreferrer" className="text-[13px] text-accent hover:underline">
-                Open the Podman installation guide
+                {t("Open the Podman installation guide")}
               </a>
             )}
           </Step>
 
           <Step
             n={2}
-            title={status?.runtime && !status.daemonUp ? `Open and start ${status.runtime}` : "Start the container runtime"}
+            title={status?.runtime && !status.daemonUp ? t("Open and start {runtime}", { runtime: status.runtime }) : t("Start the container runtime")}
             done={Boolean(status?.daemonUp)}
           >
             {!status?.runtime ? null : c?.runtimeStart ? (
               <CommandLine command={c.runtimeStart} />
             ) : (
-              <div className="text-[13px] text-ink-secondary">Open the installed runtime and start its engine, then re-check.</div>
+              <div className="text-[13px] text-ink-secondary">{t("Open the installed runtime and start its engine, then re-check.")}</div>
             )}
           </Step>
 
-          <Step n={3} title="Prepare the Cua desktop (one-time download and build)" done={Boolean(status?.image)}>
+          <Step n={3} title={t("Prepare the Cua desktop (one-time download and build)")} done={Boolean(status?.image)}>
             {status?.daemonUp && (
-              <ActionButton action="pull" pending={pending} onClick={() => void act("pull")}>Prepare Cua desktop</ActionButton>
+              <ActionButton action="pull" pending={pending} onClick={() => void act("pull")}>{t("Prepare Cua desktop")}</ActionButton>
             )}
-            {c?.pull && <details className="text-[12px] text-ink-secondary"><summary className="cursor-pointer">Show base-image download</summary><div className="mt-2"><CommandLine command={c.pull} /></div></details>}
+            {c?.pull && <details className="text-[12px] text-ink-secondary"><summary className="cursor-pointer">{t("Show base-image download")}</summary><div className="mt-2"><CommandLine command={c.pull} /></div></details>}
           </Step>
 
-          <Step n={4} title={needsRecreate ? "Replace the older or unsafe VM" : "Create and start the Local VM"} done={ready}>
+          <Step n={4} title={needsRecreate ? t("Replace the older or unsafe VM") : t("Create and start the Local VM")} done={ready}>
             {needsRecreate ? (
               <>
                 <div className="flex gap-2 text-[13px] text-warning">
@@ -279,20 +281,20 @@ export function LocalComputerSection() {
                 </div>
                 {status?.image ? (
                   <ActionButton action="recreate" pending={pending} onClick={() => void act("recreate")} danger>
-                    <RotateCcw size={13} /> Delete and recreate
+                    <RotateCcw size={13} /> {t("Delete and recreate")}
                   </ActionButton>
                 ) : (
-                  <div className="text-[13px] text-ink-secondary">Prepare the pinned Cua desktop above before replacing this VM.</div>
+                  <div className="text-[13px] text-ink-secondary">{t("Prepare the pinned Cua desktop above before replacing this VM.")}</div>
                 )}
               </>
             ) : status?.container === "stopped" ? (
-              <ActionButton action="start" pending={pending} onClick={() => void act("start")}>Start Local VM</ActionButton>
+              <ActionButton action="start" pending={pending} onClick={() => void act("start")}>{t("Start Local VM")}</ActionButton>
             ) : status?.container === "running" ? (
-              <div className="flex items-center gap-2 text-[13px] text-ink-secondary"><Loader2 size={13} className="animate-spin" /> Waiting for the desktop…</div>
+              <div className="flex items-center gap-2 text-[13px] text-ink-secondary"><Loader2 size={13} className="animate-spin" /> {t("Waiting for the desktop…")}</div>
             ) : status?.image ? (
-              <ActionButton action="run" pending={pending} onClick={() => void act("run")}>Create Local VM</ActionButton>
+              <ActionButton action="run" pending={pending} onClick={() => void act("run")}>{t("Create Local VM")}</ActionButton>
             ) : null}
-            {c?.run && <details className="text-[12px] text-ink-secondary"><summary className="cursor-pointer">Show command</summary><div className="mt-2"><CommandLine command={c.run} /></div></details>}
+            {c?.run && <details className="text-[12px] text-ink-secondary"><summary className="cursor-pointer">{t("Show command")}</summary><div className="mt-2"><CommandLine command={c.run} /></div></details>}
           </Step>
         </div>
       </Card>
@@ -301,7 +303,7 @@ export function LocalComputerSection() {
         <Card>
           <div className="flex gap-2 text-[13px] text-ink-secondary">
             <AlertTriangle size={15} className="mt-0.5 shrink-0 text-warning" />
-            <span>KodBot could not inspect the container runtime. Re-check, or review the app logs.</span>
+            <span>{t("KodBot could not inspect the container runtime. Re-check, or review the app logs.")}</span>
           </div>
         </Card>
       )}
@@ -314,17 +316,17 @@ export function LocalComputerSection() {
           <div className="flex flex-wrap gap-2">
             {status?.container === "running" && (
               <ActionButton action="stop" pending={pending} onClick={() => void act("stop")}>
-                <Square size={12} /> Stop
+                <Square size={12} /> {t("Stop")}
               </ActionButton>
             )}
             <ActionButton action="remove" pending={pending} onClick={() => void act("remove")} danger>
-              <Trash2 size={12} /> Delete VM
+              <Trash2 size={12} /> {t("Delete VM")}
             </ActionButton>
           </div>
         )}
         <div className="mt-3 break-all text-[11px] text-ink-secondary">
-          Durable workspace: {status?.workspace_path ?? "not created"} ·{" "}
-          Cua Driver: {status?.driver_version ?? "0.20.0"} · Local image: {status?.image_ref ?? "not prepared"}
+          {t("Durable workspace:")} {status?.workspace_path ?? t("not created")} ·{" "}
+          {t("Cua Driver:")} {status?.driver_version ?? "0.20.0"} · {t("Local image:")} {status?.image_ref ?? t("not prepared")}
           {status?.base_image_ref ? <> · Base: {status.base_image_ref}</> : null}
         </div>
       </Card>

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Circle, ExternalLink, Loader2, Maximize2, Minimize2, Monitor, Square, X } from "lucide-react";
 
 import { useStore } from "@/state/store";
+import { useI18n } from "@/lib/i18n";
 
 interface Recording {
   id: string;
@@ -16,6 +17,7 @@ interface Recording {
 
 export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => void }) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const shell = useRef<HTMLDivElement>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [recording, setRecording] = useState<Recording | null>(null);
@@ -87,7 +89,7 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
         body: JSON.stringify({ name }),
       });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error ?? "Couldn't start the recording");
+      if (!response.ok) throw new Error(body.error ?? t("Couldn't start the recording"));
       setRecording(body.recording as Recording);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
@@ -106,7 +108,7 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
         body: "{}",
       });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error ?? "Couldn't stop the recording");
+      if (!response.ok) throw new Error(body.error ?? t("Couldn't stop the recording"));
       setSaved(body.recording as Recording);
       setRecording(null);
     } catch (error) {
@@ -127,7 +129,7 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
         "Include the steps, the exact controls/coordinates used, the expected result, and any gotchas. Do not replay or execute the recorded actions yet.",
       ].join(" "),
     });
-    setMessage(`Sent to ${selectedBot.name}.`);
+    setMessage(t("Sent to {name}.", { name: selectedBot.name }));
     setSaved(null);
   };
 
@@ -152,16 +154,16 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
         ref={shell}
         role="dialog"
         aria-modal="true"
-        aria-label="Local VM"
+        aria-label={t("Local VM")}
         className="relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-xl border border-hairline/40 bg-panel shadow-2xl sm:rounded-2xl"
       >
         <div className="flex items-center justify-between gap-3 border-b border-hairline/30 px-3 py-2">
           <div className="flex min-w-0 items-center gap-2">
             <Monitor size={16} className="shrink-0 text-accent" />
             <div className="min-w-0">
-              <div className="truncate text-[14px] font-medium text-ink">Local VM</div>
+              <div className="truncate text-[14px] font-medium text-ink">{t("Local VM")}</div>
               <div className="truncate text-[11.5px] text-ink-secondary">
-                You and the bot share this desktop. Use it normally; ask the bot to take a screenshot when you want it to observe.
+                {t("You and the bot share this desktop. Use it normally; ask the bot to take a screenshot when you want it to observe.")}
               </div>
             </div>
           </div>
@@ -172,10 +174,10 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
                 onClick={() => void stop()}
                 disabled={busy}
                 className="flex items-center gap-1.5 rounded-md bg-danger/15 px-2 py-1 text-[11.5px] font-medium text-danger hover:bg-danger/25 disabled:opacity-50"
-                title="Stop and save the workflow recording"
+                title={t("Stop and save the workflow recording")}
               >
                 {busy ? <Loader2 size={13} className="animate-spin" /> : <Square size={12} />}
-                Stop & save
+                {t("Stop & save")}
               </button>
             ) : (
               <button
@@ -183,18 +185,18 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
                 onClick={openRecord}
                 disabled={busy}
                 className="flex items-center gap-1.5 rounded-md border border-hairline/40 px-2 py-1 text-[11.5px] text-ink hover:bg-raised disabled:opacity-50"
-                title="Record a workflow the bot can learn from"
+                title={t("Record a workflow the bot can learn from")}
               >
                 {busy ? <Loader2 size={13} className="animate-spin" /> : <Circle size={11} className="fill-danger text-danger" />}
-                Record
+                {t("Record")}
               </button>
             )}
             <button
               type="button"
               onClick={toggleFullscreen}
               className="rounded-md p-1.5 text-ink-secondary hover:bg-raised hover:text-ink"
-              title={fullscreen ? "Exit full screen" : "Full screen"}
-              aria-label={fullscreen ? "Exit full screen" : "Full screen"}
+              title={fullscreen ? t("Exit full screen") : t("Full screen")}
+              aria-label={fullscreen ? t("Exit full screen") : t("Full screen")}
             >
               {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             </button>
@@ -203,8 +205,8 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
               target="_blank"
               rel="noreferrer"
               className="rounded-md p-1.5 text-ink-secondary hover:bg-raised hover:text-ink"
-              title="Open in a new tab"
-              aria-label="Open in a new tab"
+              title={t("Open in a new tab")}
+              aria-label={t("Open in a new tab")}
             >
               <ExternalLink size={16} />
             </a>
@@ -212,8 +214,8 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
               type="button"
               onClick={close}
               className="rounded-md p-1.5 text-ink-secondary hover:bg-raised hover:text-ink"
-              title="Close"
-              aria-label="Close"
+              title={t("Close")}
+              aria-label={t("Close")}
             >
               <X size={16} />
             </button>
@@ -224,17 +226,17 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
             {saved && (
               <>
                 <Check size={13} className="text-success" />
-                <span className="text-ink-secondary">Workflow saved.</span>
+                <span className="text-ink-secondary">{t("Workflow saved.")}</span>
                 {selectedBot ? (
                   <button
                     type="button"
                     onClick={analyze}
                     className="rounded-md bg-accent px-2 py-0.5 font-medium text-white hover:brightness-110"
                   >
-                    Analyze with {selectedBot.name}
+                    {t("Analyze with {name}", { name: selectedBot.name })}
                   </button>
                 ) : (
-                  <span className="text-ink-secondary">Open a bot chat to analyze it.</span>
+                  <span className="text-ink-secondary">{t("Open a bot chat to analyze it.")}</span>
                 )}
               </>
             )}
@@ -256,10 +258,9 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
               }}
               className="w-full max-w-sm rounded-xl border border-hairline/40 bg-panel p-4 shadow-2xl"
             >
-              <div className="text-[14px] font-medium text-ink">Name this workflow</div>
+              <div className="text-[14px] font-medium text-ink">{t("Name this workflow")}</div>
               <div className="mt-1 text-[12px] leading-relaxed text-ink-secondary">
-                The viewer records your clicks, keys, and periodic screenshots. The bot can turn
-                them into a reusable workflow.
+                {t("The viewer records your clicks, keys, and periodic screenshots. The bot can turn them into a reusable workflow.")}
               </div>
               <input
                 autoFocus
@@ -270,7 +271,7 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
                 }}
                 maxLength={80}
                 className="mt-3 w-full rounded-lg border border-hairline/40 bg-raised px-3 py-2 text-[13px] text-ink outline-none focus:border-accent/60"
-                placeholder="Workflow name"
+                placeholder={t("Workflow name")}
               />
               <div className="mt-4 flex justify-end gap-2">
                 <button
@@ -278,7 +279,7 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
                   onClick={() => setNaming(false)}
                   className="rounded-md px-3 py-1.5 text-[12.5px] text-ink-secondary hover:bg-raised"
                 >
-                  Cancel
+                  {t("Cancel")}
                 </button>
                 <button
                   type="submit"
@@ -286,7 +287,7 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
                   className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[12.5px] font-medium text-white hover:brightness-110 disabled:opacity-50"
                 >
                   <Circle size={10} className="fill-current" />
-                  Start recording
+                  {t("Start recording")}
                 </button>
               </div>
             </form>

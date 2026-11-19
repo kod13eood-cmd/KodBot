@@ -47,6 +47,8 @@ KodBot е local-first chat приложение за екип от AI агент
 - Create a bot with **+ → New Bot**. Open **Bot settings** from its avatar to change the name, role, model, memory, working folder, voice, and notifications.
 - The model picker in the chat header chooses the engine/model for new turns. **Auto** picks from the bot's model pool. **Economy mode** (Bot settings, under Auto) lets a short simple question use a faster or free model; code and screen work stay on a strong model.
 - **Settings → Language** switches the app between English and Bulgarian. The Android app follows the phone language on first run and has the same switch.
+- **Settings → Knowledge** holds the shared core (who you are, mission, projects, skills, people) for every bot, plus a separate book for each team. Bots get the compact core every turn and read the full topics on demand. When a bot proposes a durable fact, use the book button on its reply to edit and approve it.
+- The public dated changelog is at **/changelog**; About → Public changelog opens it.
 - **Enter** sends; **Shift+Enter** adds a line.
 - **Ctrl+Enter** while the bot is busy puts the prompt in the floating queue above the composer. It sends one prompt after the current turn finishes; you can discard an item.
 - **Stop** interrupts the running turn. Editing your own message rewinds the conversation and keeps the old version as a branch.
@@ -62,7 +64,9 @@ KodBot е local-first chat приложение за екип от AI агент
 - **Stop** прекъсва текущия ход. Редакцията на твое съобщение връща разговора назад и пази старата версия като branch.
 - **Reply** (стрелката на съобщение) цитира това съобщение. Ботът получава цитата и знае за кой отговор става дума.
 - **Bot settings → Work alone** позволява на бота да довърши незавършен ход веднъж — например останал checklist или отказана команда. Не разширява права: разрушителни, секретни, sudo и изходящи действия пак питат. Ако и вторият опит е незавършен, карта **This still needs you** те пита да решиш.
-- Следващите ходове пазят engine процеса топъл до 10 минути, така че ботът продължава същата сесия без ново зареждане. До четири процеса стоят паркирани; различна папка, модел, набор инструменти или permission политика стартират нов.`,
+- Следващите ходове пазят engine процеса топъл до 10 минути, така че ботът продължава същата сесия без ново зареждане. До четири процеса стоят паркирани; различна папка, модел, набор инструменти или permission политика стартират нов.
+- **Settings → Knowledge** пази споделения core (кой си, мисия, проекти, умения, хора) за всички ботове, плюс отделна книга за всеки екип. Ботовете получават компактния core всеки ход и четат пълните теми при нужда. Когато бот предложи траен факт, използвай бутона с книгата на отговора му, за да го редактираш и одобриш.
+- Публичният dated changelog е на **/changelog**; About → Public changelog го отваря.`,
     },
   },
   {

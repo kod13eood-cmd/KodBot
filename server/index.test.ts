@@ -625,6 +625,32 @@ describe("harness HTTP API", () => {
     expect((await api("PATCH", "/api/bots/missing", { workAlone: true })).status).toBe(404);
   });
 
+  it("saves global and team knowledge and serves the public changelog", async () => {
+    const initial = await api("GET", "/api/knowledge");
+    expect(initial.status).toBe(200);
+    expect(initial.body.global).toMatchObject({ core: "", topics: [] });
+
+    const saved = await api("PUT", "/api/knowledge/global", {
+      core: "Owner: Ada\nMission: ship local-first tools.",
+      topics: [{ title: "Projects", body: "Atlas" }],
+    });
+    expect(saved.status).toBe(200);
+    expect(saved.body.book.topics[0]).toMatchObject({ title: "Projects", body: "Atlas" });
+
+    const reread = await api("GET", "/api/knowledge");
+    expect(reread.body.global.core).toContain("Ada");
+    expect(reread.body.global.topics).toHaveLength(1);
+
+    expect((await api("PUT", "/api/knowledge/global", { core: 5, topics: [] })).status).toBe(400);
+    expect((await api("PUT", "/api/knowledge/teams/missing-team", { core: "", topics: [] })).status).toBe(404);
+
+    const changelog = await fetch(`${BASE}/changelog`);
+    expect(changelog.status).toBe(200);
+    const html = await changelog.text();
+    expect(html).toContain("KodBot changelog");
+    expect(html).toContain("2026-11-19");
+  });
+
   it("persists an answered onboarding card", async () => {
     const { body } = await api("GET", "/api/bots");
     const bot = body.bots[0];

@@ -60,3 +60,8 @@ const guide = join(root, "docs", "USER-GUIDE.md");
 if (!existsSync(guide)) throw new Error("docs/USER-GUIDE.md is missing — run pnpm docs:guide");
 copyFileSync(guide, join(root, "dist-server", "USER-GUIDE.md"));
 console.log("dist-server/USER-GUIDE.md copied");
+
+const changelog = join(root, "CHANGELOG.md");
+if (!existsSync(changelog)) throw new Error("CHANGELOG.md is missing");
+copyFileSync(changelog, join(root, "dist-server", "CHANGELOG.md"));
+console.log("dist-server/CHANGELOG.md copied");

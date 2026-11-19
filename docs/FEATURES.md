@@ -82,6 +82,25 @@ Status keys:
 
 ## What's new in this build
 
+### Shared knowledge — Live
+
+- **Settings → Knowledge** holds a global book for every bot and a separate
+  book for each team: who the owner is, the mission, active projects, skills,
+  preferences, people, and longer topic notes.
+- Every turn gets the compact core plus a topic index. The full book is
+  snapshotted into each bot's private workspace (`shared-knowledge/`) and read
+  on demand, so a large knowledge base does not flood the context.
+- Bots propose durable facts in their reply; the book button on a bot message
+  opens a prefilled editor. A person edits and approves; nothing is saved
+  automatically. Team books are visible only to that team.
+- Core and topics are scrubbed for content-shaped secrets before saving.
+
+### Public changelog — Live
+
+- A dated, English changelog at **`/changelog`** on the harness, reachable
+  without an account. The source is `CHANGELOG.md` in the repo and ships with
+  the server bundle. About → Public changelog opens it.
+
 ### Skill routing and Economy — Live
 
 - Each Auto turn is classified as **code**, **screen**, **translate**, or

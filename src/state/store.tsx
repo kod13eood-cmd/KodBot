@@ -342,6 +342,7 @@ export type AppSettingsSection =
   | "companion"
   | "voice"
   | "computer"
+  | "knowledge"
   | "usage"
   | "about";
 
