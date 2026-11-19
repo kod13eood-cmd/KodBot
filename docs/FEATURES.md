@@ -113,8 +113,9 @@ Status keys:
 
 ### Paused routine offers — Live
 
-- After a finished turn with at least two tool steps, the bot offers **Save
-  this as a routine?** with an editable prompt and time.
+- After a finished turn with at least two tool steps, the bot can offer **Save
+  this as a routine?** with an editable prompt and time. The offer is opt-in per
+  bot (**Suggest routines**, off by default).
 - Saving creates a **paused** one-time routine; it does not arm the clock.
   Skipping leaves the transcript untouched. Scheduled and automated runs never
   offer one.
@@ -190,6 +191,12 @@ Sending while a bot or room is busy no longer drops a stale bubble into the
 chat. The prompt waits in a floating queue above the composer, where it can be
 discarded, and it is sent one at a time as each turn finishes. The queue lives
 outside the chat, so switching bots or rooms does not lose it.
+
+**Send now** on a queued prompt joins the running turn when the engine supports
+mid-turn steering (ACP `_session/steering`, Codex `turn/steer`) — the bot can
+change course without stopping. Engines without it keep the message in the
+persistent steer-queue and run it at the next safe point, the end of the turn.
+Press **Enter on the focused queued card** or use its send button.
 
 ### Developer mode — Live
 

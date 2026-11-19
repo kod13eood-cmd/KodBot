@@ -96,6 +96,8 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
       stop: () => void;
       turnId: string;
       asks: Map<string, (behavior: "allow" | "deny" | "answer", message?: string, source?: "user" | "timeout" | "system") => void>;
+      /** Codex app-server `turn/steer`, when the running turn id is known. */
+      steer?: (text: string) => Promise<boolean>;
     }
     const active = new Map<string, Turn>();
 
@@ -460,7 +462,7 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
             startedModel = started?.model ?? null;
           }
           emit({ ...base(threadId, turnId), type: "session.started", sessionId: codexThreadId, model: startedModel ?? turn.model ?? null });
-          await request("turn/start", {
+          const turnStarted = await request("turn/start", {
             threadId: codexThreadId,
             input: [
               {
@@ -479,6 +481,25 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
             // thread rather than the current one.
             ...(turn.effort ? { effort: turn.effort } : {}),
           });
+          const expectedTurnId =
+            turnStarted?.turn?.id ?? turnStarted?.turnId ?? turnStarted?.id ?? null;
+          if (codexThreadId && expectedTurnId) {
+            const live = active.get(threadId);
+            if (live) {
+              live.steer = async (text: string) => {
+                try {
+                  await request("turn/steer", {
+                    threadId: codexThreadId,
+                    expectedTurnId,
+                    input: [{ type: "text", text }],
+                  });
+                  return true;
+                } catch {
+                  return false;
+                }
+              };
+            }
+          }
         } catch (e) {
           if (!state.settled) {
             const message = e instanceof Error ? e.message : String(e);
@@ -535,6 +556,7 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
         },
         sendTurn,
         interruptTurn: async (threadId) => active.get(threadId)?.stop(),
+        steerTurn: async (threadId, text) => active.get(threadId)?.steer?.(text) ?? false,
         respondToRequest: async (threadId, requestId, decision) => {
           const turn = active.get(threadId);
           const finish = turn?.asks.get(requestId);

@@ -1352,7 +1352,12 @@ bus.subscribe((event: RuntimeEvent) => {
               options: ["I'll take it from here"],
             },
           });
-        } else if (event.ok && !facts.denied && !openList) {
+        } else if (
+          event.ok &&
+          !facts.denied &&
+          !openList &&
+          (store.bot(bot.id)?.offerRoutines ?? cfg.offerRoutines === true)
+        ) {
           // One offer per thread: an unanswered draft already on screen is
           // the same question, and repeating it would just be noise.
           const pending = store.messagesFor(event.threadId).some(
@@ -2742,6 +2747,7 @@ function configStatus() {
     approvalTimeoutMinutes: cfg.approvalTimeoutMinutes === undefined
       ? APPROVAL_TIMEOUT_DEFAULT_MINUTES
       : cfg.approvalTimeoutMinutes,
+    offerRoutines: cfg.offerRoutines === true,
   };
 }
 
@@ -3997,6 +4003,13 @@ const server = createServer(async (req, res) => {
         if (typeof body.shareTeamComputer !== "boolean") return json(res, 400, { error: "shareTeamComputer must be true or false" });
         patch.shareTeamComputer = body.shareTeamComputer;
       }
+      if (body.offerRoutines !== undefined) {
+        if (body.offerRoutines !== null && typeof body.offerRoutines !== "boolean") {
+          return json(res, 400, { error: "offerRoutines must be true, false, or null" });
+        }
+        // null clears the per-bot override and follows the app default.
+        patch.offerRoutines = body.offerRoutines === null ? undefined : body.offerRoutines;
+      }
       if (body.mascotShape !== undefined) {
         if (
           body.mascotShape !== null &&
@@ -4220,6 +4233,44 @@ const server = createServer(async (req, res) => {
         },
       });
       return json(res, 200, { message: patched });
+    }
+    // "Send now" on a queued prompt: try to join the running turn at a safe
+    // point. Engines without mid-turn steering fall back to the persistent
+    // steer-queue, exactly like an ordinary send while busy.
+    m = path.match(/^\/api\/bots\/([\w-]+)\/steer$/);
+    if (m && method === "POST") {
+      const body = await readBody(req);
+      const text = String(body.text ?? "").trim();
+      if (!text) return json(res, 400, { error: "text required" });
+      const bot = store.bot(m[1]);
+      if (!bot) return json(res, 404, { error: "no such bot" });
+      const replyTo = body.replyTo ? resolveReply(bot.threadId, body.replyTo) : undefined;
+      if (!bot.busy) {
+        // The turn settled between the click and the request: this is now an
+        // ordinary send, not a steer.
+        void startTurn(bot.id, text, { ...(replyTo ? { replyTo } : {}) }).catch(() => undefined);
+        return json(res, 202, { mode: "sent" });
+      }
+      if (body.replyTo && !replyTo) return json(res, 400, { error: "no such message to reply to" });
+      const steeringText = replyTo ? `${replyContext(replyTo)}\n\n${text}` : text;
+      const instance = registry.get(bot.modelSelection.instanceId);
+      let injected = false;
+      try {
+        injected = (await instance?.adapter.steerTurn?.(bot.threadId, steeringText)) === true;
+      } catch {
+        injected = false;
+      }
+      if (injected) {
+        const message = store.appendMessage(bot.threadId, {
+          role: "user",
+          kind: "text",
+          text,
+          ...(replyTo ? { replyTo } : {}),
+        });
+        return json(res, 200, { mode: "injected", message });
+      }
+      const message = queueSteeredMessage(store, bot, text, replyTo);
+      return json(res, 200, { mode: "queued", message });
     }
     m = path.match(/^\/api\/bots\/([\w-]+)\/messages$/);
     if (m && method === "POST") {
@@ -5155,19 +5206,21 @@ const server = createServer(async (req, res) => {
       const botId = m[1];
       const bot = store.bot(botId);
       if (!bot) return json(res, 404, { error: "no such bot" });
+      const team = store.teams.find((entry) => entry.memberIds.includes(bot.id) || entry.leaderBotId === bot.id);
+      const scopeId = computerScopeId(bot.id, bot.shareTeamComputer, team?.id);
       switch (m[2]) {
         case "provision":
-          return json(res, 200, await box.provisionBox(cfg, botId, bot.name));
+          return json(res, 200, await box.provisionBox(cfg, scopeId, bot.name));
         case "join":
-          return json(res, 200, await box.joinBox(cfg, botId));
+          return json(res, 200, await box.joinBox(cfg, scopeId));
         case "sleep":
-          return json(res, 200, await box.sleepBox(cfg, botId));
+          return json(res, 200, await box.sleepBox(cfg, scopeId));
         case "exec": {
           const body = await readBody(req);
-          return json(res, 200, await box.execOnBox(cfg, botId, String(body.command ?? "")));
+          return json(res, 200, await box.execOnBox(cfg, scopeId, String(body.command ?? "")));
         }
         case "screenshot":
-          return json(res, 200, await box.screenshotBox(cfg, botId));
+          return json(res, 200, await box.screenshotBox(cfg, scopeId));
       }
     }
 

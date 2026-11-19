@@ -577,6 +577,18 @@ describe("harness HTTP API", () => {
     expect((await api("PATCH", "/api/bots/missing/auto-model", { autoModel: false })).status).toBe(404);
   });
 
+  it("keeps routine suggestions off by default and round-trips the opt-in", async () => {
+    const bot = (await api("POST", "/api/bots")).body.bot;
+    expect(bot.offerRoutines).toBeUndefined();
+    expect((await api("PATCH", `/api/bots/${bot.id}`, { offerRoutines: "yes" })).status).toBe(400);
+    const on = await api("PATCH", `/api/bots/${bot.id}`, { offerRoutines: true });
+    expect(on.status).toBe(200);
+    expect(on.body.bot.offerRoutines).toBe(true);
+    const off = await api("PATCH", `/api/bots/${bot.id}`, { offerRoutines: false });
+    expect(off.status).toBe(200);
+    expect(off.body.bot.offerRoutines).toBe(false);
+  });
+
   it("round-trips the team-shared computer opt-in", async () => {
     const bot = (await api("POST", "/api/bots")).body.bot;
     expect(bot.shareTeamComputer).toBeUndefined();
@@ -757,6 +769,17 @@ describe("harness HTTP API", () => {
 
     const nothing = await api("PUT", "/api/config", {});
     expect(nothing.status).toBe(400);
+  });
+
+  it("keeps routine suggestions off globally until enabled", async () => {
+    const before = await api("GET", "/api/config");
+    expect(before.body.offerRoutines).toBe(false);
+    const on = await api("PUT", "/api/config", { offerRoutines: true });
+    expect(on.status).toBe(200);
+    expect(on.body.offerRoutines).toBe(true);
+    const off = await api("PUT", "/api/config", { offerRoutines: false });
+    expect(off.status).toBe(200);
+    expect(off.body.offerRoutines).toBe(false);
   });
 
   it("reports the harness and runtime versions for About", async () => {

@@ -448,6 +448,56 @@ function HelpCard() {
   );
 }
 
+function RoutineOffersCard() {
+  const { state, dispatch } = useStore();
+  const { t } = useI18n();
+  const [saving, setSaving] = useState(false);
+  const enabled = state.config?.offerRoutines === true;
+  const save = (next: boolean) => {
+    if (saving) return;
+    setSaving(true);
+    void fetch("/api/config", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ offerRoutines: next }),
+    })
+      .then((response) => response.json())
+      .then((config) => dispatch({ type: "configStatus", config }))
+      .catch(() => {})
+      .finally(() => setSaving(false));
+  };
+  return (
+    <Card
+      title={t("Suggest routines")}
+      subtitle={t("After a finished multi-step turn, offer to save it as a paused routine. Off by default; a bot can override this in its own settings.")}
+    >
+      <div className="flex items-center justify-between gap-4 rounded-lg bg-inset px-3 py-2.5">
+        <span className="text-[13px] text-ink-secondary">
+          {enabled ? t("Routine offers are on by default.") : t("Routine offers are off by default.")}
+        </span>
+        <button
+          role="switch"
+          aria-checked={enabled}
+          aria-label={t("Suggest routines")}
+          disabled={saving}
+          onClick={() => save(!enabled)}
+          className={cn(
+            "relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors disabled:opacity-50",
+            enabled ? "bg-accent" : "bg-raised",
+          )}
+        >
+          <span
+            className={cn(
+              "absolute top-[3px] size-5 rounded-full bg-white transition-all",
+              enabled ? "left-[21px]" : "left-[3px]",
+            )}
+          />
+        </button>
+      </div>
+    </Card>
+  );
+}
+
 function GroupChatsCard() {
   const { t } = useI18n();
   const showGroups = useShowGroupChats();
@@ -603,6 +653,7 @@ export function SettingsModal() {
                 <ApprovalTimeoutCard />
                 <DeveloperCard />
                 <GroupChatsCard />
+                <RoutineOffersCard />
                 <HelpCard />
                 <ShortcutsRow />
                 <LanguageCard />

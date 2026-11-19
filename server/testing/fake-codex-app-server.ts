@@ -91,6 +91,9 @@ process.stdin.on("data", (chunk) => {
       case "thread/start":
         out({ jsonrpc: "2.0", id: msg.id, result: { thread: { id: "codex-thread-1" }, model: "fake-codex-model" } });
         break;
+      case "turn/steer":
+        out({ jsonrpc: "2.0", id: msg.id, result: { ok: true } });
+        break;
       case "turn/start":
         if (mode === "unauthorized") {
           out({
@@ -103,7 +106,7 @@ process.stdin.on("data", (chunk) => {
           });
           break;
         }
-        out({ jsonrpc: "2.0", id: msg.id, result: { ok: true } });
+        out({ jsonrpc: "2.0", id: msg.id, result: { turn: { id: "codex-turn-1" } } });
         notify("item/started", { item: { id: "i1", type: "commandExecution", command: "ls -la" } });
         if (mode === "approval") {
           out({ jsonrpc: "2.0", id: 100, method: "execCommandApproval", params: { command: "rm -rf scratch" } });

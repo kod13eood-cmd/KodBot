@@ -338,6 +338,9 @@ export interface BotRecord {
   workAlone?: boolean;
   /** Share one cloud computer with the bot's team. Off keeps it private. */
   shareTeamComputer?: boolean;
+  /** Offer to save a finished multi-step turn as a paused routine.
+   * Off by default: the offer is helpful only when asked for. */
+  offerRoutines?: boolean;
   /** Optional allowlist for auto routing. Entries are explicit consent to
    * send a turn to that engine/model; empty means the current engine. */
   autoModelPool?: ModelSelection[];

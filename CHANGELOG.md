@@ -1,5 +1,11 @@
 # KodBot changelog
 
+## 2026-11-19 — 0.1.60
+
+- Routine suggestions are now global + per-bot, off by default. Enable them in Settings → General or override them in Bot settings.
+- **Send now** on a queued prompt: press Enter on the focused card or click the send button. ACP and Codex engines can join the running turn at a safe point; other engines queue it for the end of the turn. This lets you correct or extend the current task without pressing Stop.
+- Fixed the team-shared cloud computer: provision, join, sleep, exec, and screenshot now resolve the same team scope as status and normal turns. Previously those actions still looked at the bot’s private box.
+
 ## 2026-11-19 — 0.1.59
 
 - Shared knowledge: a global core for every bot (owner, mission, projects, skills, preferences) plus a separate book for each team. The compact core rides every turn; full topics are snapshotted into each bot’s workspace and read on demand.

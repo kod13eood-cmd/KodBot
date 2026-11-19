@@ -85,6 +85,7 @@ if (argv.includes("--version")) {
 const out = (obj: unknown) => process.stdout.write(JSON.stringify(obj) + "\n");
 const result = (id: unknown, res: unknown) => out({ jsonrpc: "2.0", id, result: res });
 const rpcMethods: string[] = [];
+let promptActive = false;
 const recordMethod = (method: string) => {
   rpcMethods.push(method);
   if (process.env.FAKE_ACP_RPC_DUMP) writeFileSync(process.env.FAKE_ACP_RPC_DUMP, JSON.stringify(rpcMethods));
@@ -204,7 +205,14 @@ function handle(msg: any) {
         process.exit(3);
       }
       const authMethods = mode === "no-auth" ? [] : [{ id: "cached_token" }];
-      result(msg.id, { protocolVersion: 1, authMethods, _meta: { modelState: { currentModelId: "fake-acp-model" } } });
+      result(msg.id, {
+        protocolVersion: 1,
+        authMethods,
+        _meta: {
+          modelState: { currentModelId: "fake-acp-model" },
+          ...(process.env.FAKE_ACP_STEERING ? { steering: { supported: true } } : {}),
+        },
+      });
       break;
     }
     case "authenticate":
@@ -280,6 +288,20 @@ function handle(msg: any) {
       result(msg.id, { configOptions: configOptions() });
       break;
     }
+    case "_session/steering": {
+      if (!promptActive) {
+        result(msg.id, { outcome: "promptRequired", reason: "noRunningTurn" });
+        break;
+      }
+      const text = String(msg.params?.prompt?.[0]?.text ?? "");
+      out({
+        jsonrpc: "2.0",
+        method: "session/update",
+        params: { update: { sessionUpdate: "agent_message_chunk", content: { text: `\n[steered: ${text}]` } } },
+      });
+      result(msg.id, { outcome: "injected" });
+      break;
+    }
     case "session/prompt": {
       if (process.env.FAKE_ACP_PROMPT_DUMP) {
         const file = process.env.FAKE_ACP_PROMPT_DUMP;
@@ -288,12 +310,14 @@ function handle(msg: any) {
         prompts.push(String(msg.params?.prompt?.[0]?.text ?? ""));
         writeFileSync(file, JSON.stringify(prompts));
       }
+      promptActive = true;
       if (mode === "hang") {
         // never resolve the prompt — lets tests exercise interrupt
         setInterval(() => {}, 1_000);
         return;
       }
       const complete = () => {
+        promptActive = false;
         recordMethod("session/prompt.result");
         result(
           msg.id,

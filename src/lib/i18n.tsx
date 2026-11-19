@@ -244,6 +244,9 @@ const BULGARIAN: Record<string, string> = {
   // Composer
   "Queued — sends when {name} finishes: “{text}”":
     "На опашка — ще се изпрати, когато {name} приключи: „{text}“",
+  "Send now": "Изпрати сега",
+  "Send now — joins the running turn when the engine supports it":
+    "Изпрати сега — влиза в текущия ход, когато engine-ът го поддържа",
   "Discard queued message": "Изхвърли съобщението от опашката",
   "Tag a bot": "Спомени бот",
   "Answer the approval above to continue": "Отговорете на заявката по-горе, за да продължите",
@@ -1425,6 +1428,16 @@ const BULGARIAN: Record<string, string> = {
   "Save knowledge": "Запази знанието",
   "Saved. The next turn picks it up.": "Запазено. Следващият ход ще го използва.",
   "Public changelog": "Публичен changelog",
+  "Suggest routines": "Предлагай рутини",
+  "After a finished multi-step turn, offer to save it as a paused routine. Off by default.":
+    "След завършен ход с няколко стъпки предложи да се запази като рутина на пауза. Изключено по подразбиране.",
+  "After a finished multi-step turn, offer to save it as a paused routine. Off by default; a bot can override this in its own settings.":
+    "След завършен ход с няколко стъпки предложи да се запази като рутина на пауза. Изключено по подразбиране; ботът може да го промени в своите настройки.",
+  "Routine offers are on by default.": "Предложенията за рутини са включени по подразбиране.",
+  "Routine offers are off by default.": "Предложенията за рутини са изключени по подразбиране.",
+  "Use app default": "Използвай настройката на приложението",
+  "After a finished multi-step turn, offer to save it as a paused routine. Off by default; follows the app setting unless changed here.":
+    "След завършен ход с няколко стъпки предложи да се запази като рутина на пауза. Изключено по подразбиране; следва настройката на приложението, освен ако не се промени тук.",
   "That team no longer exists.": "Този екип вече не съществува.",
   "Save to knowledge": "Запази в знанието",
   "Save this to shared knowledge?": "Да се запази ли в споделеното знание?",

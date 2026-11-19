@@ -224,6 +224,8 @@ describe("ACP turns (fake CLI)", () => {
     delete process.env.FAKE_ACP_RPC_DUMP;
     delete process.env.FAKE_ACP_PROMPT_DUMP;
     delete process.env.FAKE_ACP_LOAD_FAIL;
+    delete process.env.FAKE_ACP_STEERING;
+    delete process.env.FAKE_ACP_GATE_FILE;
     delete process.env.FAKE_ACP_MODELS;
     delete process.env.FAKE_ACP_MODEL_STICKS;
     delete process.env.FAKE_ACP_USAGE_ROOT;
@@ -509,6 +511,27 @@ describe("ACP turns (fake CLI)", () => {
     expect(methods.filter((method) => method === "session/load")).toEqual(["session/load"]);
     expect(methods.filter((method) => method === "session/prompt")).toEqual(["session/prompt"]);
     expect(instance.adapter.hasSession("t-warm-model")).toBe(false);
+  });
+
+  it("steers a running turn through the ACP extension", async () => {
+    const gate = join(scratch, "steer.gate");
+    process.env.FAKE_ACP_STEERING = "1";
+    process.env.FAKE_ACP_GATE_FILE = gate;
+    await create(GrokAgentDriver, "echo-gated");
+    await instance.adapter.sendTurn({ threadId: "t-steer", text: "start", cwd: scratch, model: "grok-4.5" });
+    await recorder.until((e) => e.type === "turn.started");
+
+    let steered = false;
+    for (let attempt = 0; attempt < 60 && !steered; attempt += 1) {
+      steered = await instance.adapter.steerTurn!("t-steer", "adjust the plan");
+      if (!steered) await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    expect(steered).toBe(true);
+
+    writeFileSync(gate, "go");
+    await recorder.until((e) => e.type === "turn.completed");
+    const text = recorder.events.find((e) => e.type === "item.completed" && e.itemType === "assistant_text");
+    expect((text as any).text).toContain("[steered: adjust the plan]");
   });
 
   it("resends the standing layer when a resume cursor cannot be loaded", async () => {

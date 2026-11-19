@@ -818,6 +818,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
         | "economyModel"
         | "workAlone"
         | "shareTeamComputer"
+        | "offerRoutines"
         | "autoModelPool"
         | "speakReplies"
         | "voice"
@@ -1304,6 +1305,50 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
                 />
               </button>
             </div>
+          </div>
+
+          <div className="rounded-xl bg-card p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[15px] font-medium text-ink">{t("Suggest routines")}</div>
+                <div className="mt-0.5 text-[13px] text-ink-secondary">
+                  {t("After a finished multi-step turn, offer to save it as a paused routine. Off by default; follows the app setting unless changed here.")}
+                </div>
+              </div>
+              <button
+                role="switch"
+                aria-checked={bot.offerRoutines ?? state.config?.offerRoutines === true}
+                aria-label={t("Suggest routines")}
+                onClick={() => patch({ offerRoutines: !(bot.offerRoutines ?? state.config?.offerRoutines === true) })}
+                className={cn(
+                  "relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors",
+                  (bot.offerRoutines ?? state.config?.offerRoutines === true) ? "bg-accent" : "bg-raised",
+                )}
+              >
+                <span
+                  className={cn(
+                    "absolute top-[3px] size-5 rounded-full bg-white transition-all",
+                    (bot.offerRoutines ?? state.config?.offerRoutines === true) ? "left-[21px]" : "left-[3px]",
+                  )}
+                />
+              </button>
+            </div>
+            {bot.offerRoutines !== undefined && (
+              <button
+                onClick={() => {
+                  void fetch(`/api/bots/${bot.id}`, {
+                    method: "PATCH",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ offerRoutines: null }),
+                  })
+                    .then((response) => response.json())
+                    .then((body) => body.bot && dispatch({ type: "botPatched", bot: body.bot }));
+                }}
+                className="mt-2 text-[11.5px] text-accent hover:underline"
+              >
+                {t("Use app default")}
+              </button>
+            )}
           </div>
 
           {!!engine?.capabilities?.effortLevels?.length && (

@@ -220,6 +220,10 @@ export interface ProviderAdapter {
   };
   sendTurn(input: SendTurnInput): Promise<TurnStartResult>;
   interruptTurn(threadId: ThreadId, turnId?: TurnId): Promise<void>;
+  /** Deliver text into the running turn without ending it. Returns true when
+   * the engine accepted it at a safe point; false means the caller must queue
+   * it for the next turn instead. */
+  steerTurn?(threadId: ThreadId, text: string): Promise<boolean>;
   /** Answer a pending ask. Resolves with what actually happened — never
    * throws for an ask that is no longer there: `unavailable` means nobody
    * could take the answer (the turn ended, the broker died, the driver

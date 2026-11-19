@@ -76,7 +76,7 @@ The rest of this guide is organized by topic.
 - **Settings → Knowledge** holds the shared core (who you are, mission, projects, skills, people) for every bot, plus a separate book for each team. Bots get the compact core every turn and read the full topics on demand. When a bot proposes a durable fact, use the book button on its reply to edit and approve it.
 - The public dated changelog is at **/changelog**; About → Public changelog opens it.
 - **Enter** sends; **Shift+Enter** adds a line.
-- **Ctrl+Enter** while the bot is busy puts the prompt in the floating queue above the composer. It sends one prompt after the current turn finishes; you can discard an item.
+- **Ctrl+Enter** while the bot is busy puts the prompt in the floating queue above the composer. It sends one prompt after the current turn finishes; you can discard an item. Press **Enter on a focused queued prompt** or use **Send now** to join the running turn — engines with steering change course immediately; the rest run it at the end of the turn.
 - **Stop** interrupts the running turn. Editing your own message rewinds the conversation and keeps the old version as a branch.
 - **Reply** (arrow on a message) quotes that message. The bot receives the quoted excerpt, so it knows which answer you mean.
 - **Bot settings → Work alone** lets a bot continue an unfinished turn once — for example, a remaining checklist or a denied command. It never widens permissions: destructive, secret, sudo, and outbound actions still ask. If the second attempt is still unfinished, a **This still needs you** card asks you to decide.
@@ -149,7 +149,7 @@ The rest of this guide is organized by topic.
 
 ## Automations
 
-- After a finished turn with several tool steps, the bot may offer **Save this as a routine?** with an editable prompt and time. Saving keeps the routine paused until you turn it on.
+- After a finished turn with several tool steps, the bot may offer **Save this as a routine?** with an editable prompt and time. Saving keeps the routine paused until you turn it on. The offer is off by default; enable **Suggest routines** in Bot settings.
 - **Automations** schedules work for a bot. Open it from the sidebar.
 - **Once**: a date and time. **Daily**: a time and weekdays. **Interval**: every 5–720 minutes, optionally only between two times (for example 09:00–18:00) and on chosen weekdays.
 - Interval slots are wall-clock anchored: 09:00, 09:15, 09:30… A slow turn never stacks runs; the next slot waits for it.
@@ -273,7 +273,7 @@ KodBot е local-first chat приложение за екип от AI агент
 - Създай бот с **+ → New Bot**. Отвори **Bot settings** от аватара му, за да смениш име, роля, модел, памет, работна папка, глас и известия.
 - Изборът на модел в хедъра определя engine-а/модела за новите ходове. **Auto** избира от pool-а на бота.
 - **Enter** изпраща; **Shift+Enter** добавя нов ред.
-- **Ctrl+Enter**, докато ботът е зает, слага промпта в плаващата опашка над composer-а. Изпраща се по един след края на текущия ход; можеш да изхвърлиш елемент.
+- **Ctrl+Enter**, докато ботът е зает, слага промпта в плаващата опашка над composer-а. Изпраща се по един след края на текущия ход; можеш да изхвърлиш елемент. Натисни **Enter върху фокусирания чакащ промпт** или **Send now**, за да влезе в текущия ход — engine-ите със steering сменят курса веднага; останалите го пускат в края на хода.
 - **Stop** прекъсва текущия ход. Редакцията на твое съобщение връща разговора назад и пази старата версия като branch.
 - **Reply** (стрелката на съобщение) цитира това съобщение. Ботът получава цитата и знае за кой отговор става дума.
 - **Bot settings → Work alone** позволява на бота да довърши незавършен ход веднъж — например останал checklist или отказана команда. Не разширява права: разрушителни, секретни, sudo и изходящи действия пак питат. Ако и вторият опит е незавършен, карта **This still needs you** те пита да решиш.
@@ -346,7 +346,7 @@ KodBot е local-first chat приложение за екип от AI агент
 
 ## Автоматизации
 
-- След завършен ход с няколко tool стъпки ботът може да предложи **Save this as a routine?** с редактируем текст и час. Запазената рутина остава на пауза, докато не я включиш.
+- След завършен ход с няколко tool стъпки ботът може да предложи **Save this as a routine?** с редактируем текст и час. Запазената рутина остава на пауза, докато не я включиш. Предложението е изключено по подразбиране; включи **Suggest routines** в Bot settings.
 - **Automations** планира работа за бот. Отваря се от страничната лента.
 - **Once**: дата и час. **Daily**: час и дни. **Interval**: на всеки 5–720 минути, по желание само между два часа (например 09:00–18:00) и в избрани дни.
 - Интервалите са вързани за wall-clock: 09:00, 09:15, 09:30… Бавен ход не трупа опашка; следващият слот го изчаква.

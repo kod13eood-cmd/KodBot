@@ -46,6 +46,8 @@ const appConfigSchema = z.object({
   /** Minutes before an unanswered permission/question is marked overdue.
    * null or 0 means wait without a timer. The request stays answerable. */
   approvalTimeoutMinutes: z.number().int().min(0).max(24 * 60).nullable().optional(),
+  /** App-wide default for the per-bot routine suggestion. Off by default. */
+  offerRoutines: z.boolean().optional(),
   instances: instanceConfigMapSchema.optional(),
 });
 const appConfigPatchSchema = appConfigSchema.omit({ instances: true });
@@ -65,6 +67,7 @@ export interface AppConfig {
   profile?: { name?: string; email?: string };
   publicUrl?: string;
   approvalTimeoutMinutes?: number | null;
+  offerRoutines?: boolean;
   instances?: InstanceConfigMap;
 }
 export type ConfigPatch = z.output<typeof appConfigPatchSchema>;
@@ -170,6 +173,9 @@ export function saveConfig(patch: Partial<AppConfig>): void {
   }
   if (checkedPatch.publicUrl !== undefined) {
     disk.publicUrl = checkedPatch.publicUrl;
+  }
+  if (checkedPatch.offerRoutines !== undefined) {
+    disk.offerRoutines = checkedPatch.offerRoutines;
   }
   if (checkedPatch.instances) {
     const currentInstances = jsonObjectSchema.safeParse(disk.instances);

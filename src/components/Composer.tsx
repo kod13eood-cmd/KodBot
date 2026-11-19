@@ -1,7 +1,7 @@
 import { track } from "@/lib/analytics";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, AudioLines, Clock, Loader2, Mic, Paperclip, Reply, Square, Users, X } from "lucide-react";
-import { useStore, visibleMessages, type Bot, type Group, type Message } from "@/state/store";
+import { api, useStore, visibleMessages, type Bot, type Group, type Message } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { useComposerDraft } from "@/lib/drafts";
 import { CrewAvatar } from "./Avatar";
@@ -20,7 +20,7 @@ import { groupComposerHint } from "@/lib/group-routing";
 import { PendingApprovalActions, PendingApprovalPanel, pendingApprovals } from "./PendingApproval";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { useI18n } from "@/lib/i18n";
-import { promptQueue, queueKeyForBot, queueKeyForGroup } from "@/lib/send-queue";
+import { promptQueue, queueKeyForBot, queueKeyForGroup, type QueuedPrompt } from "@/lib/send-queue";
 import { BrowserPtt, browserPttSupported, transcribeAudio } from "@/lib/browser-ptt";
 import { httpsVoiceUrl, microphoneIssue, type MicrophoneIssue } from "@/lib/voice-diagnostics";
 
@@ -234,6 +234,7 @@ export function Composer({
   // unmounts the composer but a queued backlog must still go out.
   const queueKey = group ? queueKeyForGroup(group.id) : queueKeyForBot(bot?.id ?? "");
   const [queued, setQueued] = useState(() => promptQueue.prompts(queueKey));
+  const [queueBusy, setQueueBusy] = useState(false);
   useEffect(() => {
     setQueued(promptQueue.prompts(queueKey));
     return promptQueue.subscribe(() => setQueued(promptQueue.prompts(queueKey)));
@@ -312,6 +313,28 @@ export function Composer({
       .catch((error) => setUploadError(error instanceof Error ? error.message : String(error)))
       .finally(() => setUploading(false));
   };
+  // Send one queued prompt now. A driver with mid-turn steering joins the
+  // running turn; the rest land in the server's persistent steer-queue and
+  // run as soon as the current turn settles.
+  const sendQueuedNow = async (item: QueuedPrompt) => {
+    if (!bot || queueBusy) return;
+    setQueueBusy(true);
+    try {
+      await api(`/api/bots/${bot.id}/steer`, {
+        method: "POST",
+        body: JSON.stringify({ text: item.text }),
+      });
+      promptQueue.drop(queueKey, item.id);
+    } catch (error) {
+      dispatch({
+        type: "error",
+        message: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setQueueBusy(false);
+    }
+  };
+
   // The app-wide drainer sends one queued prompt per busy → idle transition
   // (see components/SendQueueDrainer), so this component only shows the
   // backlog and adds to it.
@@ -581,7 +604,14 @@ export function Composer({
               {queued.map((item, index) => (
                 <div
                   key={item.id}
-                  className="flex items-start gap-2 border-b border-hairline/25 px-3 py-2 last:border-b-0"
+                  role={bot ? "button" : undefined}
+                  tabIndex={bot ? 0 : undefined}
+                  onKeyDown={(event) => {
+                    if (!bot || event.target !== event.currentTarget || event.key !== "Enter") return;
+                    event.preventDefault();
+                    void sendQueuedNow(item);
+                  }}
+                  className="flex items-start gap-2 border-b border-hairline/25 px-3 py-2 last:border-b-0 focus:bg-raised/40 focus:outline-none"
                 >
                   <span className="mt-px w-4 shrink-0 text-right font-mono text-[10.5px] text-ink-secondary/70">
                     {index + 1}
@@ -596,6 +626,18 @@ export function Composer({
                       </span>
                     )}
                   </span>
+                  {bot && (
+                    <button
+                      type="button"
+                      onClick={() => void sendQueuedNow(item)}
+                      disabled={queueBusy}
+                      aria-label={t("Send now")}
+                      title={t("Send now — joins the running turn when the engine supports it")}
+                      className="shrink-0 rounded p-0.5 text-ink-secondary hover:bg-raised hover:text-accent disabled:opacity-40"
+                    >
+                      <ArrowUp size={12} />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => promptQueue.drop(queueKey, item.id)}

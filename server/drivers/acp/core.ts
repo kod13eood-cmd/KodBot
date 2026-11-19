@@ -261,6 +261,8 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
         interrupt: () => void;
         turnId: string;
         asks: Map<string, AskResolver>;
+        /** ACP `_session/steering`, when the agent advertises it. */
+        steer?: (text: string) => Promise<boolean>;
       }
       interface Parked {
         fingerprint: WarmFingerprint;
@@ -375,6 +377,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
         let asks = new Map<string, AskResolver>();
         let nextId = 1;
         let sessionId: string | null = null;
+        let steeringSupported = false;
         let interruptTimer: ReturnType<typeof setTimeout> | null = null;
         let warmTimer: ReturnType<typeof setTimeout> | null = null;
         const rpcPending = new Map<
@@ -478,6 +481,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
             interruptTimer.unref?.();
           };
           active.set(threadId, { stop, interrupt, turnId, asks });
+          wireSteering();
           emit({ ...base(threadId, turnId), type: "turn.started" });
           emit({
             ...base(threadId, turnId),
@@ -603,6 +607,30 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
           };
 
           askNext();
+        };
+
+        const wireSteering = () => {
+          if (!steeringSupported || !sessionId) return;
+          const live = active.get(threadId);
+          if (!live) return;
+          live.steer = async (text: string) => {
+            try {
+              const result = await request(
+                "_session/steering",
+                {
+                  sessionId,
+                  prompt: [{ type: "text", text }],
+                  _meta: { steering: { idleBehavior: "promptRequired" } },
+                },
+                20_000,
+              );
+              return result?.outcome === "injected";
+            } catch {
+              // Older agents do not implement the extension. Stop probing.
+              steeringSupported = false;
+              return false;
+            }
+          };
         };
 
         // server→client requests: permission asks and form questions
@@ -835,6 +863,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
               },
               INIT_TIMEOUT,
             );
+            if (init?._meta?.steering?.supported === true) steeringSupported = true;
             const methods: Array<{ id?: string }> = Array.isArray(init?.authMethods) ? init.authMethods : [];
             const methodId = support.pickAuthMethod(methods);
             if (methodId) {
@@ -923,6 +952,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
               throw error;
             }
             emitSessionStarted();
+            wireSteering();
             state.promptSent = true;
             // A failed session/load starts a brand-new session: it must
             // receive the standing layer even though a cursor was offered.
@@ -1006,6 +1036,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
           },
           sendTurn,
           interruptTurn: async (threadId) => active.get(threadId)?.interrupt(),
+          steerTurn: async (threadId, text) => active.get(threadId)?.steer?.(text) ?? false,
           respondToRequest: async (threadId, requestId, decision) => {
             const turn = active.get(threadId);
             const finish = turn?.asks.get(requestId);

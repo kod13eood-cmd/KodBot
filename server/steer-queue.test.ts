@@ -156,6 +156,7 @@ describe("steer-queue e2e (fake ACP fleet)", () => {
   let home: string;
   let stderr = "";
   let drainGate: string;
+  let steerRpcDump: string;
   let stopGate: string;
   let stopRpcDump: string;
 
@@ -198,6 +199,7 @@ describe("steer-queue e2e (fake ACP fleet)", () => {
     mkdirSync(join(home, ".kodbot"), { recursive: true });
     mkdirSync(join(home, "gates"), { recursive: true });
     drainGate = join(home, "gates", "drain.gate");
+    steerRpcDump = join(home, "gates", "steer.rpc");
     stopGate = join(home, "gates", "stop.gate");
     stopRpcDump = join(home, "gates", "stop.rpc");
     writeFileSync(
@@ -206,7 +208,12 @@ describe("steer-queue e2e (fake ACP fleet)", () => {
         instances: {
           steer: {
             driver: "grokAgent",
-            environment: { FAKE_ACP_MODE: "echo-gated", FAKE_ACP_GATE_FILE: drainGate },
+            environment: {
+              FAKE_ACP_MODE: "echo-gated",
+              FAKE_ACP_GATE_FILE: drainGate,
+              FAKE_ACP_STEERING: "1",
+              FAKE_ACP_RPC_DUMP: steerRpcDump,
+            },
             config: { cli: FAKE_CLI, fullAuto: true },
           },
           // the RPC dump lets the interrupt test wait for session/prompt to
@@ -263,6 +270,43 @@ describe("steer-queue e2e (fake ACP fleet)", () => {
     });
     rmSync(home, { recursive: true, force: true });
   });
+
+  it(
+    "sends a queued prompt into the running turn with Send now",
+    async () => {
+      rmSync(drainGate, { force: true });
+      const bot = await newBot("steer", "Steerable");
+      const first = await api("POST", `/api/bots/${bot.id}/messages`, { text: "first task" });
+      expect(first.status).toBe(202);
+      expect((await botById(bot.id)).busy).toBe(true);
+      await until(async () => {
+        try {
+          return readFileSync(steerRpcDump, "utf8").includes("session/prompt");
+        } catch {
+          return false;
+        }
+      }, "the running prompt");
+
+      const steered = await api("POST", `/api/bots/${bot.id}/steer`, { text: "adjust now" });
+      expect(steered.status).toBe(200);
+      expect(steered.body.mode).toBe("injected");
+      expect(steered.body.message).toMatchObject({ role: "user", text: "adjust now" });
+
+      writeFileSync(drainGate, "open");
+      let snapshot = await botById(bot.id);
+      await until(async () => {
+        snapshot = await botById(bot.id);
+        return !snapshot.busy && snapshot.messages.some((m: any) => m.role === "bot" && m.text?.includes("echo: "));
+      }, "the steered turn");
+
+      const reply = snapshot.messages.find((m: any) => m.role === "bot" && m.text?.includes("echo: "));
+      expect(reply.text).toContain("[steered: adjust now]");
+      expect(reply.text).toContain("first task");
+      expect(snapshot.messages.some((m: any) => m.role === "user" && m.text === "adjust now" && !m.queued)).toBe(true);
+      rmSync(drainGate, { force: true });
+    },
+    60_000,
+  );
 
   it(
     "queues sends while busy and drains them into exactly one attended turn",

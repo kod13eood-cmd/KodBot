@@ -216,6 +216,8 @@ export interface Bot {
   workAlone?: boolean;
   /** one cloud computer shared with the bot's team */
   shareTeamComputer?: boolean;
+  /** offer to save a finished multi-step turn as a paused routine */
+  offerRoutines?: boolean;
   /** explicit models auto routing may choose from; empty = current engine */
   autoModelPool?: ModelSelection[];
   /** tools this bot may always use without asking */
@@ -288,6 +290,8 @@ export interface ConfigStatus {
   publicUrl?: string;
   /** minutes before an unanswered ask is marked overdue; null = no timer */
   approvalTimeoutMinutes?: number | null;
+  /** app-wide default for per-bot routine suggestions; off when absent */
+  offerRoutines?: boolean;
 }
 
 /** How an engine gets installed — declared by its driver, mirrors
@@ -505,6 +509,7 @@ export type Action =
           | "economyModel"
           | "workAlone"
           | "shareTeamComputer"
+          | "offerRoutines"
           | "autoModelPool"
           | "speakReplies"
           | "voice"
