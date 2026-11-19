@@ -15,7 +15,8 @@ import { writeFileAtomic } from "./atomic.ts";
 import { validateBotCwd } from "./bot-cwd.ts";
 import { connectedAppsSystemPrompt } from "./connected-apps-prompt.ts";
 import { finishFollowUp, looksOpenList } from "./finish-followup.ts";
-import { resolveComputerDestination } from "./computer-selection.ts";
+import { routineOffer } from "./routine-offer.ts";
+import { computerScopeId, resolveComputerDestination } from "./computer-selection.ts";
 import {
   isViewerPath,
   proxyViewerRequest,
@@ -1298,6 +1299,46 @@ bus.subscribe((event: RuntimeEvent) => {
               options: ["I'll take it from here"],
             },
           });
+        } else if (event.ok && !facts.denied && !openList) {
+          // One offer per thread: an unanswered draft already on screen is
+          // the same question, and repeating it would just be noise.
+          const pending = store.messagesFor(event.threadId).some(
+            (message) => message.card?.routineDraft && !message.card.answered && !message.card.dismissed,
+          );
+          const userText = [...store.messagesFor(event.threadId)]
+            .reverse()
+            .find((message) => message.role === "user" && message.kind === "text" && message.text?.trim())?.text ?? "";
+          const offer = routineOffer({
+            ok: true,
+            toolSteps: facts.tools,
+            prompt: userText,
+            botId: bot.id,
+            now: Date.now(),
+            unfinished: false,
+            automated:
+              (isUnattended(bot.id) && !finishRetried.has(event.threadId)) ||
+              Boolean(routines?.isActiveThread(event.threadId)),
+          });
+          const onceAt = offer?.draft.schedule.type === "once" ? offer.draft.schedule.at : null;
+          if (offer && onceAt !== null && !pending) {
+            pushMessage({
+              role: "bot",
+              kind: "options",
+              card: {
+                title: offer.title,
+                subtitle: offer.subtitle,
+                options: [offer.saveLabel, offer.skipLabel],
+                routineDraft: {
+                  name: offer.draft.name,
+                  prompt: offer.draft.prompt,
+                  botId: offer.draft.botId,
+                  runOn: offer.draft.runOn,
+                  enabled: false,
+                  schedule: { type: "once", at: onceAt },
+                },
+              },
+            });
+          }
         }
         store.patchBot(bot.id, { unread: true });
         drainMainChatReports(bot.id);
@@ -1855,6 +1896,8 @@ async function startTurn(
         integrations.jev = jevIntegration();
       }
       const wants = resolveComputerDestination(opts?.runOn, bot.computer); // cloud routine overrides the CREW default
+      const team = store.teams.find((entry) => entry.memberIds.includes(bot.id) || entry.leaderBotId === bot.id);
+      const scopeId = computerScopeId(bot.id, bot.shareTeamComputer, team?.id);
       const mountsComputerMcp = instance.adapter.capabilities.computerMcp === true;
       const mountsCloudComputer = mountsComputerMcp || instance.driverKind === "boxAgent";
       let previewBoxId: string | null = null;
@@ -1885,13 +1928,13 @@ async function startTurn(
         if (!mountsCloudComputer && wants === "cloud") {
           throw new Error("this model engine cannot use computer tools — choose Claude, an ACP engine, or the Computer engine");
         }
-        let b = await box.findBox(cfg, bot.id).catch(() => null);
+        let b = await box.findBox(cfg, scopeId).catch(() => null);
         // Explicit Cloud and the box-native Computer engine provision on first
         // use. Auto remains non-surprising and only reuses an existing box.
         if (!b && mountsCloudComputer && (wants === "cloud" || instance.driverKind === "boxAgent")) {
           broadcast({ kind: "computer", botId: bot.id, state: "provisioning" });
-          await box.provisionBox(cfg, bot.id, bot.name);
-          b = await box.findBox(cfg, bot.id).catch(() => null);
+          await box.provisionBox(cfg, scopeId, bot.name);
+          b = await box.findBox(cfg, scopeId).catch(() => null);
         }
         // an archived box answers every action with an error until it
         // resumes — wake it here, once, instead of letting the agent
@@ -1899,7 +1942,7 @@ async function startTurn(
         // resume (~8s, and it un-pauses billing) when the bot can act.
         if (b && mountsCloudComputer && !["idle", "ready", "running"].includes(b.state)) {
           broadcast({ kind: "computer", botId: bot.id, state: "waking" });
-          b = (await box.readyBox(cfg, bot.id).catch(() => null)) ?? b;
+          b = (await box.readyBox(cfg, scopeId).catch(() => null)) ?? b;
         }
         if (b) {
           previewBoxId = b.id;
@@ -3871,6 +3914,10 @@ const server = createServer(async (req, res) => {
         if (typeof body.workAlone !== "boolean") return json(res, 400, { error: "workAlone must be true or false" });
         patch.workAlone = body.workAlone;
       }
+      if (body.shareTeamComputer !== undefined) {
+        if (typeof body.shareTeamComputer !== "boolean") return json(res, 400, { error: "shareTeamComputer must be true or false" });
+        patch.shareTeamComputer = body.shareTeamComputer;
+      }
       if (body.mascotShape !== undefined) {
         if (
           body.mascotShape !== null &&
@@ -4930,7 +4977,12 @@ const server = createServer(async (req, res) => {
 
     // ── the bot's cloud computer (Box) ──
     m = path.match(/^\/api\/bots\/([\w-]+)\/computer$/);
-    if (m && method === "GET") return json(res, 200, await box.boxStatus(cfg, m[1]));
+    if (m && method === "GET") {
+      const bot = store.bot(m[1]);
+      if (!bot) return json(res, 404, { error: "no such bot" });
+      const team = store.teams.find((entry) => entry.memberIds.includes(bot.id) || entry.leaderBotId === bot.id);
+      return json(res, 200, await box.boxStatus(cfg, computerScopeId(bot.id, bot.shareTeamComputer, team?.id)));
+    }
     m = path.match(/^\/api\/bots\/([\w-]+)\/computer\/(provision|join|sleep|exec|screenshot)$/);
     if (m && method === "POST") {
       const botId = m[1];

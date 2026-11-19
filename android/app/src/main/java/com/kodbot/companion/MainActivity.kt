@@ -80,6 +80,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -133,6 +134,7 @@ class MainActivity : ComponentActivity() {
     private var desktopMode by mutableStateOf(false)
     private var desktopTarget by mutableStateOf<DesktopMode.DesktopTarget?>(null)
     private var desktopSuggestionDismissed by mutableStateOf(false)
+    private var appLanguage by mutableStateOf(AppLanguage.EN)
     private var showHiddenBots by mutableStateOf(false)
     private var showGroups by mutableStateOf(true)
     private var engines by mutableStateOf<List<EngineRecord>>(emptyList())
@@ -164,6 +166,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         connectionStore = ConnectionStore(this)
         displayPreferences = getSharedPreferences("kodbot.mobile.display", MODE_PRIVATE)
+        appLanguage = LanguageStore.load(this)
         showHiddenBots = displayPreferences.getBoolean("showHiddenBots", false)
         showGroups = displayPreferences.getBoolean("showGroups", true)
         desktopMode = displayPreferences.getBoolean("desktopMode", false)
@@ -178,6 +181,7 @@ class MainActivity : ComponentActivity() {
         CompanionStreamService.ensureChannels(this)
 
         setContent {
+            CompositionLocalProvider(LocalAppLanguage provides appLanguage) {
             MaterialTheme(
                 colorScheme = darkColorScheme(
                     primary = CrewGreen,
@@ -209,6 +213,7 @@ class MainActivity : ComponentActivity() {
                     loading = loading,
                     updateState = updateState,
                     appVersion = appVersionName,
+                    onLanguageChange = ::setLanguage,
                     onCheckForUpdates = { checkForUpdates(manual = true) },
                     onInstallUpdate = ::installUpdate,
                     onDownloadApk = ::downloadApk,
@@ -249,6 +254,7 @@ class MainActivity : ComponentActivity() {
                     onTransferTeam = ::transferTeam,
                     onDisconnect = ::disconnect,
                 )
+            }
             }
         }
 
@@ -546,6 +552,12 @@ class MainActivity : ComponentActivity() {
                 settingsBusy = false
             }
         }
+    }
+
+    private fun setLanguage(language: AppLanguage) {
+        appLanguage = language
+        LanguageStore.save(this, language)
+        CompanionStreamService.ensureChannels(this)
     }
 
     private fun setEconomyModel(chat: ConversationRecord, enabled: Boolean) {
@@ -941,6 +953,7 @@ private fun KodBotScreen(
     onSelectModel: (ConversationRecord, EngineRecord, ModelOptionRecord) -> Unit,
     onSetAutoModel: (ConversationRecord, Boolean, List<ModelSelectionRecord>) -> Unit,
     onSetEconomyModel: (ConversationRecord, Boolean) -> Unit,
+    onLanguageChange: (AppLanguage) -> Unit,
     onCreateTeam: (ConversationRecord, String) -> Unit,
     onOpenReport: (MessageLinkRecord) -> Unit,
     onJoinTeam: (ConversationRecord, String) -> Unit,
@@ -962,8 +975,8 @@ private fun KodBotScreen(
                         modifier = Modifier.fillMaxWidth().padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(error, modifier = Modifier.weight(1f), color = Color(0xFFFFDAD6))
-                        TextButton(onClick = onDismissError) { Text("Dismiss") }
+                        Text(tr(error), modifier = Modifier.weight(1f), color = Color(0xFFFFDAD6))
+                        TextButton(onClick = onDismissError) { Text(tr("Dismiss")) }
                     }
                 }
             }
@@ -1037,6 +1050,7 @@ private fun KodBotScreen(
                         onSelectModel = onSelectModel,
                         onSetAutoModel = onSetAutoModel,
                         onSetEconomyModel = onSetEconomyModel,
+                        onLanguageChange = onLanguageChange,
                         onCreateTeam = onCreateTeam,
                         onJoinTeam = onJoinTeam,
                         onLeaveTeam = onLeaveTeam,
@@ -1096,20 +1110,19 @@ private fun KodBotScreen(
     ) {
         AlertDialog(
             onDismissRequest = onDismissDesktopSuggestion,
-            title = { Text("Try Desktop mode?") },
+            title = { Text(tr("Try Desktop mode?")) },
             text = {
-                Text(
-                    "This tablet can show the same web interface as the browser, with the Android notification service still running in the background. You can switch back at any time with the system back gesture.",
+                Text(tr("This tablet can show the same web interface as the browser, with the Android notification service still running in the background. You can switch back at any time with the system back gesture."),
                 )
             },
             confirmButton = {
                 TextButton(onClick = {
                     onDismissDesktopSuggestion()
                     onDesktopModeChange(true)
-                }) { Text("Try it") }
+                }) { Text(tr("Try it")) }
             },
             dismissButton = {
-                TextButton(onClick = onDismissDesktopSuggestion) { Text("Not now") }
+                TextButton(onClick = onDismissDesktopSuggestion) { Text(tr("Not now")) }
             },
         )
     }
@@ -1117,14 +1130,14 @@ private fun KodBotScreen(
     if (confirmDisconnect) {
         AlertDialog(
             onDismissRequest = { confirmDisconnect = false },
-            title = { Text("Disconnect this phone?") },
+            title = { Text(tr("Disconnect this phone?")) },
             text = {
-                Text("This removes the saved credential from this phone. If the phone is lost, also revoke it in KodBot → Settings → Companion.")
+                Text(tr("This removes the saved credential from this phone. If the phone is lost, also revoke it in KodBot → Settings → Companion."))
             },
             confirmButton = {
-                TextButton(onClick = { confirmDisconnect = false; onDisconnect() }) { Text("Disconnect") }
+                TextButton(onClick = { confirmDisconnect = false; onDisconnect() }) { Text(tr("Disconnect")) }
             },
-            dismissButton = { TextButton(onClick = { confirmDisconnect = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { confirmDisconnect = false }) { Text(tr("Cancel")) } },
         )
     }
 }
@@ -1153,23 +1166,22 @@ private fun PairingScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.Start,
     ) {
-        Text("KodBot", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-        Text("Sign in or pair this phone", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+        Text(tr("KodBot"), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+        Text(tr("Sign in or pair this phone"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.size(10.dp))
-        Text(
-            "Your agents keep running on the KodBot server. Sign in with your account, or pair this phone with a local Companion.",
+        Text(tr("Your agents keep running on the KodBot server. Sign in with your account, or pair this phone with a local Companion."),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.size(22.dp))
 
-        Text("Hosted account", style = MaterialTheme.typography.titleMedium)
+        Text(tr("Hosted account"), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.size(8.dp))
         OutlinedTextField(
             value = server,
             onValueChange = { server = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Server address") },
-            placeholder = { Text("https://kodbot.example.com") },
+            label = { Text(tr("Server address")) },
+            placeholder = { Text(tr("https://kodbot.example.com")) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
         )
@@ -1178,7 +1190,7 @@ private fun PairingScreen(
             value = email,
             onValueChange = { email = it.trim() },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Email") },
+            label = { Text(tr("Email")) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
         )
@@ -1187,7 +1199,7 @@ private fun PairingScreen(
             value = password,
             onValueChange = { password = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Password") },
+            label = { Text(tr("Password")) },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
@@ -1200,14 +1212,13 @@ private fun PairingScreen(
             enabled = canLogin && !loading,
         ) {
             if (loading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-            else Text("Sign in")
+            else Text(tr("Sign in"))
         }
 
         Spacer(Modifier.size(26.dp))
-        Text("Local Companion", style = MaterialTheme.typography.titleMedium)
+        Text(tr("Local Companion"), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.size(6.dp))
-        Text(
-            "Pair directly with a KodBot computer on your LAN or Tailscale network.",
+        Text(tr("Pair directly with a KodBot computer on your LAN or Tailscale network."),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.size(12.dp))
@@ -1216,32 +1227,32 @@ private fun PairingScreen(
             modifier = Modifier.fillMaxWidth(),
             enabled = !loading,
         ) {
-            Text(if (invite == null) "Scan pairing QR" else "Scan a different QR")
+            Text(tr(if (invite == null) "Scan pairing QR" else "Scan a different QR"))
         }
         Spacer(Modifier.size(12.dp))
         invite?.computerName?.takeIf(String::isNotBlank)?.let {
-            Text("Pair with $it", style = MaterialTheme.typography.titleMedium)
+            Text(tr("Pair with $it"), style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.size(8.dp))
         }
         OutlinedTextField(
             value = address,
             onValueChange = { address = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Companion address") },
-            placeholder = { Text("192.168.1.42:8810") },
+            label = { Text(tr("Companion address")) },
+            placeholder = { Text(tr("192.168.1.42:8810")) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
         )
         Spacer(Modifier.size(10.dp))
         if (invite?.credential?.startsWith("omb_pair_") == true) {
-            Text("A one-time pairing invitation is ready. Confirm to pair with this computer.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(tr("A one-time pairing invitation is ready. Confirm to pair with this computer."), color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             OutlinedTextField(
                 value = credential,
                 onValueChange = { credential = it.filter(Char::isDigit).take(6) },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Six-digit pairing code") },
-                placeholder = { Text("123456") },
+                label = { Text(tr("Six-digit pairing code")) },
+                placeholder = { Text(tr("123456")) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
             )
@@ -1253,11 +1264,10 @@ private fun PairingScreen(
             enabled = canPair && !loading,
         ) {
             if (loading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-            else Text("Pair with computer")
+            else Text(tr("Pair with computer"))
         }
         Spacer(Modifier.size(14.dp))
-        Text(
-            "On Linux: KodBot → Settings → Companion → Set up a phone. Use the shown LAN address on trusted Wi-Fi, or a Tailscale address when away.",
+        Text(tr("On Linux: KodBot → Settings → Companion → Set up a phone. Use the shown LAN address on trusted Wi-Fi, or a Tailscale address when away."),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -1289,7 +1299,7 @@ private fun FleetChatCard(
             if (chat.kind == "group") {
                 Surface(modifier = Modifier.size(38.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primary) {
                     BoxCenter {
-                        Text("G", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
+                        Text(tr("G"), color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
                     }
                 }
             } else {
@@ -1305,8 +1315,7 @@ private fun FleetChatCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                     if (chat.teamIsLeader) {
-                        Text(
-                            "  leader",
+                        Text(tr("  leader"),
                             style = MaterialTheme.typography.labelSmall,
                             color = CrewGreen,
                         )
@@ -1321,10 +1330,10 @@ private fun FleetChatCard(
                 }.orEmpty()
                 Text(
                     when {
-                        chat.busy && chat.kind == "group" -> "Group working · $preview"
-                        chat.busy -> "Working · $preview"
-                        chat.kind == "group" -> "${chat.memberCount} bots · $preview".trimEnd(' ', '·')
-                        preview.isBlank() -> "Start a conversation"
+                        chat.busy && chat.kind == "group" -> tr("Group working") + " · " + preview
+                        chat.busy -> tr("Working") + " · " + preview
+                        chat.kind == "group" -> tr("${chat.memberCount} bots") + " · " + preview
+                        preview.isBlank() -> tr("Start a conversation")
                         else -> preview
                     },
                     maxLines = 1,
@@ -1365,8 +1374,8 @@ private fun FleetScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("KodBot", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Connected to ${connection.serverName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(tr("KodBot"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(tr("Connected to ${connection.serverName}"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (workingCount > 0) {
                     Row(
                         modifier = Modifier.padding(top = 4.dp),
@@ -1375,7 +1384,7 @@ private fun FleetScreen(
                         WorkingDots(dotSize = 5.dp)
                         Spacer(Modifier.width(7.dp))
                         Text(
-                            if (workingCount == 1) "1 working now" else "$workingCount working now",
+                            tr(if (workingCount == 1) "1 working now" else "$workingCount working now"),
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.SemiBold,
                             color = CrewGreen,
@@ -1384,13 +1393,13 @@ private fun FleetScreen(
                 }
             }
             IconButton(onClick = onCreateBot, enabled = !loading) {
-                Icon(Icons.Filled.Add, contentDescription = "New bot")
+                Icon(Icons.Filled.Add, contentDescription = tr("New bot"))
             }
             IconButton(onClick = onRefresh, enabled = !loading) {
-                Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
+                Icon(Icons.Filled.Refresh, contentDescription = tr("Refresh"))
             }
             IconButton(onClick = onSettings) {
-                Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                Icon(Icons.Filled.Settings, contentDescription = tr("Settings"))
             }
         }
         updateState.info?.let { update ->
@@ -1401,8 +1410,7 @@ private fun FleetScreen(
                 Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                "KodBot ${update.versionName} is available",
+                            Text(tr("KodBot ${update.versionName} is available"),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = CrewGreen,
@@ -1420,12 +1428,12 @@ private fun FleetScreen(
                         if (updateState.downloading) {
                             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                         } else {
-                            Button(onClick = onInstallUpdate) { Text("Update") }
+                            Button(onClick = onInstallUpdate) { Text(tr("Update")) }
                         }
                     }
                     updateState.error?.let {
                         Text(
-                            it,
+                            tr(it),
                             modifier = Modifier.padding(top = 6.dp),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFFFF8A80),
@@ -1441,16 +1449,16 @@ private fun FleetScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    when {
+                    tr(when {
                         loading -> "Loading chats…"
                         chats.isEmpty() -> "No bots or groups yet"
                         else -> "Nothing matches these filters"
-                    },
+                    }),
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
-                    if (chats.isEmpty()) "Create a bot to start a task on the Linux computer."
-                    else "Open Settings to show hidden bots or group chats.",
+                    tr(if (chats.isEmpty()) "Create a bot to start a task on the Linux computer."
+                    else "Open Settings to show hidden bots or group chats."),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -1503,7 +1511,7 @@ private fun FleetScreen(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                row.title,
+                                tr(row.title),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1534,13 +1542,11 @@ private fun TabletEmptyState() {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            "Select a bot or room",
+        Text(tr("Select a bot or room"),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
         )
-        Text(
-            "The conversation will open here.",
+        Text(tr("The conversation will open here."),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
         )
@@ -1810,11 +1816,11 @@ private fun ChatScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (compact) TextButton(onClick = onBack) { Text("‹ Bots") }
+            if (compact) TextButton(onClick = onBack) { Text(tr("‹ Bots")) }
             if (chat.kind == "group") {
                 Surface(modifier = Modifier.size(34.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primary) {
                     BoxCenter {
-                        Text("G", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
+                        Text(tr("G"), color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
                     }
                 }
             } else {
@@ -1829,11 +1835,11 @@ private fun ChatScreen(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    when {
+                    tr(when {
                         chat.busy -> "Working"
                         chat.kind == "group" -> "${chat.memberCount} bots"
                         else -> "Agent"
-                    },
+                    }),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -1844,7 +1850,7 @@ private fun ChatScreen(
                     IconButton(onClick = { botMenuOpen = true }) {
                         Icon(
                             Icons.Filled.MoreVert,
-                            contentDescription = "Bot menu",
+                            contentDescription = tr("Bot menu"),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -1853,14 +1859,14 @@ private fun ChatScreen(
                         onDismissRequest = { botMenuOpen = false },
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Tasks") },
+                            text = { Text(tr("Tasks")) },
                             onClick = {
                                 botMenuOpen = false
                                 tasksOpen = true
                             },
                         )
                         DropdownMenuItem(
-                            text = { Text("Pages") },
+                            text = { Text(tr("Pages")) },
                             onClick = {
                                 botMenuOpen = false
                                 pagesOpen = true
@@ -1890,7 +1896,7 @@ private fun ChatScreen(
                 )
             }
             if (chat.messages.isEmpty() && !chat.busy) {
-                item { Text("Send a task to ${chat.name}.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item { Text(tr("Send a task to ${chat.name}."), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             if (chat.busy) {
                 item(key = "kodbot-working-indicator") {
@@ -1907,11 +1913,10 @@ private fun ChatScreen(
                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                 Column {
                     Text(
-                        if (transcribing) "Transcribing your voice…" else "Transcribing your voice note…",
+                        tr(if (transcribing) "Transcribing your voice…" else "Transcribing your voice note…"),
                         style = MaterialTheme.typography.bodySmall,
                     )
-                    Text(
-                        "${transcribingSeconds}s · This can take a minute on CPU.",
+                    Text(tr("${transcribingSeconds}s · This can take a minute on CPU."),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1925,8 +1930,7 @@ private fun ChatScreen(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 when {
-                    voiceNoteRecording -> Text(
-                        "● Recording voice note…",
+                    voiceNoteRecording -> Text(tr("● Recording voice note…"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -1935,12 +1939,12 @@ private fun ChatScreen(
                             Text(if (voiceNotePlaying) "⏸" else "▶")
                         }
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Voice note", style = MaterialTheme.typography.bodySmall)
+                            Text(tr("Voice note"), style = MaterialTheme.typography.bodySmall)
                             Text(
                                 when {
-                                    voiceNoteProcessing -> "Transcribing…"
+                                    voiceNoteProcessing -> tr("Transcribing…")
                                     voiceNoteTranscript != null -> voiceNoteTranscript!!
-                                    else -> "No transcript"
+                                    else -> tr("No transcript")
                                 },
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1948,11 +1952,11 @@ private fun ChatScreen(
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        TextButton(onClick = { removeVoiceNote() }) { Text("✕") }
+                        TextButton(onClick = { removeVoiceNote() }) { Text(tr("✕")) }
                     }
                     else -> {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                        Text("Transcribing voice note…", style = MaterialTheme.typography.bodySmall)
+                        Text(tr("Transcribing voice note…"), style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -1978,7 +1982,7 @@ private fun ChatScreen(
         }
         attachmentError?.let { message ->
             Text(
-                message,
+                tr(message),
                 color = Color(0xFFFF8A80),
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
@@ -1986,7 +1990,7 @@ private fun ChatScreen(
         }
         micError?.let { message ->
             Text(
-                message,
+                tr(message),
                 color = Color(0xFFFF8A80),
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
@@ -1994,7 +1998,7 @@ private fun ChatScreen(
         }
         voiceNoteError?.let { message ->
             Text(
-                message,
+                tr(message),
                 color = Color(0xFFFF8A80),
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
@@ -2012,13 +2016,13 @@ private fun ChatScreen(
                     .padding(bottom = 4.dp)
                     .semantics { contentDescription = "Attach a file" },
             ) {
-                Text("📎", fontSize = 20.sp)
+                Text(tr("📎"), fontSize = 20.sp)
             }
             OutlinedTextField(
                 value = draft,
                 onValueChange = { draft = it },
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("Message ${chat.name}") },
+                placeholder = { Text(tr("Message ${chat.name}")) },
                 maxLines = 5,
                 enabled = !sending,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
@@ -2096,7 +2100,7 @@ private fun ChatScreen(
                     if (sending) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     } else {
-                        Text("Send")
+                        Text(tr("Send"))
                     }
                 }
             }
@@ -2106,7 +2110,7 @@ private fun ChatScreen(
     if (choosingAttachment) {
         AlertDialog(
             onDismissRequest = { choosingAttachment = false },
-            title = { Text("Attach to message") },
+            title = { Text(tr("Attach to message")) },
             text = {
                 Column {
                     TextButton(
@@ -2115,26 +2119,26 @@ private fun ChatScreen(
                             pickImages.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                         },
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text("🖼  Photo or image") }
+                    ) { Text(tr("🖼  Photo or image")) }
                     TextButton(
                         onClick = {
                             choosingAttachment = false
                             pickPdf.launch(arrayOf("application/pdf"))
                         },
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text("📄  PDF") }
+                    ) { Text(tr("📄  PDF")) }
                     TextButton(
                         onClick = {
                             choosingAttachment = false
                             pickDocuments.launch(arrayOf("*/*"))
                         },
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text("📎  Any file") }
+                    ) { Text(tr("📎  Any file")) }
                 }
             },
             confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { choosingAttachment = false }) { Text("Cancel") }
+                TextButton(onClick = { choosingAttachment = false }) { Text(tr("Cancel")) }
             },
         )
     }
@@ -2230,7 +2234,7 @@ private fun AttachmentChip(
             ) {
                 Icon(
                     Icons.Filled.Close,
-                    contentDescription = "Remove ${attachment.name}",
+                    contentDescription = tr("Remove ${attachment.name}"),
                     modifier = Modifier.size(16.dp),
                 )
             }
@@ -2262,8 +2266,7 @@ private fun WorkingStopButton(enabled: Boolean, onClick: () -> Unit) {
                 dotSize = 5.dp,
             )
             Spacer(Modifier.width(7.dp))
-            Text(
-                "Stop",
+            Text(tr("Stop"),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = if (enabled) CrewGreen else CrewGreen.copy(alpha = 0.4f),
@@ -2284,8 +2287,7 @@ private fun WorkingBadge() {
         ) {
             WorkingDots(dotSize = 5.dp)
             Spacer(Modifier.width(7.dp))
-            Text(
-                "Working",
+            Text(tr("Working"),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = CrewGreen,
@@ -2360,14 +2362,14 @@ private fun TasksDialog(
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Tasks", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                    Text(tr("Tasks"), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                     if (busy) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Filled.Close, contentDescription = "Close")
+                        Icon(Icons.Filled.Close, contentDescription = tr("Close"))
                     }
                 }
                 error?.let {
-                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Text(tr(it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
                 LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(tasks, key = { it.threadId }) { task ->
@@ -2390,7 +2392,7 @@ private fun TasksDialog(
                                 if (active) {
                                     Icon(
                                         Icons.Filled.Check,
-                                        contentDescription = "Current task",
+                                        contentDescription = tr("Current task"),
                                         tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(16.dp),
                                     )
@@ -2412,14 +2414,14 @@ private fun TasksDialog(
                                 }
                                 Box {
                                     IconButton(onClick = { menuFor = task.threadId }) {
-                                        Icon(Icons.Filled.MoreVert, contentDescription = "Task actions")
+                                        Icon(Icons.Filled.MoreVert, contentDescription = tr("Task actions"))
                                     }
                                     DropdownMenu(
                                         expanded = menuFor == task.threadId,
                                         onDismissRequest = { menuFor = null },
                                     ) {
                                         DropdownMenuItem(
-                                            text = { Text("Rename") },
+                                            text = { Text(tr("Rename")) },
                                             onClick = {
                                                 menuFor = null
                                                 renameTarget = task
@@ -2427,7 +2429,7 @@ private fun TasksDialog(
                                             },
                                         )
                                         DropdownMenuItem(
-                                            text = { Text("Archive") },
+                                            text = { Text(tr("Archive")) },
                                             enabled = tasks.size > 1,
                                             onClick = {
                                                 menuFor = null
@@ -2438,7 +2440,7 @@ private fun TasksDialog(
                                             },
                                         )
                                         DropdownMenuItem(
-                                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                                            text = { Text(tr("Delete"), color = MaterialTheme.colorScheme.error) },
                                             onClick = {
                                                 menuFor = null
                                                 deleteTarget = task
@@ -2452,7 +2454,7 @@ private fun TasksDialog(
                     if (archived.isNotEmpty()) {
                         item {
                             TextButton(onClick = { showArchived = !showArchived }) {
-                                Text(if (showArchived) "Hide archived" else "Archived tasks (${archived.size})")
+                                Text(tr(if (showArchived) "Hide archived" else "Archived tasks (${archived.size})"))
                             }
                         }
                         if (showArchived) {
@@ -2477,10 +2479,10 @@ private fun TasksDialog(
                                                     after = { onChanged() },
                                                 )
                                             },
-                                        ) { Text("Restore") }
+                                        ) { Text(tr("Restore")) }
                                         TextButton(
                                             onClick = { deleteTarget = task },
-                                        ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                                        ) { Text(tr("Delete"), color = MaterialTheme.colorScheme.error) }
                                     }
                                 }
                             }
@@ -2499,7 +2501,7 @@ private fun TasksDialog(
                     },
                     enabled = !busy && !chat.busy,
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("New task") }
+                ) { Text(tr("New task")) }
             }
         }
     }
@@ -2507,13 +2509,13 @@ private fun TasksDialog(
     renameTarget?.let { task ->
         AlertDialog(
             onDismissRequest = { renameTarget = null },
-            title = { Text("Rename task") },
+            title = { Text(tr("Rename task")) },
             text = {
                 OutlinedTextField(
                     value = renameText,
                     onValueChange = { renameText = it },
                     singleLine = true,
-                    label = { Text("Task name") },
+                    label = { Text(tr("Task name")) },
                 )
             },
             confirmButton = {
@@ -2528,10 +2530,10 @@ private fun TasksDialog(
                             },
                         )
                     },
-                ) { Text("Save") }
+                ) { Text(tr("Save")) }
             },
             dismissButton = {
-                TextButton(onClick = { renameTarget = null }) { Text("Cancel") }
+                TextButton(onClick = { renameTarget = null }) { Text(tr("Cancel")) }
             },
         )
     }
@@ -2539,8 +2541,8 @@ private fun TasksDialog(
     deleteTarget?.let { task ->
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
-            title = { Text("Delete this task?") },
-            text = { Text("Its messages will be removed permanently. Archiving keeps them.") },
+            title = { Text(tr("Delete this task?")) },
+            text = { Text(tr("Its messages will be removed permanently. Archiving keeps them.")) },
             confirmButton = {
                 TextButton(
                     enabled = !busy,
@@ -2553,10 +2555,10 @@ private fun TasksDialog(
                             },
                         )
                     },
-                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                ) { Text(tr("Delete"), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { deleteTarget = null }) { Text("Cancel") }
+                TextButton(onClick = { deleteTarget = null }) { Text(tr("Cancel")) }
             },
         )
     }
@@ -2587,22 +2589,21 @@ private fun PagesDialog(
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Pages", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                    Text(tr("Pages"), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Filled.Close, contentDescription = "Close")
+                        Icon(Icons.Filled.Close, contentDescription = tr("Close"))
                     }
                 }
                 when {
                     error != null -> Text(
-                        error ?: "Couldn't load the pages.",
+                        tr(error ?: "Couldn't load the pages."),
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(top = 12.dp),
                     )
                     pages == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
-                    pages.isNullOrEmpty() -> Text(
-                        "No pages yet. Ask this bot to build a dashboard, checklist, or report.",
+                    pages.isNullOrEmpty() -> Text(tr("No pages yet. Ask this bot to build a dashboard, checklist, or report."),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 12.dp),
                     )
@@ -2617,13 +2618,12 @@ private fun PagesDialog(
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(page.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        Text(
-                                            "${page.name} · ${formatPageSize(page.bytes)}",
+                                        Text(tr("${page.name} · ${formatPageSize(page.bytes)}"),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
-                                    Text("Open", color = MaterialTheme.colorScheme.primary)
+                                    Text(tr("Open"), color = MaterialTheme.colorScheme.primary)
                                 }
                             }
                         }
@@ -2646,7 +2646,7 @@ private fun PageViewer(connection: CompanionConnection, page: PageArtifactRecord
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Filled.Close, contentDescription = "Close")
+                        Icon(Icons.Filled.Close, contentDescription = tr("Close"))
                     }
                     Text(
                         page.title,
@@ -2697,13 +2697,13 @@ private fun PageViewer(connection: CompanionConnection, page: PageArtifactRecord
                                         manager.enqueue(request)
                                         android.widget.Toast.makeText(
                                             context,
-                                            "Downloading $fileName…",
+                                            AppStrings.t(LanguageStore.load(context), "Downloading $fileName…"),
                                             android.widget.Toast.LENGTH_SHORT,
                                         ).show()
                                     } catch (_: Exception) {
                                         android.widget.Toast.makeText(
                                             context,
-                                            "Couldn't start the download",
+                                            AppStrings.t(LanguageStore.load(context), "Couldn't start the download"),
                                             android.widget.Toast.LENGTH_LONG,
                                         ).show()
                                     }
@@ -2742,8 +2742,8 @@ private fun PageViewer(connection: CompanionConnection, page: PageArtifactRecord
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            Text("Couldn't open the page", style = MaterialTheme.typography.titleMedium)
-                            Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(tr("Couldn't open the page"), style = MaterialTheme.typography.titleMedium)
+                            Text(tr(message), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -2806,8 +2806,7 @@ private fun MessageItem(
     when {
         message.page != null -> PageMessageCard(message.page, onOpenPage)
         message.kind == "options" && message.card != null -> ApprovalItem(message.card, onRespond)
-        message.kind == "activity" -> Text(
-            "⚒ ${message.toolName.ifBlank { message.text.ifBlank { "Working" } }}",
+        message.kind == "activity" -> Text("⚒ " + tr(message.toolName.ifBlank { message.text.ifBlank { "Working" } }),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(start = 4.dp),
@@ -2881,7 +2880,7 @@ private fun PageMessageCard(page: PageArtifactRecord, onOpen: (PageArtifactRecor
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            TextButton(onClick = { onOpen(page) }) { Text("Open") }
+            TextButton(onClick = { onOpen(page) }) { Text(tr("Open")) }
         }
     }
 }
@@ -2894,9 +2893,9 @@ private fun ApprovalItem(card: ApprovalCard, onRespond: (ApprovalCard, String) -
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(card.title.ifBlank { if (card.permission) "Approval needed" else "Question" }, fontWeight = FontWeight.SemiBold)
+            Text(tr(card.title.ifBlank { if (card.permission) "Approval needed" else "Question" }), fontWeight = FontWeight.SemiBold)
             card.explanation?.takeIf(String::isNotBlank)?.let { explanation ->
-                Text("What this means: $explanation", color = MaterialTheme.colorScheme.primary)
+                Text(tr("What this means: $explanation"), color = MaterialTheme.colorScheme.primary)
             }
             card.risk?.takeIf(String::isNotBlank)?.let { risk ->
                 val tone = when (card.riskLevel) {
@@ -2904,28 +2903,33 @@ private fun ApprovalItem(card: ApprovalCard, onRespond: (ApprovalCard, String) -
                     "low" -> Color(0xFF9BE7B0)
                     else -> Color(0xFFFFCC80)
                 }
-                Text("Why it needs approval: $risk", color = tone)
+                Text(tr("Why it needs approval: $risk"), color = tone)
             }
             card.purpose?.takeIf(String::isNotBlank)?.let { task ->
-                Text("Task: $task", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text(tr("Task: $task"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
-            if (card.subtitle.isNotBlank()) Text(card.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (card.pending && card.overdueAt != null) {
-                Text(
-                    "The timer expired, but the bot is still waiting. You can answer now and it will continue.",
+            if (card.subtitle.isNotBlank()) Text(tr(card.subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (card.routineDraft) {
+                Text(tr("Open KodBot on the desktop to save and edit this routine."),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            if (!card.routineDraft && card.pending && card.overdueAt != null) {
+                Text(tr("The timer expired, but the bot is still waiting. You can answer now and it will continue."),
                     color = Color(0xFFFFCC80),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-            if (card.pending) {
+            if (!card.routineDraft && card.pending) {
                 if (card.options.isNotEmpty()) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         card.options.forEach { option ->
                             val refusal = option.equals("deny", ignoreCase = true)
                             if (refusal) {
-                                OutlinedButton(onClick = { onRespond(card, option) }) { Text(option) }
+                                OutlinedButton(onClick = { onRespond(card, option) }) { Text(tr(option)) }
                             } else {
-                                Button(onClick = { onRespond(card, option) }) { Text(option) }
+                                Button(onClick = { onRespond(card, option) }) { Text(tr(option)) }
                             }
                         }
                     }
@@ -2934,14 +2938,14 @@ private fun ApprovalItem(card: ApprovalCard, onRespond: (ApprovalCard, String) -
                         value = answer,
                         onValueChange = { answer = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Your answer") },
+                        label = { Text(tr("Your answer")) },
                     )
                     Button(onClick = { if (answer.isNotBlank()) onRespond(card, answer.trim()) }, enabled = answer.isNotBlank()) {
-                        Text("Answer")
+                        Text(tr("Answer"))
                     }
                 }
             } else if (!card.answered.isNullOrBlank()) {
-                Text("Answered: ${card.answered}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(tr("Answered: ${card.answered}"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

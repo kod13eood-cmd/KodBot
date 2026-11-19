@@ -1093,7 +1093,7 @@ export function ChatView({ bot }: { bot: Bot }) {
           />
           {bot.chiefOfStaff && (
             <span className="flex items-center gap-1 rounded-full bg-accent/12 px-2 py-0.5 text-[11px] font-medium text-accent">
-              <Crown size={11} /> Chief of Staff
+              <Crown size={11} /> {t("Chief of Staff")}
             </span>
           )}
           {bot.busy && <Loader2 size={14} className="animate-spin text-ink-secondary" />}

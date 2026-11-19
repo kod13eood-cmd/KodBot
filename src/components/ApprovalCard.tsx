@@ -54,8 +54,8 @@ export function ApprovalCard({
     >
       <div className="flex items-baseline justify-between gap-3">
         <div className="text-[15px] font-semibold text-ink">
-          {bot ? `${bot.name} wants to ` : "Wants to "}
-          {toolLabel(card.tool)}
+          {bot ? t("{name} wants to", { name: bot.name }) : t("Wants to")}{" "}
+          {t(toolLabel(card.tool))}
         </div>
         {card.tool && <span className="shrink-0 font-mono text-[11px] text-ink-secondary">{card.tool}</span>}
       </div>
@@ -120,15 +120,15 @@ export function ApprovalCard({
       <div className="mt-3 flex items-center gap-1.5 text-[13px] text-ink-secondary">
         {settled === "allow" ? (
           <>
-            <Check size={14} className="text-success" /> Allowed
+            <Check size={14} className="text-success" /> {t("Allowed")}
           </>
         ) : settled ? (
           <>
-            <X size={14} /> Denied
+            <X size={14} /> {t("Denied")}
           </>
         ) : (
           <>
-            <ShieldCheck size={14} className="text-accent" /> Waiting for your answer below
+            <ShieldCheck size={14} className="text-accent" /> {t("Waiting for your answer below")}
           </>
         )}
       </div>

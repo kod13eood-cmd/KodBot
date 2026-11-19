@@ -11,9 +11,11 @@ import { EngineGroupLabel } from "@/components/EngineGroupLabel";
 import { EngineSetup, installCommandFor } from "@/components/EngineSetup";
 import { ProviderMark } from "@/components/ProviderIcons";
 import { splitEngineRail } from "@/lib/engine-rail";
+import { useI18n } from "@/lib/i18n";
 
 export function NoEngines() {
   const { state, refreshInstances } = useStore();
+  const { t } = useI18n();
   const [rechecking, setRechecking] = useState(false);
 
   // Only things you actually install belong on a "get started" screen. The
@@ -43,10 +45,9 @@ export function NoEngines() {
   return (
     <main className="flex h-full min-w-0 flex-1 flex-col overflow-y-auto bg-app">
       <div className="mx-auto w-full max-w-[560px] px-6 py-12">
-        <h1 className="text-[20px] font-semibold text-ink">Install an AI engine to get started</h1>
+        <h1 className="text-[20px] font-semibold text-ink">{t("Install an AI engine to get started")}</h1>
         <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-secondary">
-          KodBot doesn&rsquo;t ship a model of its own — your bots run on an AI CLI installed on
-          this computer, using your existing login. Set up any one of these and your bots come alive.
+          {t("KodBot doesn't ship a model of its own — your bots run on an AI CLI installed on this computer, using your existing login. Set up any one of these and your bots come alive.")}
         </p>
 
         <div className="mt-6 flex flex-col gap-2.5">
@@ -67,9 +68,9 @@ export function NoEngines() {
             );
             return (
               <>
-                {subscription.length > 0 && <EngineGroupLabel className="px-1">Cloud</EngineGroupLabel>}
+                {subscription.length > 0 && <EngineGroupLabel className="px-1">{t("Cloud")}</EngineGroupLabel>}
                 {subscription.map(card)}
-                {custom.length > 0 && <EngineGroupLabel className="px-1 pt-1">Local</EngineGroupLabel>}
+                {custom.length > 0 && <EngineGroupLabel className="px-1 pt-1">{t("Local")}</EngineGroupLabel>}
                 {custom.map(card)}
               </>
             );
@@ -82,7 +83,7 @@ export function NoEngines() {
           className="mt-6 flex items-center gap-2 rounded-lg bg-raised px-3 py-2 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-60"
         >
           {rechecking ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-          {rechecking ? "Checking…" : "Check again"}
+          {rechecking ? t("Checking…") : t("Check again")}
         </button>
       </div>
     </main>

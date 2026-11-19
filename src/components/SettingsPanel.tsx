@@ -817,6 +817,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
         | "autoModel"
         | "economyModel"
         | "workAlone"
+        | "shareTeamComputer"
         | "autoModelPool"
         | "speakReplies"
         | "voice"
@@ -1368,6 +1369,33 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
                 </button>
               ))}
             </div>
+            {state.teams.some((team) => team.memberIds.includes(bot.id) || team.leaderBotId === bot.id) && (
+              <div className="mt-3 flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-[13.5px] font-medium text-ink">{t("Share the cloud computer with the team")}</div>
+                  <div className="mt-0.5 text-[12.5px] text-ink-secondary">
+                    {t("Off keeps this bot's cloud computer private. On, teammates use the same machine and browser logins.")}
+                  </div>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={Boolean(bot.shareTeamComputer)}
+                  aria-label={t("Share the cloud computer with the team")}
+                  onClick={() => patch({ shareTeamComputer: !bot.shareTeamComputer })}
+                  className={cn(
+                    "relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors",
+                    bot.shareTeamComputer ? "bg-accent" : "bg-raised",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "absolute top-[3px] size-5 rounded-full bg-white transition-all",
+                      bot.shareTeamComputer ? "left-[21px]" : "left-[3px]",
+                    )}
+                  />
+                </button>
+              </div>
+            )}
           </div>
 
           {devMode && <BotUsageCard bot={bot} />}

@@ -64,6 +64,7 @@ fun SettingsScreen(
     onSelectModel: (ConversationRecord, EngineRecord, ModelOptionRecord) -> Unit,
     onSetAutoModel: (ConversationRecord, Boolean, List<ModelSelectionRecord>) -> Unit,
     onSetEconomyModel: (ConversationRecord, Boolean) -> Unit,
+    onLanguageChange: (AppLanguage) -> Unit,
     onCreateTeam: (ConversationRecord, String) -> Unit,
     onJoinTeam: (ConversationRecord, String) -> Unit,
     onLeaveTeam: (ConversationRecord, String) -> Unit,
@@ -95,8 +96,8 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onBack) { Text("‹ Back") }
-                Text("Settings", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                TextButton(onClick = onBack) { Text(tr("‹ Back")) }
+                Text(tr("Settings"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             }
             Column(
                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -104,25 +105,25 @@ fun SettingsScreen(
             ) {
                 if (error != null) {
                     Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF4A211F))) {
-                        Text(error, modifier = Modifier.padding(14.dp), color = Color(0xFFFFDAD6))
+                        Text(tr(error), modifier = Modifier.padding(14.dp), color = Color(0xFFFFDAD6))
                     }
                 }
                 if (message != null) {
                     Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF153627))) {
-                        Text(message, modifier = Modifier.padding(14.dp), color = Color(0xFFD6F5E2))
+                        Text(tr(message), modifier = Modifier.padding(14.dp), color = Color(0xFFD6F5E2))
                     }
                 }
 
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                     Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Connection", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Text("Computer: ${connection.serverName}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(tr("Connection"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(tr("Computer: ${connection.serverName}"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         OutlinedTextField(
                             value = address,
                             onValueChange = { address = it },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Server address") },
-                            placeholder = { Text("host-or-ip:8810") },
+                            label = { Text(tr("Server address")) },
+                            placeholder = { Text(tr("host-or-ip:8810")) },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                         )
@@ -132,7 +133,7 @@ fun SettingsScreen(
                                 enabled = !busy && address.isNotBlank(),
                                 modifier = Modifier.weight(1f),
                             ) {
-                                Text("Test server")
+                                Text(tr("Test server"))
                             }
                             Button(
                                 onClick = { onSaveServerAddress(address) },
@@ -140,11 +141,10 @@ fun SettingsScreen(
                                 modifier = Modifier.weight(1f),
                             ) {
                                 if (busy) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                                else Text("Save address")
+                                else Text(tr("Save address"))
                             }
                         }
-                        Text(
-                            "Use the LAN address on trusted Wi-Fi or a Tailscale name when away. Saving changes this phone only; it doesn't expose new ports on the computer.",
+                        Text(tr("Use the LAN address on trusted Wi-Fi or a Tailscale name when away. Saving changes this phone only; it doesn't expose new ports on the computer."),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -153,9 +153,8 @@ fun SettingsScreen(
 
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                     Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("This phone", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            "Unpairing removes the saved credential from this phone. You can pair again with a QR code or six-digit code.",
+                        Text(tr("This phone"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(tr("Unpairing removes the saved credential from this phone. You can pair again with a QR code or six-digit code."),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -165,14 +164,14 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF8A80)),
                         ) {
-                            Text("Disconnect this phone")
+                            Text(tr("Disconnect this phone"))
                         }
                     }
                 }
 
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                     Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("App updates", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(tr("App updates"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         val update = updateState.info
                         val status = when {
                             updateState.checking -> "Checking for updates…"
@@ -181,12 +180,12 @@ fun SettingsScreen(
                             updateState.message != null -> updateState.message.orEmpty()
                             else -> "Installed version $appVersion."
                         }
-                        Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(tr(status), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         update?.notes?.takeIf(String::isNotBlank)?.let {
-                            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(tr(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         updateState.error?.let {
-                            Text(it, style = MaterialTheme.typography.bodySmall, color = Color(0xFFFF8A80))
+                            Text(tr(it), style = MaterialTheme.typography.bodySmall, color = Color(0xFFFF8A80))
                         }
                         Button(
                             onClick = if (update != null) onInstallUpdate else onCheckForUpdates,
@@ -196,7 +195,7 @@ fun SettingsScreen(
                             if (updateState.checking || updateState.downloading) {
                                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             } else {
-                                Text(if (update != null) "Download and install" else "Check for updates")
+                                Text(tr(if (update != null) "Download and install" else "Check for updates"))
                             }
                         }
                         TextButton(
@@ -204,10 +203,9 @@ fun SettingsScreen(
                             enabled = !busy,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text("Download APK directly")
+                            Text(tr("Download APK directly"))
                         }
-                        Text(
-                            "Use this if Check for updates can't reach the update server.",
+                        Text(tr("Use this if Check for updates can't reach the update server."),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -215,8 +213,28 @@ fun SettingsScreen(
                 }
 
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(tr("Language"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(tr("Choose the language for the app. Changes apply immediately."),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            val current = LocalAppLanguage.current
+                            for (choice in listOf(AppLanguage.EN to "English", AppLanguage.BG to "Български")) {
+                                if (choice.first == current) {
+                                    Button(onClick = { onLanguageChange(choice.first) }, enabled = !busy) { Text(choice.second) }
+                                } else {
+                                    OutlinedButton(onClick = { onLanguageChange(choice.first) }, enabled = !busy) { Text(choice.second) }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
-                        Text("Display", modifier = Modifier.padding(top = 10.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(tr("Display"), modifier = Modifier.padding(top = 10.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         SettingSwitch(
                             title = "Desktop mode (web view)",
                             subtitle = "Use the full web interface while native notifications keep running. System back returns to the native app.",
@@ -228,7 +246,7 @@ fun SettingsScreen(
 
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
-                        Text("What to show", modifier = Modifier.padding(top = 10.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(tr("What to show"), modifier = Modifier.padding(top = 10.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         SettingSwitch(
                             title = "Show hidden bots",
                             subtitle = "Include bots hidden on the desktop.",
@@ -248,21 +266,19 @@ fun SettingsScreen(
                     Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Teams", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                                Text(
-                                    "${teamGroups.size} teams · ${bots.count { it.teamId != null }} of ${bots.size} bots grouped",
+                                Text(tr("Teams"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                Text(tr("${teamGroups.size} teams · ${bots.count { it.teamId != null }} of ${bots.size} bots grouped"),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
-                        Text(
-                            "A bot belongs to one team. Only an ungrouped bot can create a team; the creator leads it, and the leader must hand over leadership before leaving.",
+                        Text(tr("A bot belongs to one team. Only an ungrouped bot can create a team; the creator leads it, and the leader must hand over leadership before leaving."),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         if (bots.isEmpty()) {
-                            Text("No bots available.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(tr("No bots available."), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } else {
                             bots.forEach { bot ->
                                 Row(
@@ -274,7 +290,7 @@ fun SettingsScreen(
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(bot.name, fontWeight = FontWeight.Medium)
                                             if (bot.teamIsLeader) {
-                                                Text("  leader", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                                Text(tr("  leader"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                                             }
                                         }
                                         Text(
@@ -287,7 +303,7 @@ fun SettingsScreen(
                                     TextButton(
                                         onClick = { teamBotKey = bot.key },
                                         enabled = !busy,
-                                    ) { Text(if (bot.teamId == null) "Join" else "Manage") }
+                                    ) { Text(tr(if (bot.teamId == null) "Join" else "Manage")) }
                                 }
                             }
                         }
@@ -298,22 +314,20 @@ fun SettingsScreen(
                     Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Models", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                                Text(
-                                    "${engines.count { it.ready }} of ${engines.size} engines ready",
+                                Text(tr("Models"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                Text(tr("${engines.count { it.ready }} of ${engines.size} engines ready"),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            TextButton(onClick = onRefreshEngines, enabled = !busy) { Text("Refresh") }
+                            TextButton(onClick = onRefreshEngines, enabled = !busy) { Text(tr("Refresh")) }
                         }
-                        Text(
-                            "Choose a model for a bot. Auto routing uses only the models in its pool; an empty pool stays on the current engine. API keys and engine sign-in stay on the Linux computer.",
+                        Text(tr("Choose a model for a bot. Auto routing uses only the models in its pool; an empty pool stays on the current engine. API keys and engine sign-in stay on the Linux computer."),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         if (bots.isEmpty()) {
-                            Text("No bots available.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(tr("No bots available."), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } else {
                             bots.forEach { bot ->
                                 val selection = bot.modelSelection
@@ -338,14 +352,14 @@ fun SettingsScreen(
                                     TextButton(
                                         onClick = { modelBotKey = bot.key },
                                         enabled = !busy && engines.any { it.ready && it.models.isNotEmpty() },
-                                    ) { Text("Choose") }
+                                    ) { Text(tr("Choose")) }
                                 }
                                 Row(
                                     modifier = Modifier.fillMaxWidth().padding(start = 40.dp, bottom = 2.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text("Auto", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                                        Text(tr("Auto"), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
                                         Text(
                                             when {
                                                 !bot.autoModel -> "Off"
@@ -364,7 +378,7 @@ fun SettingsScreen(
                                     TextButton(
                                         onClick = { poolBotKey = bot.key },
                                         enabled = !busy,
-                                    ) { Text("Pool") }
+                                    ) { Text(tr("Pool")) }
                                 }
                                 if (bot.autoModel) {
                                     Row(
@@ -372,9 +386,8 @@ fun SettingsScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Column(modifier = Modifier.weight(1f)) {
-                                            Text("Economy", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
-                                            Text(
-                                                "Short questions use a faster or free model. Code and the screen stay on a strong one.",
+                                            Text(tr("Economy"), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                                            Text(tr("Short questions use a faster or free model. Code and the screen stay on a strong one."),
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
@@ -389,8 +402,7 @@ fun SettingsScreen(
                             }
                         }
                         if (engines.any { !it.ready }) {
-                            Text(
-                                "Some engines need setup on the computer before they can be selected.",
+                            Text(tr("Some engines need setup on the computer before they can be selected."),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -474,8 +486,8 @@ private fun SettingSwitch(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.Medium)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(tr(title), fontWeight = FontWeight.Medium)
+            Text(tr(subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
@@ -501,17 +513,17 @@ private fun ModelChoiceDialog(
         .filter { (_, models) -> models.isNotEmpty() }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Choose a model for ${bot.name}") },
+        title = { Text(tr("Choose a model for ${bot.name}")) },
         text = {
             if (ready.isEmpty()) {
-                Text("No ready model catalog is available. Check the server connection or sign in to an engine on the computer.")
+                Text(tr("No ready model catalog is available. Check the server connection or sign in to an engine on the computer."))
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedTextField(
                         value = query,
                         onValueChange = { query = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Search models") },
+                        label = { Text(tr("Search models")) },
                         singleLine = true,
                     )
                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 380.dp)) {
@@ -528,8 +540,7 @@ private fun ModelChoiceDialog(
                             for ((group, models) in filtered.groupBy { it.group.orEmpty() }) {
                                 if (group.isNotBlank()) {
                                     item(key = "group:${engine.instanceId}:$group") {
-                                        Text(
-                                            "$group · ${models.size}",
+                                        Text(tr("$group · ${models.size}"),
                                             modifier = Modifier.padding(top = 4.dp, bottom = 1.dp, start = 4.dp),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -567,7 +578,7 @@ private fun ModelChoiceDialog(
                                                 }
                                             }
                                             ModelCapabilityBadges(model)
-                                            if (selected) Text("  ✓", color = MaterialTheme.colorScheme.primary)
+                                            if (selected) Text(tr("  ✓"), color = MaterialTheme.colorScheme.primary)
                                         }
                                     }
                                 }
@@ -577,7 +588,7 @@ private fun ModelChoiceDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Close")) } },
     )
 }
 
@@ -602,7 +613,7 @@ private fun BotTeamDialog(
     val current = teams.firstOrNull { it.id == bot.teamId }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Team for ${bot.name}") },
+        title = { Text(tr("Team for ${bot.name}")) },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
@@ -610,19 +621,16 @@ private fun BotTeamDialog(
             ) {
                 if (current != null) {
                     Text(current.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "Leader: ${current.leader?.name ?: "unknown"}",
+                    Text(tr("Leader: ${current.leader?.name ?: "unknown"}"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Text(
-                        "Members: ${current.members.joinToString { it.name }}",
+                    Text(tr("Members: ${current.members.joinToString { it.name }}"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     if (bot.teamIsLeader) {
-                        Text(
-                            "Hand leadership to another member before leaving.",
+                        Text(tr("Hand leadership to another member before leaving."),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -632,14 +640,14 @@ private fun BotTeamDialog(
                                 enabled = !busy,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Text("Make ${member.name} leader")
+                                Text(tr("Make ${member.name} leader"))
                             }
                         }
                     } else if (confirmLeave) {
-                        Text("Leave ${current.name}?", fontWeight = FontWeight.Medium)
+                        Text(tr("Leave ${current.name}?"), fontWeight = FontWeight.Medium)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = { confirmLeave = false }, enabled = !busy) { Text("Cancel") }
-                            Button(onClick = { onLeave(current.id) }, enabled = !busy) { Text("Leave team") }
+                            OutlinedButton(onClick = { confirmLeave = false }, enabled = !busy) { Text(tr("Cancel")) }
+                            Button(onClick = { onLeave(current.id) }, enabled = !busy) { Text(tr("Leave team")) }
                         }
                     } else {
                         OutlinedButton(
@@ -647,15 +655,14 @@ private fun BotTeamDialog(
                             enabled = !busy,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text("Leave team")
+                            Text(tr("Leave team"))
                         }
                     }
                 } else {
-                    Text("Join a team", fontWeight = FontWeight.SemiBold)
+                    Text(tr("Join a team"), fontWeight = FontWeight.SemiBold)
                     val joinable = teams.filter { team -> team.members.none { it.id == bot.id } }
                     if (joinable.isEmpty()) {
-                        Text(
-                            "No other teams yet. Create one below.",
+                        Text(tr("No other teams yet. Create one below."),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -671,8 +678,7 @@ private fun BotTeamDialog(
                                     horizontalAlignment = Alignment.Start,
                                 ) {
                                     Text(team.name)
-                                    Text(
-                                        "${team.members.size} bots · leader ${team.leader?.name ?: "unknown"}",
+                                    Text(tr("${team.members.size} bots · leader ${team.leader?.name ?: "unknown"}"),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -680,12 +686,12 @@ private fun BotTeamDialog(
                             }
                         }
                     }
-                    Text("Create a new team", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                    Text(tr("Create a new team"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
                     OutlinedTextField(
                         value = newTeamName,
                         onValueChange = { newTeamName = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Team name") },
+                        label = { Text(tr("Team name")) },
                         singleLine = true,
                     )
                     Button(
@@ -693,12 +699,12 @@ private fun BotTeamDialog(
                         enabled = !busy && newTeamName.trim().isNotEmpty(),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Create team")
+                        Text(tr("Create team"))
                     }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Close")) } },
     )
 }
 
@@ -738,11 +744,10 @@ private fun AutoModelPoolDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Auto model pool for ${bot.name}") },
+        title = { Text(tr("Auto model pool for ${bot.name}")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    "Auto may route only to the models selected here. An empty pool keeps Auto inside the current engine.",
+                Text(tr("Auto may route only to the models selected here. An empty pool keeps Auto inside the current engine."),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -750,12 +755,11 @@ private fun AutoModelPoolDialog(
                     value = query,
                     onValueChange = { query = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Search models") },
+                    label = { Text(tr("Search models")) },
                     singleLine = true,
                 )
                 if (ready.isEmpty()) {
-                    Text(
-                        "No ready model catalog is available. Check the computer connection or sign in to an engine.",
+                    Text(tr("No ready model catalog is available. Check the computer connection or sign in to an engine."),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -796,11 +800,10 @@ private fun AutoModelPoolDialog(
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { onSave(true, emptyList()) }) { Text("Use current engine only") }
-                    TextButton(onClick = { onSave(false, bot.autoModelPool) }) { Text("Turn off Auto") }
+                    TextButton(onClick = { onSave(true, emptyList()) }) { Text(tr("Use current engine only")) }
+                    TextButton(onClick = { onSave(false, bot.autoModelPool) }) { Text(tr("Turn off Auto")) }
                 }
-                Text(
-                    "${chosen.size} selected",
+                Text(tr("${chosen.size} selected"),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -810,8 +813,8 @@ private fun AutoModelPoolDialog(
             TextButton(
                 onClick = { onSave(true, chosen) },
                 enabled = available.isNotEmpty(),
-            ) { Text("Save pool") }
+            ) { Text(tr("Save pool")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancel")) } },
     )
 }

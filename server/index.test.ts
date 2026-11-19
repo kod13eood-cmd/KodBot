@@ -577,6 +577,19 @@ describe("harness HTTP API", () => {
     expect((await api("PATCH", "/api/bots/missing/auto-model", { autoModel: false })).status).toBe(404);
   });
 
+  it("round-trips the team-shared computer opt-in", async () => {
+    const bot = (await api("POST", "/api/bots")).body.bot;
+    expect(bot.shareTeamComputer).toBeUndefined();
+    const bad = await api("PATCH", `/api/bots/${bot.id}`, { shareTeamComputer: "yes" });
+    expect(bad.status).toBe(400);
+    const on = await api("PATCH", `/api/bots/${bot.id}`, { shareTeamComputer: true });
+    expect(on.status).toBe(200);
+    expect(on.body.bot.shareTeamComputer).toBe(true);
+    const off = await api("PATCH", `/api/bots/${bot.id}`, { shareTeamComputer: false });
+    expect(off.status).toBe(200);
+    expect(off.body.bot.shareTeamComputer).toBe(false);
+  });
+
   it("round-trips Economy mode on the general bot PATCH", async () => {
     const bot = (await api("POST", "/api/bots")).body.bot;
     expect(bot.economyModel).toBeUndefined();

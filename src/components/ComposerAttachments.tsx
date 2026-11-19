@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AudioLines, ClipboardPaste, File as FileIcon, X } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n";
 import {
   attachmentsFromDroppedFiles,
   formatSize,
@@ -30,6 +31,7 @@ export function ComposerAttachments({
   onAdd: (attachments: Attachment[]) => void;
   onRemove: (id: string) => void;
 }) {
+  const { t } = useI18n();
   const [dragging, setDragging] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   // dragenter/dragleave fire once per element crossed, so the overlay
@@ -89,7 +91,7 @@ export function ComposerAttachments({
       {dragging && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-10">
           <div className="rounded-2xl border-2 border-dashed border-accent/70 bg-panel/90 px-8 py-6 text-[14px] font-medium text-ink shadow-2xl">
-            Drop to attach — the bot gets the file path
+            {t("Drop to attach — the bot gets the file path")}
           </div>
         </div>
       )}

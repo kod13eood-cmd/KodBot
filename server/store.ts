@@ -39,6 +39,15 @@ export interface OptionCardData {
   options: string[];
   answered?: string;
   dismissed?: boolean;
+  /** A paused routine the person can edit and save. Saving does not arm it. */
+  routineDraft?: {
+    name: string;
+    prompt: string;
+    botId: string;
+    runOn?: "crew" | "cloud";
+    enabled: false;
+    schedule: { type: "once"; at: number };
+  };
   /** Present when this card is a live provider ask (approval/question). */
   requestId?: string;
   /** permission cards: the tool being requested, so the card can show what
@@ -234,6 +243,13 @@ function redactBotAuthored<T extends Omit<Message, "id" | "at"> & { at?: number 
     const card = { ...out.card } as OptionCardData & { summary?: string };
     card.title = redactSecretsInText(card.title);
     if (typeof card.subtitle === "string") card.subtitle = redactSecretsInText(card.subtitle);
+    if (card.routineDraft) {
+      card.routineDraft = {
+        ...card.routineDraft,
+        name: redactSecretsInText(card.routineDraft.name),
+        prompt: redactSecretsInText(card.routineDraft.prompt),
+      };
+    }
     if (typeof card.summary === "string") card.summary = redactSecretsInText(card.summary);
     out.card = card;
   }
@@ -320,6 +336,8 @@ export interface BotRecord {
   /** When a turn stops with work still open, continue it once on its own.
    * This never widens approvals: risky tools still ask a person. */
   workAlone?: boolean;
+  /** Share one cloud computer with the bot's team. Off keeps it private. */
+  shareTeamComputer?: boolean;
   /** Optional allowlist for auto routing. Entries are explicit consent to
    * send a turn to that engine/model; empty means the current engine. */
   autoModelPool?: ModelSelection[];

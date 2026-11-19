@@ -25,6 +25,7 @@ import { ReactionBar, ReactionChips } from "./Reactions";
 import { ApprovalCard } from "./ApprovalCard";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n";
 import { useFocusMessage } from "@/lib/focus-message";
 import { shortPath } from "@/lib/short-path";
 import { BOTTOM_FOLLOW_THRESHOLD, shouldResumeBottomFollow } from "@/lib/bottom-follow";
@@ -163,15 +164,16 @@ function StreamingBubble({ text }: { text: string }) {
 
 function DefaultResponderSelect({ group, members }: { group: Group; members: Bot[] }) {
   const { dispatch } = useStore();
+  const { t } = useI18n();
   const responder = effectiveDefaultResponder(group, members);
   const value = responder.kind === "member" ? `member:${responder.botId}` : responder.kind;
   const lead = responder.kind === "member" ? members.find((member) => member.id === responder.botId) : undefined;
   const title =
     responder.kind === "everyone"
-      ? "Plain messages go to every room member; @mentions override this"
+      ? t("Plain messages go to every room member; @mentions override this")
       : responder.kind === "mentions"
-        ? "Only explicitly @mentioned bots respond"
-        : `Plain messages go to ${lead?.name ?? "the lead bot"}; @mentions override this`;
+        ? t("Only explicitly @mentioned bots respond")
+        : t("Plain messages go to {name}; @mentions override this", { name: lead?.name ?? t("the lead bot") });
 
   const change = (nextValue: string) => {
     let next: GroupDefaultResponder;
@@ -184,21 +186,21 @@ function DefaultResponderSelect({ group, members }: { group: Group; members: Bot
   return (
     <div className="relative shrink-0" title={title}>
       <select
-        aria-label="Default responder"
+        aria-label={t("Default responder")}
         value={value}
         onChange={(event) => change(event.target.value)}
         className="h-8 max-w-[190px] appearance-none truncate rounded-full border border-hairline/40 bg-raised/60 py-1 pl-3 pr-7 text-[12.5px] font-medium text-ink outline-none hover:bg-raised focus:border-accent"
       >
-        <optgroup label="Room lead">
+        <optgroup label={t("Room lead")}>
           {members.map((member) => (
             <option key={member.id} value={`member:${member.id}`}>
-              Lead: {member.name}
+              {t("Lead: {name}", { name: member.name })}
             </option>
           ))}
         </optgroup>
-        <optgroup label="Room behavior">
-          <option value="everyone">Everyone responds</option>
-          <option value="mentions">Mentions only</option>
+        <optgroup label={t("Room behavior")}>
+          <option value="everyone">{t("Everyone responds")}</option>
+          <option value="mentions">{t("Mentions only")}</option>
         </optgroup>
       </select>
       <ChevronDown
@@ -219,6 +221,7 @@ function DefaultResponderSelect({ group, members }: { group: Group; members: Bot
  * rejected folder must not stick in local state. */
 function RoomWorkingFolder({ group }: { group: Group }) {
   const { capabilities } = useDesktopCapabilities();
+  const { t } = useI18n();
   const home = capabilities.host.homeDir;
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -247,28 +250,28 @@ function RoomWorkingFolder({ group }: { group: Group }) {
 
   return (
     <div className="rounded-xl bg-card p-4">
-      <div className="text-[15px] font-medium text-ink">Working folder</div>
-      <div className="mt-0.5 text-[13px] text-ink-secondary">Where every bot in this room runs its shell and file tools.</div>
+      <div className="text-[15px] font-medium text-ink">{t("Working folder")}</div>
+      <div className="mt-0.5 text-[13px] text-ink-secondary">{t("Where every bot in this room runs its shell and file tools.")}</div>
       {locked ? (
         <div className="mt-3">
           <div className="truncate rounded-lg border border-hairline/40 bg-inset px-3 py-2 font-mono text-[12.5px] text-ink" title={shownCwd}>
-            {shownCwd ? shortPath(shownCwd, home) : <span className="text-ink-secondary">Each bot's own folder</span>}
+            {shownCwd ? shortPath(shownCwd, home) : <span className="text-ink-secondary">{t("Each bot's own folder")}</span>}
           </div>
           <div className="mt-2 text-[12px] text-ink-secondary">
-            Fixed after this room's first turn. Create a new room and choose its folder before sending the first message to work somewhere else.
+            {t("Fixed after this room's first turn. Create a new room and choose its folder before sending the first message to work somewhere else.")}
           </div>
         </div>
       ) : canPick ? (
         <div className="mt-3 flex items-center gap-2">
           <div className="min-w-0 flex-1 truncate rounded-lg border border-hairline/40 bg-inset px-3 py-2 font-mono text-[12.5px] text-ink" title={group.cwd}>
-            {group.cwd ? shortPath(group.cwd, home) : <span className="text-ink-secondary">Each bot's own folder</span>}
+            {group.cwd ? shortPath(group.cwd, home) : <span className="text-ink-secondary">{t("Each bot's own folder")}</span>}
           </div>
           <button onClick={() => void pick()} disabled={saving} className="flex shrink-0 items-center gap-1.5 rounded-lg bg-raised px-3 py-2 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-50">
-            <FolderOpen size={14} /> Choose…
+            <FolderOpen size={14} /> {t("Choose…")}
           </button>
           {group.cwd && (
             <button onClick={() => void save(null)} disabled={saving} className="shrink-0 rounded-lg px-2 py-2 text-[13px] text-ink-secondary hover:text-ink disabled:opacity-50">
-              Clear
+              {t("Clear")}
             </button>
           )}
         </div>
@@ -283,17 +286,17 @@ function RoomWorkingFolder({ group }: { group: Group }) {
         >
           <input
             className="w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2.5 font-mono text-[12.5px] text-ink placeholder:text-ink-secondary focus:outline-none focus:border-hairline"
-            placeholder="Each bot's own folder — or an absolute path"
+            placeholder={t("Each bot's own folder — or an absolute path")}
             value={draft ?? group.cwd ?? ""}
             onChange={(e) => setDraft(e.target.value)}
           />
           <button type="submit" disabled={saving || draft === null} className="shrink-0 rounded-lg bg-raised px-3 py-2 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-50">
-            Save
+            {t("Save")}
           </button>
         </form>
       )}
       {capabilities.remoteMode && (
-        <div className="mt-2 text-[12px] text-ink-secondary">This folder is on the remote server.</div>
+        <div className="mt-2 text-[12px] text-ink-secondary">{t("This folder is on the remote server.")}</div>
       )}
       {error && <div className="mt-2 text-[12px] text-danger">{error}</div>}
     </div>
@@ -304,6 +307,7 @@ function RoomWorkingFolder({ group }: { group: Group }) {
  * else the room folder a first turn would pin. Always present so the desk
  * is settable before any folder exists; quiet (icon only) until then. */
 function RoomWorkingFolderChip({ group, onToggle }: { group: Group; onToggle: () => void }) {
+  const { t } = useI18n();
   const folder = group.pinnedCwd === undefined ? group.cwd : (group.pinnedCwd ?? undefined);
   if (!folder) {
     return (
@@ -321,7 +325,7 @@ function RoomWorkingFolderChip({ group, onToggle }: { group: Group; onToggle: ()
     <button
       onClick={onToggle}
       className="flex max-w-[180px] items-center gap-1.5 rounded-full border border-hairline/40 bg-raised/60 px-2.5 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink"
-      title={`Working folder: ${folder}`}
+      title={t("Working folder: {folder}", { folder })}
     >
       <Folder size={12} />
       <span className="truncate font-mono">{name}</span>
@@ -331,6 +335,7 @@ function RoomWorkingFolderChip({ group, onToggle }: { group: Group; onToggle: ()
 
 export function GroupView({ group }: { group: Group }) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const devMode = useDeveloperMode();
   const stream = useStreaming();
   const streaming = stream.streaming[group.threadId];
@@ -649,10 +654,10 @@ export function GroupView({ group }: { group: Group }) {
               scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
             });
           }}
-          aria-label="Jump to latest messages"
+          aria-label={t("Jump to latest messages")}
           className="animate-pop-in absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-hairline/40 bg-raised px-3 py-1.5 text-[12.5px] text-ink shadow-lg hover:bg-raised-hover"
         >
-          <ArrowDown size={13} /> Jump to latest
+          <ArrowDown size={13} /> {t("Jump to latest")}
         </button>
       )}
 

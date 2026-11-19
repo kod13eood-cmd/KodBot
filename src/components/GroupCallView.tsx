@@ -15,6 +15,7 @@ import { useSpeech } from "@/lib/tts/useSpeech";
 import { usePushToTalk } from "@/lib/push-to-talk";
 import { useStore, type Bot, type Group, type Message } from "@/state/store";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n";
 import { CrewAvatar } from "./Avatar";
 import { CallTargetButton } from "./CallView";
 import { pendingApprovals } from "./PendingApproval";
@@ -55,6 +56,7 @@ function questionIn(messages: Message[]): Message | undefined {
 }
 
 function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
+  const { t } = useI18n();
   const { dispatch } = useStore();
   const speech = useSpeech();
   const initialPhase: Phase = group.busyBotId ? "working" : "listening";
@@ -474,7 +476,7 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
             onClick={listen}
             className="rounded-full border border-warning/40 px-3 py-1.5 text-[12px] hover:bg-warning/10"
           >
-            Try microphone again
+            {t("Try microphone again")}
           </button>
         </div>
       )}
@@ -486,14 +488,14 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
             onClick={interruptSpeech}
             className="rounded-full border border-hairline/50 px-4 py-2 text-[13.5px] text-ink hover:bg-raised"
           >
-            Interrupt
+            {t("Interrupt")}
           </button>
         )}
         <button
           onClick={() => endCall(group.id)}
           className="flex items-center gap-2 rounded-full bg-danger px-5 py-2.5 text-[14px] font-medium text-white hover:brightness-110"
         >
-          <PhoneOff size={16} /> Hang up
+          <PhoneOff size={16} /> {t("Hang up")}
         </button>
       </div>
 

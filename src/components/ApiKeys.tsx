@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Check, CircleHelp, ExternalLink, Loader2, TriangleAlert } from "lucide-react";
 import { api, useStore, type ConfigStatus } from "@/state/store";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n";
 
 export type ConfigSection = "composio" | "box" | "opencodeGo";
 
@@ -141,6 +142,7 @@ export function ApiKeyRow({
   onSaved?: (configured: boolean) => void;
 }) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -176,10 +178,10 @@ export function ApiKeyRow({
         <span>{credential.label}</span>
         {credential.optional && (
           <span className="rounded bg-raised px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-secondary">
-            Optional
+            {t("Optional")}
           </span>
         )}
-        {configured && <span className="text-[11px] text-success">Connected</span>}
+        {configured && <span className="text-[11px] text-success">{t("Connected")}</span>}
         <CredentialHelp section={section} />
       </div>
       <div className="flex gap-2">
@@ -203,9 +205,9 @@ export function ApiKeyRow({
               : "bg-raised text-ink hover:bg-raised-hover",
             "disabled:cursor-not-allowed disabled:opacity-50",
           )}
-          title={clearing ? "Remove the saved key" : "Save"}
+          title={clearing ? t("Remove the saved key") : t("Save")}
         >
-          {saving ? <Loader2 size={13} className="animate-spin" /> : clearing ? "Clear" : <><Check size={13} />Save</>}
+          {saving ? <Loader2 size={13} className="animate-spin" /> : clearing ? t("Clear") : <><Check size={13} />{t("Save")}</>}
         </button>
       </div>
       {error && <div className="mt-1 text-[12px] text-danger">{error}</div>}

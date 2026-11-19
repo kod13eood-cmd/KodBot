@@ -119,6 +119,7 @@ class CompanionStreamService : Service() {
     }
 
     private fun showAgentNotification(item: AgentNotification) {
+        val language = LanguageStore.load(this)
         val open = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(EXTRA_BOT_ID, item.botId)
@@ -132,9 +133,9 @@ class CompanionStreamService : Service() {
         )
         val notification = Notification.Builder(this, ALERT_CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(item.title)
-            .setContentText(item.body)
-            .setStyle(Notification.BigTextStyle().bigText(item.body))
+            .setContentTitle(AppStrings.t(language, item.title))
+            .setContentText(AppStrings.t(language, item.body))
+            .setStyle(Notification.BigTextStyle().bigText(AppStrings.t(language, item.body)))
             .setContentIntent(pending)
             .setAutoCancel(true)
             .setVisibility(Notification.VISIBILITY_PRIVATE)
@@ -143,15 +144,17 @@ class CompanionStreamService : Service() {
         manager().notify(tag, item.threadId.hashCode(), notification)
     }
 
-    private fun connectionNotification(serverName: String): Notification =
-        Notification.Builder(this, CONNECTION_CHANNEL)
+    private fun connectionNotification(serverName: String): Notification {
+        val language = LanguageStore.load(this)
+        return Notification.Builder(this, CONNECTION_CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("KodBot connected")
-            .setContentText("Listening for updates from $serverName")
+            .setContentTitle(AppStrings.t(language, "KodBot connected"))
+            .setContentText(AppStrings.t(language, "Listening for updates from $serverName"))
             .setCategory(Notification.CATEGORY_SERVICE)
             .setOngoing(true)
             .setVisibility(Notification.VISIBILITY_PRIVATE)
             .build()
+    }
 
     private fun manager(): NotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -193,14 +196,15 @@ class CompanionStreamService : Service() {
         fun ensureChannels(context: Context) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val language = LanguageStore.load(context)
             manager.createNotificationChannels(
                 listOf(
-                    NotificationChannel(CONNECTION_CHANNEL, "KodBot connection", NotificationManager.IMPORTANCE_LOW).apply {
-                        description = "Shows when KodBot is listening for agent updates."
+                    NotificationChannel(CONNECTION_CHANNEL, AppStrings.t(language, "KodBot connection"), NotificationManager.IMPORTANCE_LOW).apply {
+                        description = AppStrings.t(language, "Shows when KodBot is listening for agent updates.")
                         setShowBadge(false)
                     },
-                    NotificationChannel(ALERT_CHANNEL, "Agent alerts", NotificationManager.IMPORTANCE_HIGH).apply {
-                        description = "Approvals, questions, and completed agent work."
+                    NotificationChannel(ALERT_CHANNEL, AppStrings.t(language, "Agent alerts"), NotificationManager.IMPORTANCE_HIGH).apply {
+                        description = AppStrings.t(language, "Approvals, questions, and completed agent work.")
                         lockscreenVisibility = Notification.VISIBILITY_PRIVATE
                     },
                 ),

@@ -29,6 +29,7 @@ import { usePushToTalk } from "@/lib/push-to-talk";
 import { CrewAvatar } from "./Avatar";
 import { pendingApprovals } from "./PendingApproval";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n";
 import { track } from "@/lib/analytics";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
 
@@ -64,6 +65,7 @@ export function CallTargetButton({
   onStart: () => void;
 }) {
   const { state, dispatch } = useStore();
+  const { t } = useI18n();
   const { capabilities, ready: capabilitiesReady } = useDesktopCapabilities();
   const active = useOnCall() === targetId;
   const supported = capabilities.dictation.available && Boolean(window.ogb?.speechStart);
@@ -77,7 +79,7 @@ export function CallTargetButton({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const helpId = useId();
   const label = active
-    ? `Hang up on ${targetName}`
+    ? t("Hang up on {name}", { name: targetName })
     : !capabilitiesReady
       ? "Checking call availability"
       : !supported
@@ -156,10 +158,10 @@ export function CallTargetButton({
         <div
           id={helpId}
           role="group"
-          aria-label="Call unavailable"
+          aria-label={t("Call unavailable")}
           className="animate-pop-in absolute right-0 z-30 mt-1.5 w-[280px] rounded-xl border border-hairline bg-panel p-3 text-left shadow-2xl"
         >
-          <div className="text-[13px] font-medium text-ink">Call unavailable</div>
+          <div className="text-[13px] font-medium text-ink">{t("Call unavailable")}</div>
           <div className="mt-1 text-[12px] leading-[1.45] text-ink-secondary">{reason}</div>
           {voiceSetupRequired && (
             <button
@@ -170,7 +172,7 @@ export function CallTargetButton({
               }}
               className="mt-2.5 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-medium text-white hover:brightness-110"
             >
-              Open Voice settings
+              {t("Open Voice settings")}
             </button>
           )}
         </div>
@@ -186,6 +188,7 @@ export function CallOverlay({ bot }: { bot: Bot }) {
 }
 
 function Call({ bot }: { bot: Bot }) {
+  const { t } = useI18n();
   const { dispatch } = useStore();
   const speech = useSpeech();
   const initialPhase: Phase = bot.busy ? "working" : "listening";
@@ -509,7 +512,7 @@ function Call({ bot }: { bot: Bot }) {
             onClick={listen}
             className="rounded-full border border-warning/40 px-3 py-1.5 text-[12px] hover:bg-warning/10"
           >
-            Try microphone again
+            {t("Try microphone again")}
           </button>
         </div>
       )}
@@ -525,19 +528,19 @@ function Call({ bot }: { bot: Bot }) {
             }}
             className="rounded-full border border-hairline/50 px-4 py-2 text-[13.5px] text-ink hover:bg-raised"
           >
-            Interrupt
+            {t("Interrupt")}
           </button>
         )}
         <button
           onClick={() => endCall(bot.id)}
           className="flex items-center gap-2 rounded-full bg-danger px-5 py-2.5 text-[14px] font-medium text-white hover:brightness-110"
         >
-          <PhoneOff size={16} /> Hang up
+          <PhoneOff size={16} /> {t("Hang up")}
         </button>
       </div>
 
       <div className="text-[11.5px] text-ink-secondary/70">
-        Hold Control + Option to talk · Space interrupts · Esc hangs up
+        {t("Hold Control + Option to talk · Space interrupts · Esc hangs up")}
       </div>
     </div>
   );

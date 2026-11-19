@@ -10,6 +10,7 @@
 import { memo } from "react";
 import { Info, ShieldAlert } from "lucide-react";
 import { useStore, type Bot } from "@/state/store";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import type { Pending } from "@/lib/approvals";
 
@@ -43,16 +44,17 @@ export const PendingApprovalPanel = memo(function PendingApprovalPanel({
   count: number;
   index: number;
 }) {
+  const { t } = useI18n();
   return (
     <div className="rounded-t-2xl border-b border-hairline/50 bg-raised/40 px-4 py-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[11px] uppercase tracking-[0.18em] text-ink-secondary">Pending approval</span>
+        <span className="text-[11px] uppercase tracking-[0.18em] text-ink-secondary">{t("Pending approval")}</span>
         {count > 1 && (
           <span className="rounded-full bg-raised px-1.5 py-0.5 text-[11px] tabular-nums text-ink-secondary">
-            {index + 1} of {count}
+            {t("{index} of {count}", { index: index + 1, count })}
           </span>
         )}
-        <span className="text-[13px] text-ink">{label(pending.tool)}</span>
+        <span className="text-[13px] text-ink">{t(label(pending.tool))}</span>
         {pending.tool && !["other", "unknown", "tool"].includes(pending.tool) && (
           <span className="font-mono text-[11px] text-ink-secondary">{pending.tool}</span>
         )}
@@ -61,7 +63,7 @@ export const PendingApprovalPanel = memo(function PendingApprovalPanel({
         <div className="mt-2 flex items-start gap-2 rounded-lg border border-accent/25 bg-accent/5 px-3 py-2 text-[12.5px] leading-relaxed text-ink">
           <Info size={14} className="mt-0.5 shrink-0 text-accent" />
           <span>
-            <span className="font-medium">What this means: </span>
+            <span className="font-medium">{t("What this means:")} </span>
             {pending.explanation}
           </span>
         </div>
@@ -79,15 +81,15 @@ export const PendingApprovalPanel = memo(function PendingApprovalPanel({
         >
           <ShieldAlert size={14} className="mt-0.5 shrink-0" />
           <span>
-            <span className="font-medium">Why it needs approval: </span>
+            <span className="font-medium">{t("Why it needs approval:")} </span>
             {pending.risk}
           </span>
         </div>
       )}
       {pending.purpose && (
-        <div className="mt-1.5 text-[11.5px] text-ink-secondary">Task: {pending.purpose}</div>
+        <div className="mt-1.5 text-[11.5px] text-ink-secondary">{t("Task: {purpose}", { purpose: pending.purpose })}</div>
       )}
-      <div className="mt-2 text-[10.5px] uppercase tracking-wider text-ink-secondary">Requested action</div>
+      <div className="mt-2 text-[10.5px] uppercase tracking-wider text-ink-secondary">{t("Requested action")}</div>
       {/* never truncated — long commands wrap and scroll */}
       <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-[12px] leading-relaxed text-ink">
         {pending.detail}
@@ -110,6 +112,7 @@ export function PendingApprovalActions({
   onCancelTurn: () => void;
 }) {
   const { dispatch } = useStore();
+  const { t } = useI18n();
   const decide = (behavior: "allow" | "deny", always = false) =>
     dispatch({
       type: "decideRequest",
@@ -124,28 +127,28 @@ export function PendingApprovalActions({
   return (
     <div className="flex flex-wrap items-center justify-end gap-2 px-2 py-2">
       <button onClick={onCancelTurn} className={cn(base, "text-ink-secondary hover:bg-raised hover:text-ink")}>
-        Cancel turn
+        {t("Cancel turn")}
       </button>
       <button
         onClick={() => decide("deny")}
         className={cn(base, "border border-danger/40 text-danger hover:bg-danger/10")}
       >
-        Deny
+        {t("Deny")}
       </button>
       {bot && pending.allowKey && (
         <button
           onClick={() => decide("allow", true)}
-          title={`Stop asking ${bot.name} about ${pending.allowKey}`}
+          title={t("Stop asking {name} about {key}", { name: bot.name, key: pending.allowKey })}
           className={cn(base, "border border-hairline/50 text-ink hover:bg-raised")}
         >
-          Always allow
+          {t("Always allow")}
         </button>
       )}
       <button
         onClick={() => decide("allow")}
         className={cn(base, "bg-accent font-medium text-white hover:brightness-110")}
       >
-        Allow once
+        {t("Allow once")}
       </button>
     </div>
   );

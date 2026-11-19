@@ -1164,6 +1164,155 @@ const BULGARIAN: Record<string, string> = {
   "Join a team…": "Присъедини се към екип…",
   "Choose a new leader in Manage teams": "Изберете нов лидер от Manage teams",
   "Create a team from Manage teams.": "Създайте екип от Manage teams.",
+
+  // Approvals and pending actions
+  "Pending approval": "Чака одобрение",
+  "{index} of {count}": "{index} от {count}",
+  "Command approval requested": "Поискано е одобрение за команда",
+  "Tool approval requested": "Поискано е одобрение за инструмент",
+  "File-read approval requested": "Поискано е одобрение за четене на файл",
+  "File-change approval requested": "Поискано е одобрение за промяна на файл",
+  "Approval requested": "Поискано е одобрение",
+  "What this means:": "Какво означава:",
+  "Why it needs approval:": "Защо е нужно одобрение:",
+  "Task: {purpose}": "Задача: {purpose}",
+  "Cancel turn": "Отмени хода",
+  "Deny": "Откажи",
+  "Always allow": "Винаги разрешавай",
+  "Allow once": "Разреши веднъж",
+  "Stop asking {name} about {key}": "Спри да питаш {name} за {key}",
+  "Wants to": "Иска да",
+  "{name} wants to": "{name} иска да",
+  "an action": "действие",
+  "run a command": "изпълни команда",
+  "use a tool": "използва инструмент",
+  "read a file": "прочете файл",
+  "write a file": "запише файл",
+  "edit a file": "редактира файл",
+  "fetch a web page": "изтегли уеб страница",
+  "search the web": "търси в мрежата",
+  "Allowed": "Разрешено",
+  "Denied": "Отказано",
+  "Waiting for your answer below": "Чака отговора ви по-долу",
+
+  // Server-authored cards
+  "This still needs you": "Това още има нужда от вас",
+  "One follow-up already tried the rest. A person has to decide the next step.":
+    "Едно продължение вече опита остатъка. Човек трябва да реши следващата стъпка.",
+  "I'll take it from here": "Продължавам аз",
+  "Continuing the unfinished work once": "Продължаване на незавършената работа веднъж",
+
+  // Rooms and working folder
+  "Plain messages go to every room member; @mentions override this":
+    "Обикновените съобщения отиват до всички в стаята; @споменаванията ги заместват",
+  "Only explicitly @mentioned bots respond": "Отговарят само ботовете, изрично @споменати",
+  "Plain messages go to {name}; @mentions override this":
+    "Обикновените съобщения отиват до {name}; @споменаванията ги заместват",
+  "the lead bot": "водещия бот",
+  "Default responder": "Отговарящ по подразбиране",
+  "Room lead": "Лидер на стаята",
+  "Room behavior": "Поведение на стаята",
+  "Everyone responds": "Всички отговарят",
+  "Mentions only": "Само споменати",
+  "Where every bot in this room runs its shell and file tools.":
+    "Където всеки бот в тази стая изпълнява shell и файловите си инструменти.",
+  "Each bot's own folder": "Собствената папка на всеки бот",
+  "Fixed after this room's first turn. Create a new room and choose its folder before sending the first message to work somewhere else.":
+    "Фиксира се след първия ход на стаята. Създайте нова стая и изберете папката ѝ преди първото съобщение, за да работите другаде.",
+  "Each bot's own folder — or an absolute path": "Собствената папка на всеки бот — или абсолютен път",
+  "Room working folder": "Работна папка на стаята",
+
+  // Update banner
+  "KodBot {version} is available": "Налична е KodBot {version}",
+  "Downloading {version}…": "Сваляне на {version}…",
+  "{version} is ready": "{version} е готов",
+  "Update check failed": "Проверката за обновления не успя",
+  "A newer version is ready to download.": "Налична е по-нова версия за сваляне.",
+  "Restart to finish updating.": "Рестартирайте, за да завърши обновяването.",
+  "KodBot will reopen in a moment.": "KodBot ще се отвори отново след момент.",
+  "Restart to update": "Рестартирай за обновяване",
+  "No update has been published for this platform yet.": "Още няма публикувано обновление за тази платформа.",
+  "update": "обновление",
+  "Restarting…": "Рестартиране…",
+  "Later": "По-късно",
+  "Couldn't reach the update server.": "Сървърът за обновления не е достъпен.",
+  "Something went wrong.": "Нещо се обърка.",
+  "Drop to attach — the bot gets the file path": "Пусни, за да прикачиш — ботът получава пътя до файла",
+  "Undo": "Отмени",
+  "Install an AI engine to get started": "Инсталирайте AI engine, за да започнете",
+  "KodBot doesn't ship a model of its own — your bots run on an AI CLI installed on this computer, using your existing login. Set up any one of these and your bots come alive.":
+    "KodBot не включва собствен модел — ботовете работят с AI CLI, инсталиран на този компютър, с вашия съществуващ вход. Настройте един от тези и ботовете оживяват.",
+  "Check again": "Провери отново",
+  "Optional": "Незадължително",
+  "Remove the saved key": "Премахни запазения ключ",
+  "Terminal opened": "Терминалът е отворен",
+  "Paste the command and press Enter.": "Поставете командата и натиснете Enter.",
+  "The command is copied when Terminal opens.": "Командата се копира при отваряне на Terminal.",
+  "Command copied": "Командата е копирана",
+  "Run this command on the remote server, not this laptop.":
+    "Изпълнете тази команда на отдалечения сървър, не на този лаптоп.",
+  "Sign in to {name}": "Вход в {name}",
+  "Install {name}": "Инсталирай {name}",
+  "Finish the account sign-in in Terminal. Reopen this menu afterward and we'll check again.":
+    "Завършете входа в акаунта в Terminal. Отворете това меню отново и ще проверим пак.",
+  "Install the agent once, then you can run it with local models—no cloud sign-in required.":
+    "Инсталирайте агента веднъж, после може да го пускате с локални модели — без вход в облака.",
+  "Install the command-line app once. Models will appear here as soon as it's ready.":
+    "Инсталирайте command-line приложението веднъж. Моделите ще се появят тук, щом е готово.",
+  "Sign-in may follow.": "Може да последва вход.",
+  "{name} isn't ready": "{name} не е готов",
+  "This engine is not available on this machine.": "Този engine не е наличен на тази машина.",
+  "There isn't a one-line installer for this platform. Use the setup guide below.":
+    "Няма еднократен installer за тази платформа. Използвайте ръководството по-долу.",
+  "Requires Node.js and": "Изисква Node.js и",
+  "View setup guide": "Виж ръководството за настройка",
+  "Open sign-in in Terminal": "Отвори входа в Terminal",
+  "Open install in Terminal": "Отвори инсталацията в Terminal",
+  "Call unavailable": "Разговорът не е наличен",
+  "Open Voice settings": "Отвори настройките за глас",
+  "Try microphone again": "Опитай микрофона отново",
+  "Interrupt": "Прекъсни",
+  "Hang up": "Затвори",
+  "Hold Control + Option to talk · Space interrupts · Esc hangs up":
+    "Задръжте Control + Option, за да говорите · Space прекъсва · Esc затваря",
+  "Hang up on {name}": "Затвори разговора с {name}",
+  "Save this as a routine?": "Да се запази ли това като рутина?",
+  "Edit the prompt and the time. It stays paused until you turn it on.":
+    "Редактирайте текста и часа. Остава на пауза, докато не я включите.",
+  "Save as a paused routine": "Запази като рутина на пауза",
+  "Prompt": "Текст",
+  "Time": "Час",
+  "Share the cloud computer with the team": "Сподели облачния компютър с екипа",
+  "Bot settings": "Настройки на бота",
+  "{name}'s screen": "Екранът на {name}",
+  "Open the shared Local VM desktop": "Отвори споделения Local VM десктоп",
+  "this computer": "този компютър",
+  "Waiting for the first frame…": "Чакане на първия кадър…",
+  "Capturing the Local VM screen…": "Снимане на екрана на Local VM…",
+  "No frames yet — the preview needs Screen Recording permission. After granting, relaunch the app.":
+    "Още няма кадри — прегледът иска разрешение за запис на екрана. След разрешаване рестартирайте приложението.",
+  "Capturing this computer's screen…": "Снимане на екрана на този компютър…",
+  "Open Local VM setup": "Отвори настройката на Local VM",
+  "Add a Box API key to give this bot a cloud computer — it spins up right here.":
+    "Добавете Box API ключ, за да дадете на бота облачен компютър — той се вдига тук.",
+  "Open desktop": "Отвори десктопа",
+  "Put the computer to sleep": "Приспи компютъра",
+  "Sleep": "Приспи",
+  "Auto uses a cloud box when one exists, then this computer, then the prepared Local VM.":
+    "Auto използва облачен box, ако има такъв, после този компютър, после подготвения Local VM.",
+  "Auto uses a cloud box when one is configured, then the prepared Local VM; otherwise computer use stays off.":
+    "Auto използва облачен box, ако е конфигуриран, после подготвения Local VM; иначе computer use остава изключен.",
+  "Pick where this bot's computer lives.": "Изберете къде живее компютърът на този бот.",
+  "is a Cua-controlled Linux desktop in a container on this machine — free and separate from your own desktop. Set it up in App Settings → Local VM.":
+    "е Cua Linux десктоп в контейнер на тази машина — безплатен и отделен от вашия десктоп. Настройте го в App Settings → Local VM.",
+  "Schedule work for {name}. Use its current setup, or run the whole job inside its cloud VM.":
+    "Планирайте работа за {name}. Използвайте текущата настройка или пуснете цялата задача в облачния VM.",
+  "Scheduled tasks on this computer will not have desktop access while this is Off. Choose Cloud VM in the schedule editor to run the whole job there.":
+    "Планираните задачи на този компютър няма да имат достъп до десктопа, докато това е изключено. Изберете Cloud VM в редактора на графика, за да пуснете цялата задача там.",
+  "Open schedules": "Отвори графиците",
+  "Scheduled tasks": "Планирани задачи",
+  "Off keeps this bot's cloud computer private. On, teammates use the same machine and browser logins.":
+    "Изключено пази облачния компютър на този бот личен. Включено значи, че съотборниците ползват същата машина и същите входове в браузъра.",
 };
 
 function initialLocale(): Locale {

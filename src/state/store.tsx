@@ -47,6 +47,15 @@ export interface OptionCardData {
   held?: string;
   /** the narrow grant "always allow" remembers, e.g. "Bash:git" */
   allowKey?: string;
+  /** A paused routine the person can edit and save. Saving does not arm it. */
+  routineDraft?: {
+    name: string;
+    prompt: string;
+    botId: string;
+    runOn?: "crew" | "cloud";
+    enabled: false;
+    schedule: { type: "once"; at: number };
+  };
 }
 
 export interface ConnectorCardData {
@@ -205,6 +214,8 @@ export interface Bot {
   economyModel?: boolean;
   /** continue an unfinished turn once on its own; approvals stay as they are */
   workAlone?: boolean;
+  /** one cloud computer shared with the bot's team */
+  shareTeamComputer?: boolean;
   /** explicit models auto routing may choose from; empty = current engine */
   autoModelPool?: ModelSelection[];
   /** tools this bot may always use without asking */
@@ -492,6 +503,7 @@ export type Action =
           | "autoModel"
           | "economyModel"
           | "workAlone"
+          | "shareTeamComputer"
           | "autoModelPool"
           | "speakReplies"
           | "voice"
@@ -1230,6 +1242,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         case "answerCard": {
           const bot = stateRef.current.bots.find((b) => b.id === action.botId);
           const card = bot?.messages.find((m) => m.id === action.messageId)?.card;
+          if (card?.routineDraft) {
+            persistCard(action.botId, action.messageId, { answered: action.answer });
+            break;
+          }
           if (card?.requestId) {
             const behavior =
               action.answer === "Allow" ? "allow" : action.answer === "Deny" ? "deny" : "answer";

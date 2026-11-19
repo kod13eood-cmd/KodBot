@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { ArrowDownToLine, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
 import { useUpdaterState } from "@/lib/updater";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n";
 
 // The one action button in the card. Disabled drops the accent fill for the
 // flat raised grey — the "I heard you" the click needs while the main process
@@ -27,6 +28,7 @@ function friendlyError(message?: string): string {
 }
 
 export function UpdateBanner() {
+  const { t } = useI18n();
   const s = useUpdaterState();
   // dismissal is per status+version, so the popup returns for the next
   // update (and when an available one finishes downloading)
@@ -49,27 +51,27 @@ export function UpdateBanner() {
 
   const title =
     s.status === "available"
-      ? `KodBot ${s.version} is available`
+      ? t("KodBot {version} is available", { version: s.version ?? "" })
       : s.status === "downloading"
-        ? `Downloading ${s.version ?? "update"}…`
+        ? t("Downloading {version}…", { version: s.version ?? t("update") })
         : s.status === "downloaded"
-          ? `${s.version} is ready`
+          ? t("{version} is ready", { version: s.version ?? "" })
           : installing
-            ? "Restarting to update…"
-            : "Update check failed";
+            ? t("Restarting to update…")
+            : t("Update check failed");
   const subtitle =
     s.status === "available"
-      ? "A newer version is ready to download."
+      ? t("A newer version is ready to download.")
       : s.status === "downloading"
         ? // no percent yet means the transfer hasn't reported in — don't imply 0
           s.percent == null
-          ? "Starting download…"
+          ? t("Starting download…")
           : `${Math.round(s.percent)}%`
         : s.status === "downloaded"
-          ? "Restart to finish updating."
+          ? t("Restart to finish updating.")
           : installing
-            ? "KodBot will reopen in a moment."
-            : friendlyError(s.message);
+            ? t("KodBot will reopen in a moment.")
+            : t(friendlyError(s.message));
 
   return (
     // Sit above the sidebar footer. The Help and App-settings buttons live
@@ -89,7 +91,7 @@ export function UpdateBanner() {
           <button
             onClick={() => setDismissed(key)}
             className="shrink-0 rounded-md p-1 text-ink-secondary hover:bg-raised hover:text-ink"
-            title="Dismiss"
+            title={t("Dismiss")}
           >
             <X size={14} />
           </button>
@@ -116,7 +118,7 @@ export function UpdateBanner() {
             disabled
             className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-raised py-1.5 text-[13px] font-medium text-ink-secondary"
           >
-            <Loader2 size={13} className="animate-spin" /> Restarting…
+            <Loader2 size={13} className="animate-spin" /> {t("Restarting…")}
           </button>
         </div>
       )}
@@ -134,11 +136,11 @@ export function UpdateBanner() {
             >
               {pending === "download" ? (
                 <>
-                  <Loader2 size={13} className="animate-spin" /> Starting…
+                  <Loader2 size={13} className="animate-spin" /> {t("Starting…")}
                 </>
               ) : (
                 <>
-                  <ArrowDownToLine size={13} /> Download
+                  <ArrowDownToLine size={13} /> {t("Download")}
                 </>
               )}
             </button>
@@ -154,11 +156,11 @@ export function UpdateBanner() {
             >
               {pending === "install" ? (
                 <>
-                  <Loader2 size={13} className="animate-spin" /> Restarting…
+                  <Loader2 size={13} className="animate-spin" /> {t("Restarting…")}
                 </>
               ) : (
                 <>
-                  <RefreshCw size={13} /> Restart to update
+                  <RefreshCw size={13} /> {t("Restart to update")}
                 </>
               )}
             </button>
@@ -174,10 +176,10 @@ export function UpdateBanner() {
             >
               {pending === "check" ? (
                 <>
-                  <Loader2 size={13} className="animate-spin" /> Checking…
+                  <Loader2 size={13} className="animate-spin" /> {t("Checking…")}
                 </>
               ) : (
-                "Try again"
+                t("Try again")
               )}
             </button>
           )}
@@ -186,7 +188,7 @@ export function UpdateBanner() {
             disabled={pending !== null}
             className="rounded-lg px-3 py-1.5 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-50 disabled:hover:bg-transparent"
           >
-            Later
+            {t("Later")}
           </button>
         </div>
       )}

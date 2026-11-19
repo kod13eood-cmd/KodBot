@@ -119,8 +119,7 @@ fun ProductCards(items: List<ProductCardItem>, modifier: Modifier = Modifier) {
                         }
                         item.rating?.let { rating ->
                             val reviews = item.reviews?.let { " ($it)" }.orEmpty()
-                            Text(
-                                "★ ${"%.1f".format(rating)}$reviews",
+                            Text(tr("★ ${"%.1f".format(rating)}$reviews"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -134,7 +133,7 @@ fun ProductCards(items: List<ProductCardItem>, modifier: Modifier = Modifier) {
                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(item.url))) }
                         },
                     ) {
-                        Text("Buy now ↗")
+                        Text(tr("Buy now ↗"))
                     }
                 }
             }

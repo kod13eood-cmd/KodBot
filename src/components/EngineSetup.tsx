@@ -6,6 +6,7 @@ import { Check, Copy, Download, ExternalLink, LogIn, TerminalSquare } from "luci
 import { useDesktopCapabilities } from "@/components/DesktopCapabilities";
 import type { EngineInstall, InstanceInfo } from "@/state/store";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n";
 import { copyText } from "@/lib/clipboard";
 
 type Platform = "darwin" | "win32" | "linux";
@@ -37,6 +38,7 @@ export function needsCli(instance: InstanceInfo | undefined): boolean {
 }
 
 function CommandRow({ command, actionLabel, remote = false }: { command: string; actionLabel: string; remote?: boolean }) {
+  const { t } = useI18n();
   const [status, setStatus] = useState<"copied" | "opened" | null>(null);
   const canOpen = Boolean(window.ogb?.openInstallTerminal) && !remote;
 
@@ -65,12 +67,12 @@ function CommandRow({ command, actionLabel, remote = false }: { command: string;
           <button
             type="button"
             onClick={() => void copy()}
-            aria-label="Copy command"
-            title="Copy command"
+            aria-label={t("Copy command")}
+            title={t("Copy command")}
             className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11.5px] font-medium text-ink-secondary hover:bg-raised hover:text-ink"
           >
             {status === "copied" ? <Check size={12} className="text-success" /> : <Copy size={12} />}
-            {status === "copied" ? "Copied" : "Copy"}
+            {status === "copied" ? t("Copied") : t("Copy")}
           </button>
         )}
       </div>
@@ -83,10 +85,10 @@ function CommandRow({ command, actionLabel, remote = false }: { command: string;
             className="mt-2 flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-accent px-3 py-2 text-[12.5px] font-semibold text-white hover:brightness-110"
           >
             {status === "opened" ? <Check size={14} /> : <TerminalSquare size={14} />}
-            {status === "opened" ? "Terminal opened" : actionLabel}
+            {status === "opened" ? t("Terminal opened") : t(actionLabel)}
           </button>
           <p aria-live="polite" className="mt-1.5 text-center text-[11px] text-ink-secondary/70">
-            {status === "opened" ? "Paste the command and press Enter." : "The command is copied when Terminal opens."}
+            {status === "opened" ? t("Paste the command and press Enter.") : t("The command is copied when Terminal opens.")}
           </p>
         </>
       ) : (
@@ -96,12 +98,12 @@ function CommandRow({ command, actionLabel, remote = false }: { command: string;
           className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-raised px-3 py-2 text-[12.5px] font-semibold text-ink hover:bg-raised-hover"
         >
           {status === "copied" ? <Check size={14} className="text-success" /> : <Copy size={14} />}
-          {status === "copied" ? "Command copied" : "Copy command"}
+          {status === "copied" ? t("Command copied") : t("Copy command")}
         </button>
       )}
       {remote && (
         <p className="mt-1.5 text-center text-[11px] text-ink-secondary/70">
-          Run this command on the remote server, not this laptop.
+          {t("Run this command on the remote server, not this laptop.")}
         </p>
       )}
     </div>
@@ -119,27 +121,30 @@ export function EngineSetup({
   intent?: "cloud" | "inject";
 }) {
   const { capabilities } = useDesktopCapabilities();
+  const { t } = useI18n();
   const remote = Boolean(capabilities.remoteMode);
   const install = instance.install;
   const installCommand = installCommandFor(install);
   const signInCommand = install?.signInCommand;
   const signInOnly = intent === "cloud" && needsSignIn(instance);
   const command = signInOnly ? signInCommand : installCommand;
-  const title = signInOnly ? `Sign in to ${instance.displayName}` : `Install ${instance.displayName}`;
+  const title = signInOnly
+    ? t("Sign in to {name}", { name: instance.displayName })
+    : t("Install {name}", { name: instance.displayName });
   const description = signInOnly
-    ? "Finish the account sign-in in Terminal. Reopen this menu afterward and we’ll check again."
+    ? t("Finish the account sign-in in Terminal. Reopen this menu afterward and we'll check again.")
     : intent === "inject"
-      ? "Install the agent once, then you can run it with local models—no cloud sign-in required."
-      : `Install the command-line app once. Models will appear here as soon as it’s ready${signInCommand ? "; sign-in may follow" : ""}.`;
+      ? t("Install the agent once, then you can run it with local models—no cloud sign-in required.")
+      : t("Install the command-line app once. Models will appear here as soon as it's ready.") + (signInCommand ? " " + t("Sign-in may follow.") : "");
 
   // Some engines are configured elsewhere (for example, a cloud computer
   // token) and intentionally have no install descriptor.
   if (!install) {
     return (
       <div className={cn("rounded-xl border border-hairline/40 bg-raised/30 p-3", className)}>
-        <div className="text-[13px] font-semibold text-ink">{instance.displayName} isn’t ready</div>
+        <div className="text-[13px] font-semibold text-ink">{t("{name} isn't ready", { name: instance.displayName })}</div>
         <p className="mt-1 text-[12px] leading-relaxed text-ink-secondary">
-          {instance.snapshot.reason ?? "This engine is not available on this machine."}
+          {instance.snapshot.reason ?? t("This engine is not available on this machine.")}
         </p>
       </div>
     );
@@ -161,13 +166,13 @@ export function EngineSetup({
         <CommandRow command={command} remote={remote} actionLabel={signInOnly ? "Open sign-in in Terminal" : "Open install in Terminal"} />
       ) : (
         <p className="mt-3 rounded-lg bg-inset px-2.5 py-2 text-[12px] leading-relaxed text-ink-secondary">
-          There isn’t a one-line installer for this platform. Use the setup guide below.
+          {t("There isn't a one-line installer for this platform. Use the setup guide below.")}
         </p>
       )}
 
       {!signInOnly && install.needsNode && (
         <p className="mt-2 text-[11px] leading-relaxed text-ink-secondary/70">
-          Requires Node.js and <code className="font-mono">npm</code>.
+          {t("Requires Node.js and")} <code className="font-mono">npm</code>.
         </p>
       )}
 
@@ -178,7 +183,7 @@ export function EngineSetup({
           rel="noreferrer"
           className="mt-2.5 inline-flex items-center gap-1.5 text-[12px] font-medium text-accent hover:underline"
         >
-          <ExternalLink size={12} /> View setup guide
+          <ExternalLink size={12} /> {t("View setup guide")}
         </a>
       )}
     </div>

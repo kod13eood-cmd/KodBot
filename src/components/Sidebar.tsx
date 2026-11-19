@@ -1437,7 +1437,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                   onClick={() => void undoTeamLoad(pendingTeamUndo)}
                   className="rounded-md px-1.5 py-0.5 font-medium text-accent hover:bg-raised"
                 >
-                  Undo
+                  {t("Undo")}
                 </button>
               )}
               {pendingBotUndo && (
@@ -1445,7 +1445,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                   onClick={() => void undoBotArchive(pendingBotUndo)}
                   className="rounded-md px-1.5 py-0.5 font-medium text-accent hover:bg-raised"
                 >
-                  Undo
+                  {t("Undo")}
                 </button>
               )}
             </div>

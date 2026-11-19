@@ -73,6 +73,7 @@ data class ApprovalCard(
     val overdueAt: Long?,
     val answered: String?,
     val dismissed: Boolean,
+    val routineDraft: Boolean = false,
 ) {
     val pending: Boolean get() = requestId != null && answered == null && !dismissed
     val permission: Boolean get() = !tool.isNullOrBlank()
@@ -926,6 +927,7 @@ class CompanionApi(private val connection: CompanionConnection) {
                     overdueAt = it.optLong("overdueAt", 0L).takeIf { value -> value > 0L },
                     answered = it.optString("answered").takeIf(String::isNotBlank),
                     dismissed = it.optBoolean("dismissed"),
+                    routineDraft = it.has("routineDraft") && !it.isNull("routineDraft"),
                 )
             }
             val link = parseRunLink(optJSONObject("link"))
