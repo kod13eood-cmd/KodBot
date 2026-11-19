@@ -27,6 +27,7 @@ import { newEventId, newId } from "../contracts.ts";
 import { decodeCodexSelection, readCodexModelCatalog, STATIC_CODEX_MODELS } from "./codex-catalog.ts";
 import { codexLocalProviderArgs } from "./local-inject.ts";
 import { augmentedPath } from "../env-path.ts";
+import { userPrompt } from "../prompt-once.ts";
 import { appendNative } from "./native.ts";
 
 export { decodeCodexSelection, readCodexModelCatalog, STATIC_CODEX_MODELS } from "./codex-catalog.ts";
@@ -435,10 +436,12 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
           const cursor = typeof turn.resumeCursor === "string" ? turn.resumeCursor : null;
           let codexThreadId: string | null = null;
           let startedModel: string | null = null;
+          let resumedSession = false;
           if (cursor) {
             try {
               const resumed = await request("thread/resume", { threadId: cursor });
               codexThreadId = resumed?.thread?.id ?? cursor;
+              resumedSession = true;
             } catch {
               /* resume unsupported or thread gone — start fresh below */
             }
@@ -459,7 +462,12 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
           emit({ ...base(threadId, turnId), type: "session.started", sessionId: codexThreadId, model: startedModel ?? turn.model ?? null });
           await request("turn/start", {
             threadId: codexThreadId,
-            input: [{ type: "text", text: turn.system ? `${turn.system}\n\n${turn.text}` : turn.text }],
+            input: [
+              {
+                type: "text",
+                text: userPrompt(turn.system, turn.text, resumedSession, turn.systemUpdate),
+              },
+            ],
             // Spread, not `effort: turn.effort ?? null`. Probed against
             // codex-cli 0.146.0: null is indistinguishable from an absent key
             // — both leave the thread's current effort alone, emitting no
@@ -520,6 +528,7 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
         provider: DRIVER_KIND,
         capabilities: {
           sessionModelSwitch: "unsupported",
+          systemChannel: "prompt",
           jevMcp: true,
           composioMcp: true,
           effortLevels: ["low", "medium", "high", "xhigh", "max"],

@@ -17,6 +17,7 @@ import { join } from "node:path";
 
 import { DATA_DIR } from "../config.ts";
 import { augmentedPath } from "../env-path.ts";
+import { userPrompt } from "../prompt-once.ts";
 import { injectedApiModel, mergeLocalInject } from "./local-inject.ts";
 
 import type { ChildProcess } from "node:child_process";
@@ -201,8 +202,8 @@ export const AntigravityDriver: ProviderDriver<AntigravityConfig> = {
       // output (verified against agy 1.1.12). Combine persona + text.
       // Trade-off: a very large prompt could exceed argv limits (E2BIG),
       // guarded below since stdin is not an option.
-      const prompt = turn.system ? `${turn.system}\n\n${turn.text}` : turn.text;
       const resumeCursor = typeof turn.resumeCursor === "string" ? turn.resumeCursor : null;
+      const prompt = userPrompt(turn.system, turn.text, Boolean(resumeCursor), turn.systemUpdate);
 
       let settled = false;
       // backstop watchdog: if agy hangs without emitting `result` and without
@@ -415,7 +416,7 @@ export const AntigravityDriver: ProviderDriver<AntigravityConfig> = {
       snapshot,
       adapter: {
         provider: DRIVER_KIND,
-        capabilities: { sessionModelSwitch: "in-session" },
+        capabilities: { sessionModelSwitch: "in-session", systemChannel: "prompt" },
         sendTurn,
         interruptTurn: async (threadId) => active.get(threadId)?.stop(),
         respondToRequest: async () => "unavailable" as const, // this engine has no asks to answer

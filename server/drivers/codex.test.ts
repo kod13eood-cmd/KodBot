@@ -194,22 +194,43 @@ describe("CodexDriver turns (fake app-server)", () => {
     const dump = join(scratch, "dump.json");
     process.env.FAKE_CODEX_DUMP = dump;
 
-    await instance.adapter.sendTurn({ threadId: "t-resume", text: "again", resumeCursor: "codex-thread-9" });
+    await instance.adapter.sendTurn({
+      threadId: "t-resume",
+      text: "again",
+      resumeCursor: "codex-thread-9",
+      system: "STANDING instructions",
+      systemUpdate: "Your memory: short answers",
+    });
     const started = await recorder.until((e) => e.type === "session.started");
     expect(started).toMatchObject({ sessionId: "codex-thread-9" });
     await recorder.until((e) => e.type === "turn.completed");
 
-    const methods = JSON.parse(readFileSync(dump, "utf8")).calls.map((c: { method: string }) => c.method);
+    const calls = JSON.parse(readFileSync(dump, "utf8")).calls;
+    const methods = calls.map((c: { method: string }) => c.method);
     expect(methods).toContain("thread/resume");
     expect(methods).not.toContain("thread/start");
+    // resumed thread: only the changing layer + this turn, no standing block
+    const turnStart = calls.at(-1);
+    expect(turnStart.params.input[0].text).toBe("Your memory: short answers\n\nagain");
   });
 
-  it("falls back to a fresh thread when resume fails", async () => {
+  it("falls back to a fresh thread when resume fails and resends the standing layer", async () => {
     await create(); // fake rejects thread/resume outside resume mode
-    await instance.adapter.sendTurn({ threadId: "t-fallback", text: "go", resumeCursor: "gone-thread" });
+    const dump = join(scratch, "dump.json");
+    process.env.FAKE_CODEX_DUMP = dump;
+    await instance.adapter.sendTurn({
+      threadId: "t-fallback",
+      text: "go",
+      resumeCursor: "gone-thread",
+      system: "STANDING instructions",
+      systemUpdate: "Your memory: short answers",
+    });
     const started = await recorder.until((e) => e.type === "session.started");
     expect(started).toMatchObject({ sessionId: "codex-thread-1" });
     await recorder.until((e) => e.type === "turn.completed");
+    const turnStart = JSON.parse(readFileSync(dump, "utf8")).calls.at(-1);
+    expect(turnStart.params.input[0].text).toContain("STANDING instructions");
+    expect(turnStart.params.input[0].text).toContain("Your memory: short answers");
   });
 
   it("surfaces an approval request and forwards the user's decision", async () => {
