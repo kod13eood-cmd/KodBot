@@ -289,6 +289,18 @@ once; after that, releases update in place.
   exposed it; the session resumed on the next message.)
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.55>
 
+### Release 0.1.56 (2026-11-19)
+
+- Desktop 0.1.56; Android stays **0.1.26 / versionCode 27**.
+- Settings > About shows the harness version (injected from package.json at
+  bundle time), Node/platform/arch, the desktop shell's Electron/Chromium/Node
+  versions, every available engine CLI with its probed `--version`, and the
+  local speech stack (faster-whisper, Piper or ElevenLabs). A remote desktop
+  and server on different versions are called out.
+- Server side is `GET /api/about`; the desktop shell reports its runtimes over
+  the preload bridge.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.56>
+
 ## 4. Remote deployment topology
 
 | Item | Value |
