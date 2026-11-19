@@ -195,6 +195,15 @@ dot until its report is opened, and the full worker run stays one click away.
 If the worker wrote a dashboard or report page during the run, the summary
 carries it as a page card, so the page opens right where the report is.
 
+### About — Live
+
+**Settings → About** shows the version of the running harness and the
+components it relies on: Node, platform/architecture, the desktop shell's
+Electron/Chromium/Node versions, every available engine CLI with the version
+probed from its own `--version`, and the local speech stack (faster-whisper,
+Piper or ElevenLabs). A remote desktop and server on different versions are
+called out explicitly.
+
 ### Activity — Live
 
 If the harness restarts while a turn is running (a deploy, a crash, a machine

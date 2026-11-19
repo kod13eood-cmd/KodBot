@@ -80,6 +80,7 @@ import { buildTurnContext, engineIsFresh } from "./turn-context.ts";
 import { roomContext, transcriptTurns } from "./conversation-context.ts";
 import { replyContext, replyExcerpt } from "./reply.ts";
 import { TurnWatchdog } from "./turn-watchdog.ts";
+import { APP_VERSION } from "./version.ts";
 import {
   ensureWorkspace,
   listMemoryTopics,
@@ -102,7 +103,7 @@ import {
   stopLocalVmRecording,
 } from "./vm-recorder.ts";
 import { readCuaConnection } from "./local-computer.ts";
-import { transcribeLocal } from "./local-voice.ts";
+import { localVoiceInfo, transcribeLocal } from "./local-voice.ts";
 import { LocalVmIdleTimer } from "./local-vm-idle.ts";
 import { RepeatDetector, callKey } from "./repeat-detector.ts";
 import { RoutineManager, type RoutineRun, type RoutineRunOn, type RoutineRunTrigger } from "./routines.ts";
@@ -4229,6 +4230,28 @@ const server = createServer(async (req, res) => {
     // the same API shape but a different pid)
     if (method === "GET" && path === "/api/health") {
       return json(res, 200, { app: "kodbot", pid: process.pid, static: Boolean(STATIC_DIR) });
+    }
+
+    // Settings → About: the version of the running harness and of the optional
+    // speech stack. Engine CLIs come from /api/instances, which already probes
+    // each one's --version.
+    if (method === "GET" && path === "/api/about") {
+      const voice = localVoiceInfo();
+      return json(res, 200, {
+        app: "kodbot",
+        version: APP_VERSION,
+        node: process.version,
+        platform: process.platform,
+        arch: process.arch,
+        speech: {
+          stt: "faster-whisper (small, int8)",
+          sttInstalled: voice.stt,
+          tts: cfg.tts?.provider ?? "local",
+          ttsReady: cfg.tts?.provider === "elevenlabs" ? Boolean(cfg.tts?.key) : voice.tts,
+          voice: cfg.tts?.voice ?? "",
+          language: cfg.tts?.language ?? "auto",
+        },
+      });
     }
 
     // A paired phone has the file, not this host. Copy it into the data

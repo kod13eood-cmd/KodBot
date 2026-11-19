@@ -675,6 +675,16 @@ describe("harness HTTP API", () => {
     expect(nothing.status).toBe(400);
   });
 
+  it("reports the harness and runtime versions for About", async () => {
+    const about = await api("GET", "/api/about");
+    expect(about.status).toBe(200);
+    expect(about.body.app).toBe("kodbot");
+    expect(about.body.version).toMatch(/^\d+\.\d+\.\d+/);
+    expect(about.body.node).toMatch(/^v\d+/);
+    expect(about.body.platform).toBe(process.platform);
+    expect(about.body.speech.stt).toContain("faster-whisper");
+  });
+
   it("normalizes the public address used for page links", async () => {
     const saved = await api("PUT", "/api/config", {
       publicUrl: "http://paperclipi7.tail89d239.ts.net:8799/",

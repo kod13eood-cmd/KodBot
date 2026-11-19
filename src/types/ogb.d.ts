@@ -36,6 +36,15 @@ declare global {
     ogb?: {
       platform: NodeJS.Platform;
       getCapabilities(): Promise<DesktopCapabilities>;
+      /** Settings → About: shell version and bundled runtimes. */
+      about(): Promise<{
+        version: string;
+        electron: string | null;
+        chromium: string | null;
+        node: string | null;
+        platform: string;
+        arch: string;
+      }>;
       screenFrame(): Promise<string | null>;
       /** Start native dictation. Call mode supplies endpointMs so silence
        * finalizes a turn; composer dictation omits it and remains manual. */
