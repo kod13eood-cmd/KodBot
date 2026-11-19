@@ -362,6 +362,23 @@ once; after that, releases update in place.
   `/api/knowledge`, `/changelog`, and the packaged-server smoke.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.59>
 
+### Release 0.1.60 (2026-11-19)
+
+- Desktop 0.1.60; Android stays **0.1.27 / versionCode 28**.
+- **Send now** on a queued prompt: the queued card is focusable and Enter (or
+  its send button) calls `POST /api/bots/:id/steer`. ACP engines use
+  `_session/steering`; Codex uses `turn/steer`. Other engines keep the
+  persistent steer-queue and run it at the end of the current turn. The
+  transcript shows a steer as an ordinary user message.
+- Routine suggestions are **global + per-bot**, off by default. Enable them in
+  Settings → General (`offerRoutines`), or override in Bot settings; “Use app
+  default” clears the per-bot override.
+- Fixed team-shared cloud-computer actions: provision, join, sleep, exec, and
+  screenshot now use the same `team:<id>` scope as status and normal turns.
+- Live harness deployed to `/opt/kodbot`; verified `/api/about` 0.1.60,
+  `/api/config.offerRoutines=false`, and the public `/changelog`.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.60>
+
 ## 4. Remote deployment topology
 
 | Item | Value |

@@ -1,5 +1,7 @@
 # KodBot changelog
 
+Dated, user-facing changes. Newest first.
+
 ## 2026-11-19 — 0.1.60
 
 - Routine suggestions are now global + per-bot, off by default. Enable them in Settings → General or override them in Bot settings.
@@ -12,8 +14,6 @@
 - Knowledge editor in Settings, with Global and Team tabs, topics, a template, and secret redaction. Bots propose durable facts in chat; the book button on a bot reply saves a proposal after a person edits and approves it.
 - Public dated changelog at `/changelog` (no login), backed by `CHANGELOG.md` in the repo and bundled with the server.
 - The last English desktop panels are translated: Engines, Local Computer, the Local VM viewer, the team library, and the Inspector.
-
-Dated, user-facing changes. Newest first.
 
 ## 2026-11-19 — 0.1.58
 
