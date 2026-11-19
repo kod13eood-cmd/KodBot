@@ -342,6 +342,26 @@ once; after that, releases update in place.
   Android files and `/api/android/latest.json` updated to 0.1.27/28.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.58>
 
+### Release 0.1.59 (2026-11-19)
+
+- Desktop 0.1.59; Android stays **0.1.27 / versionCode 28**.
+- **Shared knowledge**: `Settings → Knowledge` writes `~/.kodbot/knowledge.json`
+  with a global book for every bot and one book per team. Every turn receives
+  a compact core and topic index; the full book is snapshotted into
+  `<bot workspace>/shared-knowledge/` and read on demand. Core/topics are
+  secret-redacted; team books are visible only to members.
+- Bots propose durable facts in their reply; the book button on a bot message
+  opens a prefilled editor for a person to edit and approve. Nothing is saved
+  automatically.
+- **Public dated changelog** at `/changelog` (no login), rendered from
+  `CHANGELOG.md`; `build:server` copies it beside the harness bundle. About
+  links to it.
+- The last English desktop panels are translated: Engines, Local Computer,
+  the Local VM viewer, the team library, and the Inspector.
+- Live harness deployed to `/opt/kodbot`; 25 bots idle at restart. Verified
+  `/api/knowledge`, `/changelog`, and the packaged-server smoke.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.59>
+
 ## 4. Remote deployment topology
 
 | Item | Value |
