@@ -301,6 +301,27 @@ once; after that, releases update in place.
   the preload bridge.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.56>
 
+### Release 0.1.57 (2026-11-19)
+
+- Desktop 0.1.57; Android stays **0.1.26 / versionCode 27** unchanged.
+- ACP engines (Grok, Gemini, Kimi, Droid, Hermes, Qwen, OpenCode, OpenCode Go)
+  keep the process warm for 10 minutes after a successful turn, up to four
+  parked per engine. The next turn prompts the same session instead of
+  spawning and loading; a different cwd/model/MCP env/permission policy or a
+  missing cursor starts fresh.
+- Prompt-once: prompt-style engines get the stable system layer once per
+  session; memory, pages, computer notes, tagged teammates and webhook notes
+  ride every turn. A failed `session/load` correctly resends the stable layer.
+- A fresh replay carries a short recent-tool trace.
+- **Work alone** is a per-bot opt-in (off by default): one automatic
+  continuation for an open checklist or denied tool, then a
+  "This still needs you" card. It does not widen approvals; the follow-up is
+  marked unattended, which disables auto-approval.
+- Live harness deployed to `/opt/kodbot` and restarted; 25 bots idle at
+  restart. Verified `/api/health`, packaged-server smoke, and the ACP/warm
+  tests.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.57>
+
 ## 4. Remote deployment topology
 
 | Item | Value |
