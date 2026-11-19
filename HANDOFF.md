@@ -322,6 +322,26 @@ once; after that, releases update in place.
   tests.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.57>
 
+### Release 0.1.58 (2026-11-19)
+
+- Desktop 0.1.58; Android **0.1.27 / versionCode 28**.
+- Skill routing: code and screen stay strong (screen prefers vision), short
+  translation/simple questions drop to a fast/free model only with **Economy
+  mode** (per bot, off by default, desktop and Android). The task records the
+  chosen skill/model.
+- A finished multi-step turn can offer **Save this as a routine?**; saving
+  creates a paused one-time routine. Automated runs never offer one.
+- A bot in a team can enable **Share the cloud computer with the team**; all
+  Box operations resolve the same `team:<id>` scope. Off remains private.
+- Android has a full Bulgarian UI and a **Language** switch (system language
+  on first run). The desktop EN/BG now covers the main panels, approvals,
+  update banner, rooms/working folder, calls, engine setup, API keys, the
+  computer panel, and server-authored Work alone/routine cards. Remaining
+  secondary settings panels are still English (localization follow-up).
+- Live harness deployed to `/opt/kodbot`; 25 bots idle at restart. Host
+  Android files and `/api/android/latest.json` updated to 0.1.27/28.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.58>
+
 ## 4. Remote deployment topology
 
 | Item | Value |
