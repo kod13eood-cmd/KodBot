@@ -379,6 +379,20 @@ once; after that, releases update in place.
   `/api/config.offerRoutines=false`, and the public `/changelog`.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.60>
 
+### Release 0.1.61 (2026-11-20)
+
+- Desktop 0.1.61; Android **0.1.28 / versionCode 29**.
+- Android: **Send now** on queued messages and a full **Knowledge** editor
+  (global + team books, core + topics). Host APK/manifest updated to 0.1.28.
+- Native Claude steering is experimental behind `KODBOT_CLAUDE_STEERING=1`:
+  stdin stays open, a second stream-json message can join the turn, and input
+  closes after two minutes with fallback to the normal queue. Off by default.
+- The Knowledge editor now warns that the global book is readable by every bot;
+  client-sensitive material belongs in a team book or a topic.
+- Live harness deployed to `/opt/kodbot`; `/api/about` 0.1.61 and host Android
+  0.1.28/29 verified. Release assets include the stable-signed APK.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.61>
+
 ## 4. Remote deployment topology
 
 | Item | Value |
