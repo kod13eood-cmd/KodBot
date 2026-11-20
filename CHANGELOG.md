@@ -6,6 +6,7 @@ Dated, user-facing changes. Newest first.
 
 - Hard spending caps: per-bot daily token and USD limits, plus app-wide monthly token and USD limits. Empty/0 means off. A turn that is already running always finishes; the next turn is refused with a clear “cap reached” error.
 - Usage is recorded in a local append-only ledger (`usage-ledger.jsonl`), so daily and monthly windows survive restarts. Settings shows today’s bot spend and this month’s total.
+- Server runtime moved to Node.js **24.22.3** (security patches through 11 Nov 2026); pnpm **10.34.9**. The harness, companion, and gateway run on the patched runtime.
 
 ## 2026-11-20 — 0.1.61
 

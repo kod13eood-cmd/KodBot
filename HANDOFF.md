@@ -44,17 +44,19 @@ Useful project docs:
 
 | Tool | Version / path |
 | --- | --- |
-| Node.js | 24.x (`nvm use 24`; package engines require `>=24`) |
-| pnpm | 10.33.0 |
+| Node.js | **24.22.3** system-wide (`/opt/node24`, `/usr/local/bin/node`); `nvm use 24` also works. Node 22 remains at `/usr/bin/node` only as rollback. |
+| pnpm | **10.34.9** (`/usr/local/bin/pnpm`; packageManager) |
 | JDK for Android | `~/.jdks/jdk-17.0.20.1+1` |
 | Android SDK | `/home/deso/Android/Sdk` |
 | adb | `/home/deso/Android/Sdk/platform-tools/adb` |
 | Build tools | 35.0.0 (34/36 also installed) |
 
-The shell's default Node may be 22; always run `nvm use 24` before install,
-build, or tests. The `paperclipi7` host currently has Node 22.23.1, pnpm
-10.33.0, JDK 21, and the Android SDK. Install Node 24 and JDK 17 there before
-building the full project or Android app on that host.
+The `paperclipi7` host now runs the harness, companion, and gateway on
+**Node 24.22.3** via `/usr/local/bin/node`; the three systemd units were updated
+and daemon-reloaded. pnpm is 10.34.9. Node 22 remains at `/usr/bin/node` as a
+rollback path only. JDK 21 is the default; use the JDK 17 at
+`/usr/lib/jvm/java-17-openjdk-amd64` for Android builds. The full Vitest suite
+and packaged-server smoke were run on Node 24.22.3 before the switch.
 
 ```sh
 source ~/.nvm/nvm.sh
