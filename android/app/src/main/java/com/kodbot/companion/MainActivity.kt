@@ -237,6 +237,7 @@ class MainActivity : ComponentActivity() {
                     onShowGroups = ::updateShowGroups,
                     onCreateBot = ::createBot,
                     onSend = ::send,
+                    onSendNow = ::sendNow,
                     onRespond = ::respond,
                     onInterrupt = ::interrupt,
                     onTranscribe = { file ->
@@ -735,6 +736,27 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun sendNow(chat: ConversationRecord, message: TranscriptMessage, done: (Boolean) -> Unit) {
+        if (chat.kind != "bot" || message.role != "user" || !message.queued) {
+            done(false)
+            return
+        }
+        val saved = connection ?: run {
+            done(false)
+            return
+        }
+        lifecycleScope.launch {
+            try {
+                CompanionApi(saved).steer(chat.id, message.text)
+                refreshFleet()
+                done(true)
+            } catch (error: Exception) {
+                actionError = error.message ?: "Couldn't send now."
+                done(false)
+            }
+        }
+    }
+
     private fun send(
         chat: ConversationRecord,
         text: String,
@@ -947,6 +969,7 @@ private fun KodBotScreen(
     onShowGroups: (Boolean) -> Unit,
     onCreateBot: () -> Unit,
     onSend: (ConversationRecord, String, List<PendingAttachment>, (Boolean) -> Unit) -> Unit,
+    onSendNow: (ConversationRecord, TranscriptMessage, (Boolean) -> Unit) -> Unit,
     onRespond: (ConversationRecord, ApprovalCard, String) -> Unit,
     onInterrupt: (ConversationRecord) -> Unit,
     onTranscribe: suspend (File) -> String,
@@ -1022,6 +1045,7 @@ private fun KodBotScreen(
                         loading = loading,
                         onBack = onBackToFleet,
                         onSend = onSend,
+                        onSendNow = onSendNow,
                         onRespond = onRespond,
                         onInterrupt = onInterrupt,
                         onTranscribe = onTranscribe,
@@ -1561,6 +1585,7 @@ private fun ChatScreen(
     loading: Boolean,
     onBack: () -> Unit,
     onSend: (ConversationRecord, String, List<PendingAttachment>, (Boolean) -> Unit) -> Unit,
+    onSendNow: (ConversationRecord, TranscriptMessage, (Boolean) -> Unit) -> Unit,
     onRespond: (ConversationRecord, ApprovalCard, String) -> Unit,
     onInterrupt: (ConversationRecord) -> Unit,
     onTranscribe: suspend (File) -> String,
@@ -1890,6 +1915,8 @@ private fun ChatScreen(
             items(chat.messages, key = { it.id }) { message ->
                 MessageItem(
                     message = message,
+                    busy = chat.busy,
+                    onSendNow = { done -> onSendNow(chat, message, done) },
                     onRespond = { card, answer -> onRespond(chat, card, answer) },
                     onOpenLink = onOpenLink,
                     onOpenPage = { pageViewer = it },
@@ -2799,6 +2826,8 @@ private fun WorkingDots(
 @Composable
 private fun MessageItem(
     message: TranscriptMessage,
+    busy: Boolean,
+    onSendNow: ((Boolean) -> Unit) -> Unit,
     onRespond: (ApprovalCard, String) -> Unit,
     onOpenLink: (MessageLinkRecord) -> Unit,
     onOpenPage: (PageArtifactRecord) -> Unit,
@@ -2819,6 +2848,7 @@ private fun MessageItem(
                 if (message.role == "user") ProductCardsBlock(message.text, emptyList())
                 else extractProductCards(message.text)
             }
+            var sendingNow by remember(message.id) { mutableStateOf(false) }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = if (message.role == "user") Arrangement.End else Arrangement.Start,
@@ -2853,6 +2883,28 @@ private fun MessageItem(
                                 Text(link.label)
                             }
                         }
+                    }
+                }
+            }
+            if (message.role == "user" && message.queued && busy) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp, end = 4.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        tr("Queued — sends when this turn finishes"),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    TextButton(
+                        enabled = !sendingNow,
+                        onClick = {
+                            sendingNow = true
+                            onSendNow { sendingNow = false }
+                        },
+                    ) {
+                        Text(if (sendingNow) tr("Sending…") else tr("Send now"))
                     }
                 }
             }

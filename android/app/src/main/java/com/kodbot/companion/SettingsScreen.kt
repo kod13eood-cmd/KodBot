@@ -80,6 +80,7 @@ fun SettingsScreen(
     var modelBotKey by rememberSaveable { mutableStateOf<String?>(null) }
     var teamBotKey by rememberSaveable { mutableStateOf<String?>(null) }
     var poolBotKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var knowledgeOpen by rememberSaveable { mutableStateOf(false) }
     val bots = chats.filter { it.kind == "bot" }
     val modelBot = bots.firstOrNull { it.key == modelBotKey }
     val teamBot = bots.firstOrNull { it.key == teamBotKey }
@@ -241,6 +242,19 @@ fun SettingsScreen(
                             checked = desktopMode,
                             onCheckedChange = onDesktopModeChange,
                         )
+                    }
+                }
+
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(tr("Knowledge"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(tr("Who you are, the mission, projects, skills, and team notes every bot can use."),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Button(onClick = { knowledgeOpen = true }, enabled = !busy) {
+                            Text(tr("Edit knowledge"))
+                        }
                     }
                 }
 
@@ -411,6 +425,10 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+
+    if (knowledgeOpen) {
+        KnowledgeDialog(connection = connection, onClose = { knowledgeOpen = false })
     }
 
     val selectedModelBot = modelBot

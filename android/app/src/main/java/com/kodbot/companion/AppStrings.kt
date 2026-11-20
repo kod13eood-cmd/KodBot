@@ -62,6 +62,7 @@ object AppStrings {
         "Add a bot…" to "Добави бот…",
         "Add a friendly label" to "Добавете разпознаваемо име",
         "Add another account" to "Добави друг акаунт",
+        "Add topic" to "Добави тема",
         "Address saved; connected to \${check.serverName}." to "Адресът е запазен; свързано с \${check.serverName}.",
         "Address unavailable: {reason}" to "Адресът е недостъпен: {reason}",
         "Advanced" to "Разширени",
@@ -207,10 +208,10 @@ object AppStrings {
         "Connect the apps your bots can use." to "Свържете приложенията, които ботовете ви могат да използват.",
         "Connect this app to let bots use its tools." to "Свържете това приложение, за да могат ботовете да използват инструментите му.",
         "Connect to a remote server" to "Свържи към отдалечен сървър",
-        "Connect to remote server" to "Свържи към отдалечен сървър",
     )
 
     private fun chunk2(): Map<String, String> = mapOf(
+        "Connect to remote server" to "Свържи към отдалечен сървър",
         "Connected" to "Свързано",
         "Connected apps" to "Свързани приложения",
         "Connected apps are granted per bot. This turns them on for every bot that supports them." to "Свързаните приложения се разрешават за всеки бот поотделно. Това ги включва за всеки бот, който ги поддържа.",
@@ -248,6 +249,7 @@ object AppStrings {
         "Copy the prompt into your other assistant, then paste its answer here." to "Копирайте подканата в другия асистент, след което поставете отговора тук.",
         "Copy this command into Terminal and press Return. It starts a real task in the chat with {name}; edit the task text for whatever you want done." to "Копирайте тази команда в Терминал и натиснете Enter. Тя стартира истинска задача в разговора с {name}; редактирайте текста на задачата според това, което искате да се направи.",
         "Copy this command into Terminal and press Return. It starts a real task on the worker {name}; the result comes back here." to "Копирайте тази команда в Терминал и натиснете Enter. Тя стартира истинска задача при работния бот {name}; резултатът се връща тук.",
+        "Core" to "Core",
         "Cost" to "Цена",
         "Cost is {caption}." to "Цената е {caption}.",
         "Cost {caption}." to "Цена {caption}.",
@@ -267,6 +269,7 @@ object AppStrings {
         "Couldn't download the update." to "Обновлението не можа да се свали.",
         "Couldn't join the team." to "Не можа да се присъединиш към екипа.",
         "Couldn't leave the team." to "Не можа да напуснеш екипа.",
+        "Couldn't load knowledge." to "Знанието не можа да се зареди.",
         "Couldn't load the bots from the computer." to "Ботовете не можаха да се заредят от компютъра.",
         "Couldn't load the pages." to "Страниците не можаха да се заредят.",
         "Couldn't load the server's model catalog." to "Каталогът с модели на сървъра не можа да се зареди.",
@@ -277,6 +280,7 @@ object AppStrings {
         "Couldn't play the voice note: \${error.message ?: \"unknown error\"}" to "Гласовото съобщение не можа да се пусне: \${error.message ?: \"неизвестна грешка\"}",
         "Couldn't reach the Companion address. Check that the phone is on the same Wi-Fi or Tailscale network as the computer." to "Адресът на Companion не е достъпен. Провери дали телефонът е в същата Wi-Fi или Tailscale мрежа като компютъра.",
         "Couldn't reach the KodBot server." to "KodBot сървърът не е достъпен.",
+        "Couldn't save knowledge." to "Знанието не можа да се запази.",
         "Couldn't save the address." to "Адресът не можа да се запази.",
         "Couldn't send the message." to "Съобщението не можа да се изпрати.",
         "Couldn't sign in to that server." to "Входът в този сървър не успя.",
@@ -378,6 +382,7 @@ object AppStrings {
         "Economy mode" to "Икономичен режим",
         "Edit" to "Редактирай",
         "Edit Profile" to "Редактирай профила",
+        "Edit knowledge" to "Редактирай знанието",
         "Edit last message when the box is empty" to "Редактирай последното съобщение, когато полето е празно",
         "Edit message" to "Редактирай съобщението",
         "Edit schedule" to "Редактирай графика",
@@ -386,14 +391,14 @@ object AppStrings {
         "Edit webhook" to "Редактирай уебхука",
         "Effort" to "Усилие",
         "ElevenLabs" to "ElevenLabs",
+    )
+
+    private fun chunk3(): Map<String, String> = mapOf(
         "ElevenLabs key" to "Ключ за ElevenLabs",
         "Email" to "Имейл",
         "Empty payload" to "Празни данни",
         "Enable" to "Включи",
         "Engine CLIs" to "CLI на двигателите",
-    )
-
-    private fun chunk3(): Map<String, String> = mapOf(
         "Engines" to "Двигатели",
         "English" to "Английски",
         "Enter a computer address such as 192.168.1.42:8810." to "Въведи адрес на компютъра като 192.168.1.42:8810.",
@@ -428,6 +433,7 @@ object AppStrings {
         "Ghost" to "Духче",
         "Give a CREW scheduled work with a calendar you can trust." to "Дайте на CREW работа по график с календар, на който можете да разчитате.",
         "Give this {service} connection a name you will recognize. It appears in Connected apps and in each bot's access list." to "Дай на тази връзка с {service} име, което ще разпознаваш. То се показва в Свързани приложения и в списъка с достъп на всеки бот.",
+        "Global is visible to every bot. Keep client-sensitive material in a team book or a topic." to "Глобалното се вижда от всеки бот. Пази клиентски чувствителните неща в екипна книга или тема.",
         "Group chats" to "Групови чатове",
         "Group chats are hidden." to "Груповите чатове са скрити.",
         "Group chats are visible." to "Груповите чатове са видими.",
@@ -477,6 +483,7 @@ object AppStrings {
         "Keep your connected apps unavailable to this bot." to "Оставете свързаните приложения недостъпни за този бот.",
         "Keeps going on its own — you'll still be asked about anything destructive, and about questions it asks you." to "Продължава самостоятелно — все още ще бъдете питани за опасни действия и за въпросите, които ботът задава.",
         "Keyboard shortcuts" to "Клавишни комбинации",
+        "Knowledge" to "Знание",
         "KodBot" to "KodBot",
         "KodBot \${update.versionName} is available" to "Налична е KodBot \${update.versionName}",
         "KodBot \${update.versionName} is available." to "Налична е KodBot \${update.versionName}.",
@@ -567,6 +574,9 @@ object AppStrings {
         "New bot" to "Нов бот",
         "New line" to "Нов ред",
         "New local webhook" to "Нов локален уебхук",
+    )
+
+    private fun chunk4(): Map<String, String> = mapOf(
         "New or share" to "Ново или споделяне",
         "New schedule" to "Нов график",
         "New task" to "Нова задача",
@@ -574,9 +584,6 @@ object AppStrings {
         "New tasks start here. This task is pinned to {where} — start a new task to use the new folder." to "Новите задачи започват тук. Тази задача е закачена към {where} — започнете нова задача, за да използвате новата папка.",
         "New webhook" to "Нов уебхук",
         "Next bot" to "Следващ бот",
-    )
-
-    private fun chunk4(): Map<String, String> = mapOf(
         "Next dates" to "Следващи дати",
         "Next version" to "Следваща версия",
         "No account details are visible yet. Connect an account to see it here." to "Още няма видими детайли за акаунт. Свържете акаунт, за да го видите тук.",
@@ -702,7 +709,7 @@ object AppStrings {
         "Question" to "Въпрос",
         "Queue message" to "Постави на опашка",
         "Queued" to "На опашка",
-        "Queued — sends when this turn finishes" to "На опашка — изпраща се след края на хода",
+        "Queued — sends when this turn finishes" to "На опашка — изпраща се в края на хода",
         "Queued — sends when {name} finishes: “{text}”" to "На опашка — ще се изпрати, когато {name} приключи: „{text}“",
         "React {emoji}" to "Реагирай с {emoji}",
         "Read replies aloud" to "Озвучавай отговорите",
@@ -738,6 +745,7 @@ object AppStrings {
         "Remove this account?" to "Да се премахне ли този акаунт?",
         "Remove this device" to "Премахни това устройство",
         "Remove this device?" to "Да се премахне ли това устройство?",
+        "Remove topic" to "Премахни темата",
         "Remove voice note" to "Премахни гласовото съобщение",
         "Remove {name}" to "Премахни {name}",
         "Remove {name} from the team" to "Премахни {name} от екипа",
@@ -749,6 +757,9 @@ object AppStrings {
         "Repeat every" to "Повтаряй на всеки",
         "Repeating" to "Повтарящ се",
         "Replace MEMORY.md" to "Замени MEMORY.md",
+    )
+
+    private fun chunk5(): Map<String, String> = mapOf(
         "Replace the current MEMORY.md with this text? This cannot be undone." to "Да се замени ли текущият MEMORY.md с този текст? Това не може да бъде отменено.",
         "Replace this private URL? Every previously copied command will stop working." to "Да се замени ли този частен URL? Всички предишни копирани команди ще спрат да работят.",
         "Reply to message" to "Отговори на съобщението",
@@ -757,9 +768,6 @@ object AppStrings {
         "Requested by your bot" to "Заявено от вашия бот",
         "Researcher" to "Изследовател",
         "Reset" to "Нулирай",
-    )
-
-    private fun chunk5(): Map<String, String> = mapOf(
         "Restart and install" to "Рестартирай и инсталирай",
         "Restarting to update…" to "Рестартиране за актуализация…",
         "Restore" to "Възстанови",
@@ -792,10 +800,12 @@ object AppStrings {
         "Save as a paused routine" to "Запази като рутина на пауза",
         "Save as a topic file" to "Запази като тематичен файл",
         "Save changes" to "Запази промените",
+        "Save knowledge" to "Запази знанието",
         "Save label" to "Запази името",
         "Save pool" to "Запази набора",
         "Save this as a routine?" to "Да се запази ли това като рутина?",
         "Saved" to "Записано",
+        "Saved. The next turn picks it up." to "Запазено. Следващият ход ще го използва.",
         "Saving…" to "Запазване…",
         "Scan a different QR" to "Сканирай друг QR",
         "Scan pairing QR" to "Сканирай QR за свързване",
@@ -828,7 +838,9 @@ object AppStrings {
         "Send a task" to "Изпрати задача",
         "Send a task to a CREW when another tool reports an event." to "Изпращайте задача към CREW, когато друг инструмент съобщи за събитие.",
         "Send message" to "Изпрати съобщение",
+        "Send now" to "Изпрати сега",
         "Send the task in the request:" to "Изпратете задачата в заявката:",
+        "Sending…" to "Изпращане…",
         "Sends when the current turn finishes" to "Ще се изпрати след края на текущия ход",
         "Server" to "Сървър",
         "Server address" to "Адрес на сървъра",
@@ -839,7 +851,9 @@ object AppStrings {
         "Setup" to "Настройка",
         "Shape" to "Форма",
         "Shapes interfaces, visuals, and the feel of things" to "Оформя интерфейси, визия и усещане",
+        "Shared knowledge" to "Споделено знание",
         "Shield" to "Щит",
+        "Short and durable: owner, mission, active projects, skills, and preferences." to "Кратко и трайно: собственик, мисия, активни проекти, умения и предпочитания.",
         "Short questions use a faster or free model. Code and the screen stay on a strong one." to "Кратките въпроси ползват по-бърз или безплатен модел. Кодът и екранът остават на силен модел.",
         "Short, simple questions use a faster or free model. Code and the screen stay on a strong one." to "Кратките и прости въпроси ползват по-бърз или безплатен модел. Кодът и екранът остават на силен модел.",
         "Show all shortcuts" to "Покажи всички комбинации",
@@ -926,6 +940,9 @@ object AppStrings {
         "The VM wakes automatically for each run. Keep KodBot running so its scheduler can launch the job." to "VM се събужда автоматично за всяко изпълнение. Оставете KodBot отворен, за да може планировчикът да стартира задачата.",
         "The address is hidden until this account is active again." to "Адресът е скрит, докато акаунтът отново не стане активен.",
         "The bot" to "Ботът",
+    )
+
+    private fun chunk6(): Map<String, String> = mapOf(
         "The bot keeps waiting after the timer; the notification is a reminder, not a denial. Choose “Wait until I answer” to hide the timer entirely." to "Ботът продължава да чака след таймера; известието е напомняне, не отказ. Избери „Изчакай до мой отговор“, за да няма таймер.",
         "The browser blocked clipboard access — select the command and copy it manually." to "Браузърът блокира достъпа до клипборда — маркирай командата и я копирай ръчно.",
         "The browser blocked clipboard access — select the link and copy it manually." to "Браузърът блокира достъпа до клипборда — маркирай линка и го копирай ръчно.",
@@ -940,9 +957,6 @@ object AppStrings {
         "The picker shows the last routed model; the next task is routed again." to "Изборът показва последния използван модел; следващата задача се маршрутизира отново.",
         "The port must be between 1 and 65535." to "Портът трябва да е между 1 и 65535.",
         "The private URL is shown once. Generate a replacement to copy your webhook command; any older command for this webhook will stop working." to "Частният URL се показва само веднъж. Генерирайте заместител, за да копирате командата за уебхука; всяка по-стара команда за този уебхук ще спре да работи.",
-    )
-
-    private fun chunk6(): Map<String, String> = mapOf(
         "The recording didn't contain speech." to "Записът не съдържа реч.",
         "The remote machine must already be running KodBot." to "Отдалечената машина трябва вече да изпълнява KodBot.",
         "The remote machine must be reachable over your LAN or Tailscale and must be running KodBot. Keys, engines, and the companion stay on that machine. The app will restart when you switch." to "Отдалечената машина трябва да е достъпна през локалната мрежа или Tailscale и да изпълнява KodBot. Ключовете, двигателите и компаньонът остават на нея. Приложението ще се рестартира при превключване.",
@@ -987,6 +1001,8 @@ object AppStrings {
         "Tokens and cost per bot, added up from every settled turn. Only engines that report a price show one." to "Токени и цена за всеки бот, сумирани от всеки приключил ход. Показва се цена само при двигатели, които я отчитат.",
         "Topic file name" to "Име на тематичния файл",
         "Topic files" to "Тематични файлове",
+        "Topic title" to "Заглавие на темата",
+        "Topics" to "Теми",
         "Transcribing voice note…" to "Транскрибиране на гласово съобщение…",
         "Transcribing your voice note…" to "Транскрибиране на гласовото съобщение…",
         "Transcribing your voice…" to "Транскрибиране на гласа…",
@@ -1077,6 +1093,7 @@ object AppStrings {
         "Which provider and model this bot runs on" to "Доставчик и модел, на които работи този бот",
         "Who does it?" to "Кой го изпълнява?",
         "Who receives the tasks?" to "Кой получава задачите?",
+        "Who you are, the mission, projects, skills, and team notes every bot can use." to "Кой си, мисията, проектите, уменията и бележките за екипа, които всеки бот може да ползва.",
         "Why it needs approval" to "Защо е нужно разрешение",
         "Work alone" to "Работи самостоятелно",
         "Work faster with the keyboard. These shortcuts work anywhere in KodBot." to "Работете по-бързо с клавиатурата. Тези комбинации работят навсякъде в KodBot.",
@@ -1106,6 +1123,9 @@ object AppStrings {
         "Your connections" to "Вашите връзки",
         "Your engines" to "Вашите двигатели",
         "Your name" to "Вашето име",
+    )
+
+    private fun chunk7(): Map<String, String> = mapOf(
         "Your phone will find this computer as “{name}”, or you can enter {address}:{port}." to "Телефонът ви ще намери този компютър като „{name}“, или можете да въведете {address}:{port}.",
         "Your session expired. Sign in again." to "Сесията изтече. Влез отново.",
         "Your webhooks" to "Вашите уебхукове",
@@ -1123,9 +1143,6 @@ object AppStrings {
         "just now" to "току-що",
         "local" to "локално",
         "missed a scheduled run" to "пропусна планирана задача",
-    )
-
-    private fun chunk7(): Map<String, String> = mapOf(
         "needs approval" to "иска одобрение",
         "not signed in" to "без вход",
         "off" to "изключено",

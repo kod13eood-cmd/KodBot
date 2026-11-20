@@ -353,7 +353,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
     await refreshModels();
     const listeners = new Set<RuntimeEventListener>();
     // one active turn per thread; a second send while busy is a caller bug
-    const active = new Map<string, { stop: () => void; turnId: string; broker?: ReturnType<typeof createPermissionBroker> }>();
+    const active = new Map<string, { stop: () => void; turnId: string; broker?: ReturnType<typeof createPermissionBroker>; steer?: (text: string) => Promise<boolean> }>();
 
     const emit = (event: RuntimeEvent) => {
       for (const l of [...listeners]) l(event);
@@ -504,6 +504,16 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
       });
 
       let settled = false;
+      let inputTimer: ReturnType<typeof setTimeout> | null = null;
+      const closeInput = () => {
+        if (inputTimer) clearTimeout(inputTimer);
+        inputTimer = null;
+        try {
+          child.stdin.end();
+        } catch {
+          /* already closed */
+        }
+      };
       const settle = (
         ok: boolean,
         stopReason: string | null,
@@ -519,6 +529,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
             rmSync(dirname(mcpConfigPath), { recursive: true, force: true });
           } catch {}
         }
+        closeInput();
         active.delete(threadId);
         emit({ ...base(threadId, turnId), type: "turn.completed", ok, stopReason, cost, ...(usage ? { usage } : {}) });
       };
@@ -648,14 +659,41 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
       });
 
       const stop = () => killCliTree(child);
-      active.set(threadId, { stop, turnId, broker });
+      const live = { stop, turnId, broker } as {
+        stop: () => void;
+        turnId: string;
+        broker: ReturnType<typeof createPermissionBroker> | undefined;
+        steer?: (text: string) => Promise<boolean>;
+      };
+      active.set(threadId, live);
       emit({ ...base(threadId, turnId), type: "turn.started" });
 
       // prompt over stdin as a stream-json message — never argv (ARG_MAX)
       const promptMsg = { type: "user", message: { role: "user", content: turn.text } };
       child.stdin.write(JSON.stringify(promptMsg) + "\n");
-      child.stdin.end();
       appendNative(threadId, { dir: "out", source: "claude.sdk.message", msg: promptMsg });
+
+      // Experimental: keeping stdin open lets a second stream-json user
+      // message join the running turn. The CLI's EOF semantics are not
+      // verified, so this is opt-in and always closed after two minutes;
+      // an unsupported/late steer falls back to the normal queue.
+      if (process.env.KODBOT_CLAUDE_STEERING === "1") {
+        live.steer = async (text: string) => {
+          if (settled) return false;
+          try {
+            const steerMsg = { type: "user", message: { role: "user", content: text } };
+            child.stdin.write(JSON.stringify(steerMsg) + "\n");
+            appendNative(threadId, { dir: "out", source: "claude.sdk.steer", msg: steerMsg });
+            return true;
+          } catch {
+            return false;
+          }
+        };
+        inputTimer = setTimeout(closeInput, 120_000);
+        inputTimer.unref?.();
+      } else {
+        closeInput();
+      }
 
       return { turnId };
     };
@@ -697,6 +735,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
         },
         sendTurn,
         interruptTurn: async (threadId) => active.get(threadId)?.stop(),
+        steerTurn: async (threadId, text) => active.get(threadId)?.steer?.(text) ?? false,
         respondToRequest: async (threadId, requestId, decision) => {
           // fail-closed by construction: no broker, or an ask that already
           // timed out / settled, is `unavailable` — the caller denies

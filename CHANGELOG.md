@@ -2,6 +2,12 @@
 
 Dated, user-facing changes. Newest first.
 
+## 2026-11-20 — 0.1.61
+
+- Android 0.1.28: **Send now** on queued messages, and a full **Knowledge** editor for the global book and each team book (core + topics).
+- Native Claude steering is available experimentally with `KODBOT_CLAUDE_STEERING=1`: stdin stays open, a second stream-json message can join the turn, and input closes after two minutes with fallback to the normal queue. Off by default until the CLI’s EOF behavior is verified.
+- Shared knowledge editor includes a visible warning that the global book is readable by every bot; keep client-sensitive material in a team book or a topic.
+
 ## 2026-11-19 — 0.1.60
 
 - Routine suggestions are now global + per-bot, off by default. Enable them in Settings → General or override them in Bot settings.

@@ -49,6 +49,7 @@ KodBot е local-first chat приложение за екип от AI агент
 - **Settings → Language** switches the app between English and Bulgarian. The Android app follows the phone language on first run and has the same switch.
 - **Settings → Knowledge** holds the shared core (who you are, mission, projects, skills, people) for every bot, plus a separate book for each team. Bots get the compact core every turn and read the full topics on demand. When a bot proposes a durable fact, use the book button on its reply to edit and approve it.
 - The public dated changelog is at **/changelog**; About → Public changelog opens it.
+- On Android, queued messages have the same **Send now**, and **Settings → Knowledge** edits the same global and team books.
 - **Enter** sends; **Shift+Enter** adds a line.
 - **Ctrl+Enter** while the bot is busy puts the prompt in the floating queue above the composer. It sends one prompt after the current turn finishes; you can discard an item. Press **Enter on a focused queued prompt** or use **Send now** to join the running turn — engines with steering change course immediately; the rest run it at the end of the turn.
 - **Stop** interrupts the running turn. Editing your own message rewinds the conversation and keeps the old version as a branch.
@@ -66,7 +67,8 @@ KodBot е local-first chat приложение за екип от AI агент
 - **Bot settings → Work alone** позволява на бота да довърши незавършен ход веднъж — например останал checklist или отказана команда. Не разширява права: разрушителни, секретни, sudo и изходящи действия пак питат. Ако и вторият опит е незавършен, карта **This still needs you** те пита да решиш.
 - Следващите ходове пазят engine процеса топъл до 10 минути, така че ботът продължава същата сесия без ново зареждане. До четири процеса стоят паркирани; различна папка, модел, набор инструменти или permission политика стартират нов.
 - **Settings → Knowledge** пази споделения core (кой си, мисия, проекти, умения, хора) за всички ботове, плюс отделна книга за всеки екип. Ботовете получават компактния core всеки ход и четат пълните теми при нужда. Когато бот предложи траен факт, използвай бутона с книгата на отговора му, за да го редактираш и одобриш.
-- Публичният dated changelog е на **/changelog**; About → Public changelog го отваря.`,
+- Публичният dated changelog е на **/changelog**; About → Public changelog го отваря.
+- На Android чакащите съобщения имат същия **Send now**, а **Settings → Knowledge** редактира същите глобални и екипни книги.`,
     },
   },
   {

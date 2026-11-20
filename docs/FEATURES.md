@@ -133,7 +133,8 @@ Status keys:
 
 - The Android app has a full Bulgarian interface and a **Language** switch in
   Settings. A fresh install follows the phone language; the choice is stored on
-  the device.
+  the device. The same release adds **Send now** on queued messages and the
+  full global/team **Knowledge** editor.
 - The desktop already had EN/BG; this release fills the remaining main panels,
   approval cards, update banner, room settings, calls, and server-authored
   cards (Work alone and routine offers).

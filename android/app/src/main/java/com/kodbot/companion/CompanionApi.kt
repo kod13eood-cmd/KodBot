@@ -79,6 +79,34 @@ data class ApprovalCard(
     val permission: Boolean get() = !tool.isNullOrBlank()
 }
 
+data class KnowledgeTopicRecord(
+    val id: String?,
+    val title: String,
+    val body: String,
+) {
+    fun toJson(): JSONObject = JSONObject().apply {
+        id?.let { put("id", it) }
+        put("title", title)
+        put("body", body)
+    }
+}
+
+data class KnowledgeBookRecord(
+    val core: String,
+    val topics: List<KnowledgeTopicRecord>,
+)
+
+data class TeamKnowledgeRecord(
+    val id: String,
+    val name: String,
+    val book: KnowledgeBookRecord,
+)
+
+data class KnowledgeResponse(
+    val global: KnowledgeBookRecord,
+    val teams: List<TeamKnowledgeRecord>,
+)
+
 data class PageSummaryRecord(
     val name: String,
     val title: String,
@@ -115,6 +143,7 @@ data class TranscriptMessage(
     val text: String,
     val toolName: String,
     val senderName: String?,
+    val queued: Boolean = false,
     val card: ApprovalCard?,
     /** A compact automation report points at the worker task that ran it. */
     val link: MessageLinkRecord? = null,
@@ -559,6 +588,56 @@ class CompanionApi(private val connection: CompanionConnection) {
         )
     }
 
+    suspend fun knowledge(): KnowledgeResponse = withContext(Dispatchers.IO) {
+        val root = JSONObject(request("GET", "/api/knowledge"))
+        fun book(value: JSONObject?): KnowledgeBookRecord {
+            val topicsJson = value?.optJSONArray("topics")
+            val topics = if (topicsJson == null) emptyList() else (0 until topicsJson.length()).mapNotNull { index ->
+                topicsJson.optJSONObject(index)?.let { entry ->
+                    KnowledgeTopicRecord(
+                        id = entry.optString("id").takeIf(String::isNotBlank),
+                        title = entry.optString("title"),
+                        body = entry.optString("body"),
+                    )
+                }
+            }
+            return KnowledgeBookRecord(core = value?.optString("core").orEmpty(), topics = topics)
+        }
+        val teamsJson = root.optJSONArray("teams")
+        val teams = if (teamsJson == null) emptyList() else (0 until teamsJson.length()).mapNotNull { index ->
+            teamsJson.optJSONObject(index)?.let { entry ->
+                TeamKnowledgeRecord(
+                    id = entry.optString("id"),
+                    name = entry.optString("name"),
+                    book = book(entry.optJSONObject("book")),
+                )
+            }
+        }
+        KnowledgeResponse(global = book(root.optJSONObject("global")), teams = teams)
+    }
+
+    suspend fun saveKnowledge(scope: String, book: KnowledgeBookRecord): KnowledgeBookRecord = withContext(Dispatchers.IO) {
+        val topics = org.json.JSONArray()
+        for (topic in book.topics) topics.put(topic.toJson())
+        val body = JSONObject().put("core", book.core).put("topics", topics)
+        val path = if (scope == "global") "/api/knowledge/global" else "/api/knowledge/teams/${encodePath(scope)}"
+        val root = JSONObject(request("PUT", path, body))
+        val saved = root.optJSONObject("book")
+        val savedTopics = saved?.optJSONArray("topics")
+        KnowledgeBookRecord(
+            core = saved?.optString("core").orEmpty(),
+            topics = if (savedTopics == null) emptyList() else (0 until savedTopics.length()).mapNotNull { index ->
+                savedTopics.optJSONObject(index)?.let { entry ->
+                    KnowledgeTopicRecord(
+                        id = entry.optString("id").takeIf(String::isNotBlank),
+                        title = entry.optString("title"),
+                        body = entry.optString("body"),
+                    )
+                }
+            },
+        )
+    }
+
     /** Auto routing is a per-bot model pool. An empty pool keeps Auto inside
      * the bot's current engine; a populated one is explicit consent to route
      * across the listed models, and nothing else. */
@@ -574,6 +653,16 @@ class CompanionApi(private val connection: CompanionConnection) {
                 JSONObject().put("autoModel", autoModel).put("autoModelPool", entries),
             )
         }
+
+    /** Send a queued prompt into the running turn, or let the server queue
+     * it for the end of the turn when the engine has no steering. */
+    suspend fun steer(botId: String, text: String) = withContext(Dispatchers.IO) {
+        request(
+            "POST",
+            "/api/bots/${encodePath(botId)}/steer",
+            JSONObject().put("text", text),
+        )
+    }
 
     /** Economy only changes which model Auto picks for a short question.
      * It does not change approvals, and it rides the same narrow route. */
@@ -939,6 +1028,7 @@ class CompanionApi(private val connection: CompanionConnection) {
                 text = optString("text"),
                 toolName = toolJson?.optString("name").orEmpty(),
                 senderName = senderJson?.optString("name")?.takeIf(String::isNotBlank),
+                queued = optBoolean("queued"),
                 card = card,
                 link = link,
                 page = page,
