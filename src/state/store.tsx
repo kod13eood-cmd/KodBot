@@ -218,6 +218,9 @@ export interface Bot {
   shareTeamComputer?: boolean;
   /** offer to save a finished multi-step turn as a paused routine */
   offerRoutines?: boolean;
+  /** hard daily caps; 0/absent = off */
+  dailyTokenCap?: number | null;
+  dailyCostCapUsd?: number | null;
   /** explicit models auto routing may choose from; empty = current engine */
   autoModelPool?: ModelSelection[];
   /** tools this bot may always use without asking */
@@ -292,6 +295,9 @@ export interface ConfigStatus {
   approvalTimeoutMinutes?: number | null;
   /** app-wide default for per-bot routine suggestions; off when absent */
   offerRoutines?: boolean;
+  /** app-wide monthly hard caps; 0/absent = off */
+  monthlyTokenCap?: number;
+  monthlyCostCapUsd?: number;
 }
 
 /** How an engine gets installed — declared by its driver, mirrors

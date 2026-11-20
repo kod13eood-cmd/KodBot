@@ -2,6 +2,11 @@
 
 Dated, user-facing changes. Newest first.
 
+## 2026-11-20 — 0.1.62
+
+- Hard spending caps: per-bot daily token and USD limits, plus app-wide monthly token and USD limits. Empty/0 means off. A turn that is already running always finishes; the next turn is refused with a clear “cap reached” error.
+- Usage is recorded in a local append-only ledger (`usage-ledger.jsonl`), so daily and monthly windows survive restarts. Settings shows today’s bot spend and this month’s total.
+
 ## 2026-11-20 — 0.1.61
 
 - Android 0.1.28: **Send now** on queued messages, and a full **Knowledge** editor for the global book and each team book (core + topics).

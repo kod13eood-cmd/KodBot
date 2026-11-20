@@ -82,6 +82,16 @@ Status keys:
 
 ## What's new in this build
 
+### Hard spending caps — Live
+
+- Per-bot **daily** token and USD caps, plus one **monthly** app-wide pair.
+  Empty or 0 means off, so caps are opt-in.
+- The harness records every settled turn in a local append-only ledger and
+  checks the current windows before dispatch. The running turn always finishes;
+  the next turn is refused with a clear message.
+- Bot settings shows today’s spend; Settings → General shows this month’s
+  total and the app caps.
+
 ### Shared knowledge — Live
 
 - **Settings → Knowledge** holds a global book for every bot and a separate

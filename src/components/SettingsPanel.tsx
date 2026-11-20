@@ -792,6 +792,93 @@ function BotTeamCard({ bot }: { bot: Bot }) {
   );
 }
 
+function fmtTokens(n: number): string {
+  return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${Math.round(n / 1_000)}k` : String(n);
+}
+
+function fmtUsd(n: number): string {
+  return `$${n >= 1 ? n.toFixed(2) : n.toFixed(3)}`;
+}
+
+function BotLimitsCard({
+  bot,
+  patch,
+}: {
+  bot: Bot;
+  patch: (value: { dailyTokenCap?: number | null; dailyCostCapUsd?: number | null }) => void;
+}) {
+  const { t } = useI18n();
+  const [usage, setUsage] = useState<{ tokens: number; costUsd: number } | null>(null);
+  const [tokens, setTokens] = useState(bot.dailyTokenCap ? String(bot.dailyTokenCap) : "");
+  const [cost, setCost] = useState(bot.dailyCostCapUsd ? String(bot.dailyCostCapUsd) : "");
+
+  useEffect(() => {
+    let alive = true;
+    void api(`/api/usage/caps?botId=${encodeURIComponent(bot.id)}`)
+      .then((body: any) => {
+        if (alive && body?.botToday) setUsage(body.botToday);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [bot.id]);
+
+  useEffect(() => {
+    setTokens(bot.dailyTokenCap ? String(bot.dailyTokenCap) : "");
+    setCost(bot.dailyCostCapUsd ? String(bot.dailyCostCapUsd) : "");
+  }, [bot.dailyTokenCap, bot.dailyCostCapUsd]);
+
+  const save = (key: "dailyTokenCap" | "dailyCostCapUsd", value: string) => {
+    const number = Number(value);
+    const parsed = value.trim() && Number.isFinite(number) && number > 0 ? number : null;
+    if (key === "dailyTokenCap" && parsed !== (bot.dailyTokenCap ?? null)) patch({ dailyTokenCap: parsed });
+    if (key === "dailyCostCapUsd" && parsed !== (bot.dailyCostCapUsd ?? null)) patch({ dailyCostCapUsd: parsed });
+  };
+
+  return (
+    <div className="rounded-xl bg-card p-4">
+      <div className="text-[15px] font-medium text-ink">{t("Daily limits")}</div>
+      <div className="mt-0.5 text-[13px] text-ink-secondary">
+        {t("Hard caps for this bot. Empty or 0 = off; the running turn always finishes.")}
+      </div>
+      {usage && (
+        <div className="mt-2 text-[12px] text-ink-secondary">
+          {t("Today: {tokens} tokens · {cost}", { tokens: fmtTokens(usage.tokens), cost: fmtUsd(usage.costUsd) })}
+        </div>
+      )}
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <label className="text-[12px] text-ink-secondary">
+          {t("Tokens / day")}
+          <input
+            type="number"
+            min={0}
+            step={100000}
+            value={tokens}
+            onChange={(event) => setTokens(event.target.value)}
+            onBlur={() => save("dailyTokenCap", tokens)}
+            placeholder={t("Off")}
+            className="mt-1 w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none"
+          />
+        </label>
+        <label className="text-[12px] text-ink-secondary">
+          {t("USD / day")}
+          <input
+            type="number"
+            min={0}
+            step={0.5}
+            value={cost}
+            onChange={(event) => setCost(event.target.value)}
+            onBlur={() => save("dailyCostCapUsd", cost)}
+            placeholder={t("Off")}
+            className="mt-1 w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none"
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
+
 export function SettingsPanel({ bot }: { bot: Bot }) {
   const { state, dispatch } = useStore();
   const { t } = useI18n();
@@ -819,6 +906,8 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
         | "workAlone"
         | "shareTeamComputer"
         | "offerRoutines"
+        | "dailyTokenCap"
+        | "dailyCostCapUsd"
         | "autoModelPool"
         | "speakReplies"
         | "voice"
@@ -1350,6 +1439,8 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
               </button>
             )}
           </div>
+
+          <BotLimitsCard bot={bot} patch={patch} />
 
           {!!engine?.capabilities?.effortLevels?.length && (
             <div className="rounded-xl bg-card p-4">

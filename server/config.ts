@@ -48,6 +48,8 @@ const appConfigSchema = z.object({
   approvalTimeoutMinutes: z.number().int().min(0).max(24 * 60).nullable().optional(),
   /** App-wide default for the per-bot routine suggestion. Off by default. */
   offerRoutines: z.boolean().optional(),
+  monthlyTokenCap: z.number().finite().nonnegative().optional(),
+  monthlyCostCapUsd: z.number().finite().nonnegative().optional(),
   instances: instanceConfigMapSchema.optional(),
 });
 const appConfigPatchSchema = appConfigSchema.omit({ instances: true });
@@ -68,6 +70,8 @@ export interface AppConfig {
   publicUrl?: string;
   approvalTimeoutMinutes?: number | null;
   offerRoutines?: boolean;
+  monthlyTokenCap?: number;
+  monthlyCostCapUsd?: number;
   instances?: InstanceConfigMap;
 }
 export type ConfigPatch = z.output<typeof appConfigPatchSchema>;
@@ -176,6 +180,12 @@ export function saveConfig(patch: Partial<AppConfig>): void {
   }
   if (checkedPatch.offerRoutines !== undefined) {
     disk.offerRoutines = checkedPatch.offerRoutines;
+  }
+  if (checkedPatch.monthlyTokenCap !== undefined) {
+    disk.monthlyTokenCap = checkedPatch.monthlyTokenCap;
+  }
+  if (checkedPatch.monthlyCostCapUsd !== undefined) {
+    disk.monthlyCostCapUsd = checkedPatch.monthlyCostCapUsd;
   }
   if (checkedPatch.instances) {
     const currentInstances = jsonObjectSchema.safeParse(disk.instances);

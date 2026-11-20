@@ -20,6 +20,7 @@ import { routineOffer } from "./routine-offer.ts";
 import { loadKnowledge, saveBook } from "./knowledge.ts";
 import { knowledgePrompt } from "./knowledge-context.ts";
 import { syncKnowledgeSnapshot } from "./knowledge-files.ts";
+import { recordUsage, usageCapError, usageSummary } from "./usage-ledger.ts";
 import { computerScopeId, resolveComputerDestination } from "./computer-selection.ts";
 import {
   isViewerPath,
@@ -1297,6 +1298,15 @@ bus.subscribe((event: RuntimeEvent) => {
         // (turn.completed.usage) is authoritative; a driver that only
         // streams the running indicator falls back to its last value.
         const tokens = event.usage ?? lastReported;
+        if (tokens || typeof event.cost === "number") {
+          recordUsage({
+            botId: bot.id,
+            threadId: event.threadId,
+            input: tokens?.input ?? 0,
+            output: tokens?.output ?? 0,
+            costUsd: event.cost ?? null,
+          });
+        }
         store.addTaskUsage(bot.id, event.threadId, {
           input: tokens?.input,
           output: tokens?.output,
@@ -1413,6 +1423,17 @@ bus.subscribe((event: RuntimeEvent) => {
             }
           });
         }
+      }
+      const groupspeaker = groupSpeakers.get(event.threadId);
+      const groupTokens = event.usage ?? lastReported;
+      if (!bot && groupspeaker && (groupTokens || typeof event.cost === "number")) {
+        recordUsage({
+          botId: groupspeaker.botId,
+          threadId: event.threadId,
+          input: groupTokens?.input ?? 0,
+          output: groupTokens?.output ?? 0,
+          costUsd: event.cost ?? null,
+        });
       }
       const speaker = groupSpeakers.get(event.threadId);
       const group = store.groupByThread(event.threadId);
@@ -1729,6 +1750,16 @@ async function startTurn(
   else if (opts?.automationSource === undefined && !opts?.commsDepth && !opts?.connectorContinuation) clearUnattended(bot.id);
   const task = store.taskByThread(bot.id, threadId);
   if (!task) throw Object.assign(new Error("no such task"), { status: 404 });
+  const capError = usageCapError({
+    botId: bot.id,
+    caps: {
+      dailyTokenCap: bot.dailyTokenCap,
+      dailyCostCapUsd: bot.dailyCostCapUsd,
+      monthlyTokenCap: cfg.monthlyTokenCap,
+      monthlyCostCapUsd: cfg.monthlyCostCapUsd,
+    },
+  });
+  if (capError) throw Object.assign(new Error(capError), { status: 429 });
   if (opts?.finishRetry) finishRetried.add(threadId);
   else {
     finishRetried.delete(threadId);
@@ -2358,6 +2389,24 @@ async function runGroupMemberTurn(
     });
     return true;
   }
+  const roomCapError = usageCapError({
+    botId: bot.id,
+    caps: {
+      dailyTokenCap: bot.dailyTokenCap,
+      dailyCostCapUsd: bot.dailyCostCapUsd,
+      monthlyTokenCap: cfg.monthlyTokenCap,
+      monthlyCostCapUsd: cfg.monthlyCostCapUsd,
+    },
+  });
+  if (roomCapError) {
+    store.appendMessage(group.threadId, {
+      role: "bot",
+      kind: "activity",
+      from: { botId: bot.id, name: bot.name, color: bot.color },
+      tool: { name: `error: ${roomCapError}`, ok: false },
+    });
+    return true;
+  }
   const integrations: NonNullable<Parameters<typeof instance.adapter.sendTurn>[0]["integrations"]> = {};
   try {
     if (bot.composio !== false && composio.configured(cfg) && instance.adapter.capabilities.composioMcp === true) {
@@ -2748,6 +2797,8 @@ function configStatus() {
       ? APPROVAL_TIMEOUT_DEFAULT_MINUTES
       : cfg.approvalTimeoutMinutes,
     offerRoutines: cfg.offerRoutines === true,
+    monthlyTokenCap: cfg.monthlyTokenCap ?? 0,
+    monthlyCostCapUsd: cfg.monthlyCostCapUsd ?? 0,
   };
 }
 
@@ -4010,6 +4061,14 @@ const server = createServer(async (req, res) => {
         // null clears the per-bot override and follows the app default.
         patch.offerRoutines = body.offerRoutines === null ? undefined : body.offerRoutines;
       }
+      for (const key of ["dailyTokenCap", "dailyCostCapUsd"] as const) {
+        const value = body[key];
+        if (value === undefined) continue;
+        if (value !== null && (typeof value !== "number" || !Number.isFinite(value) || value < 0)) {
+          return json(res, 400, { error: `${key} must be a non-negative number or null` });
+        }
+        patch[key] = value === null ? undefined : value;
+      }
       if (body.mascotShape !== undefined) {
         if (
           body.mascotShape !== null &&
@@ -4582,6 +4641,26 @@ const server = createServer(async (req, res) => {
     // Shared knowledge: global for every bot, plus one book per team. The
     // editor writes a whole book at once; bots only read the compact prompt
     // and the snapshot in their workspace.
+    // Usage windows for the settings cards and the hard-cap banner. The
+    // page is read-only; the caps themselves live on the bot/app config.
+    if (method === "GET" && path === "/api/usage/caps") {
+      const botId = url.searchParams.get("botId") ?? "";
+      const bot = botId ? store.bot(botId) : null;
+      if (botId && !bot) return json(res, 404, { error: "no such bot" });
+      const summary = usageSummary(bot?.id ?? "", Date.now());
+      return json(res, 200, {
+        botToday: bot ? summary.botToday : null,
+        appMonth: summary.appMonth,
+        botCaps: bot
+          ? { dailyTokenCap: bot.dailyTokenCap ?? 0, dailyCostCapUsd: bot.dailyCostCapUsd ?? 0 }
+          : null,
+        appCaps: {
+          monthlyTokenCap: cfg.monthlyTokenCap ?? 0,
+          monthlyCostCapUsd: cfg.monthlyCostCapUsd ?? 0,
+        },
+      });
+    }
+
     if (method === "GET" && path === "/api/knowledge") {
       const data = loadKnowledge();
       return json(res, 200, {
@@ -4972,7 +5051,14 @@ const server = createServer(async (req, res) => {
       // either, and picking a voice mid-turn should be free
       if (
         Object.keys(patch).some(
-          (k) => k !== "profile" && k !== "tts" && k !== "approvalTimeoutMinutes" && k !== "publicUrl",
+          (k) =>
+            k !== "profile" &&
+            k !== "tts" &&
+            k !== "approvalTimeoutMinutes" &&
+            k !== "publicUrl" &&
+            k !== "offerRoutines" &&
+            k !== "monthlyTokenCap" &&
+            k !== "monthlyCostCapUsd",
         )
       ) {
         await reloadProviders();

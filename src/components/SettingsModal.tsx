@@ -498,6 +498,98 @@ function RoutineOffersCard() {
   );
 }
 
+function UsageCapsCard() {
+  const { state, dispatch } = useStore();
+  const { t } = useI18n();
+  const [usage, setUsage] = useState<{ tokens: number; costUsd: number } | null>(null);
+  const [tokens, setTokens] = useState(state.config?.monthlyTokenCap ? String(state.config.monthlyTokenCap) : "");
+  const [cost, setCost] = useState(state.config?.monthlyCostCapUsd ? String(state.config.monthlyCostCapUsd) : "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    void fetch("/api/usage/caps")
+      .then((response) => response.json())
+      .then((body) => {
+        if (alive && body?.appMonth) setUsage(body.appMonth);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setTokens(state.config?.monthlyTokenCap ? String(state.config.monthlyTokenCap) : "");
+    setCost(state.config?.monthlyCostCapUsd ? String(state.config.monthlyCostCapUsd) : "");
+  }, [state.config?.monthlyTokenCap, state.config?.monthlyCostCapUsd]);
+
+  const save = (patch: { monthlyTokenCap?: number; monthlyCostCapUsd?: number }) => {
+    if (saving) return;
+    setSaving(true);
+    void fetch("/api/config", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(patch),
+    })
+      .then((response) => response.json())
+      .then((config) => dispatch({ type: "configStatus", config }))
+      .catch(() => {})
+      .finally(() => setSaving(false));
+  };
+
+  const commit = (key: "monthlyTokenCap" | "monthlyCostCapUsd", value: string) => {
+    const number = Number(value);
+    const parsed = value.trim() && Number.isFinite(number) && number > 0 ? number : 0;
+    const current = key === "monthlyTokenCap" ? (state.config?.monthlyTokenCap ?? 0) : (state.config?.monthlyCostCapUsd ?? 0);
+    if (parsed !== current) save({ [key]: parsed });
+  };
+
+  return (
+    <Card
+      title={t("Monthly limits")}
+      subtitle={t("Hard caps for the whole app. Empty or 0 = off; the running turn always finishes.")}
+    >
+      {usage && (
+        <div className="mb-2 text-[12px] text-ink-secondary">
+          {t("This month: {tokens} tokens · {cost}", {
+            tokens: usage.tokens >= 1_000_000 ? `${(usage.tokens / 1_000_000).toFixed(1)}M` : `${Math.round(usage.tokens / 1000)}k`,
+            cost: `$${usage.costUsd.toFixed(2)}`,
+          })}
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-3">
+        <label className="text-[12px] text-ink-secondary">
+          {t("Tokens / month")}
+          <input
+            type="number"
+            min={0}
+            step={1000000}
+            value={tokens}
+            onChange={(event) => setTokens(event.target.value)}
+            onBlur={() => commit("monthlyTokenCap", tokens)}
+            placeholder={t("Off")}
+            className="mt-1 w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none"
+          />
+        </label>
+        <label className="text-[12px] text-ink-secondary">
+          {t("USD / month")}
+          <input
+            type="number"
+            min={0}
+            step={5}
+            value={cost}
+            onChange={(event) => setCost(event.target.value)}
+            onBlur={() => commit("monthlyCostCapUsd", cost)}
+            placeholder={t("Off")}
+            className="mt-1 w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none"
+          />
+        </label>
+      </div>
+    </Card>
+  );
+}
+
 function GroupChatsCard() {
   const { t } = useI18n();
   const showGroups = useShowGroupChats();
@@ -654,6 +746,7 @@ export function SettingsModal() {
                 <DeveloperCard />
                 <GroupChatsCard />
                 <RoutineOffersCard />
+                <UsageCapsCard />
                 <HelpCard />
                 <ShortcutsRow />
                 <LanguageCard />

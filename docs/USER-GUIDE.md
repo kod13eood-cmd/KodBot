@@ -73,6 +73,7 @@ The rest of this guide is organized by topic.
 - Create a bot with **+ → New Bot**. Open **Bot settings** from its avatar to change the name, role, model, memory, working folder, voice, and notifications.
 - The model picker in the chat header chooses the engine/model for new turns. **Auto** picks from the bot's model pool. **Economy mode** (Bot settings, under Auto) lets a short simple question use a faster or free model; code and screen work stay on a strong model.
 - **Settings → Language** switches the app between English and Bulgarian. The Android app follows the phone language on first run and has the same switch.
+- **Hard caps** are opt-in: Bot settings → Daily limits sets today’s token/USD ceiling for one bot; Settings → General → Monthly limits sets the app-wide ceiling. Empty or 0 means off. The current turn always finishes; the next one is refused.
 - **Settings → Knowledge** holds the shared core (who you are, mission, projects, skills, people) for every bot, plus a separate book for each team. Bots get the compact core every turn and read the full topics on demand. When a bot proposes a durable fact, use the book button on its reply to edit and approve it.
 - The public dated changelog is at **/changelog**; About → Public changelog opens it.
 - On Android, queued messages have the same **Send now**, and **Settings → Knowledge** edits the same global and team books.
@@ -279,6 +280,7 @@ KodBot е local-first chat приложение за екип от AI агент
 - **Reply** (стрелката на съобщение) цитира това съобщение. Ботът получава цитата и знае за кой отговор става дума.
 - **Bot settings → Work alone** позволява на бота да довърши незавършен ход веднъж — например останал checklist или отказана команда. Не разширява права: разрушителни, секретни, sudo и изходящи действия пак питат. Ако и вторият опит е незавършен, карта **This still needs you** те пита да решиш.
 - Следващите ходове пазят engine процеса топъл до 10 минути, така че ботът продължава същата сесия без ново зареждане. До четири процеса стоят паркирани; различна папка, модел, набор инструменти или permission политика стартират нов.
+- **Hard caps** са по избор: Bot settings → Daily limits задава дневен лимит токени/USD за един бот; Settings → General → Monthly limits задава общия месечен лимит. Празно или 0 = изключено. Текущият ход винаги завършва; следващият се блокира.
 - **Settings → Knowledge** пази споделения core (кой си, мисия, проекти, умения, хора) за всички ботове, плюс отделна книга за всеки екип. Ботовете получават компактния core всеки ход и четат пълните теми при нужда. Когато бот предложи траен факт, използвай бутона с книгата на отговора му, за да го редактираш и одобриш.
 - Публичният dated changelog е на **/changelog**; About → Public changelog го отваря.
 - На Android чакащите съобщения имат същия **Send now**, а **Settings → Knowledge** редактира същите глобални и екипни книги.

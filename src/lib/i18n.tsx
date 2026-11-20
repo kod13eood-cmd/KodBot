@@ -1436,6 +1436,18 @@ const BULGARIAN: Record<string, string> = {
   "Routine offers are on by default.": "Предложенията за рутини са включени по подразбиране.",
   "Routine offers are off by default.": "Предложенията за рутини са изключени по подразбиране.",
   "Use app default": "Използвай настройката на приложението",
+  "Daily limits": "Дневни лимити",
+  "Hard caps for this bot. Empty or 0 = off; the running turn always finishes.":
+    "Твърди лимити за този бот. Празно или 0 = изключено; текущият ход винаги завършва.",
+  "Today: {tokens} tokens · {cost}": "Днес: {tokens} токена · {cost}",
+  "Tokens / day": "Токени / ден",
+  "USD / day": "USD / ден",
+  "Monthly limits": "Месечни лимити",
+  "Hard caps for the whole app. Empty or 0 = off; the running turn always finishes.":
+    "Твърди лимити за цялото приложение. Празно или 0 = изключено; текущият ход винаги завършва.",
+  "This month: {tokens} tokens · {cost}": "Този месец: {tokens} токена · {cost}",
+  "Tokens / month": "Токени / месец",
+  "USD / month": "USD / месец",
   "After a finished multi-step turn, offer to save it as a paused routine. Off by default; follows the app setting unless changed here.":
     "След завършен ход с няколко стъпки предложи да се запази като рутина на пауза. Изключено по подразбиране; следва настройката на приложението, освен ако не се промени тук.",
   "That team no longer exists.": "Този екип вече не съществува.",

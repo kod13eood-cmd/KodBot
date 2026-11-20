@@ -663,6 +663,34 @@ describe("harness HTTP API", () => {
     expect(html).toContain("2026-11-19");
   });
 
+  it("stores daily bot caps and reports the usage windows", async () => {
+    const bot = (await api("POST", "/api/bots")).body.bot;
+    const bad = await api("PATCH", `/api/bots/${bot.id}`, { dailyTokenCap: -1 });
+    expect(bad.status).toBe(400);
+    const saved = await api("PATCH", `/api/bots/${bot.id}`, { dailyTokenCap: 1000, dailyCostCapUsd: 1.5 });
+    expect(saved.status).toBe(200);
+    expect(saved.body.bot.dailyTokenCap).toBe(1000);
+    expect(saved.body.bot.dailyCostCapUsd).toBe(1.5);
+    const cleared = await api("PATCH", `/api/bots/${bot.id}`, { dailyTokenCap: null });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.bot.dailyTokenCap).toBeUndefined();
+
+    const usage = await api("GET", `/api/usage/caps?botId=${bot.id}`);
+    expect(usage.status).toBe(200);
+    expect(usage.body.appMonth).toEqual({ tokens: 0, costUsd: 0, turns: 0 });
+    expect(usage.body.botToday).toEqual({ tokens: 0, costUsd: 0, turns: 0 });
+  });
+
+  it("stores app monthly caps", async () => {
+    const saved = await api("PUT", "/api/config", { monthlyTokenCap: 5000000, monthlyCostCapUsd: 25 });
+    expect(saved.status).toBe(200);
+    expect(saved.body.monthlyTokenCap).toBe(5000000);
+    expect(saved.body.monthlyCostCapUsd).toBe(25);
+    const cleared = await api("PUT", "/api/config", { monthlyTokenCap: 0, monthlyCostCapUsd: 0 });
+    expect(cleared.body.monthlyTokenCap).toBe(0);
+    expect(cleared.body.monthlyCostCapUsd).toBe(0);
+  });
+
   it("persists an answered onboarding card", async () => {
     const { body } = await api("GET", "/api/bots");
     const bot = body.bots[0];

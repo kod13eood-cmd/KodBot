@@ -303,6 +303,8 @@ describe("steer-queue e2e (fake ACP fleet)", () => {
       expect(reply.text).toContain("[steered: adjust now]");
       expect(reply.text).toContain("first task");
       expect(snapshot.messages.some((m: any) => m.role === "user" && m.text === "adjust now" && !m.queued)).toBe(true);
+      const usage = await api("GET", `/api/usage/caps?botId=${bot.id}`);
+      expect(usage.body.botToday.tokens).toBeGreaterThan(0);
       rmSync(drainGate, { force: true });
     },
     60_000,
