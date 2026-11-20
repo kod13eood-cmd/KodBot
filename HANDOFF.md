@@ -393,6 +393,21 @@ once; after that, releases update in place.
   0.1.28/29 verified. Release assets include the stable-signed APK.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.61>
 
+### Release 0.1.62 (2026-11-20)
+
+- Desktop 0.1.62; Android stays **0.1.28 / versionCode 29**.
+- Hard caps are opt-in: per-bot daily token/USD caps and app-wide monthly
+  token/USD caps. Empty or 0 = off. A running turn always finishes; the next
+  start is refused with a 429 and a clear message. Rooms/routines/webhooks go
+  through the same check.
+- Usage is recorded in `~/.kodbot/usage-ledger.jsonl` (append-only, one line per
+  settled turn, mode 0600). The ledger starts empty at deployment; prior spend
+  is not backfilled. Settings shows today’s bot spend and this month’s total.
+- Live harness deployed to `/opt/kodbot`; `/api/about` 0.1.62 and
+  `/api/usage/caps` verified. Release assets include the stable-signed Android
+  0.1.28 APK.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.62>
+
 ## 4. Remote deployment topology
 
 | Item | Value |
