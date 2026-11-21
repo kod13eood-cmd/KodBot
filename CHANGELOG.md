@@ -7,6 +7,7 @@ Dated, user-facing changes. Newest first.
 - Settings has an **Admin** area for the gateway owner: list accounts, create and revoke one-time invites, give a member a temporary password, disable or enable an account, and sign out every session.
 - The owner account cannot be disabled, and members never see the Admin tab or reach the admin routes.
 - Temporary passwords and invite codes are shown once, with a copy button. Creating an invite can pin it to an email address and choose 1, 7, or 30 days.
+- A locked-out person sees "Forgot your password? Ask the owner to reset it" on the login page, in English and Bulgarian.
 - The Admin screen is translated into Bulgarian together with the rest of Settings.
 
 ## 2026-11-21 — Gateway login
