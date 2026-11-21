@@ -60,6 +60,26 @@ describe("gateway HTTP auth", () => {
     expect(await page.text()).toContain("Create the owner account");
   });
 
+  it("serves the login page in Bulgarian and remembers the choice", async () => {
+    const page = await fetch(`${base}/login?lang=bg`);
+    expect(page.status).toBe(200);
+    expect(page.headers.get("set-cookie")).toContain("kodbot_lang=bg");
+    const html = await page.text();
+    expect(html).toContain('lang="bg"');
+    expect(html).toContain("Създай акаунта на собственика");
+    expect(html).toContain("Български");
+
+    const remembered = await fetch(`${base}/login`, {
+      headers: { cookie: "kodbot_lang=bg" },
+    });
+    expect(await remembered.text()).toContain("Създай акаунта на собственика");
+
+    const fromBrowser = await fetch(`${base}/login`, {
+      headers: { "accept-language": "bg-BG,bg;q=0.9,en;q=0.8" },
+    });
+    expect(await fromBrowser.text()).toContain("Създай акаунта на собственика");
+  });
+
   it("registers the bootstrap owner and resolves a bearer session", async () => {
     const response = await post("/api/auth/register", {
       email: "owner@example.com",

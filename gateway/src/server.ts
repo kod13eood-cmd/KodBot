@@ -10,10 +10,11 @@ import { AuthError, AuthService, type PublicUser } from "./auth.ts";
 import type { GatewayConfig } from "./config.ts";
 import { denyReason } from "./device-routes.ts";
 import { HarnessManager, proxyToHarness } from "./harness.ts";
-import { loginPage } from "./login-page.ts";
+import { loginPage, type GatewayLang } from "./login-page.ts";
 import type { GatewayStore } from "./store.ts";
 
 const COOKIE = "kodbot_session";
+const LANG_COOKIE = "kodbot_lang";
 const MAX_BODY = 64 * 1024;
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -47,6 +48,14 @@ function parseCookies(req: IncomingMessage): Record<string, string> {
     if (name) out[name] = decodeURIComponent(value);
   }
   return out;
+}
+
+function gatewayLang(req: IncomingMessage, url: URL): GatewayLang {
+  const requested = url.searchParams.get("lang");
+  if (requested === "bg" || requested === "en") return requested;
+  const saved = parseCookies(req)[LANG_COOKIE];
+  if (saved === "bg" || saved === "en") return saved;
+  return String(req.headers["accept-language"] ?? "").toLowerCase().startsWith("bg") ? "bg" : "en";
 }
 
 function bearer(req: IncomingMessage): string | undefined {
@@ -178,8 +187,12 @@ export function createGatewayServer({ config, store, auth, harnesses, serveStati
         if (current) return redirect(res, "/");
         const error = url.searchParams.get("error") ?? undefined;
         const mode = url.searchParams.get("mode") === "register" ? "register" : "login";
+        const lang = gatewayLang(req, url);
+        if (url.searchParams.get("lang")) {
+          res.setHeader("set-cookie", `${LANG_COOKIE}=${lang}; Path=/; Max-Age=31536000; SameSite=Lax`);
+        }
         res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
-        return res.end(loginPage({ config, hasUsers: store.countUsers() > 0, error, mode }));
+        return res.end(loginPage({ config, hasUsers: store.countUsers() > 0, error, mode, lang }));
       }
 
       if (method === "POST" && path === "/api/auth/login") {
@@ -315,7 +328,8 @@ export function createGatewayServer({ config, store, auth, harnesses, serveStati
       const message = error instanceof Error ? error.message : String(error);
       if (wantsJson(req) || path.startsWith("/api/")) return json(res, status, { error: message });
       const mode = path === "/api/auth/register" ? "register" : "login";
-      return redirect(res, `/login?error=${encodeURIComponent(message)}&mode=${mode}`);
+      const lang = gatewayLang(req, url);
+      return redirect(res, `/login?error=${encodeURIComponent(message)}&mode=${mode}&lang=${lang}`);
     }
   });
 }
