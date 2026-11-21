@@ -35,6 +35,7 @@ const COPY = {
     signInLink: "Sign in",
     mismatch: "Passwords do not match.",
     language: "Language",
+    forgot: "Forgot your password? Ask the owner to reset it from Settings → Admin.",
   },
   bg: {
     ownerTitle: "Създай акаунта на собственика",
@@ -56,6 +57,7 @@ const COPY = {
     signInLink: "Вход",
     mismatch: "Паролите не съвпадат.",
     language: "Език",
+    forgot: "Забравена парола? Помоли собственика да я нулира от Настройки → Админ.",
   },
 } as const;
 
@@ -162,6 +164,7 @@ export function loginPage(input: {
         ? `<div class="hint">${copy.ownerHint}</div>`
         : `<div class="switch">${register ? `${copy.already} <a href="/login?lang=${lang}">${copy.signInLink}</a>` : `${copy.haveInvite} <a href="/login?mode=register&lang=${lang}">${copy.createLink}</a>`}</div>`
     }
+    ${register ? "" : `<div class="hint">${copy.forgot}</div>`}
     <div class="lang" aria-label="${copy.language}">
       <a href="${switchLink("en")}" lang="en">English</a> · <a href="${switchLink("bg")}" lang="bg">Български</a>
     </div>

@@ -127,6 +127,9 @@ describe("gateway HTTP auth", () => {
     const ownerToken = (await owner.json()).token as string;
     const ownerHeaders = { authorization: `Bearer ${ownerToken}` };
 
+    const bgLogin = await fetch(`${base}/login?lang=bg`);
+    expect(await bgLogin.text()).toContain("Забравена парола?");
+
     const invite = await post("/api/admin/invites", { email: "member@example.com", days: 7 }, ownerHeaders);
     expect(invite.status).toBe(201);
     const inviteBody = await invite.json();
