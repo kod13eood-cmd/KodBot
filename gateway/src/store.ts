@@ -341,6 +341,25 @@ export class GatewayStore {
     return Number(result.changes) > 0;
   }
 
+  listInvites(): InviteRecord[] {
+    return (this.db.prepare("SELECT * FROM invites ORDER BY created_at DESC").all() as any[]).map((row) => ({
+      id: row.id,
+      codeHash: row.code_hash,
+      email: row.email ?? null,
+      createdBy: row.created_by ?? null,
+      createdAt: row.created_at,
+      expiresAt: row.expires_at,
+      usedBy: row.used_by ?? null,
+      usedAt: row.used_at ?? null,
+    }));
+  }
+
+  /** Remove an unused invite. A used invite stays as part of the record. */
+  deleteInvite(id: string): boolean {
+    const result = this.db.prepare("DELETE FROM invites WHERE id = ? AND used_at IS NULL").run(id);
+    return Number(result.changes) > 0;
+  }
+
   createDevice(input: {
     id: string;
     userId: string;

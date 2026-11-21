@@ -2,6 +2,7 @@
 // page. Phase 2 adds the authenticated per-user harness proxy below the same
 // auth boundary; until then non-auth API calls answer 503 instead of leaking
 // an unauthenticated harness.
+import { randomBytes } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, resolve, sep } from "node:path";
@@ -164,6 +165,15 @@ export interface GatewayDeps {
   serveStatic?: boolean;
 }
 
+function ownerOf(req: IncomingMessage, auth: AuthService): PublicUser | null {
+  const current = auth.session(sessionToken(req));
+  return current?.user.role === "owner" ? current.user : null;
+}
+
+function adminPassword(): string {
+  return `KodBot-${randomBytes(5).toString("hex")}!`;
+}
+
 export function createGatewayServer({ config, store, auth, harnesses, serveStatic = true }: GatewayDeps): Server {
   return createServer(async (req, res) => {
     const method = req.method ?? "GET";
@@ -249,6 +259,92 @@ export function createGatewayServer({ config, store, auth, harnesses, serveStati
         const current = auth.session(sessionToken(req));
         if (!current) return json(res, 401, { error: "not signed in", login: "/login" });
         return json(res, 200, { user: current.user });
+      }
+
+      // Owner-only control plane. The owner is the gateway administrator;
+      // members cannot list users, mint invites, reset passwords, or disable
+      // accounts. These routes never reach a tenant harness.
+      if (path.startsWith("/api/admin/")) {
+        const owner = ownerOf(req, auth);
+        if (!owner) return json(res, 403, { error: "owner access required" });
+      }
+
+      if (method === "GET" && path === "/api/admin/users") {
+        return json(res, 200, {
+          users: store.listUsers().map((user) => ({
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            createdAt: user.createdAt,
+            disabledAt: user.disabledAt,
+          })),
+        });
+      }
+
+      if (method === "GET" && path === "/api/admin/invites") {
+        return json(res, 200, {
+          invites: store.listInvites().map((invite) => ({
+            id: invite.id,
+            email: invite.email,
+            createdAt: invite.createdAt,
+            expiresAt: invite.expiresAt,
+            usedAt: invite.usedAt,
+          })),
+        });
+      }
+
+      if (method === "POST" && path === "/api/admin/invites") {
+        const body = bodyObject(req, await readBody(req));
+        const email = typeof body.email === "string" ? body.email.trim() : "";
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+          return json(res, 400, { error: "Enter a valid email address." });
+        }
+        const days = Number(body.days ?? 7);
+        const ttlMs = Number.isFinite(days) && days > 0 ? Math.min(90, days) * 86_400_000 : undefined;
+        const invite = auth.createInvite({ email: email || undefined, createdBy: ownerOf(req, auth)?.id, ttlMs });
+        return json(res, 201, { code: invite.code, email: email || null, expiresAt: invite.expiresAt });
+      }
+
+      const adminInviteMatch = path.match(/^\/api\/admin\/invites\/([\w-]+)$/);
+      if (adminInviteMatch && method === "DELETE") {
+        if (!store.deleteInvite(adminInviteMatch[1])) return json(res, 404, { error: "no such pending invite" });
+        return json(res, 200, { ok: true });
+      }
+
+      const adminUserMatch = path.match(/^\/api\/admin\/users\/([\w-]+)(\/password|\/disabled|\/sessions)?$/);
+      if (adminUserMatch) {
+        const user = store.findUserById(adminUserMatch[1]);
+        if (!user) return json(res, 404, { error: "no such user" });
+        const action = adminUserMatch[2] ?? "";
+        if (method === "POST" && action === "/password") {
+          const body = bodyObject(req, await readBody(req));
+          const requested = typeof body.password === "string" ? body.password : "";
+          const password = requested.trim() || adminPassword();
+          await auth.setPassword(user.email, password);
+          return json(res, 200, { email: user.email, password });
+        }
+        if (method === "POST" && action === "/disabled") {
+          const body = bodyObject(req, await readBody(req));
+          const raw = String(body.disabled ?? "");
+          if (raw !== "true" && raw !== "false") {
+            return json(res, 400, { error: "disabled must be true or false" });
+          }
+          const disabled = raw === "true";
+          if (user.role === "owner" && disabled) {
+            return json(res, 409, { error: "the owner account cannot be disabled" });
+          }
+          store.setUserDisabled(user.id, disabled);
+          if (disabled) store.deleteUserSessions(user.id);
+          return json(res, 200, { ok: true, disabled });
+        }
+        if (method === "DELETE" && action === "/sessions") {
+          store.deleteUserSessions(user.id);
+          return json(res, 200, { ok: true });
+        }
+      }
+
+      if (path.startsWith("/api/admin/")) {
+        return json(res, 404, { error: "not found" });
       }
 
       if (method === "POST" && path === "/api/device/pairing") {

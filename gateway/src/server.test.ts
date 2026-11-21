@@ -118,6 +118,64 @@ describe("gateway HTTP auth", () => {
     expect(login.headers.get("location")).toBe("/");
   });
 
+  it("lets the owner manage users, invites, passwords, and disabled accounts", async () => {
+    const owner = await post("/api/auth/register", {
+      email: "owner@example.com",
+      password: "correct horse battery",
+      confirm: "correct horse battery",
+    });
+    const ownerToken = (await owner.json()).token as string;
+    const ownerHeaders = { authorization: `Bearer ${ownerToken}` };
+
+    const invite = await post("/api/admin/invites", { email: "member@example.com", days: 7 }, ownerHeaders);
+    expect(invite.status).toBe(201);
+    const inviteBody = await invite.json();
+    expect(inviteBody.code).toMatch(/^kb_/);
+    expect(inviteBody.email).toBe("member@example.com");
+
+    const member = await post("/api/auth/register", {
+      email: "member@example.com",
+      password: "member password",
+      confirm: "member password",
+      invite: inviteBody.code,
+    });
+    expect(member.status).toBe(201);
+    const memberBody = await member.json();
+    const memberHeaders = { authorization: `Bearer ${memberBody.token}` };
+    expect(memberBody.user.role).toBe("member");
+
+    const users = await fetch(`${base}/api/admin/users`, { headers: ownerHeaders });
+    expect(users.status).toBe(200);
+    expect((await users.json()).users).toHaveLength(2);
+    expect((await fetch(`${base}/api/admin/users`, { headers: memberHeaders })).status).toBe(403);
+
+    const reset = await post(`/api/admin/users/${memberBody.user.id}/password`, {}, ownerHeaders);
+    expect(reset.status).toBe(200);
+    const resetBody = await reset.json();
+    expect(resetBody.password.length).toBeGreaterThanOrEqual(10);
+    const oldLogin = await post("/api/auth/login", { email: "member@example.com", password: "member password" });
+    expect(oldLogin.status).toBe(401);
+    const newLogin = await post("/api/auth/login", { email: "member@example.com", password: resetBody.password });
+    expect(newLogin.status).toBe(200);
+
+    const disable = await post(`/api/admin/users/${memberBody.user.id}/disabled`, { disabled: true }, ownerHeaders);
+    expect(disable.status).toBe(200);
+    expect((await post("/api/auth/login", { email: "member@example.com", password: resetBody.password })).status).toBe(401);
+    await post(`/api/admin/users/${memberBody.user.id}/disabled`, { disabled: false }, ownerHeaders);
+    expect((await post("/api/auth/login", { email: "member@example.com", password: resetBody.password })).status).toBe(200);
+
+    const pending = await fetch(`${base}/api/admin/invites`, { headers: ownerHeaders });
+    expect((await pending.json()).invites).toHaveLength(1);
+    const second = await post("/api/admin/invites", { days: 3 }, ownerHeaders);
+    const secondCode = (await second.json()).code as string;
+    expect(secondCode).toMatch(/^kb_/);
+    const list = await fetch(`${base}/api/admin/invites`, { headers: ownerHeaders });
+    const invites = (await list.json()).invites;
+    const unused = invites.find((entry: any) => !entry.usedAt);
+    expect(unused).toBeTruthy();
+    expect((await fetch(`${base}/api/admin/invites/${unused.id}`, { method: "DELETE", headers: ownerHeaders })).status).toBe(200);
+  });
+
   it("returns a session token to a mobile JSON login without setting a cookie", async () => {
     await post("/api/auth/register", {
       email: "owner@example.com",
