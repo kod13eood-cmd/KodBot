@@ -11,6 +11,7 @@ import { displayRole } from "@/lib/mascot";
 import { SearchResults } from "./SearchResults";
 import { openShortcutsSheet } from "./ShortcutsSheet";
 import { useI18n } from "@/lib/i18n";
+import { canSeeSettingsSection } from "@/lib/settings-sections";
 
 interface AppCard {
   slug: string;
@@ -33,6 +34,7 @@ const SETTINGS_RESULTS: SettingsResult[] = [
   { id: "computer", label: "Local VM", keywords: "computer docker container desktop" },
   { id: "voice", label: "Voice", keywords: "tts elevenlabs speech call" },
   { id: "usage", label: "Usage", keywords: "tokens cost spending billing" },
+  { id: "admin", label: "Admin", keywords: "owner users invites passwords disable sessions accounts" },
 ];
 
 let appCatalog: AppCard[] | null = null;
@@ -292,7 +294,10 @@ export function SearchDialog({
   const settingsResults = needle
     ? SETTINGS_RESULTS.filter(
         (entry) =>
-          allSettings || matches(t(entry.label), needle) || matches(entry.keywords, needle),
+          // Search keeps developer sections visible regardless of dev mode;
+          // Admin is the only entry gated by who is signed in.
+          canSeeSettingsSection(entry.id, { devMode: true, isOwner: state.authUser?.role === "owner" }) &&
+          (allSettings || matches(t(entry.label), needle) || matches(entry.keywords, needle)),
       )
     : [];
   const shortcutsResult =

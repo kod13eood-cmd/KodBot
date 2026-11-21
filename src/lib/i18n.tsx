@@ -1457,6 +1457,46 @@ const BULGARIAN: Record<string, string> = {
     "Човек решава кое става трайно знание за компанията или екипа. Тайните никога не принадлежат тук.",
   "Off keeps this bot's cloud computer private. On, teammates use the same machine and browser logins.":
     "Изключено пази облачния компютър на този бот личен. Включено значи, че съотборниците ползват същата машина и същите входове в браузъра.",
+
+  // Admin (gateway owner only)
+  "Admin": "Админ",
+  "Owner-only controls for the hosted KodBot gateway. Members never see these screens.":
+    "Контроли само за собственика на hosted KodBot gateway. Членовете никога не виждат тези екрани.",
+  "Signed in as the owner.": "Влязъл си като собственик.",
+  "Temporary password": "Временна парола",
+  "Share it with {email} once, then ask them to change it.":
+    "Дай я на {email} веднъж и после го помоли да я смени.",
+  "Invite code": "Код за покана",
+  "Send this to {email} or to the person you want to invite.":
+    "Изпрати това на {email} или на човека, когото искаш да поканиш.",
+  "the invited person": "поканения човек",
+  "Expires {when}.": "Изтича на {when}.",
+  "Users": "Потребители",
+  "Accounts on this gateway. Only the owner can administer them.":
+    "Акаунти в този gateway. Само собственикът може да ги управлява.",
+  "Created {when}": "Създаден на {when}",
+  "Reset password": "Нулирай парола",
+  "Sign out sessions": "Изход от сесиите",
+  "Invites": "Покани",
+  "KodBot is invite-only. Create a one-time code; it is shown once.":
+    "KodBot е само с покани. Създай еднократен код; показва се веднъж.",
+  "Email (optional)": "Имейл (по избор)",
+  "any email": "всеки имейл",
+  "Days": "Дни",
+  "Create invite": "Създай покана",
+  "Pending invites": "Чакащи покани",
+  "No pending invites.": "Няма чакащи покани.",
+  "Any email": "Всеки имейл",
+  "Expires {when}": "Изтича на {when}",
+  "Revoke": "Отмени",
+  "Disable": "Изключи",
+  "Disable {email}? Their sessions will be signed out.":
+    "Да се изключи ли {email}? Сесиите му ще бъдат прекратени.",
+  "Sign out every session for {email}?": "Да се прекратят ли всички сесии на {email}?",
+  "Sessions signed out for {email}.": "Сесиите на {email} са прекратени.",
+  "Revoke this invite?": "Да се отмени ли тази покана?",
+  "Resetting the owner password signs out this session too. Continue?":
+    "Нулирането на паролата на собственика ще прекрати и тази сесия. Да продължа ли?",
 };
 
 function initialLocale(): Locale {

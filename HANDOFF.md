@@ -418,6 +418,23 @@ reset its password with the gateway CLI (`passwd --email ...`) and never store t
 password in this file. The login is on the gateway origin (`:8780`), not the
 harness (`:8799`).
 
+### Gateway admin
+
+The gateway owner (`kod13.eood@gmail.com`) is the only administrator. Members are
+invite-only and get a 403 from every `/api/admin/*` route. Settings ships an
+owner-only **Admin** section that talks to those routes through the gateway
+origin: users, invites, temporary passwords, enable/disable, and session
+sign-out. User deletion is not implemented on purpose; disable the account
+instead. The owner account cannot be disabled.
+
+Deploying admin changes means rebuilding both bundles:
+
+```sh
+pnpm build          # UI -> dist/ (rsync to /opt/kodbot/ui)
+pnpm build:gateway  # gateway -> dist-gateway/ (rsync to /opt/kodbot/gateway)
+sudo systemctl restart kodbot-gateway.service
+```
+
 ## 4. Remote deployment topology
 
 | Item | Value |

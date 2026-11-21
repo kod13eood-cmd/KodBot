@@ -354,6 +354,7 @@ export type AppSettingsSection =
   | "computer"
   | "knowledge"
   | "usage"
+  | "admin"
   | "about";
 
 export interface AuthUser {

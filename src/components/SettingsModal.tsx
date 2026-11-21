@@ -3,7 +3,7 @@
 // is the stuff shared by every bot: who you are, your keys, and the
 // machine your bots can borrow.
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, Coins, Info, KeyRound, Monitor, Smartphone, Terminal, User, Volume2, X } from "lucide-react";
+import { BookOpen, Coins, Info, KeyRound, Monitor, ShieldCheck, Smartphone, Terminal, User, Volume2, X } from "lucide-react";
 import { useStore, type AppSettingsSection } from "@/state/store";
 import { ApiKeyRow } from "./ApiKeys";
 import { useUpdaterState } from "@/lib/updater";
@@ -16,9 +16,11 @@ import { UsageSection } from "./UsageSection";
 import { AboutSection } from "./AboutSection";
 import { KnowledgeSettings } from "./KnowledgeSettings";
 import { VoiceSettings } from "./VoiceSettings";
+import { AdminSection } from "./AdminSection";
 import { openShortcutsSheet, SHORTCUTS_KEY_LABEL } from "./ShortcutsSheet";
 import { cn } from "@/lib/cn";
 import { LOCALE_OPTIONS, useI18n } from "@/lib/i18n";
+import { canSeeSettingsSection } from "@/lib/settings-sections";
 import { setDeveloperMode, useDeveloperMode } from "@/lib/dev-mode";
 import { setShowGroupChats, useShowGroupChats } from "@/lib/show-groups";
 import { remoteSwitchAvailable } from "@/lib/server-switch";
@@ -34,6 +36,7 @@ const SECTIONS: Array<{ id: AppSettingsSection; label: string; icon: typeof User
   { id: "knowledge", label: "Knowledge", icon: BookOpen },
   { id: "voice", label: "Voice", icon: Volume2 },
   { id: "usage", label: "Usage", icon: Coins },
+  { id: "admin", label: "Admin", icon: ShieldCheck },
   { id: "about", label: "About", icon: Info },
 ];
 
@@ -632,15 +635,19 @@ export function SettingsModal() {
   const dialogRef = useRef<HTMLDivElement>(null);
   // Connections and Usage are developer surfaces: API keys and token counts
   // disappear with the mode, and a section left open falls back to General.
-  const sections = SECTIONS.filter(
-    (entry) => devMode || (entry.id !== "connections" && entry.id !== "usage"),
-  );
+  // Admin is owner-only and lives on the gateway itself; a local single-user
+  // harness has no authUser and therefore no Admin section at all.
+  const isOwner = state.authUser?.role === "owner";
+  const sections = SECTIONS.filter((entry) => canSeeSettingsSection(entry.id, { devMode, isOwner }));
 
   useEffect(() => {
     if (!devMode && (section === "connections" || section === "usage")) {
       dispatch({ type: "toggleAppSettings", open: true, section: "general" });
     }
-  }, [devMode, section, dispatch]);
+    if (!isOwner && section === "admin") {
+      dispatch({ type: "toggleAppSettings", open: true, section: "general" });
+    }
+  }, [devMode, isOwner, section, dispatch]);
 
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -792,6 +799,8 @@ export function SettingsModal() {
             {section === "knowledge" && <KnowledgeSettings />}
 
             {section === "usage" && <UsageSection />}
+
+            {section === "admin" && isOwner && <AdminSection />}
 
             {section === "about" && <AboutSection />}
           </div>

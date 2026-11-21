@@ -2,6 +2,13 @@
 
 Dated, user-facing changes. Newest first.
 
+## 2026-11-21 — Gateway admin
+
+- Settings has an **Admin** area for the gateway owner: list accounts, create and revoke one-time invites, give a member a temporary password, disable or enable an account, and sign out every session.
+- The owner account cannot be disabled, and members never see the Admin tab or reach the admin routes.
+- Temporary passwords and invite codes are shown once, with a copy button. Creating an invite can pin it to an email address and choose 1, 7, or 30 days.
+- The Admin screen is translated into Bulgarian together with the rest of Settings.
+
 ## 2026-11-21 — Gateway login
 
 - The hosted gateway login and registration page now supports **English and Bulgarian**. The switch is a real link, the choice is remembered in a cookie, and the page follows the browser language.
