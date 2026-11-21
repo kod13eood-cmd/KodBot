@@ -5,7 +5,7 @@
 // stays out of these — the integration happens in comms.test.ts (the full
 // e2e through the agents proxy + fake ACP CLI).
 import { rmSync } from "node:fs";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CommsBus } from "./comms-visibility.ts";
 import { DATA_DIR } from "./config.ts";
@@ -181,6 +181,27 @@ describe("drainDelegations", () => {
     // double-check by counting the module's pending map: tests that didn't
     // resolve should be re-examined if this ever fires.
     void runTargetCalls;
+  });
+
+  it("announces the drain snapshot so a leader can collect the replies", async () => {
+    const batchStarted = vi.fn();
+    queueDelegation(commsBus, from, { toBotId: target.id, message: "batch me", depth: 0 }, 1);
+    drainDelegations(
+      commsBus,
+      approvalBus,
+      from.threadId,
+      (toBotId, message, commsDepth) => {
+        runTargetCalls.push({ toBotId, message, commsDepth });
+      },
+      { queued: vi.fn(), finished: vi.fn(), batchStarted },
+    );
+
+    await waitFor(() => batchStarted.mock.calls.length === 1);
+    expect(batchStarted).toHaveBeenCalledWith(
+      from.threadId,
+      expect.objectContaining({ id: from.id }),
+      [expect.objectContaining({ toBotId: target.id, message: "batch me" })],
+    );
   });
 
   it("runs the target's turn via runTarget and mirrors the exchange", async () => {

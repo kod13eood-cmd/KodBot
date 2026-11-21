@@ -370,7 +370,7 @@ function handle(msg: any) {
         finish();
         return;
       }
-      if (mode === "delegate-peer" && agentsMcp) {
+      if ((mode === "delegate-peer" || mode === "delegate-then-echo") && agentsMcp) {
         // async peer-handoff e2e: queue the delegation and return
         // immediately; the harness fires the peer's depth-1 turn after our
         // turn settles. We don't need the peer's reply in our text — the
@@ -394,6 +394,15 @@ function handle(msg: any) {
             out({ jsonrpc: "2.0", method: "session/update", params: { update: { sessionUpdate: "agent_message_chunk", content: { text: `delegate error: ${(e as Error).message}` } } } });
             complete();
           });
+        return;
+      }
+      if (mode === "delegate-then-echo") {
+        // The collecting turn runs at the comms depth cap, so agentsMcp is
+        // absent; echo the whole prompt so a test can see the replies the
+        // leader was handed.
+        const promptText = String(msg.params?.prompt?.[0]?.text ?? "");
+        out({ jsonrpc: "2.0", method: "session/update", params: { update: { sessionUpdate: "agent_message_chunk", content: { text: `echo: ${promptText}` } } } });
+        complete();
         return;
       }
       if (mode === "question") {

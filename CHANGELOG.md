@@ -2,6 +2,12 @@
 
 Dated, user-facing changes. Newest first.
 
+## 2026-11-21 — Team leaders collect delegated work
+
+- A **team leader** that delegates tasks with `delegate_bot` now gets one follow-up turn when the last teammate finishes, carrying their replies, so it can synthesize the result instead of going quiet. The collecting turn cannot delegate again, which keeps the fan-out one hop deep.
+- The follow-up waits if the leader is busy and runs when it is free; the full replies still live in each `A ⇄ B` channel.
+- Fixed successful delegation jobs showing the error “Delegated turn did not finish” even when they completed.
+
 ## 2026-11-21 — Page forms work again
 
 - Fixed **Send answers** (and every other form) on bot pages: the page preview sandbox now permits a form's own submit handler to run, so a question page can hand its answers back to the bot and close itself. A real form navigation is still blocked; the page can only post its text to the KodBot bridge.

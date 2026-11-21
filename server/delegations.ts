@@ -46,6 +46,9 @@ export type QueuedDelegation = DelegationItem & { id: string };
  * DelegationJobStore, tests leave it out. */
 export interface DelegationObserver {
   queued(item: QueuedDelegation, from: BotRecord, target: BotRecord, sourceThreadId: string): void;
+  /** The drain is about to run this snapshot. A team leader can use it to
+   * group the replies that follow into one collecting turn. */
+  batchStarted?(sourceThreadId: string, from: BotRecord, items: QueuedDelegation[]): void;
   finished(
     itemId: string,
     status: "completed" | "failed" | "cancelled",
@@ -174,6 +177,7 @@ export function drainDelegations(
   }
   const snapshot = [...list];
   drainingThreads.add(threadId);
+  observer?.batchStarted?.(threadId, from, snapshot);
   void (async () => {
     for (const item of snapshot) {
       try {

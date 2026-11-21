@@ -363,6 +363,12 @@ room/team/other bots, **Settings → Teams** can join, leave, create, and transf
 leadership, and each bot's Auto pool and model capability badges are available
 there too.
 
+A team leader that fans work out with `delegate_bot` collects the replies in one
+follow-up turn after the last teammate finishes. The follow-up carries the
+replies into the leader's context and is not allowed to delegate again, so a
+team cannot accidentally recurse. The individual exchanges remain in their
+`A ⇄ B` channels, and the Activity view keeps each handoff's result.
+
 ### Connected Apps with readable identities — Live
 
 The Connected Apps marketplace now includes **1Password, Stripe, Aircall,

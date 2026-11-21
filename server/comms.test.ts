@@ -118,6 +118,14 @@ describe("comms e2e (fake ACP fleet)", () => {
             environment: { FAKE_ACP_MODE: "delegate-peer" },
             config: { cli: FAKE_CLI, fullAuto: true },
           },
+          // a team lead that delegates while the agents MCP is mounted, then
+          // echoes the collecting turn's whole prompt (the depth cap removes
+          // the MCP, so the follow-up can be checked for the peer's reply).
+          leaderCollect: {
+            driver: "grokAgent",
+            environment: { FAKE_ACP_MODE: "delegate-then-echo" },
+            config: { cli: FAKE_CLI, fullAuto: true },
+          },
           // a peer whose agent crashes at initialize — the delegated turn
           // ends with ok=false, so the channel must show a failed terminal
           // chip, not silence.
@@ -372,6 +380,68 @@ describe("comms e2e (fake ACP fleet)", () => {
 
       expect(helperBot.busy).toBeFalsy();
       expect(askerBot.busy).toBeFalsy();
+    },
+    45_000,
+  );
+
+  it(
+    "wakes a team leader once after its delegated teammates answer",
+    async () => {
+      const helperSelection = { instanceId: "grok", model: "fake-model" };
+      const leaderSelection = { instanceId: "leaderCollect", model: "fake-model" };
+      const helper = (await api("POST", "/api/bots")).body.bot;
+      await api("PATCH", `/api/bots/${helper.id}`, { name: "Team Helper", modelSelection: helperSelection });
+      const leader = (await api("POST", "/api/bots")).body.bot;
+      await api("PATCH", `/api/bots/${leader.id}`, { name: "Team Lead", modelSelection: leaderSelection });
+      const team = (await api("POST", "/api/teams", { name: "Delegation Wake", creatorBotId: leader.id })).body.team;
+      await api("POST", `/api/teams/${team.id}/members`, { botId: helper.id });
+
+      const send = await api("POST", `/api/bots/${leader.id}/messages`, { text: "delegate to the helper" });
+      expect(send.status).toBe(202);
+
+      const deadline = Date.now() + 40_000;
+      let leaderBot: any;
+      let helperBot: any;
+      for (;;) {
+        const state = (await api("GET", "/api/bots")).body;
+        leaderBot = state.bots.find((b: any) => b.id === leader.id);
+        helperBot = state.bots.find((b: any) => b.id === helper.id);
+        const delegated = leaderBot.messages.some(
+          (m: any) => m.kind === "activity" && m.tool?.name === "Delegated to @Team Helper: followup",
+        );
+        const helperReplied = helperBot.messages.some(
+          (m: any) => m.kind === "text" && m.role === "bot" && m.text?.includes("hello from fake acp"),
+        );
+        const collecting = leaderBot.messages.some(
+          (m: any) => m.kind === "activity" && m.tool?.name?.startsWith("Delegated work finished"),
+        );
+        const leaderTexts = leaderBot.messages.filter((m: any) => m.kind === "text" && m.role === "bot");
+        const synthesized = leaderTexts.length >= 2
+          && leaderTexts[leaderTexts.length - 1].text?.includes("hello from fake acp");
+        if (delegated && helperReplied && collecting && synthesized && !leaderBot.busy && !helperBot.busy) break;
+        if (Date.now() > deadline) {
+          throw new Error(
+            `leader never collected the delegation. leader busy=${leaderBot.busy} helper busy=${helperBot.busy}\n` +
+              `leader tail: ${JSON.stringify(leaderBot.messages.slice(-10))}\n` +
+              `helper tail: ${JSON.stringify(helperBot.messages.slice(-6))}\n` +
+              `stderr: ${stderr.slice(-2000)}`,
+          );
+        }
+        await new Promise((r) => setTimeout(r, 250));
+      }
+
+      const job = (await api("GET", "/api/jobs")).body.jobs.find(
+        (candidate: any) => candidate.sourceBotId === leader.id && candidate.botId === helper.id,
+      );
+      expect(job).toMatchObject({ status: "completed" });
+      expect(job.result).toContain("hello from fake acp");
+      expect(job.error).toBeUndefined();
+
+      // The collecting turn's prompt carried the teammate's actual reply,
+      // not just a "they finished" ping.
+      const collected = leaderBot.messages.findLast((m: any) => m.kind === "text" && m.role === "bot");
+      expect(collected.text).toContain("@Team Helper");
+      expect(collected.text).toContain("hello from fake acp");
     },
     45_000,
   );
