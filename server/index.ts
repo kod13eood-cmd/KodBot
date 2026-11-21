@@ -1480,6 +1480,9 @@ function finalizeDelegationWatch(
   const target = store.bot(watched.toBotId);
   if (!target) return true;
   const channel = watched.channelId ? store.group(watched.channelId) : undefined;
+  // Mirror the terminal chip first, so a leader's "collecting" card lands
+  // after the last teammate's reply chip in the transcript.
+  mirrorDelegationTerminal(commsBus, target, channel, watched.sourceThreadId, ok, reply, failureName);
   if (watched.itemId) {
     // Route every terminal state through the observer so the Activity job
     // and the team-leader batch see the same result. A successful handoff
@@ -1492,7 +1495,6 @@ function finalizeDelegationWatch(
       ok ? undefined : failureName,
     );
   }
-  mirrorDelegationTerminal(commsBus, target, channel, watched.sourceThreadId, ok, reply, failureName);
   return true;
 }
 
