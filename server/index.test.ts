@@ -1030,14 +1030,16 @@ describe("harness HTTP API", () => {
       expect(await page.text()).toContain("<h1>Q4</h1>");
 
       // Pinned so a drive-by edit cannot silently drop allow-downloads
-      // (pages cannot save generated files) or widen the sandbox with
-      // allow-same-origin (the page would read the app's session).
+      // (pages cannot save generated files), allow-forms (a page's submit
+      // handler never fires in a sandbox without it) or widen the sandbox
+      // with allow-same-origin (the page would read the app's session).
       const csp = page.headers.get("content-security-policy") ?? "";
       expect(csp).toBe(
-        "sandbox allow-scripts allow-downloads; default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src https: data:; connect-src 'none'; base-uri 'none'; form-action 'none'",
+        "sandbox allow-scripts allow-forms allow-downloads; default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src https: data:; connect-src 'none'; base-uri 'none'; form-action 'none'",
       );
       expect(csp).not.toContain("allow-same-origin");
       expect(csp).toContain("connect-src 'none'");
+      expect(csp).toContain("form-action 'none'");
     } finally {
       await api("DELETE", `/api/bots/${bot.id}`);
     }

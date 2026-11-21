@@ -22,6 +22,13 @@ import { z } from "zod";
 export const PAGE_BRIDGE_MAX_CHARS = 1024 * 1024;
 const MAX_FILENAME_CHARS = 120;
 
+/** Sandbox for a bot page iframe. `allow-forms` is required for a page's
+ * own `submit` event to fire at all: without it Chrome aborts the submission
+ * before the handler runs, so a question page's "Send answers" button looks
+ * dead. The document CSP keeps `form-action 'none'`, so no actual form
+ * navigation is possible, and same-origin stays off. */
+export const PAGE_IFRAME_SANDBOX = "allow-scripts allow-forms allow-downloads";
+
 export type PageBridgeRequest =
   | { type: "kodbot:copy"; text: string }
   | { type: "kodbot:download"; filename: string; text: string }

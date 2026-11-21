@@ -59,6 +59,7 @@ import { webhookMessageView } from "@/lib/webhook-message";
 import { BOTTOM_FOLLOW_THRESHOLD, shouldResumeBottomFollow } from "@/lib/bottom-follow";
 import { useI18n } from "@/lib/i18n";
 import { copyText } from "@/lib/clipboard";
+import { PAGE_IFRAME_SANDBOX } from "@/lib/page-bridge";
 import { useDeveloperMode } from "@/lib/dev-mode";
 import {
   TRANSCRIPT_WINDOW_SIZE,
@@ -650,7 +651,7 @@ function PageArtifactCard({ page }: { page: NonNullable<Message["page"]> }) {
               title={page.title}
               data-kodbot-page
               data-kodbot-bot={page.botId}
-              sandbox="allow-scripts allow-downloads"
+              sandbox={PAGE_IFRAME_SANDBOX}
               referrerPolicy="no-referrer"
               loading="lazy"
               tabIndex={-1}
@@ -697,7 +698,7 @@ function PageArtifactCard({ page }: { page: NonNullable<Message["page"]> }) {
                 title={page.title}
                 data-kodbot-page
                 data-kodbot-bot={page.botId}
-                sandbox="allow-scripts allow-downloads"
+                sandbox={PAGE_IFRAME_SANDBOX}
                 referrerPolicy="no-referrer"
                 className="min-h-0 flex-1 border-0 bg-white"
               />

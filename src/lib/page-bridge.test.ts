@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createPageBridgeHandler,
   PAGE_BRIDGE_MAX_CHARS,
+  PAGE_IFRAME_SANDBOX,
   parsePageBridgeMessage,
   sanitizePageFilename,
   type PageBridgeSource,
@@ -28,6 +29,16 @@ function setup() {
 }
 
 describe("page bridge message guard", () => {
+  it("lets a page's own form submit event fire", () => {
+    // Without allow-forms Chrome aborts before the submit handler runs, so a
+    // question page's Send button silently does nothing.
+    expect(PAGE_IFRAME_SANDBOX.split(/\s+/)).toContain("allow-forms");
+    expect(PAGE_IFRAME_SANDBOX.split(/\s+/)).toContain("allow-scripts");
+    expect(PAGE_IFRAME_SANDBOX.split(/\s+/)).toContain("allow-downloads");
+    // Same-origin would let a page read the app's session.
+    expect(PAGE_IFRAME_SANDBOX).not.toContain("allow-same-origin");
+  });
+
   it("accepts copy and download only from a page iframe", () => {
     const { pageWindow, onCopy, onDownload, handler } = setup();
 

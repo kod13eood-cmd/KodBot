@@ -24,6 +24,7 @@ import { requestNotificationPermission } from "@/lib/notify";
 import { botUsage, costCaption, formatTokens, formatUsd } from "@/lib/usage";
 import { shortPath } from "@/lib/short-path";
 import { publicBase } from "@/lib/public-url";
+import { PAGE_IFRAME_SANDBOX } from "@/lib/page-bridge";
 import { useI18n } from "@/lib/i18n";
 import { windowsTitlebarInset } from "@/lib/window-chrome";
 import { useDeveloperMode, setDeveloperMode } from "@/lib/dev-mode";
@@ -686,7 +687,7 @@ function PagesCard({ bot }: { bot: Bot }) {
               title={selected.title}
               data-kodbot-page
               data-kodbot-bot={bot.id}
-              sandbox="allow-scripts allow-downloads"
+              sandbox={PAGE_IFRAME_SANDBOX}
               referrerPolicy="no-referrer"
               className="min-h-0 flex-1 border-0 bg-white"
             />

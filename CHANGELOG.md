@@ -2,6 +2,11 @@
 
 Dated, user-facing changes. Newest first.
 
+## 2026-11-21 — Page forms work again
+
+- Fixed **Send answers** (and every other form) on bot pages: the page preview sandbox now permits a form's own submit handler to run, so a question page can hand its answers back to the bot and close itself. A real form navigation is still blocked; the page can only post its text to the KodBot bridge.
+- This applies to the chat preview, the full-screen page viewer, and the Pages tab in bot settings.
+
 ## 2026-11-21 — Gateway admin
 
 - Settings has an **Admin** area for the gateway owner: list accounts, create and revoke one-time invites, give a member a temporary password, disable or enable an account, and sign out every session.
