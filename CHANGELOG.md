@@ -2,6 +2,11 @@
 
 Dated, user-facing changes. Newest first.
 
+## 2026-11-21 — Gateway login
+
+- The hosted gateway login and registration page now supports **English and Bulgarian**. The switch is a real link, the choice is remembered in a cookie, and the page follows the browser language.
+- Common sign-in and invite errors are translated too.
+
 ## 2026-11-20 — 0.1.62
 
 - Hard spending caps: per-bot daily token and USD limits, plus app-wide monthly token and USD limits. Empty/0 means off. A turn that is already running always finishes; the next turn is refused with a clear “cap reached” error.

@@ -410,6 +410,14 @@ once; after that, releases update in place.
   0.1.28 APK.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.62>
 
+### Gateway login
+
+The standalone gateway login/registration page is bilingual (English/Bulgarian,
+cookie + `Accept-Language`). The gateway owner account is `kod13.eood@gmail.com`;
+reset its password with the gateway CLI (`passwd --email ...`) and never store the
+password in this file. The login is on the gateway origin (`:8780`), not the
+harness (`:8799`).
+
 ## 4. Remote deployment topology
 
 | Item | Value |
