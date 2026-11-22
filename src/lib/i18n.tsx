@@ -1550,8 +1550,8 @@ const BULGARIAN: Record<string, string> = {
   "Bot to publish": "Бот за публикуване",
   "Publishing…": "Публикуване…",
   "Publish to organization": "Публикувай за организацията",
-  "Only the name, title, description, and MEMORY.md are shared. Secrets are redacted.":
-    "Споделят се само името, заглавието, описанието и MEMORY.md. Тайните се редактират.",
+  "Only the name, title, description, and MEMORY.md are shared. Common secrets are redacted; review the memory before publishing.":
+    "Споделят се само името, заглавието, описанието и MEMORY.md. Разпознаваемите тайни се редактират; прегледай паметта преди публикуване.",
   "Every member of the organization can see and install a shared bot.":
     "Всеки член на организацията може да види и инсталира споделен бот.",
   "Install a shared bot to get your own copy in this workspace.":

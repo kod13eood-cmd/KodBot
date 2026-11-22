@@ -379,7 +379,7 @@ current edition is derived from the server: a signed-in gateway account is
 Business; a local or personal harness is Solo.
 
 **Settings → Shared bots** lets a Business owner publish a bot template: the
-name, title, description, and core `MEMORY.md`, with secrets redacted. Every
+name, title, description, and core `MEMORY.md`, with common secret shapes redacted. Every
 member can install the template into their own workspace. The installed copy is
 independent and runs there with that member's model, key, and quota; the
 gateway never executes a bot. Live shared conversations, a single bot instance

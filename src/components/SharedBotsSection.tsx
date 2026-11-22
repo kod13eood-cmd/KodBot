@@ -188,7 +188,7 @@ export function SharedBotsSection() {
                 {busy === "publish" ? t("Publishing…") : t("Publish to organization")}
               </button>
               <span className="text-[11.5px] text-ink-secondary">
-                {t("Only the name, title, description, and MEMORY.md are shared. Secrets are redacted.")}
+                {t("Only the name, title, description, and MEMORY.md are shared. Common secrets are redacted; review the memory before publishing.")}
               </span>
             </div>
             <div className="text-[11.5px] leading-relaxed text-ink-secondary">
