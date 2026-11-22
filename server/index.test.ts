@@ -1102,6 +1102,39 @@ describe("bot memory API", () => {
     }
   });
 
+  it("exports a shared-bot template with persona and redacted memory only", async () => {
+    const bot = (await api("POST", "/api/bots")).body.bot;
+    try {
+      await api("PATCH", `/api/bots/${bot.id}`, {
+        name: "Scout",
+        title: "Researcher",
+        description: "Finds sources and summarizes them.",
+      });
+      await api("PUT", `/api/bots/${bot.id}/memory`, {
+        text: "# Memory\n- prefers primary sources\n- api_key = sk-ant-api03-abcdefghijklmnopqrstuvwxyz\n",
+      });
+
+      const template = await api("GET", `/api/bots/${bot.id}/shared-template`);
+      expect(template.status).toBe(200);
+      expect(template.body).toMatchObject({ format: "kodbot.bot", version: 1 });
+      expect(template.body.bot).toMatchObject({
+        name: "Scout",
+        title: "Researcher",
+        description: "Finds sources and summarizes them.",
+      });
+      expect(template.body.bot.memory).toContain("prefers primary sources");
+      expect(template.body.bot.memory).not.toContain("sk-ant-");
+      expect(template.body.bot.memory).toContain("«redacted");
+      // A template is the bot, not its credentials, sessions, or files.
+      expect(template.body.bot).not.toHaveProperty("modelSelection");
+      expect(template.body.bot).not.toHaveProperty("resumeCursors");
+      expect(template.body.bot).not.toHaveProperty("cwd");
+      expect((await api("GET", "/api/bots/does-not-exist/shared-template")).status).toBe(404);
+    } finally {
+      await api("DELETE", `/api/bots/${bot.id}`);
+    }
+  });
+
   it("lists memory/ topic files and serves one by (possibly encoded) name", async () => {
     const bot = (await api("POST", "/api/bots")).body.bot;
     try {

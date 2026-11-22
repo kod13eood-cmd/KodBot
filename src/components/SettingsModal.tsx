@@ -3,7 +3,7 @@
 // is the stuff shared by every bot: who you are, your keys, and the
 // machine your bots can borrow.
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, Coins, Info, KeyRound, Monitor, ShieldCheck, Smartphone, Terminal, User, Volume2, X } from "lucide-react";
+import { BookOpen, Coins, Info, KeyRound, Monitor, Share2, ShieldCheck, Smartphone, Terminal, User, Volume2, X } from "lucide-react";
 import { useStore, type AppSettingsSection } from "@/state/store";
 import { ApiKeyRow } from "./ApiKeys";
 import { useUpdaterState } from "@/lib/updater";
@@ -15,6 +15,7 @@ import { Card } from "./SettingsPrimitives";
 import { UsageSection } from "./UsageSection";
 import { AboutSection } from "./AboutSection";
 import { KnowledgeSettings } from "./KnowledgeSettings";
+import { SharedBotsSection } from "./SharedBotsSection";
 import { VoiceSettings } from "./VoiceSettings";
 import { AdminSection } from "./AdminSection";
 import { openShortcutsSheet, SHORTCUTS_KEY_LABEL } from "./ShortcutsSheet";
@@ -36,6 +37,7 @@ const SECTIONS: Array<{ id: AppSettingsSection; label: string; icon: typeof User
   { id: "companion", label: "Companion", icon: Smartphone },
   { id: "computer", label: "Local VM", icon: Monitor },
   { id: "knowledge", label: "Knowledge", icon: BookOpen },
+  { id: "shared", label: "Shared bots", icon: Share2 },
   { id: "voice", label: "Voice", icon: Volume2 },
   { id: "usage", label: "Usage", icon: Coins },
   { id: "admin", label: "Admin", icon: ShieldCheck },
@@ -681,7 +683,10 @@ export function SettingsModal() {
   // Admin is owner-only and lives on the gateway itself; a local single-user
   // harness has no authUser and therefore no Admin section at all.
   const isOwner = state.authUser?.role === "owner";
-  const sections = SECTIONS.filter((entry) => canSeeSettingsSection(entry.id, { devMode, isOwner }));
+  const isBusiness = Boolean(state.authUser);
+  const sections = SECTIONS.filter((entry) =>
+    canSeeSettingsSection(entry.id, { devMode, isOwner, isBusiness }),
+  );
 
   useEffect(() => {
     if (!devMode && (section === "connections" || section === "usage")) {
@@ -690,7 +695,10 @@ export function SettingsModal() {
     if (!isOwner && section === "admin") {
       dispatch({ type: "toggleAppSettings", open: true, section: "general" });
     }
-  }, [devMode, isOwner, section, dispatch]);
+    if (!isBusiness && section === "shared") {
+      dispatch({ type: "toggleAppSettings", open: true, section: "general" });
+    }
+  }, [devMode, isOwner, isBusiness, section, dispatch]);
 
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -840,6 +848,8 @@ export function SettingsModal() {
             {section === "computer" && <LocalComputerSection />}
 
             {section === "knowledge" && <KnowledgeSettings />}
+
+            {section === "shared" && isBusiness && <SharedBotsSection />}
 
             {section === "usage" && <UsageSection />}
 

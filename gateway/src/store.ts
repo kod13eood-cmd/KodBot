@@ -59,6 +59,21 @@ export interface PairingRecord {
   usedAt: number | null;
 }
 
+/** A shared bot template. The gateway stores only the persona and core
+ * memory; turns still run in each member's own harness with their own key. */
+export interface SharedBotRecord {
+  id: string;
+  name: string;
+  title: string | null;
+  description: string | null;
+  memory: string;
+  createdBy: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type SharedBotSummary = Omit<SharedBotRecord, "memory" | "createdBy">;
+
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
@@ -112,6 +127,17 @@ CREATE TABLE IF NOT EXISTS pairings (
 );
 CREATE INDEX IF NOT EXISTS pairings_code ON pairings(code_hash);
 CREATE INDEX IF NOT EXISTS pairings_token ON pairings(token_hash);
+CREATE TABLE IF NOT EXISTS shared_bots (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  title TEXT,
+  description TEXT,
+  memory TEXT NOT NULL DEFAULT '',
+  created_by TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS shared_bots_updated ON shared_bots(updated_at);
 `;
 
 export class GatewayStore {
@@ -357,6 +383,70 @@ export class GatewayStore {
   /** Remove an unused invite. A used invite stays as part of the record. */
   deleteInvite(id: string): boolean {
     const result = this.db.prepare("DELETE FROM invites WHERE id = ? AND used_at IS NULL").run(id);
+    return Number(result.changes) > 0;
+  }
+
+  listSharedBots(): SharedBotSummary[] {
+    return (this.db
+      .prepare(
+        "SELECT id, name, title, description, created_at, updated_at FROM shared_bots ORDER BY updated_at DESC LIMIT 100",
+      )
+      .all() as any[]).map((row) => ({
+      id: row.id,
+      name: row.name,
+      title: row.title ?? null,
+      description: row.description ?? null,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+  }
+
+  getSharedBot(id: string): SharedBotRecord | null {
+    const row = this.db.prepare("SELECT * FROM shared_bots WHERE id = ?").get(id) as any;
+    if (!row) return null;
+    return {
+      id: row.id,
+      name: row.name,
+      title: row.title ?? null,
+      description: row.description ?? null,
+      memory: row.memory ?? "",
+      createdBy: row.created_by ?? null,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  createSharedBot(input: {
+    id: string;
+    name: string;
+    title?: string | null;
+    description?: string | null;
+    memory?: string;
+    createdBy?: string | null;
+    now?: number;
+  }): SharedBotRecord {
+    const now = input.now ?? Date.now();
+    this.db
+      .prepare(
+        "INSERT INTO shared_bots (id, name, title, description, memory, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      )
+      .run(
+        input.id,
+        input.name,
+        input.title || null,
+        input.description || null,
+        input.memory ?? "",
+        input.createdBy ?? null,
+        now,
+        now,
+      );
+    const bot = this.getSharedBot(input.id);
+    if (!bot) throw new Error("shared bot disappeared after insert");
+    return bot;
+  }
+
+  deleteSharedBot(id: string): boolean {
+    const result = this.db.prepare("DELETE FROM shared_bots WHERE id = ?").run(id);
     return Number(result.changes) > 0;
   }
 

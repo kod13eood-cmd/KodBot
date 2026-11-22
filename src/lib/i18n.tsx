@@ -1542,6 +1542,34 @@ const BULGARIAN: Record<string, string> = {
     "За да преминеш към KodBot Solo, отвори приложението на своя компютър.",
   "Connecting moves this window to that server. An organization gateway shows its sign-in page; a personal server stays Solo.":
     "Свързването премества този прозорец на онзи сървър. Организационният gateway показва своята страница за вход; личният сървър остава Solo.",
+
+  // Shared bots (KodBot Business)
+  "Shared bots": "Споделени ботове",
+  "Publish a bot for the organization. Each member who installs it gets their own copy; turns run in their workspace with their own key.":
+    "Публикувай бот за организацията. Всеки член, който го инсталира, получава свое копие; ходовете се изпълняват в неговото работно пространство с неговия ключ.",
+  "Bot to publish": "Бот за публикуване",
+  "Publishing…": "Публикуване…",
+  "Publish to organization": "Публикувай за организацията",
+  "Only the name, title, description, and MEMORY.md are shared. Secrets are redacted.":
+    "Споделят се само името, заглавието, описанието и MEMORY.md. Тайните се редактират.",
+  "Every member of the organization can see and install a shared bot.":
+    "Всеки член на организацията може да види и инсталира споделен бот.",
+  "Install a shared bot to get your own copy in this workspace.":
+    "Инсталирай споделен бот, за да получиш свое копие в това работно пространство.",
+  "Published bots": "Публикувани ботове",
+  "A published bot stores the persona and redacted core memory. Installed copies are independent.":
+    "Публикуваният бот пази персоната и редактираната основна памет. Инсталираните копия са независими.",
+  "No shared bots yet.": "Още няма споделени ботове.",
+  "Published {when}": "Публикуван на {when}",
+  "Adding…": "Добавяне…",
+  "Add to my workspace": "Добави в моето пространство",
+  "Remove shared bot": "Премахни споделения бот",
+  "Remove {name} from shared bots? Copies already installed stay in their workspaces.":
+    "Да се премахне ли {name} от споделените ботове? Вече инсталираните копия остават в техните пространства.",
+  "Published {name}. Every member of the organization can install a copy.":
+    "Публикуван е {name}. Всеки член на организацията може да инсталира копие.",
+  "{name} was added to your workspace. It runs here, with your key and quota.":
+    "{name} е добавен в твоето пространство. Работи тук, с твоя ключ и лимити.",
 };
 
 function initialLocale(): Locale {

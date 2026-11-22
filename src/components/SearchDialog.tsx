@@ -32,6 +32,7 @@ const SETTINGS_RESULTS: SettingsResult[] = [
   { id: "engines", label: "Engines", keywords: "providers cli models sign in install" },
   { id: "companion", label: "Companion", keywords: "phone pairing devices android iphone" },
   { id: "computer", label: "Local VM", keywords: "computer docker container desktop" },
+  { id: "shared", label: "Shared bots", keywords: "share template organization team copy" },
   { id: "voice", label: "Voice", keywords: "tts elevenlabs speech call" },
   { id: "usage", label: "Usage", keywords: "tokens cost spending billing" },
   { id: "admin", label: "Admin", keywords: "owner users invites passwords disable sessions accounts" },
@@ -295,8 +296,12 @@ export function SearchDialog({
     ? SETTINGS_RESULTS.filter(
         (entry) =>
           // Search keeps developer sections visible regardless of dev mode;
-          // Admin is the only entry gated by who is signed in.
-          canSeeSettingsSection(entry.id, { devMode: true, isOwner: state.authUser?.role === "owner" }) &&
+          // Admin is gated by owner and Shared bots by being in an organization.
+          canSeeSettingsSection(entry.id, {
+            devMode: true,
+            isOwner: state.authUser?.role === "owner",
+            isBusiness: Boolean(state.authUser),
+          }) &&
           (allSettings || matches(t(entry.label), needle) || matches(entry.keywords, needle)),
       )
     : [];

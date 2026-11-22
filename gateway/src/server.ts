@@ -2,7 +2,7 @@
 // page. Phase 2 adds the authenticated per-user harness proxy below the same
 // auth boundary; until then non-auth API calls answer 503 instead of leaking
 // an unauthenticated harness.
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, resolve, sep } from "node:path";
@@ -78,13 +78,13 @@ function clearCookie(secure: boolean): string {
   return `${COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure ? "; Secure" : ""}`;
 }
 
-function readBody(req: IncomingMessage): Promise<Buffer> {
+function readBody(req: IncomingMessage, maxSize = MAX_BODY): Promise<Buffer> {
   return new Promise((resolveBody, reject) => {
     const chunks: Buffer[] = [];
     let size = 0;
     req.on("data", (chunk: Buffer) => {
       size += chunk.length;
-      if (size > MAX_BODY) {
+      if (size > maxSize) {
         reject(Object.assign(new Error("body too large"), { status: 413 }));
         req.destroy();
         return;
@@ -311,6 +311,48 @@ export function createGatewayServer({ config, store, auth, harnesses, serveStati
         return json(res, 200, { ok: true });
       }
 
+      // Owner-published shared bot templates. Only the persona and the
+      // redacted core memory are stored; turns still run in each member's
+      // harness with their own key, so the gateway never executes a bot.
+      if (method === "POST" && path === "/api/admin/shared-bots") {
+        const body = bodyObject(req, await readBody(req, 320 * 1024));
+        const name = String(body.name ?? "").trim();
+        if (!name) return json(res, 400, { error: "name is required" });
+        if (name.length > 100) return json(res, 400, { error: "name is too long" });
+        const title = String(body.title ?? "").trim();
+        if (title.length > 200) return json(res, 400, { error: "title is too long" });
+        const description = String(body.description ?? "").trim();
+        if (description.length > 4_000) return json(res, 400, { error: "description is too long" });
+        const memory = typeof body.memory === "string" ? body.memory : "";
+        if (Buffer.byteLength(memory, "utf8") > 256 * 1024) {
+          return json(res, 400, { error: "memory is too large" });
+        }
+        const created = store.createSharedBot({
+          id: randomUUID(),
+          name,
+          title: title || null,
+          description: description || null,
+          memory,
+          createdBy: ownerOf(req, auth)?.id ?? null,
+        });
+        return json(res, 201, {
+          bot: {
+            id: created.id,
+            name: created.name,
+            title: created.title,
+            description: created.description,
+            createdAt: created.createdAt,
+            updatedAt: created.updatedAt,
+          },
+        });
+      }
+
+      const adminSharedMatch = path.match(/^\/api\/admin\/shared-bots\/([\w-]+)$/);
+      if (adminSharedMatch && method === "DELETE") {
+        if (!store.deleteSharedBot(adminSharedMatch[1])) return json(res, 404, { error: "no such shared bot" });
+        return json(res, 200, { ok: true });
+      }
+
       const adminUserMatch = path.match(/^\/api\/admin\/users\/([\w-]+)(\/password|\/disabled|\/sessions)?$/);
       if (adminUserMatch) {
         const user = store.findUserById(adminUserMatch[1]);
@@ -341,6 +383,30 @@ export function createGatewayServer({ config, store, auth, harnesses, serveStati
           store.deleteUserSessions(user.id);
           return json(res, 200, { ok: true });
         }
+      }
+
+      // Shared bot templates are readable by every signed-in member; the
+      // gateway stores the persona and redacted memory only. Detail includes
+      // memory because "install" copies it into the member's own bot.
+      const sharedMatch = path.match(/^\/api\/shared-bots\/([\w-]+)$/);
+      if (method === "GET" && (path === "/api/shared-bots" || sharedMatch)) {
+        const current = auth.session(sessionToken(req));
+        if (!current) return json(res, 401, { error: "not signed in", login: "/login" });
+        if (path === "/api/shared-bots") return json(res, 200, { bots: store.listSharedBots() });
+        if (!sharedMatch) return json(res, 404, { error: "no such shared bot" });
+        const bot = store.getSharedBot(sharedMatch[1]);
+        if (!bot) return json(res, 404, { error: "no such shared bot" });
+        return json(res, 200, {
+          bot: {
+            id: bot.id,
+            name: bot.name,
+            title: bot.title,
+            description: bot.description,
+            memory: bot.memory,
+            createdAt: bot.createdAt,
+            updatedAt: bot.updatedAt,
+          },
+        });
       }
 
       if (path.startsWith("/api/admin/")) {

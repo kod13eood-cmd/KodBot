@@ -353,6 +353,7 @@ export type AppSettingsSection =
   | "voice"
   | "computer"
   | "knowledge"
+  | "shared"
   | "usage"
   | "admin"
   | "about";

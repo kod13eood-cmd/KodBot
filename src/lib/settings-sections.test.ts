@@ -15,6 +15,13 @@ describe("canSeeSettingsSection", () => {
     expect(canSeeSettingsSection("connections", { devMode: true, isOwner: false })).toBe(true);
   });
 
+  it("shows Shared bots only inside an organization", () => {
+    expect(canSeeSettingsSection("shared", { devMode: false, isOwner: true, isBusiness: true })).toBe(true);
+    expect(canSeeSettingsSection("shared", { devMode: false, isOwner: false, isBusiness: true })).toBe(true);
+    expect(canSeeSettingsSection("shared", { devMode: false, isOwner: true, isBusiness: false })).toBe(false);
+    expect(canSeeSettingsSection("shared", { devMode: true, isOwner: true })).toBe(false);
+  });
+
   it("always shows ordinary sections", () => {
     for (const id of ["general", "voice", "knowledge", "about"] as const) {
       expect(canSeeSettingsSection(id, { devMode: false, isOwner: false })).toBe(true);

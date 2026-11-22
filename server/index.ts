@@ -59,6 +59,7 @@ import {
 import { augmentedPath, findCliCandidates, resetPathCache } from "./env-path.ts";
 import { describeSpawnFailure, execCli } from "./procs.ts";
 import { buildNotification, summarize, type Notification } from "./notify.ts";
+import { redactSecretsInText } from "./redact.ts";
 import { extractAutomationSummary } from "./automation-summary.ts";
 import { isEffortLevel, type ModelSelection, type ProviderInstance, type RequestOutcome, type RuntimeEvent } from "./contracts.ts";
 
@@ -4351,6 +4352,25 @@ const server = createServer(async (req, res) => {
     // workspace); these routes only make them visible without a trip to
     // the filesystem. Reads never create the workspace — a bot that has
     // not run yet simply has nothing to show.
+    m = path.match(/^\/api\/bots\/([\w-]+)\/shared-template$/);
+    if (m && method === "GET") {
+      const bot = store.bot(m[1]);
+      if (!bot) return json(res, 404, { error: "no such bot" });
+      // Only what makes the bot itself: no model selection, keys, files,
+      // pages, teams, or transcripts. Core memory is redacted before it
+      // leaves the owner's harness; the gateway stores the result as-is.
+      return json(res, 200, {
+        format: "kodbot.bot",
+        version: 1,
+        bot: {
+          name: bot.name,
+          title: bot.title ?? "",
+          description: bot.description ?? "",
+          memory: redactSecretsInText(readMemoryFile(m[1]).text),
+        },
+      });
+    }
+
     m = path.match(/^\/api\/bots\/([\w-]+)\/memory$/);
     if (m && method === "GET") {
       if (!store.bot(m[1])) return json(res, 404, { error: "no such bot" });

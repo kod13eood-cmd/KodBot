@@ -179,6 +179,59 @@ describe("gateway HTTP auth", () => {
     expect((await fetch(`${base}/api/admin/invites/${unused.id}`, { method: "DELETE", headers: ownerHeaders })).status).toBe(200);
   });
 
+  it("publishes shared bot templates to members and keeps management owner-only", async () => {
+    const owner = await post("/api/auth/register", {
+      email: "owner@example.com",
+      password: "correct horse battery",
+      confirm: "correct horse battery",
+    });
+    const ownerHeaders = { authorization: `Bearer ${(await owner.json()).token as string}` };
+    const publish = await post(
+      "/api/admin/shared-bots",
+      {
+        name: "Scout",
+        title: "Researcher",
+        description: "Finds sources and summarizes them.",
+        memory: "Prefer primary sources. Client work stays in team books.",
+      },
+      ownerHeaders,
+    );
+    expect(publish.status).toBe(201);
+    const sharedId = (await publish.json()).bot.id as string;
+
+    const invite = await post("/api/admin/invites", { email: "member@example.com" }, ownerHeaders);
+    const code = (await invite.json()).code as string;
+    const member = await post("/api/auth/register", {
+      email: "member@example.com",
+      password: "member password",
+      confirm: "member password",
+      invite: code,
+    });
+    const memberHeaders = { authorization: `Bearer ${(await member.json()).token as string}` };
+
+    const list = await fetch(`${base}/api/shared-bots`, { headers: memberHeaders });
+    expect(list.status).toBe(200);
+    const summaries = (await list.json()).bots;
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0]).toMatchObject({ id: sharedId, name: "Scout", title: "Researcher" });
+    expect("memory" in summaries[0]).toBe(false);
+
+    const detail = await fetch(`${base}/api/shared-bots/${sharedId}`, { headers: memberHeaders });
+    expect(detail.status).toBe(200);
+    expect((await detail.json()).bot.memory).toContain("Prefer primary sources");
+
+    expect((await fetch(`${base}/api/shared-bots`)).status).toBe(401);
+    expect((await post("/api/admin/shared-bots", { name: "Nope" }, memberHeaders)).status).toBe(403);
+    expect(
+      (await fetch(`${base}/api/admin/shared-bots/${sharedId}`, { method: "DELETE", headers: memberHeaders })).status,
+    ).toBe(403);
+
+    expect(
+      (await fetch(`${base}/api/admin/shared-bots/${sharedId}`, { method: "DELETE", headers: ownerHeaders })).status,
+    ).toBe(200);
+    expect((await fetch(`${base}/api/shared-bots/${sharedId}`, { headers: memberHeaders })).status).toBe(404);
+  });
+
   it("returns a session token to a mobile JSON login without setting a cookie", async () => {
     await post("/api/auth/register", {
       email: "owner@example.com",

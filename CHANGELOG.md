@@ -2,6 +2,13 @@
 
 Dated, user-facing changes. Newest first.
 
+## 2026-11-22 — Shared bot templates
+
+- KodBot Business owners can publish a bot as a **shared bot template**. Only the name, title, description, and core `MEMORY.md` are shared; secrets are redacted before the template leaves the owner's harness.
+- Every member can install a shared bot into their own workspace. The copy is independent: turns run there, with that member's model, key, and usage quota. The gateway never executes a bot, so per-speaker billing stays natural.
+- The Shared bots section is visible only in Business. It shows the published templates, the owner's publish controls, and the member's install action. Existing installed copies are not updated by later template changes in this version.
+- This is the first shared-bot slice; live shared conversations, a single bot instance across accounts, organization-key proxying, and per-speaker billing for a live shared bot are still to come.
+
 ## 2026-11-22 — KodBot Solo and KodBot Business
 
 - First launch now asks how you want to use KodBot. **KodBot Solo** runs the server on your computer: local, private, free, no account. **KodBot Business** connects to your organization's KodBot server and signs you in with your browser.
