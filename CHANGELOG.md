@@ -2,6 +2,17 @@
 
 Dated, user-facing changes. Newest first.
 
+## 2026-11-22 — 0.1.63
+
+KodBot Solo and KodBot Business, shared bot templates, and OpenCode included.
+
+- First launch asks **KodBot Solo** (local, private, free, no account) or **KodBot Business** (organization server, browser sign-in). Change it later in **Settings → General → Usage mode**.
+- Business owners can publish a **shared bot template** from **Settings → Shared bots**: name, title, description, and core `MEMORY.md`, with common secret shapes redacted. Members install their own copy; turns run in their workspace with their own model, key, and quota.
+- Packaged builds include **OpenCode 2.3.2** for the platform. The engine is pinned and updated with KodBot releases — it does not self-update. Add an OpenCode API key; new bots prefer the unified OpenCode engine.
+- Team leaders now collect delegated replies — including peers outside their own team — in one follow-up turn. Page forms submit again.
+- The hosted gateway has a bilingual login and an owner-only **Admin** area for users, invites, temporary passwords, disabling accounts, and session sign-out.
+- Android remains **0.1.28** (versionCode 29).
+
 ## 2026-11-22 — OpenCode is included
 
 - Packaged KodBot builds now include the official OpenCode CLI for the platform. There is no separate `opencode` install, no PATH setup, and no version to manage. Source checkouts stage it with `pnpm prepare:opencode`.
