@@ -2,6 +2,12 @@
 
 Dated, user-facing changes. Newest first.
 
+## 2026-11-22 — Calm process view
+
+- The queued-message panel now sits **above the composer in normal flow** instead of floating over the chat. It is collapsed to one line by default and expands on demand, so it no longer hides the current thinking or tool activity. The transcript stays pinned to the latest row when the composer grows.
+- **User mode** shows one human progress line — the latest narrated action and a timer — while the bot works. Raw tool chips and the model's extended reasoning are hidden; handoffs, delegation replies, and errors stay visible.
+- **Developer mode** shows the full thought process expanded by default, plus every tool action, alongside the transcript.
+
 ## 2026-11-22 — 0.1.63
 
 KodBot Solo and KodBot Business, shared bot templates, and OpenCode included.

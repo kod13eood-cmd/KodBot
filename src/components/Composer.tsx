@@ -1,6 +1,6 @@
 import { track } from "@/lib/analytics";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, AudioLines, Clock, Loader2, Mic, Paperclip, Reply, Square, Users, X } from "lucide-react";
+import { ArrowUp, AudioLines, ChevronDown, Clock, Loader2, Mic, Paperclip, Reply, Square, Users, X } from "lucide-react";
 import { api, useStore, visibleMessages, type Bot, type Group, type Message } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { useComposerDraft } from "@/lib/drafts";
@@ -234,11 +234,16 @@ export function Composer({
   // unmounts the composer but a queued backlog must still go out.
   const queueKey = group ? queueKeyForGroup(group.id) : queueKeyForBot(bot?.id ?? "");
   const [queued, setQueued] = useState(() => promptQueue.prompts(queueKey));
+  const [queueOpen, setQueueOpen] = useState(false);
   const [queueBusy, setQueueBusy] = useState(false);
   useEffect(() => {
     setQueued(promptQueue.prompts(queueKey));
     return promptQueue.subscribe(() => setQueued(promptQueue.prompts(queueKey)));
   }, [queueKey]);
+
+  useEffect(() => {
+    if (!queued.length) setQueueOpen(false);
+  }, [queued.length]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   // a chip on its own is a message: the send control has to appear for it
@@ -591,67 +596,85 @@ export function Composer({
           <span className="text-ink-secondary/70">{t("This can take a minute on CPU.")}</span>
         </div>
       )}
-      <div className="relative mx-auto max-w-[900px]">
+      <div className="mx-auto max-w-[900px]">
         {queued.length > 0 && (
-          <div className="absolute bottom-full left-0 right-0 z-20 mb-2 overflow-hidden rounded-xl border border-hairline/50 bg-panel shadow-2xl shadow-black/40">
-            <div className="flex items-center gap-2 border-b border-hairline/40 px-3 py-2 text-[11px] font-medium text-ink-secondary">
+          <div className="mb-2 overflow-hidden rounded-xl border border-hairline/50 bg-panel">
+            <button
+              type="button"
+              onClick={() => setQueueOpen((open) => !open)}
+              aria-expanded={queueOpen}
+              aria-label={queueOpen ? t("Hide queued messages") : t("Show queued messages")}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium text-ink-secondary hover:bg-raised/40"
+            >
               <Clock size={12} className="shrink-0" />
-              <span className="min-w-0 flex-1 truncate">
+              <span className="shrink-0">
                 {t("Queued")} · {queued.length} · {busyName}
               </span>
-            </div>
-            <div className="max-h-40 overflow-y-auto">
-              {queued.map((item, index) => (
-                <div
-                  key={item.id}
-                  role={bot ? "button" : undefined}
-                  tabIndex={bot ? 0 : undefined}
-                  onKeyDown={(event) => {
-                    if (!bot || event.target !== event.currentTarget || event.key !== "Enter") return;
-                    event.preventDefault();
-                    void sendQueuedNow(item);
-                  }}
-                  className="flex items-start gap-2 border-b border-hairline/25 px-3 py-2 last:border-b-0 focus:bg-raised/40 focus:outline-none"
-                >
-                  <span className="mt-px w-4 shrink-0 text-right font-mono text-[10.5px] text-ink-secondary/70">
-                    {index + 1}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block whitespace-pre-wrap break-words text-[12px] leading-snug text-ink line-clamp-2">
-                      {item.text}
+              {!queueOpen && (
+                <span className="min-w-0 flex-1 truncate text-[12px] font-normal text-ink/80">
+                  {queued[0]?.text}
+                </span>
+              )}
+              <ChevronDown
+                size={13}
+                className={cn("ml-auto shrink-0 transition-transform", queueOpen && "rotate-180")}
+              />
+            </button>
+            {queueOpen && (
+              <div className="max-h-40 overflow-y-auto border-t border-hairline/30">
+                {queued.map((item, index) => (
+                  <div
+                    key={item.id}
+                    role={bot ? "button" : undefined}
+                    tabIndex={bot ? 0 : undefined}
+                    onKeyDown={(event) => {
+                      if (!bot || event.target !== event.currentTarget || event.key !== "Enter") return;
+                      event.preventDefault();
+                      void sendQueuedNow(item);
+                    }}
+                    className="flex items-start gap-2 border-b border-hairline/25 px-3 py-2 last:border-b-0 focus:bg-raised/40 focus:outline-none"
+                  >
+                    <span className="mt-px w-4 shrink-0 text-right font-mono text-[10.5px] text-ink-secondary/70">
+                      {index + 1}
                     </span>
-                    {item.replyTo && (
-                      <span className="mt-0.5 block truncate text-[10.5px] text-ink-secondary/70">
-                        ↪ {item.replyTo.name}: {item.replyTo.text}
+                    <span className="min-w-0 flex-1">
+                      <span className="block whitespace-pre-wrap break-words text-[12px] leading-snug text-ink line-clamp-2">
+                        {item.text}
                       </span>
+                      {item.replyTo && (
+                        <span className="mt-0.5 block truncate text-[10.5px] text-ink-secondary/70">
+                          ↪ {item.replyTo.name}: {item.replyTo.text}
+                        </span>
+                      )}
+                    </span>
+                    {bot && (
+                      <button
+                        type="button"
+                        onClick={() => void sendQueuedNow(item)}
+                        disabled={queueBusy}
+                        aria-label={t("Send now")}
+                        title={t("Send now — joins the running turn when the engine supports it")}
+                        className="shrink-0 rounded p-0.5 text-ink-secondary hover:bg-raised hover:text-accent disabled:opacity-40"
+                      >
+                        <ArrowUp size={12} />
+                      </button>
                     )}
-                  </span>
-                  {bot && (
                     <button
                       type="button"
-                      onClick={() => void sendQueuedNow(item)}
-                      disabled={queueBusy}
-                      aria-label={t("Send now")}
-                      title={t("Send now — joins the running turn when the engine supports it")}
-                      className="shrink-0 rounded p-0.5 text-ink-secondary hover:bg-raised hover:text-accent disabled:opacity-40"
+                      onClick={() => promptQueue.drop(queueKey, item.id)}
+                      aria-label={t("Discard queued message")}
+                      title={t("Discard queued message")}
+                      className="shrink-0 rounded p-0.5 text-ink-secondary hover:bg-raised hover:text-ink"
                     >
-                      <ArrowUp size={12} />
+                      <X size={12} />
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => promptQueue.drop(queueKey, item.id)}
-                    aria-label={t("Discard queued message")}
-                    title={t("Discard queued message")}
-                    className="shrink-0 rounded p-0.5 text-ink-secondary hover:bg-raised hover:text-ink"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
+        <div className="relative">
         {pickerOpen && (
           <div
             role="listbox"
@@ -980,6 +1003,7 @@ export function Composer({
             )}
           </button>
         )}
+        </div>
         </div>
       </div>
     </div>

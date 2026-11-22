@@ -42,6 +42,7 @@ import { EngineSetup } from "./EngineSetup";
 import { CrewAvatar } from "./Avatar";
 import { displayRole, stateForBot } from "@/lib/mascot";
 import { showWorkingDots } from "@/lib/turn-tail";
+import { latestProgress, progressLabel, shouldShowActivity } from "@/lib/chat-activity";
 import { ChatMarkdown } from "./ChatMarkdown";
 import { OptionCard } from "./OptionCard";
 import { ApprovalCard } from "./ApprovalCard";
@@ -124,9 +125,9 @@ function CopyButton({ text, className }: { text: string; className?: string }) {
 
 /** Live extended thinking: shimmer label + collapsible reasoning text.
  * Ephemeral — rendered only while the turn runs, dropped when it settles. */
-function ThinkingStrip({ text, active }: { text: string; active: boolean }) {
+function ThinkingStrip({ text, active, defaultOpen = false }: { text: string; active: boolean; defaultOpen?: boolean }) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const tailRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (open) tailRef.current?.scrollTo({ top: tailRef.current.scrollHeight });
@@ -148,7 +149,7 @@ function ThinkingStrip({ text, active }: { text: string; active: boolean }) {
         {open ? (
           <div
             ref={tailRef}
-            className="mt-1 max-h-48 overflow-y-auto rounded-lg border border-hairline/30 bg-panel px-3 py-2 text-[12.5px] leading-relaxed whitespace-pre-wrap text-ink-secondary"
+            className="mt-1 max-h-80 overflow-y-auto rounded-lg border border-hairline/30 bg-panel px-3 py-2 text-[12.5px] leading-relaxed whitespace-pre-wrap text-ink-secondary"
           >
             {text}
           </div>
@@ -746,6 +747,25 @@ function WorkingTimer({ since }: { since: number }) {
   return <span ref={ref} className="text-[12.5px] text-ink-secondary" />;
 }
 
+/** The calm view's single progress line: one human phrase and a timer, never
+ * the raw tool stream or the model's reasoning. */
+function LiveStatus({ messages, since }: { messages: Message[]; since: number }) {
+  const { t } = useI18n();
+  const message = latestProgress(messages, since);
+  const label = progressLabel(message) ?? t("Working…");
+  return (
+    <div className="flex justify-start">
+      <div className="flex max-w-[540px] items-center gap-2.5 rounded-2xl border border-hairline/30 bg-raised/70 px-4 py-2.5 text-[13px] text-ink-secondary">
+        <Loader2 size={13} className="shrink-0 animate-spin text-accent" />
+        <span className="min-w-0 truncate">{label}</span>
+        <span className="shrink-0 border-l border-hairline/30 pl-2">
+          <WorkingTimer since={since} />
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /** The settled transcript, memoized as one unit: during streaming every
  * frame re-renders ChatView, but all of these props keep their identity
  * (bot/messages only change on real message events), so the whole list —
@@ -759,6 +779,7 @@ const MessagesList = memo(function MessagesList({
   lastBotTextId,
   canRetryLast,
   engine,
+  devMode,
   onStartEdit,
   onCancelEdit,
   onSubmitEdit,
@@ -772,6 +793,9 @@ const MessagesList = memo(function MessagesList({
   canRetryLast: boolean;
   /** This bot's engine, for rendering setup help on a `setup` error. */
   engine: InstanceInfo | undefined;
+  /** Developer mode shows every tool chip; the calm view keeps the process
+   * to one human progress line and hides raw tool detail. */
+  devMode: boolean;
   onStartEdit: (id: string) => void;
   onCancelEdit: () => void;
   onSubmitEdit: (id: string, text: string) => void;
@@ -838,15 +862,17 @@ const MessagesList = memo(function MessagesList({
               );
             case "activity":
               // a failed turn is an error, not a tool run — render it as one
-              return m.tool?.name.startsWith("error:") ? (
-                <ErrorRow
-                  message={m.tool.name.slice(6).trim()}
-                  onRetry={m.id === messages.at(-1)?.id && canRetryLast ? onRegenerate : undefined}
-                  setupInstance={m.tool.setup ? engine : undefined}
-                />
-              ) : (
-                <ActivityChip message={m} />
-              );
+              if (m.tool?.name.startsWith("error:")) {
+                return (
+                  <ErrorRow
+                    message={m.tool.name.slice(6).trim()}
+                    onRetry={m.id === messages.at(-1)?.id && canRetryLast ? onRegenerate : undefined}
+                    setupInstance={m.tool.setup ? engine : undefined}
+                  />
+                );
+              }
+              if (!shouldShowActivity(m, devMode)) return null;
+              return <ActivityChip message={m} />;
             case "screen":
               return m.png ? <ScreenFrame png={m.png} mime={m.mime} /> : null;
             case "page":
@@ -1002,6 +1028,22 @@ export function ChatView({ bot }: { bot: Bot }) {
     el.scrollTo({ top: el.scrollHeight });
     previousScrollTop.current = el.scrollTop;
   }, [bot.id, messages.length, streaming, reasoning, bot.busy, follow]);
+
+  // The composer grows (queued-message bar, attachments, approval panel)
+  // without changing the transcript. If the reader is following the bottom,
+  // keep the latest thinking/actions visible instead of letting the shorter
+  // viewport clip them.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !follow) return;
+    const observer = new ResizeObserver(() => {
+      if (!followRef.current) return;
+      el.scrollTo({ top: el.scrollHeight });
+      previousScrollTop.current = el.scrollTop;
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [follow]);
 
   // Expanding prepends rows: capture the height first, then after the commit
   // shift scrollTop by the growth so the message under the cursor stays put
@@ -1207,6 +1249,7 @@ export function ChatView({ bot }: { bot: Bot }) {
             lastBotTextId={lastBotTextId}
             canRetryLast={!bot.busy && Boolean(lastUserMessage)}
             engine={state.instances.find((i) => i.instanceId === bot.modelSelection.instanceId)}
+            devMode={devMode}
             onStartEdit={startEdit}
             onCancelEdit={cancelEdit}
             onSubmitEdit={submitEdit}
@@ -1231,11 +1274,13 @@ export function ChatView({ bot }: { bot: Bot }) {
               </div>
             </div>
           )}
-          {reasoning && bot.busy && <ThinkingStrip text={reasoning} active={!streaming} />}
+          {devMode && reasoning && bot.busy && (
+            <ThinkingStrip text={reasoning} active={!streaming} defaultOpen />
+          )}
           {streaming ? (
             <StreamingBubble text={streaming} />
-          ) : (
-            showWorkingDots(bot.busy, streaming, messages.at(-1)) && (
+          ) : showWorkingDots(bot.busy, streaming, messages.at(-1)) ? (
+            devMode ? (
               <div className="flex justify-start">
                 <div className="flex items-center gap-2.5 rounded-2xl bg-raised px-4 py-3">
                   <span className="flex items-center gap-1.5">
@@ -1246,8 +1291,10 @@ export function ChatView({ bot }: { bot: Bot }) {
                   <WorkingTimer since={lastUserMessage?.at ?? Date.now()} />
                 </div>
               </div>
+            ) : (
+              <LiveStatus messages={messages} since={lastUserMessage?.at ?? Date.now()} />
             )
-          )}
+          ) : null}
         </div>
       </div>
 
