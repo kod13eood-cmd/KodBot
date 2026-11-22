@@ -81,9 +81,9 @@ const support = (fetcher: typeof fetch): AcpSupport => ({
   loginNote: "OpenCode Go is not configured — add an OPENCODE_API_KEY in KodBot settings",
   install: {
     command: {
-      darwin: "npm install -g opencode-ai",
-      linux: "npm install -g opencode-ai",
-      win32: "npm install -g opencode-ai",
+      darwin: "npm install -g @opencode/cli@2.3.2",
+      linux: "npm install -g @opencode/cli@2.3.2",
+      win32: "npm install -g @opencode/cli@2.3.2",
     },
     docsUrl: "https://opencode.ai/docs/",
     signInCommand: "opencode auth login",

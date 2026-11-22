@@ -4,12 +4,12 @@ import test from "node:test";
 import { opencodeBinaryName, opencodePackageName } from "./opencode-package.mjs";
 
 test("maps every desktop target to the official OpenCode package", () => {
-  assert.equal(opencodePackageName("linux", "x64"), "opencode-linux-x64-baseline");
-  assert.equal(opencodePackageName("linux", "arm64"), "opencode-linux-arm64");
-  assert.equal(opencodePackageName("darwin", "x64"), "opencode-darwin-x64-baseline");
-  assert.equal(opencodePackageName("darwin", "arm64"), "opencode-darwin-arm64");
-  assert.equal(opencodePackageName("win32", "x64"), "opencode-windows-x64-baseline");
-  assert.equal(opencodePackageName("win32", "arm64"), "opencode-windows-arm64");
+  assert.equal(opencodePackageName("linux", "x64"), "@opencode/cli-linux-x64-baseline");
+  assert.equal(opencodePackageName("linux", "arm64"), "@opencode/cli-linux-arm64");
+  assert.equal(opencodePackageName("darwin", "x64"), "@opencode/cli-darwin-x64-baseline");
+  assert.equal(opencodePackageName("darwin", "arm64"), "@opencode/cli-darwin-arm64");
+  assert.equal(opencodePackageName("win32", "x64"), "@opencode/cli-windows-x64-baseline");
+  assert.equal(opencodePackageName("win32", "arm64"), "@opencode/cli-windows-arm64");
 });
 
 test("uses the Windows executable suffix", () => {

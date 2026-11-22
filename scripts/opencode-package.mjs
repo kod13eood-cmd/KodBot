@@ -7,7 +7,7 @@
  * standard build.
  */
 
-export const OPENCODE_BUNDLED_VERSION = "1.19.6";
+export const OPENCODE_BUNDLED_VERSION = "2.3.2";
 
 const PLATFORM_NAMES = {
   linux: "linux",
@@ -23,7 +23,7 @@ export function opencodePackageName(platform, arch) {
     throw new Error(`OpenCode has no package for arch ${arch}`);
   }
   const baseline = arch === "x64" ? "-baseline" : "";
-  return `opencode-${mapped}-${arch}${baseline}`;
+  return `@opencode/cli-${mapped}-${arch}${baseline}`;
 }
 
 export function opencodeBinaryName(platform) {

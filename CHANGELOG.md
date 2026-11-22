@@ -5,7 +5,7 @@ Dated, user-facing changes. Newest first.
 ## 2026-11-22 — OpenCode is included
 
 - Packaged KodBot builds now include the official OpenCode CLI for the platform. There is no separate `opencode` install, no PATH setup, and no version to manage. Source checkouts stage it with `pnpm prepare:opencode`.
-- The bundled engine is pinned (OpenCode 1.19.6) and updated **with KodBot releases**, never by silent self-update. KodBot still needs an OpenCode API key or other model access.
+- The bundled engine is pinned (OpenCode 2.3.2) and updated **with KodBot releases**, never by silent self-update. KodBot still needs an OpenCode API key or other model access.
 - Existing bots keep the engine they already use. New bots prefer the unified OpenCode engine when it is available and authenticated. A bot can still point at a different `opencode` binary in Engines.
 - The OpenCode MIT notice ships in `LICENSES/OpenCode-MIT.txt` and beside the binary.
 - Linux/macOS/Windows packaging stages the matching platform binary. The desktop installer grows accordingly; the Linux server needs the binary staged and `OC_EXTRA_PATH` set.

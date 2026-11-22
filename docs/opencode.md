@@ -32,7 +32,7 @@ A bot can still point at a different `opencode` binary in Engines → CLI if a
 team needs a specific build.
 
 The source of the bundled binary is the official npm platform package
-(`opencode-linux-x64-baseline`, `opencode-darwin-arm64`, …). Its MIT licence is
+(`@opencode/cli-linux-x64-baseline`, `@opencode/cli-darwin-arm64`, …). Its MIT licence is
 kept in [`LICENSES/OpenCode-MIT.txt`](../LICENSES/OpenCode-MIT.txt) and copied
 beside the binary.
 
