@@ -410,6 +410,29 @@ once; after that, releases update in place.
   0.1.28 APK.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.62>
 
+### Release 0.1.63 (2026-11-22)
+
+- Desktop 0.1.63; Android stays **0.1.28 / versionCode 29**.
+- First launch offers **KodBot Solo** (local, private, free) or **KodBot
+  Business** (organization gateway, browser sign-in). The choice is reversible
+  in Settings → General → Usage mode.
+- Business owners can publish **shared bot templates** (persona + redacted
+  core memory); members install their own copy, which runs with their own
+  model/key/quota. Live shared conversations and organization-key proxying are
+  still future.
+- Packaged builds include **OpenCode 2.3.2** (`@opencode/cli-*`, x64 baseline;
+  arm64 standard), pinned and updated with app releases. The live paperclipi7
+  harness uses the bundled 2.3.2 via `/opt/kodbot/opencode`; its system
+  `/usr/local/bin/opencode` remains 2.3.0.
+- Team leaders now collect delegated replies from teammates and cross-team
+  peers in one follow-up turn; page forms submit again; the gateway has
+  bilingual login and owner Admin.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.63>
+- Assets verified: Windows NSIS 201 MB, Linux AppImage 239 MB, .deb 206 MB,
+  Android 0.1.28 10.5 MB, both `latest.yml` feeds. macOS remains the separate
+  signed/notarized Mac flow. The live harness still reports 0.1.62 until the
+  0.1.63 server bundle is deployed.
+
 ### Gateway login
 
 The standalone gateway login/registration page is bilingual (English/Bulgarian,
