@@ -369,6 +369,16 @@ replies into the leader's context and is not allowed to delegate again, so a
 team cannot accidentally recurse. The individual exchanges remain in their
 `A ⇄ B` channels, and the Activity view keeps each handoff's result.
 
+### KodBot Solo and KodBot Business — Live
+
+First launch asks how KodBot will be used. **KodBot Solo** keeps everything on
+this computer: local harness, local keys, no account, free. **KodBot Business**
+connects the same app to an organization's gateway and signs in through the
+browser. The mode is reversible in **Settings → General → Usage mode**, and the
+current edition is derived from the server: a signed-in gateway account is
+Business; a local or personal harness is Solo. Shared bots across accounts,
+per-speaker billing, and an organization key are not part of this first slice.
+
 ### Connected Apps with readable identities — Live
 
 The Connected Apps marketplace now includes **1Password, Stripe, Aircall,

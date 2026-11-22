@@ -21,6 +21,8 @@ import { openShortcutsSheet, SHORTCUTS_KEY_LABEL } from "./ShortcutsSheet";
 import { cn } from "@/lib/cn";
 import { LOCALE_OPTIONS, useI18n } from "@/lib/i18n";
 import { canSeeSettingsSection } from "@/lib/settings-sections";
+import { editionOf, isLoopbackHost } from "@/lib/edition";
+import { normalizeRemoteAddress } from "@/lib/server-choice";
 import { setDeveloperMode, useDeveloperMode } from "@/lib/dev-mode";
 import { setShowGroupChats, useShowGroupChats } from "@/lib/show-groups";
 import { remoteSwitchAvailable } from "@/lib/server-switch";
@@ -191,28 +193,29 @@ function PublicAddressCard() {
   );
 }
 
-function ServerCard() {
+function UsageModeCard() {
+  const { state: appState } = useStore();
   const { t } = useI18n();
+  const bridge = window.ogb?.server;
   const [state, setState] = useState<ServerConnectionState | null>(null);
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState<"local" | "remote" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const edition = editionOf(appState.authUser);
+  const origin = window.location.origin;
 
   useEffect(() => {
-    if (!window.ogb?.server) return;
-    void window.ogb.server
+    if (!bridge) return;
+    void bridge
       .get()
       .then((current) => {
         setState(current);
         setUrl(current.url ?? "");
       })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
-  }, []);
-
-  if (!window.ogb?.server) return null;
+  }, [bridge]);
 
   const choose = async (mode: "local" | "remote") => {
-    const bridge = window.ogb?.server;
     if (!bridge) return;
     setBusy(mode);
     setError(null);
@@ -226,10 +229,37 @@ function ServerCard() {
     }
   };
 
+  const connectInBrowser = () => {
+    const address = normalizeRemoteAddress(url);
+    if (!address) {
+      setError(t("Enter the organization server address."));
+      return;
+    }
+    try {
+      const parsed = new URL(address);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("scheme");
+    } catch {
+      setError(t("Enter an address like https://kodbot.example.com or http://192.168.1.50:8780."));
+      return;
+    }
+    setError(null);
+    setBusy("remote");
+    window.location.assign(address);
+  };
+
+  const soloStatus =
+    state?.active === "remote"
+      ? t("Using your own server at {url}.", { url: state.url ?? "" })
+      : bridge
+        ? t("Using the server on this computer.")
+        : isLoopbackHost(window.location.hostname)
+          ? t("Using the server on this computer.")
+          : t("Using the server at {origin}.", { origin });
+
   return (
     <Card
-      title={t("Server")}
-      subtitle={t("Run the agents on this computer, or connect this window to a KodBot server that stays on 24/7.")}
+      title={t("Usage mode")}
+      subtitle={t("KodBot Solo is free, local and private. KodBot Business connects to your organization's server.")}
     >
       <div className="flex flex-col gap-3">
         {state?.fallback && (
@@ -238,37 +268,50 @@ function ServerCard() {
           </div>
         )}
         <div className="rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[12.5px] text-ink-secondary">
-          {state?.active === "remote"
-            ? t("Using remote server {url}", { url: state.url ?? "" })
-            : t("Using the server on this computer.")}
+          <div className="font-medium text-ink">
+            {edition === "business" ? t("KodBot Business") : t("KodBot Solo")}
+          </div>
+          <div className="mt-0.5">
+            {edition === "business"
+              ? t("Signed in on your organization's server at {origin}.", { origin })
+              : soloStatus}
+          </div>
         </div>
         <input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="http://192.168.1.50:8799"
+          placeholder="https://kodbot.example.com:8780"
           spellCheck={false}
           className="w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 font-mono text-[13px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none"
         />
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => void choose("remote")}
-            disabled={busy !== null || !remoteSwitchAvailable(url, state)}
+            onClick={() => (bridge ? void choose("remote") : connectInBrowser())}
+            disabled={busy !== null || !url.trim() || (bridge ? !remoteSwitchAvailable(url, state) : false)}
             className="rounded-lg border border-hairline/40 px-3 py-1.5 text-[13px] text-ink hover:bg-raised disabled:opacity-40"
           >
-            {busy === "remote" ? t("Connecting…") : t("Connect to remote server")}
+            {busy === "remote" ? t("Connecting…") : t("Connect to server")}
           </button>
-          <button
-            onClick={() => void choose("local")}
-            disabled={busy !== null || state?.mode === "local"}
-            className="rounded-lg border border-hairline/40 px-3 py-1.5 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40"
-          >
-            {busy === "local" ? t("Switching…") : t("Use this computer")}
-          </button>
+          {bridge && (
+            <button
+              onClick={() => void choose("local")}
+              disabled={busy !== null || state?.mode === "local"}
+              className="rounded-lg border border-hairline/40 px-3 py-1.5 text-[13px] text-ink-secondary hover:bg-raised hover:text-ink disabled:opacity-40"
+            >
+              {busy === "local" ? t("Switching…") : t("Use this computer (Solo)")}
+            </button>
+          )}
         </div>
         <div className="text-[11.5px] leading-relaxed text-ink-secondary">
-          {t(
-            "The remote machine must be reachable over your LAN or Tailscale and must be running KodBot. Keys, engines, and the companion stay on that machine. The app will restart when you switch.",
-          )}
+          {bridge
+            ? t(
+                "An organization server signs you in with your browser. A personal server without accounts stays Solo. The app will restart when you switch.",
+              )
+            : edition === "business"
+              ? t("To switch to KodBot Solo, open the app on your computer.")
+              : t(
+                  "Connecting moves this window to that server. An organization gateway shows its sign-in page; a personal server stays Solo.",
+                )}
         </div>
         {error && <div className="text-[12.5px] text-danger">{error}</div>}
       </div>
@@ -747,7 +790,7 @@ export function SettingsModal() {
                 <Card title={t("Profile")} subtitle={t("Shown in the sidebar. Saved as you go.")}>
                   <ProfileFields />
                 </Card>
-                <ServerCard />
+                <UsageModeCard />
                 <PublicAddressCard />
                 <ApprovalTimeoutCard />
                 <DeveloperCard />

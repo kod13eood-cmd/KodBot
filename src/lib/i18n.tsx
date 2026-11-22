@@ -1497,6 +1497,51 @@ const BULGARIAN: Record<string, string> = {
   "Revoke this invite?": "Да се отмени ли тази покана?",
   "Resetting the owner password signs out this session too. Continue?":
     "Нулирането на паролата на собственика ще прекрати и тази сесия. Да продължа ли?",
+
+  // KodBot Solo / Business
+  "How will you use KodBot?": "Как ще използваш KodBot?",
+  "Choose now. You can change this later in App Settings → General → Usage mode.":
+    "Избери сега. Можеш да го промениш по-късно в Настройки на приложението → Общи → Режим на използване.",
+  "KodBot Solo": "KodBot Solo",
+  "KodBot Business": "KodBot Business",
+  "Local, private, no account.": "Локално, поверително, без акаунт.",
+  "Everything stays on this computer: bots, conversations, memory, files, and keys. KodBot runs its own server here.":
+    "Всичко остава на този компютър: ботове, разговори, памет, файлове и ключове. KodBot пуска собствения си сървър тук.",
+  "Your keys never leave this machine.": "Ключовете ти никога не напускат тази машина.",
+  "Preparing this computer…": "Подготовка на този компютър…",
+  "For organizations": "За организации",
+  "Accounts, invitations, administration.": "Акаунти, покани, администриране.",
+  "Connect to your organization's KodBot server and sign in with your browser. Your bots, keys, and memory stay in your own workspace on that server.":
+    "Свържи се със сървъра на KodBot на твоята организация и влез през браузъра. Ботовете, ключовете и паметта ти остават в твоето работно пространство на този сървър.",
+  "KodBot Solo is free and open source. KodBot Business is the same app connected to your organization's server, with accounts and administration.":
+    "KodBot Solo е безплатен и с отворен код. KodBot Business е същото приложение, свързано със сървъра на организацията, с акаунти и администриране.",
+  "Shared bots, shared teams.": "Споделени ботове, споделени екипи.",
+  "Connect to your organization's KodBot server and sign in with your browser. Bots and teams are shared there, and each person uses their own key or the organization's.":
+    "Свържи се със сървъра на KodBot на твоята организация и влез през браузъра. Ботовете и екипите са споделени там, а всеки използва своя ключ или ключа на организацията.",
+  "Organization server address": "Адрес на сървъра на организацията",
+  "Continue to sign-in": "Продължи към вход",
+  "Enter the organization server address.": "Въведи адреса на сървъра на организацията.",
+  "Enter an address like https://kodbot.example.com or http://192.168.1.50:8780.":
+    "Въведи адрес като https://kodbot.example.com или http://192.168.1.50:8780.",
+  "The server must already be running KodBot Business. A personal server without accounts keeps you in Solo.":
+    "Сървърът трябва вече да работи с KodBot Business. Личен сървър без акаунти те оставя в Solo.",
+  "KodBot Solo is free and open source. KodBot Business is the same app connected to your organization's server; it adds shared teams, administration, and organization billing.":
+    "KodBot Solo е безплатен и с отворен код. KodBot Business е същото приложение, свързано със сървъра на организацията; добавя споделени екипи, администриране и фактуриране за организацията.",
+  "Usage mode": "Режим на използване",
+  "KodBot Solo is free, local and private. KodBot Business connects to your organization's server.":
+    "KodBot Solo е безплатен, локален и поверителен. KodBot Business се свързва със сървъра на твоята организация.",
+  "Using your own server at {url}.": "Използваш собствения си сървър на {url}.",
+  "Using the server at {origin}.": "Използваш сървъра на {origin}.",
+  "Signed in on your organization's server at {origin}.":
+    "Влязъл си в сървъра на организацията на {origin}.",
+  "Connect to server": "Свържи се със сървър",
+  "Use this computer (Solo)": "Използвай този компютър (Solo)",
+  "An organization server signs you in with your browser. A personal server without accounts stays Solo. The app will restart when you switch.":
+    "Сървърът на организацията те вписва през браузъра. Личен сървър без акаунти остава Solo. Приложението ще се рестартира при смяна.",
+  "To switch to KodBot Solo, open the app on your computer.":
+    "За да преминеш към KodBot Solo, отвори приложението на своя компютър.",
+  "Connecting moves this window to that server. An organization gateway shows its sign-in page; a personal server stays Solo.":
+    "Свързването премества този прозорец на онзи сървър. Организационният gateway показва своята страница за вход; личният сървър остава Solo.",
 };
 
 function initialLocale(): Locale {

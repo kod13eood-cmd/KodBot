@@ -2,6 +2,12 @@
 
 Dated, user-facing changes. Newest first.
 
+## 2026-11-22 — KodBot Solo and KodBot Business
+
+- First launch now asks how you want to use KodBot. **KodBot Solo** runs the server on your computer: local, private, free, no account. **KodBot Business** connects to your organization's KodBot server and signs you in with your browser.
+- The choice is reversible: **Settings → General → Usage mode** can switch between this computer and an organization server, and shows which edition the current server puts you in.
+- This first slice is the edition choice, the organization connect flow, and the usage-mode card. Shared bots across accounts, per-speaker billing, and an organization key are still to come.
+
 ## 2026-11-21 — Team leaders collect delegated work
 
 - A **team leader** that delegates tasks with `delegate_bot` now gets one follow-up turn when the last teammate finishes, carrying their replies, so it can synthesize the result instead of going quiet. The collecting turn cannot delegate again, which keeps the fan-out one hop deep.
