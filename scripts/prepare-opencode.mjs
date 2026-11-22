@@ -4,6 +4,7 @@
 // self-update, because ACP behaviour, permissions, and model catalogues change
 // between versions and every update needs the app's test cycle.
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
   copyFileSync,
@@ -11,7 +12,6 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
-  readdirSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -40,6 +40,7 @@ const version = value("--version", OPENCODE_BUNDLED_VERSION);
 const out = resolve(ROOT, value("--out", "resources/opencode"));
 const binary = opencodeBinaryName(platform);
 const target = join(out, binary);
+
 // A staged directory is for one target only; a leftover binary from a prior
 // cross-build must not ride along in the installer.
 rmSync(join(out, binary === "opencode.exe" ? "opencode" : "opencode.exe"), { force: true });
@@ -75,28 +76,45 @@ function extractTarGzFile(tarball, wanted, destination) {
   throw new Error(`The ${tarball} archive has no ${wanted}`);
 }
 
+async function fetchTarball(packageName, version, destination) {
+  const metaUrl = `https://registry.npmjs.org/${encodeURIComponent(packageName)}/${version}`;
+  const metaResponse = await fetch(metaUrl, { signal: AbortSignal.timeout(20_000) });
+  if (!metaResponse.ok) throw new Error(`npm registry metadata for ${packageName} answered HTTP ${metaResponse.status}`);
+  const meta = await metaResponse.json();
+  const tarball = meta.dist?.tarball;
+  const integrity = meta.dist?.integrity;
+  if (typeof tarball !== "string" || typeof integrity !== "string") {
+    throw new Error(`npm registry metadata for ${packageName} has no tarball integrity`);
+  }
+  console.log(`Fetching ${packageName}@${version} for ${platform}/${arch}…`);
+  const response = await fetch(tarball, {
+    signal: AbortSignal.timeout(300_000),
+    redirect: "follow",
+  });
+  if (!response.ok) throw new Error(`${tarball} answered HTTP ${response.status}`);
+  const bytes = Buffer.from(await response.arrayBuffer());
+  const [algorithm, expected] = integrity.split("-");
+  const actual = createHash(algorithm).update(bytes).digest("base64");
+  if (actual !== expected) throw new Error(`Integrity mismatch for ${packageName}@${version}`);
+  writeFileSync(destination, bytes);
+}
+
 const packageName = opencodePackageName(platform, arch);
-const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 const scratch = mkdtempSync(join(tmpdir(), "kodbot-opencode-"));
 try {
-  console.log(`Fetching ${packageName}@${version} for ${platform}/${arch}…`);
-  execFileSync(npm, ["pack", `${packageName}@${version}`, "--pack-destination", scratch, "--silent"], {
-    cwd: ROOT,
-    stdio: ["ignore", "pipe", "inherit"],
-  });
-  const tarball = readdirSync(scratch).find((entry) => entry.endsWith(".tgz"));
-  if (!tarball) throw new Error(`npm pack produced no tarball for ${packageName}`);
+  const tarball = join(scratch, "opencode.tgz");
+  await fetchTarball(packageName, version, tarball);
 
   const scratchPackage = join(scratch, "package");
-  extractTarGzFile(join(scratch, tarball), "package/package.json", join(scratchPackage, "package.json"));
+  extractTarGzFile(tarball, "package/package.json", join(scratchPackage, "package.json"));
   const packageJson = JSON.parse(readFileSync(join(scratchPackage, "package.json"), "utf8"));
   if (packageJson.version !== version) {
-    throw new Error(`Expected OpenCode ${version}, npm pack produced ${packageJson.version}`);
+    throw new Error(`Expected OpenCode ${version}, npm produced ${packageJson.version}`);
   }
 
   mkdirSync(out, { recursive: true });
-  extractTarGzFile(join(scratch, tarball), `package/bin/${binary}`, target);
-  chmodSync(target, 0o755);
+  extractTarGzFile(tarball, `package/bin/${binary}`, target);
+  if (process.platform !== "win32") chmodSync(target, 0o755);
   copyFileSync(join(ROOT, "LICENSES", "OpenCode-MIT.txt"), join(out, "LICENSE"));
   const size = Math.round(statSync(target).size / 1024 / 1024);
   console.log(`Staged OpenCode ${version} at ${target} (${size} MB)`);
