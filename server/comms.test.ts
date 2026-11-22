@@ -385,7 +385,7 @@ describe("comms e2e (fake ACP fleet)", () => {
   );
 
   it(
-    "wakes a team leader once after its delegated teammates answer",
+    "wakes a team leader after delegated peers answer, even peers outside its team",
     async () => {
       const helperSelection = { instanceId: "grok", model: "fake-model" };
       const leaderSelection = { instanceId: "leaderCollect", model: "fake-model" };
@@ -393,8 +393,11 @@ describe("comms e2e (fake ACP fleet)", () => {
       await api("PATCH", `/api/bots/${helper.id}`, { name: "Team Helper", modelSelection: helperSelection });
       const leader = (await api("POST", "/api/bots")).body.bot;
       await api("PATCH", `/api/bots/${leader.id}`, { name: "Team Lead", modelSelection: leaderSelection });
-      const team = (await api("POST", "/api/teams", { name: "Delegation Wake", creatorBotId: leader.id })).body.team;
-      await api("POST", `/api/teams/${team.id}/members`, { botId: helper.id });
+      // The leader has its own team, but the peer is deliberately NOT a
+      // member: a team leader coordinating with another team must still get
+      // one collecting turn. Gating on "target is a team member" leaves the
+      // cross-team case silent, which is exactly how Quill got stuck.
+      await api("POST", "/api/teams", { name: "Delegation Wake", creatorBotId: leader.id });
 
       const send = await api("POST", `/api/bots/${leader.id}/messages`, { text: "delegate to the helper" });
       expect(send.status).toBe(202);
@@ -437,8 +440,8 @@ describe("comms e2e (fake ACP fleet)", () => {
       expect(job.result).toContain("hello from fake acp");
       expect(job.error).toBeUndefined();
 
-      // The collecting turn's prompt carried the teammate's actual reply,
-      // not just a "they finished" ping.
+      // The collecting turn's prompt carried the peer's actual reply, not
+      // just a "they finished" ping.
       const collected = leaderBot.messages.findLast((m: any) => m.kind === "text" && m.role === "bot");
       expect(collected.text).toContain("@Team Helper");
       expect(collected.text).toContain("hello from fake acp");

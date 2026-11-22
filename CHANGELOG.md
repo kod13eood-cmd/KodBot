@@ -2,6 +2,11 @@
 
 Dated, user-facing changes. Newest first.
 
+## 2026-11-22 — Team leaders collect cross-team replies
+
+- Fixed a team leader going quiet after delegating to **bots outside its own team**. The collecting turn now starts for a leader's whole delegation batch, not only when a target is a member of that leader's team. Quill delegating to Watcher and Кари (both in other teams) is the case that exposed it.
+- The follow-up still runs once per batch, carries the replies into the leader's context, and cannot delegate again in that turn.
+
 ## 2026-11-22 — Shared bot templates
 
 - KodBot Business owners can publish a bot as a **shared bot template**. Only the name, title, description, and core `MEMORY.md` are shared; common secret shapes are redacted before the template leaves the owner's harness.

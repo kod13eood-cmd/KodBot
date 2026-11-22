@@ -2341,9 +2341,10 @@ const LEADER_REPLY_CHARS = 6_000;
 function startLeaderBatch(sourceThreadId: string, from: BotRecord, items: QueuedDelegation[]): void {
   const team = store.teamForBot(from.id);
   if (!team || team.leaderBotId !== from.id) return;
-  // Only a fan-out that actually involves a teammate is the leader's own
-  // work. An out-of-team handoff keeps the ordinary fire-and-forget path.
-  if (!items.some((item) => team.memberIds.includes(item.toBotId))) return;
+  // A leader's fan-out is the leader's work even when the peer is in another
+  // team. Gating on "target is a team member" leaves cross-team coordination
+  // silent — Quill delegated to Watcher and Кари, both outside the SEO team,
+  // and never got a collecting turn.
   // A stale batch from a lost terminal event must not hold the new items
   // hostage; drop its mappings before starting fresh.
   const previous = leaderBatches.get(sourceThreadId);
