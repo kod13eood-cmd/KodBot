@@ -103,6 +103,21 @@ ungrouped bots where you expect them.
 
 **Voice, optionally.** Read replies aloud and call your bots with an ElevenLabs key. macOS-only for calls today.
 
+<table>
+<tr>
+<td width="50%" valign="top">
+<img src="docs/screenshots/teams.png" alt="A team with a leader and a shared room" width="100%">
+</td>
+<td width="50%" valign="top">
+<img src="docs/screenshots/engines.png" alt="Settings, Engines: which local CLI each engine runs" width="100%">
+</td>
+</tr>
+<tr>
+<td><sub><b>Teams and rooms.</b> A leader, members, and one shared thread.</sub></td>
+<td><sub><b>Your own engines.</b> Point each provider at the CLI you already run.</sub></td>
+</tr>
+</table>
+
 More screenshots and details: [`docs/`](docs/).
 
 ## Under the hood
