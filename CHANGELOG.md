@@ -2,6 +2,14 @@
 
 Dated, user-facing changes. Newest first.
 
+## 2026-11-22 — OpenCode is included
+
+- Packaged KodBot builds now include the official OpenCode CLI for the platform. There is no separate `opencode` install, no PATH setup, and no version to manage. Source checkouts stage it with `pnpm prepare:opencode`.
+- The bundled engine is pinned (OpenCode 1.19.6) and updated **with KodBot releases**, never by silent self-update. KodBot still needs an OpenCode API key or other model access.
+- Existing bots keep the engine they already use. New bots prefer the unified OpenCode engine when it is available and authenticated. A bot can still point at a different `opencode` binary in Engines.
+- The OpenCode MIT notice ships in `LICENSES/OpenCode-MIT.txt` and beside the binary.
+- Linux/macOS/Windows packaging stages the matching platform binary. The desktop installer grows accordingly; the Linux server needs the binary staged and `OC_EXTRA_PATH` set.
+
 ## 2026-11-22 — Team leaders collect cross-team replies
 
 - Fixed a team leader going quiet after delegating to **bots outside its own team**. The collecting turn now starts for a leader's whole delegation batch, not only when a target is a member of that leader's team. Quill delegating to Watcher and Кари (both in other teams) is the case that exposed it.

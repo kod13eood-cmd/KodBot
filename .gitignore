@@ -8,6 +8,8 @@ dist-native
 dist-companion
 dist-server
 dist-gateway
+# staged by scripts/prepare-opencode.mjs at package time; never committed
+resources/opencode/
 *.local
 .DS_Store
 *.tsbuildinfo

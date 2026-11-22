@@ -14,8 +14,12 @@ Status keys:
 
 - **A roster of agents, not one chatbot.** Every bot is a contact with its own
   name, role, face, body shape, voice, model, computer, memory, and apps.
-- **Bring your own agents.** Runs on the `claude`, `codex`, `grok`, and
-  `opencode` CLIs you already use, with your existing logins and subscriptions.
+- **OpenCode included.** Packaged builds ship the official OpenCode CLI for the
+  platform: one install, no separate `opencode` setup. It is pinned to the app
+  release and updated with KodBot, not by silent self-update. An OpenCode API
+  key or another model provider is still required.
+- **Bring your own agents.** Other engines run on the `claude`, `codex`, and
+  `grok` CLIs you already use, with your existing logins and subscriptions.
 - **Local-first.** The harness, transcripts, keys, and events stay on your
   machine (`~/.kodbot`) or on a server you control.
 - **Local or hosted first run.** The desktop app asks whether to run on this

@@ -15,13 +15,26 @@ models** — so one credential and one bot can reach every plan.
 
 ## Setup
 
-1. Install the official CLI using the
-   [OpenCode installation guide](https://opencode.ai/docs/).
-2. Create or obtain an OpenCode API key from the
+Packaged KodBot builds include the official OpenCode CLI for the platform.
+There is no separate CLI install. A source checkout can stage the same binary
+with `pnpm prepare:opencode` (or `pnpm prepare:opencode --platform … --arch …`).
+
+1. Create or obtain an OpenCode API key from the
    [OpenCode console](https://opencode.ai/auth). One key covers OpenCode Go,
    Go Plus, and Zen — including the free models.
-3. Open KodBot Settings → Connections and save the key under **OpenCode
+2. Open KodBot Settings → Connections and save the key under **OpenCode
    API key**.
+
+The bundled binary is pinned to the KodBot release and updated with the app.
+It never self-updates: OpenCode changes ACP behaviour, permissions, and model
+catalogues between versions, and every update goes through KodBot's test cycle.
+A bot can still point at a different `opencode` binary in Engines → CLI if a
+team needs a specific build.
+
+The source of the bundled binary is the official npm platform package
+(`opencode-linux-x64-baseline`, `opencode-darwin-arm64`, …). Its MIT licence is
+kept in [`LICENSES/OpenCode-MIT.txt`](../LICENSES/OpenCode-MIT.txt) and copied
+beside the binary.
 
 The key is stored locally as write-only configuration. KodBot reports only
 whether it is configured, never the value. A key saved in KodBot is

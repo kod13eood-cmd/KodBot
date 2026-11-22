@@ -9,6 +9,7 @@ import { openBlankTerminal } from "./terminal-launch.mjs";
 import { startUpdater, registerUpdaterIpc } from "./updater.mjs";
 import { relaunchCommand } from "./relaunch.mjs";
 import { probeErrorMessage, probeHarness } from "./probe.mjs";
+import { resolveBundledOpenCode } from "./opencode-bundle.mjs";
 import capabilitiesModule from "./capabilities.cjs";
 
 const { desktopCapabilities } = capabilitiesModule;
@@ -283,13 +284,22 @@ function slog(line) {
 
 async function startServerOn(port) {
   const entry = path.join(process.resourcesPath, "server", "index.js");
-  slog(`fork ${entry} port=${port}`);
+  const bundledOpenCode = resolveBundledOpenCode({
+    isPackaged: app.isPackaged,
+    resourcesPath: process.resourcesPath,
+    appPath: app.getAppPath(),
+  });
+  // The bundled engine is first on the harness PATH; a user-installed
+  // OpenCode remains available only when no bundled copy was staged.
+  const extraPath = [bundledOpenCode, process.env.OC_EXTRA_PATH].filter(Boolean).join(path.delimiter);
+  slog(`fork ${entry} port=${port}${bundledOpenCode ? ` opencode=${bundledOpenCode}` : ""}`);
   const proc = utilityProcess.fork(entry, [], {
     env: {
       ...process.env,
       OC_STATIC_DIR: path.join(process.resourcesPath, "ui"),
       OC_PORT: String(port),
       OC_USER_DATA: app.getPath("userData"),
+      ...(extraPath ? { OC_EXTRA_PATH: extraPath } : {}),
       ...(secureCredentials.composioApiKey
         ? { COMPOSIO_API_KEY: secureCredentials.composioApiKey }
         : {}),
