@@ -14,10 +14,12 @@ import {
   readdirSync,
   rmSync,
   statSync,
+  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gunzipSync } from "node:zlib";
 
 import {
   OPENCODE_BUNDLED_VERSION,
@@ -38,11 +40,39 @@ const version = value("--version", OPENCODE_BUNDLED_VERSION);
 const out = resolve(ROOT, value("--out", "resources/opencode"));
 const binary = opencodeBinaryName(platform);
 const target = join(out, binary);
+// A staged directory is for one target only; a leftover binary from a prior
+// cross-build must not ride along in the installer.
+rmSync(join(out, binary === "opencode.exe" ? "opencode" : "opencode.exe"), { force: true });
 
 if (existsSync(target) && !force) {
   const size = Math.round(statSync(target).size / 1024 / 1024);
   console.log(`OpenCode ${version} already staged for ${platform}/${arch} (${size} MB) — use --force to refetch`);
   process.exit(0);
+}
+
+/** Read one exact file out of an npm tarball without a system tar binary.
+ * npm tarballs are gzip + POSIX ustar; the paths we need are short, so the
+ * 100-byte name field is enough and PAX/long-name records can be skipped. */
+function extractTarGzFile(tarball, wanted, destination) {
+  const tar = gunzipSync(readFileSync(tarball));
+  let offset = 0;
+  while (offset + 512 <= tar.length) {
+    const header = tar.subarray(offset, offset + 512);
+    if (header.every((byte) => byte === 0)) break;
+    const name = header.subarray(0, 100).toString("utf8").replace(/\0.*$/, "");
+    const prefix = header.subarray(345, 500).toString("utf8").replace(/\0.*$/, "");
+    const path = prefix ? `${prefix}/${name}` : name;
+    const sizeText = header.subarray(124, 136).toString("ascii").replace(/\0.*$/, "").trim();
+    const size = Number.parseInt(sizeText, 8) || 0;
+    const dataStart = offset + 512;
+    if (path === wanted) {
+      mkdirSync(dirname(destination), { recursive: true });
+      writeFileSync(destination, tar.subarray(dataStart, dataStart + size));
+      return;
+    }
+    offset = dataStart + Math.ceil(size / 512) * 512;
+  }
+  throw new Error(`The ${tarball} archive has no ${wanted}`);
 }
 
 const packageName = opencodePackageName(platform, arch);
@@ -56,21 +86,30 @@ try {
   });
   const tarball = readdirSync(scratch).find((entry) => entry.endsWith(".tgz"));
   if (!tarball) throw new Error(`npm pack produced no tarball for ${packageName}`);
-  execFileSync("tar", ["-xzf", join(scratch, tarball), "-C", scratch], { stdio: "inherit" });
 
-  const packageJson = JSON.parse(readFileSync(join(scratch, "package", "package.json"), "utf8"));
+  const scratchPackage = join(scratch, "package");
+  extractTarGzFile(join(scratch, tarball), "package/package.json", join(scratchPackage, "package.json"));
+  const packageJson = JSON.parse(readFileSync(join(scratchPackage, "package.json"), "utf8"));
   if (packageJson.version !== version) {
     throw new Error(`Expected OpenCode ${version}, npm pack produced ${packageJson.version}`);
   }
-  const source = join(scratch, "package", "bin", binary);
-  if (!existsSync(source)) throw new Error(`The ${packageName} tarball has no bin/${binary}`);
 
   mkdirSync(out, { recursive: true });
-  copyFileSync(source, target);
+  extractTarGzFile(join(scratch, tarball), `package/bin/${binary}`, target);
   chmodSync(target, 0o755);
   copyFileSync(join(ROOT, "LICENSES", "OpenCode-MIT.txt"), join(out, "LICENSE"));
   const size = Math.round(statSync(target).size / 1024 / 1024);
   console.log(`Staged OpenCode ${version} at ${target} (${size} MB)`);
+
+  // Only run the binary on its own platform. A cross-fetch for a Windows
+  // installer must not try to execute the .exe on Linux (and vice versa).
+  if (process.platform === platform) {
+    const reported = execFileSync(target, ["--version"], { encoding: "utf8" }).trim();
+    if (!reported.includes(version)) {
+      throw new Error(`Bundled OpenCode reported ${reported}, expected ${version}`);
+    }
+    console.log(`Verified ${reported}`);
+  }
 } finally {
   rmSync(scratch, { recursive: true, force: true });
 }
