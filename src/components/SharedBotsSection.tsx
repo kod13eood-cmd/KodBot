@@ -173,7 +173,7 @@ export function SharedBotsSection() {
                 <option value="">{t("Choose a bot…")}</option>
                 {candidates.map((bot) => (
                   <option key={bot.id} value={bot.id}>
-                    {bot.name}
+                    {bot.title ? `${bot.name} · ${bot.title}` : bot.name}
                   </option>
                 ))}
               </select>
