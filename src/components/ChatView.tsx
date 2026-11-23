@@ -17,11 +17,15 @@ import {
   FileCode2,
   Folder,
   Loader2,
+  MessageCircle,
   Monitor,
   Pencil,
+  PenLine,
   RefreshCw,
   Reply,
+  Search,
   Square,
+  Terminal,
   Webhook,
   X,
 } from "lucide-react";
@@ -42,7 +46,13 @@ import { EngineSetup } from "./EngineSetup";
 import { CrewAvatar } from "./Avatar";
 import { displayRole, stateForBot } from "@/lib/mascot";
 import { showWorkingDots } from "@/lib/turn-tail";
-import { latestProgress, progressLabel, shouldShowActivity } from "@/lib/chat-activity";
+import {
+  latestProgress,
+  latestUserPrompt,
+  progressAction,
+  shouldShowActivity,
+  type ProgressAction,
+} from "@/lib/chat-activity";
 import { ChatMarkdown } from "./ChatMarkdown";
 import { OptionCard } from "./OptionCard";
 import { ApprovalCard } from "./ApprovalCard";
@@ -747,17 +757,110 @@ function WorkingTimer({ since }: { since: number }) {
   return <span ref={ref} className="text-[12.5px] text-ink-secondary" />;
 }
 
-/** The calm view's single progress line: one human phrase and a timer, never
- * the raw tool stream or the model's reasoning. */
-function LiveStatus({ messages, since }: { messages: Message[]; since: number }) {
+const PROGRESS_META = {
+  thinking: { icon: Brain, label: "Thinking…" },
+  searching: { icon: Search, label: "Searching…" },
+  reading: { icon: BookOpen, label: "Reading…" },
+  writing: { icon: FileCode2, label: "Writing a file…" },
+  editing: { icon: Pencil, label: "Editing…" },
+  running: { icon: Terminal, label: "Running a command…" },
+  asking: { icon: MessageCircle, label: "Asking the team…" },
+  computer: { icon: Monitor, label: "Using the computer…" },
+  "writing-text": { icon: PenLine, label: "Writing…" },
+  working: { icon: Loader2, label: "Working…" },
+} satisfies Record<ProgressAction, { icon: typeof Brain; label: string }>;
+
+/** A one-shot delay for the moments between a settled sentence and the next
+ * tool call. The server ends a turn in a few frames; waiting briefly keeps
+ * the status from flashing on and off under every completed paragraph while
+ * still explaining a real pause in a longer turn. */
+function useSettledDelay(active: boolean, delay = 900): boolean {
+  const [elapsed, setElapsed] = useState(false);
+  useEffect(() => {
+    if (!active) {
+      setElapsed(false);
+      return;
+    }
+    const timer = setTimeout(() => setElapsed(true), delay);
+    return () => clearTimeout(timer);
+  }, [active, delay]);
+  return elapsed;
+}
+
+/** The calm view's single progress line: one human action, a small motion
+ * cue, and a timer — never the raw tool stream or the model's reasoning.
+ *
+ * It stays mounted for the whole busy turn, including after a sentence lands
+ * and while the model waits for its next tool, so the process never collapses
+ * into a lone blinking caret. Developer mode renders the full detail instead. */
+function LiveStatus({
+  messages,
+  since,
+  streaming,
+  reasoning,
+}: {
+  messages: Message[];
+  since: number;
+  streaming?: string;
+  reasoning?: string;
+}) {
   const { t } = useI18n();
-  const message = latestProgress(messages, since);
-  const label = progressLabel(message) ?? t("Working…");
+  const lastMessage = messages.at(-1);
+  const settledText = !streaming && lastMessage?.role === "bot" && lastMessage.kind === "text";
+  const showSettled = useSettledDelay(settledText);
+
+  // A streaming string is a live text block; if deltas stop, fall back to the
+  // latest tool/thinking beat. The tick re-evaluates that pause without
+  // committing the transcript (this subtree is tiny).
+  const lastDelta = useRef({ text: streaming ?? "", at: Date.now() });
+  useEffect(() => {
+    if ((streaming ?? "") !== lastDelta.current.text) {
+      lastDelta.current = { text: streaming ?? "", at: Date.now() };
+    }
+  }, [streaming]);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick((tick) => tick + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // An activity older than the last settled sentence describes work the bot
+  // has already moved past; showing it would label fresh text with a stale
+  // tool. Newer activity is the current beat.
+  let lastTextAt = since - 1;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.role === "bot" && message.kind === "text") {
+      lastTextAt = message.at;
+      break;
+    }
+  }
+  const latest = latestProgress(messages, since);
+  const activity = latest && latest.at > lastTextAt ? latest : undefined;
+  const writing = Boolean(streaming) && Date.now() - lastDelta.current.at < 1500;
+  const action = progressAction(activity, { writing, reasoning: Boolean(reasoning) });
+  const { icon: Icon, label } = PROGRESS_META[action];
+
+  if (settledText && !showSettled) return null;
+
   return (
-    <div className="flex justify-start">
-      <div className="flex max-w-[540px] items-center gap-2.5 rounded-2xl border border-hairline/30 bg-raised/70 px-4 py-2.5 text-[13px] text-ink-secondary">
-        <Loader2 size={13} className="shrink-0 animate-spin text-accent" />
-        <span className="min-w-0 truncate">{label}</span>
+    <div className="flex justify-start" role="status">
+      <div className="flex max-w-[560px] items-center gap-2 rounded-full border border-hairline/40 bg-raised/60 py-1.5 pl-1.5 pr-3 text-[13px] text-ink-secondary">
+        <span
+          key={action}
+          className="relative flex size-6 shrink-0 animate-pop-in items-center justify-center rounded-full bg-accent/15 text-accent"
+        >
+          <span aria-hidden className="absolute inset-0 animate-status-ping rounded-full border border-accent/40" />
+          <Icon size={13} className={action === "working" ? "animate-spin" : undefined} />
+        </span>
+        <span key={`${action}-label`} className="min-w-0 animate-pop-in truncate">
+          <span className="thinking-shimmer animate-shimmer">{t(label)}</span>
+        </span>
+        <span aria-hidden className="flex items-end gap-[3px] pb-px">
+          <span className="size-1 animate-bounce rounded-full bg-ink-secondary/70 [animation-delay:0ms]" />
+          <span className="size-1 animate-bounce rounded-full bg-ink-secondary/70 [animation-delay:150ms]" />
+          <span className="size-1 animate-bounce rounded-full bg-ink-secondary/70 [animation-delay:300ms]" />
+        </span>
         <span className="shrink-0 border-l border-hairline/30 pl-2">
           <WorkingTimer since={since} />
         </span>
@@ -975,10 +1078,7 @@ export function ChatView({ bot }: { bot: Bot }) {
     },
     [bot.id, dispatch],
   );
-  const lastUserMessage = useMemo(
-    () => [...messages].reverse().find((m) => m.role === "user" && m.kind === "text"),
-    [messages],
-  );
+  const lastUserMessage = useMemo(() => latestUserPrompt(messages), [messages]);
   // regenerate = fork the last user message with the same text — reuses the
   // existing branch machinery, so the old answer stays reachable via ‹ ›
   const regenerate = useCallback(() => {
@@ -1277,10 +1377,9 @@ export function ChatView({ bot }: { bot: Bot }) {
           {devMode && reasoning && bot.busy && (
             <ThinkingStrip text={reasoning} active={!streaming} defaultOpen />
           )}
-          {streaming ? (
-            <StreamingBubble text={streaming} />
-          ) : showWorkingDots(bot.busy, streaming, messages.at(-1)) ? (
-            devMode ? (
+          {streaming && <StreamingBubble text={streaming} />}
+          {devMode ? (
+            !streaming && showWorkingDots(bot.busy, streaming, messages.at(-1)) ? (
               <div className="flex justify-start">
                 <div className="flex items-center gap-2.5 rounded-2xl bg-raised px-4 py-3">
                   <span className="flex items-center gap-1.5">
@@ -1291,9 +1390,14 @@ export function ChatView({ bot }: { bot: Bot }) {
                   <WorkingTimer since={lastUserMessage?.at ?? Date.now()} />
                 </div>
               </div>
-            ) : (
-              <LiveStatus messages={messages} since={lastUserMessage?.at ?? Date.now()} />
-            )
+            ) : null
+          ) : bot.busy ? (
+            <LiveStatus
+              messages={messages}
+              since={lastUserMessage?.at ?? Date.now()}
+              streaming={streaming}
+              reasoning={reasoning}
+            />
           ) : null}
         </div>
       </div>

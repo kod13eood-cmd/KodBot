@@ -10,6 +10,7 @@ import { startUpdater, registerUpdaterIpc } from "./updater.mjs";
 import { relaunchCommand } from "./relaunch.mjs";
 import { probeErrorMessage, probeHarness } from "./probe.mjs";
 import { resolveBundledOpenCode } from "./opencode-bundle.mjs";
+import { connectionChoiceSaved, connectionRecord } from "./server-connection.mjs";
 import capabilitiesModule from "./capabilities.cjs";
 
 const { desktopCapabilities } = capabilitiesModule;
@@ -92,13 +93,12 @@ function readServerConnection() {
   return { mode: "local" };
 }
 
-/** True when the user or an earlier launch saved a valid local/remote choice.
- * First-run setup uses this so a fresh install gets the wizard once, while an
- * existing install is not asked again after it updates. */
+/** True when this install has an explicit, marked choice. First-run setup
+ * uses this so a fresh install and a pre-0.1.64 local file ask once, while a
+ * later update keeps the saved answer. */
 function serverConnectionChoiceSaved() {
   try {
-    const raw = JSON.parse(fs.readFileSync(SERVER_CONNECTION_FILE, "utf8"));
-    return raw?.mode === "local" || raw?.mode === "remote";
+    return connectionChoiceSaved(JSON.parse(fs.readFileSync(SERVER_CONNECTION_FILE, "utf8")));
   } catch {
     return false;
   }
@@ -107,7 +107,7 @@ function serverConnectionChoiceSaved() {
 function writeServerConnection(connection) {
   fs.mkdirSync(path.dirname(SERVER_CONNECTION_FILE), { recursive: true });
   const temporary = `${SERVER_CONNECTION_FILE}.${process.pid}.tmp`;
-  fs.writeFileSync(temporary, JSON.stringify(connection, null, 2), { mode: 0o600 });
+  fs.writeFileSync(temporary, JSON.stringify(connectionRecord(connection), null, 2), { mode: 0o600 });
   fs.renameSync(temporary, SERVER_CONNECTION_FILE);
 }
 

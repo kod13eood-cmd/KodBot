@@ -57,7 +57,7 @@ const fields = execFileSync(
 for (const expected of [
   "Package: kodbot",
   "Architecture: amd64",
-  "Maintainer: Milind Soni",
+  "Maintainer: Kod 13 Ltd",
   "Section: utils",
   "Priority: optional",
 ]) {

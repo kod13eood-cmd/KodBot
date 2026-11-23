@@ -2,6 +2,14 @@
 
 Dated, user-facing changes. Newest first.
 
+## 2026-11-23 — 0.1.64
+
+- **User mode** keeps one calm status line through the whole turn, not only before the first sentence. It names what the bot is doing — thinking, searching, reading, writing, editing, running a command, asking the team, using the computer, or writing a reply — with an animated action icon, a soft sheen, and a timer. When a sentence lands and the bot pauses for its next tool, the line changes to that next action instead of leaving only a blinking caret.
+- **Developer mode** still shows the full process: the extended reasoning, expanded by default, and every tool/action chip.
+- The queued-message panel stays above the composer in normal flow, collapsed to one line until opened, so it cannot cover the current reasoning or actions.
+- Windows installers now list **Kod 13 Ltd** as Publisher (previously a personal name). The Linux deb maintainer uses the same legal name. No `publisherName` is added to the unsigned build, so auto-update keeps working.
+- **Windows and Android app icons** now use the same mint K monogram as Linux. Android is **0.1.29** (versionCode 30) so installed phones are offered the update. A real uninstall now resets only the first-run Solo/Business routing, so a fresh install asks again; updates keep the saved choice.
+
 ## 2026-11-22 — Calm process view
 
 - The queued-message panel now sits **above the composer in normal flow** instead of floating over the chat. It is collapsed to one line by default and expands on demand, so it no longer hides the current thinking or tool activity. The transcript stays pinned to the latest row when the composer grows.

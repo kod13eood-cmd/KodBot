@@ -23,8 +23,8 @@ Last reviewed: **2026-11-12**.
 | GitHub remote | `git@github.com:kod13eood-cmd/KodBot.git` |
 | Gitea remote | `ssh://git@llm1:2222/deso/kodbot.git` |
 | Android release branch | `android-release` (APK-only branch) |
-| App version | `0.1.62` |
-| Android version | `0.1.28` / versionCode `29` |
+| App version | `0.1.64` |
+| Android version | `0.1.29` / versionCode `30` |
 
 There is also a stale remote checkout at `paperclipi7:~/Developer/OpenBot`;
 it is not the deployment source. The canonical source is the owner working
@@ -409,6 +409,33 @@ once; after that, releases update in place.
   `/api/usage/caps` verified. Release assets include the stable-signed Android
   0.1.28 APK.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.62>
+
+### Release 0.1.64 (2026-11-23)
+
+- Desktop 0.1.64; Android **0.1.29 / versionCode 30** (bumped so installed
+  phones are offered the new icon and UI).
+- Everyday mode keeps one calm process line through the whole turn: a small
+  animated action icon, the current action in plain language (thinking,
+  searching, reading, writing, editing, running a command, asking the team,
+  using the computer, writing a reply), and a timer. It survives a settled
+  sentence and changes to the next tool/thinking beat instead of leaving a bare
+  blinking caret. Developer mode still shows the full reasoning and every tool
+  chip.
+- The queued-prompt panel sits above the composer in normal flow, collapsed to
+  one line by default, so it no longer covers the chat or current activity.
+- Windows installers now show **Kod 13 Ltd** as Publisher. `package.json`
+  author.name feeds electron-builder's NSIS CompanyName/Publisher; the Linux
+  deb maintainer uses the same legal name. `win.publisherName` remains unset on
+  the unsigned build, so electron-updater still accepts updates.
+- Windows/Android app icons now use the same mint K monogram as Linux
+  (`build/icon.ico` and `build/icon.icns` were regenerated from
+  `build/icon-1024.png`; Android uses a vector adaptive icon).
+- First run: a real uninstall now removes only `server-connection.json`, so a
+  fresh install asks KodBot Solo vs Business again. Updates keep the choice.
+  A pre-0.1.64 local file without the new `onboarding` marker asks once.
+- UI deployed to `/opt/kodbot/ui`; the server bundle deployment waits for an
+  idle harness.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.64>
 
 ### Release 0.1.63 (2026-11-22)
 

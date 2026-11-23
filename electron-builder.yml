@@ -104,6 +104,9 @@ nsis:
   oneClick: true
   perMachine: false
   shortcutName: KodBot
+  # build/installer.nsh clears only the first-run server routing on a real
+  # uninstall, so a fresh install asks Solo/Business again while updates keep
+  # the saved choice. Bots, memory, and keys are never touched.
   # Versioned, like the .dmg. The README's /latest/download/ button needs a
   # STABLE filename, so ship a second copy named KodBot-setup.exe on the
   # release — the same trick as KodBot.dmg beside KodBot-${version}.dmg.
@@ -122,7 +125,7 @@ linux:
   executableName: kodbot
   synopsis: Your own team of AI bots, in a chat app
   description: A local-first chat app for running a team of AI agents.
-  maintainer: Milind Soni <46266943+milind-soni@users.noreply.github.com>
+  maintainer: Kod 13 Ltd <kod13.eood@gmail.com>
   vendor: KodBot
   syncDesktopName: true
   desktop:

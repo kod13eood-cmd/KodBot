@@ -203,15 +203,32 @@ arrive as a user message in that bot's chat and the in-app viewer closes.
 ### Queued prompts — Live
 
 Sending while a bot or room is busy no longer drops a stale bubble into the
-chat. The prompt waits in a floating queue above the composer, where it can be
-discarded, and it is sent one at a time as each turn finishes. The queue lives
-outside the chat, so switching bots or rooms does not lose it.
+chat. The prompt waits in a collapsed queue panel above the composer, in normal
+flow rather than floating over the transcript. It expands on demand, where each
+prompt can be sent now or discarded, and prompts go out one at a time as each
+turn finishes. The queue lives outside the chat, so switching bots or rooms
+does not lose it.
 
 **Send now** on a queued prompt joins the running turn when the engine supports
 mid-turn steering (ACP `_session/steering`, Codex `turn/steer`) — the bot can
 change course without stopping. Engines without it keep the message in the
 persistent steer-queue and run it at the next safe point, the end of the turn.
 Press **Enter on the focused queued card** or use its send button.
+
+### Process view — Live
+
+In everyday use the chat shows **one calm status line** while a bot works: a
+small animated icon, the current action in plain language (thinking, searching,
+reading, writing, editing, running a command, asking the team, using the
+computer, writing a reply), and a timer. It stays visible through a whole turn,
+including after a sentence lands and while the bot waits for its next tool, so
+the process never collapses into a bare blinking caret. Raw tool chips and the
+model's extended reasoning stay out of this view; handoffs, delegation replies,
+and errors remain.
+
+**Settings → General → Developer mode** shows the full process: every tool
+action chip and the extended reasoning, expanded by default while the turn
+runs.
 
 ### Developer mode — Live
 
@@ -228,6 +245,10 @@ The desktop app keeps a KodBot icon in the system tray with **Open KodBot** and
 pressing Alt no longer drops a File/Edit/View bar over the window.
 
 ### Window chrome — Live
+
+The same mint **K** app icon is used on Linux, Windows, macOS, and Android.
+Windows gets a multi-size `.ico` and Android an adaptive vector icon, both
+drawn from the Linux artwork rather than a separate logo.
 
 On Linux the desktop window is frameless: minimize, restore, and close float in
 the top-right corner over the app instead of sitting in a system title bar. The

@@ -7,6 +7,7 @@
   --animate-caret: caret-blink 1s step-end infinite;
   --animate-msg-in: msg-in 0.18s cubic-bezier(0.22, 1, 0.36, 1);
   --animate-shimmer: shimmer 2s linear infinite;
+  --animate-status-ping: status-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
 
   --color-app: #070707;
   --color-panel: #111111;
@@ -128,6 +129,11 @@ body {
   from { background-position: 200% 50%; }
   to { background-position: -200% 50%; }
 }
+/* calm status icon: a soft ring that expands and fades, never a hard blink */
+@keyframes status-ping {
+  0% { transform: scale(0.85); opacity: 0.55; }
+  70%, 100% { transform: scale(1.65); opacity: 0; }
+}
 @keyframes reduced-loader-pulse {
   0%, 100% { opacity: 0.45; }
   50% { opacity: 1; }
@@ -140,7 +146,7 @@ body {
   color: transparent;
 }
 @media (prefers-reduced-motion: reduce) {
-  .animate-caret, .animate-msg-in, .animate-shimmer { animation: none; }
+  .animate-caret, .animate-msg-in, .animate-shimmer, .animate-status-ping { animation: none; }
   .thinking-shimmer { background: none; color: var(--color-ink-secondary); }
   /* The drawer still moves, it just arrives instantly. */
   aside { transition: none; }
