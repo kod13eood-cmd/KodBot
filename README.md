@@ -64,7 +64,7 @@ You do need at least one agent CLI — that's where the intelligence actually co
 ## Get started in five minutes
 
 1. **Install the app.** Windows: run the installer (per-user, no admin rights). Linux: `chmod +x` the
-   AppImage, or `sudo apt install ./KodBot.deb`.
+   AppImage (any distro), or the Debian/Ubuntu package — asset `KodBot-0.1.63-amd64.deb`, or the always-latest `KodBot.deb`; install with `sudo apt install ./KodBot*.deb`.
    The Windows installer isn't code-signed yet, so SmartScreen shows *"unknown publisher"* → **More info → Run anyway**.
 2. **Make sure an agent CLI is installed and logged in.** If `claude` or `codex` already works in your
    terminal, you're done with this step.
