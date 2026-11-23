@@ -428,7 +428,11 @@ once; after that, releases update in place.
   Gemini/xAI/Kimi keys from the gateway process.
 - Backup scripts now include `~/.kodbot-shared` in the hot snapshot and the
   daily offsite archive.
+- Live UI, harness, and gateway deployed to `/opt/kodbot`; `/api/about`
+  reports 0.1.67.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.67>
+- Assets verified: Windows NSIS 192 MB, Linux AppImage 228 MB, .deb 196 MB,
+  Android 0.1.29 10.1 MB, both `latest.yml` feeds. Workflow run 45264239975.
 
 ### Release 0.1.66 (2026-11-23)
 
