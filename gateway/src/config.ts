@@ -10,6 +10,11 @@ export interface GatewayConfig {
   tenantsDir: string;
   /** The existing single-user state becomes the owner's tenant. */
   ownerDataDir: string;
+  /** Dedicated data directory for live shared conversations. */
+  sharedDataDir: string;
+  /** Organization OpenCode key. Never leaves the gateway host; injected only
+   * into the shared harness, not tenant harnesses. */
+  orgOpenCodeKey?: string;
   host: string;
   port: number;
   publicOrigin: string;
@@ -41,6 +46,9 @@ export function loadGatewayConfig(env: NodeJS.ProcessEnv = process.env): Gateway
   const ownerDataDir = resolve(
     env.OC_GATEWAY_OWNER_DATA_DIR?.trim() || join(homedir(), ".kodbot"),
   );
+  const sharedDataDir = resolve(
+    env.OC_GATEWAY_SHARED_DATA_DIR?.trim() || join(homedir(), ".kodbot-shared"),
+  );
   const port = Number(env.OC_GATEWAY_PORT || 8780);
   const publicOrigin = (env.OC_GATEWAY_PUBLIC_ORIGIN?.trim() || `http://localhost:${port}`).replace(/\/$/, "");
   const allowedHosts = new Set<string>();
@@ -57,6 +65,10 @@ export function loadGatewayConfig(env: NodeJS.ProcessEnv = process.env): Gateway
     dataDir,
     tenantsDir,
     ownerDataDir,
+    sharedDataDir,
+    ...(env.OC_ORG_OPENCODE_API_KEY?.trim()
+      ? { orgOpenCodeKey: env.OC_ORG_OPENCODE_API_KEY.trim() }
+      : {}),
     host: env.OC_GATEWAY_HOST?.trim() || "127.0.0.1",
     port,
     publicOrigin,

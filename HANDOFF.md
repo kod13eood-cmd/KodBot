@@ -23,7 +23,7 @@ Last reviewed: **2026-11-12**.
 | GitHub remote | `git@github.com:kod13eood-cmd/KodBot.git` |
 | Gitea remote | `ssh://git@llm1:2222/deso/kodbot.git` |
 | Android release branch | `android-release` (APK-only branch) |
-| App version | `0.1.66` |
+| App version | `0.1.67` |
 | Android version | `0.1.29` / versionCode `30` |
 
 There is also a stale remote checkout at `paperclipi7:~/Developer/OpenBot`;
@@ -409,6 +409,26 @@ once; after that, releases update in place.
   `/api/usage/caps` verified. Release assets include the stable-signed Android
   0.1.28 APK.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.62>
+
+### Release 0.1.67 (2026-11-23)
+
+- Desktop 0.1.67; Android stays **0.1.29 / versionCode 30**.
+- **Live shared conversations.** The owner publishes a bot with
+  `live: true`; the gateway creates a bot on a dedicated shared harness
+  (`~/.kodbot-shared`) and stores its `botId`/`threadId` in
+  `shared_bots`. Members read/post through
+  `/api/shared-bots/:id/messages`; the shared harness records the speaker on
+  the user message and in `usage-ledger.jsonl`. The owner sees
+  `GET /api/shared-bots/:id/usage` (tokens/cost by member).
+- **Organization key:** set `OC_ORG_OPENCODE_API_KEY` in
+  `~/.config/kodbot-gateway.env` and restart `kodbot-gateway.service`. The
+  gateway injects it only into the shared harness, never tenant harnesses.
+  Without it, the shared harness uses OpenCode's free models.
+- Tenant harnesses no longer inherit `OPENCODE_API_KEY`/OpenAI/Anthropic/
+  Gemini/xAI/Kimi keys from the gateway process.
+- Backup scripts now include `~/.kodbot-shared` in the hot snapshot and the
+  daily offsite archive.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.67>
 
 ### Release 0.1.66 (2026-11-23)
 

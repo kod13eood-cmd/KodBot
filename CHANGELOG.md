@@ -2,6 +2,13 @@
 
 Dated, user-facing changes. Newest first.
 
+## 2026-11-23 — 0.1.67
+
+- **KodBot Business — live shared conversations.** The owner can publish a bot as a **live shared conversation**. Every signed-in member sees and can use the same thread from **Settings → Shared bots → Open conversation**; messages are attributed by member and the bot keeps one history. Existing template copies stay independent.
+- Live shared bots run on a dedicated shared harness with its own data directory, not in a member's workspace. The organization OpenCode key is passed only to that harness (`OC_ORG_OPENCODE_API_KEY` in the gateway env file); it never reaches a member's tenant. Free OpenCode models work without a key.
+- **Usage by member:** the gateway records each shared turn's input/output tokens and estimated USD against the speaker. The owner sees the totals in the shared conversation panel. No payments or invoices are created.
+- Member harnesses no longer inherit the gateway's provider API keys.
+
 ## 2026-11-23 — 0.1.66
 
 - **Windows Solo first start:** the bundled OpenCode is added to the user PATH, so `opencode` works in a new cmd/PowerShell without a separate install. KodBot's sign-in command also points at the bundled executable, so it no longer depends on npm or PATH.

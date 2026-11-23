@@ -62,6 +62,17 @@ describe("conversation context", () => {
     expect(turn.text).toContain("which ones?");
   });
 
+  it("replays a shared conversation message with the member's name", () => {
+    const shared = message({
+      id: "m-shared",
+      role: "user",
+      kind: "text",
+      text: "what changed?",
+      speaker: { id: "u1", name: "Мария" },
+    });
+    expect(transcriptTurns([shared])).toEqual([{ role: "user", text: "Мария: what changed?" }]);
+  });
+
   it("attributes room lines to the member that spoke, pages included", () => {
     const context = roomContext(
       [

@@ -60,19 +60,28 @@ export interface PairingRecord {
 }
 
 /** A shared bot template. The gateway stores only the persona and core
- * memory; turns still run in each member's own harness with their own key. */
+ * memory; turns still run in each member's own harness with their own key.
+ * A live shared bot additionally points at a bot/thread on the dedicated
+ * shared harness, where every member talks to the same conversation. */
 export interface SharedBotRecord {
   id: string;
   name: string;
   title: string | null;
   description: string | null;
   memory: string;
+  live: boolean;
+  hostUserId: string | null;
+  botId: string | null;
+  threadId: string | null;
   createdBy: string | null;
   createdAt: number;
   updatedAt: number;
 }
 
-export type SharedBotSummary = Omit<SharedBotRecord, "memory" | "createdBy">;
+export type SharedBotSummary = Pick<
+  SharedBotRecord,
+  "id" | "name" | "title" | "description" | "live" | "createdAt" | "updatedAt"
+>;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
@@ -133,6 +142,10 @@ CREATE TABLE IF NOT EXISTS shared_bots (
   title TEXT,
   description TEXT,
   memory TEXT NOT NULL DEFAULT '',
+  live INTEGER NOT NULL DEFAULT 0,
+  host_user_id TEXT,
+  bot_id TEXT,
+  thread_id TEXT,
   created_by TEXT,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
@@ -151,6 +164,19 @@ export class GatewayStore {
     this.db.exec("PRAGMA foreign_keys = ON");
     this.db.exec("PRAGMA busy_timeout = 5000");
     this.db.exec(SCHEMA);
+    // 0.1.66 and earlier created shared_bots without the live-conversation
+    // pointers. Add them in place; existing templates stay independent.
+    const columns = new Set(
+      (this.db.prepare("PRAGMA table_info(shared_bots)").all() as Array<{ name: string }>).map((row) => row.name),
+    );
+    for (const [name, type] of [
+      ["live", "INTEGER NOT NULL DEFAULT 0"],
+      ["host_user_id", "TEXT"],
+      ["bot_id", "TEXT"],
+      ["thread_id", "TEXT"],
+    ] as const) {
+      if (!columns.has(name)) this.db.exec(`ALTER TABLE shared_bots ADD COLUMN ${name} ${type}`);
+    }
     this.pruneExpired(Date.now());
     // Password hashes, session/device digests, invites. Keep the database and
     // its WAL sidecars owner-only like the rest of the KodBot secrets.
@@ -389,13 +415,14 @@ export class GatewayStore {
   listSharedBots(): SharedBotSummary[] {
     return (this.db
       .prepare(
-        "SELECT id, name, title, description, created_at, updated_at FROM shared_bots ORDER BY updated_at DESC LIMIT 100",
+        "SELECT id, name, title, description, live, created_at, updated_at FROM shared_bots ORDER BY updated_at DESC LIMIT 100",
       )
       .all() as any[]).map((row) => ({
       id: row.id,
       name: row.name,
       title: row.title ?? null,
       description: row.description ?? null,
+      live: Number(row.live) === 1,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }));
@@ -410,6 +437,10 @@ export class GatewayStore {
       title: row.title ?? null,
       description: row.description ?? null,
       memory: row.memory ?? "",
+      live: Number(row.live) === 1,
+      hostUserId: row.host_user_id ?? null,
+      botId: row.bot_id ?? null,
+      threadId: row.thread_id ?? null,
       createdBy: row.created_by ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -422,13 +453,17 @@ export class GatewayStore {
     title?: string | null;
     description?: string | null;
     memory?: string;
+    live?: boolean;
+    hostUserId?: string | null;
+    botId?: string | null;
+    threadId?: string | null;
     createdBy?: string | null;
     now?: number;
   }): SharedBotRecord {
     const now = input.now ?? Date.now();
     this.db
       .prepare(
-        "INSERT INTO shared_bots (id, name, title, description, memory, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO shared_bots (id, name, title, description, memory, live, host_user_id, bot_id, thread_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
       .run(
         input.id,
@@ -436,6 +471,10 @@ export class GatewayStore {
         input.title || null,
         input.description || null,
         input.memory ?? "",
+        input.live ? 1 : 0,
+        input.hostUserId ?? null,
+        input.botId ?? null,
+        input.threadId ?? null,
         input.createdBy ?? null,
         now,
         now,

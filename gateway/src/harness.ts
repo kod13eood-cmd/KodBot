@@ -36,6 +36,34 @@ export class HarnessManager {
 
   constructor(private readonly config: GatewayConfig) {}
 
+  /** The dedicated harness behind live shared conversations. It has its own
+   * data directory and, when configured, the organization OpenCode key. It
+   * never receives a member's private key or data. */
+  async ensureShared(): Promise<Harness> {
+    const key = "__shared__";
+    const existing = this.running.get(key);
+    if (existing && (!existing.managed || existing.child?.exitCode === null)) return existing;
+    const inFlight = this.pending.get(key);
+    if (inFlight) return inFlight;
+    const sharedUser: UserRecord = {
+      id: key,
+      email: "shared@kodbot.local",
+      passwordHash: "",
+      role: "member",
+      dataDir: this.config.sharedDataDir,
+      createdAt: 0,
+      disabledAt: null,
+    };
+    const extraEnv = this.config.orgOpenCodeKey
+      ? { OPENCODE_API_KEY: this.config.orgOpenCodeKey }
+      : {};
+    const promise = this.start(sharedUser, extraEnv).finally(() => {
+      if (this.pending.get(key) === promise) this.pending.delete(key);
+    });
+    this.pending.set(key, promise);
+    return promise;
+  }
+
   async ensure(user: UserRecord): Promise<Harness> {
     if (user.role === "owner" && this.config.ownerHarnessPort > 0) {
       const existing = this.running.get(user.id);
@@ -63,7 +91,7 @@ export class HarnessManager {
     return promise;
   }
 
-  private async start(user: UserRecord): Promise<Harness> {
+  private async start(user: UserRecord, extraEnv: NodeJS.ProcessEnv = {}): Promise<Harness> {
     if (!existsSync(this.config.serverBundle)) {
       throw new Error(`harness bundle not found: ${this.config.serverBundle}`);
     }
@@ -77,6 +105,21 @@ export class HarnessManager {
     const env: NodeJS.ProcessEnv = { ...process.env };
     for (const key of Object.keys(env)) {
       if (key.startsWith("OC_GATEWAY_")) delete env[key];
+    }
+    // Provider credentials in the gateway process belong to the gateway
+    // (owner/org). Never leak them into a member's tenant. The shared harness
+    // gets the organization key explicitly through extraEnv below.
+    for (const key of [
+      "OPENCODE_API_KEY",
+      "OPENAI_API_KEY",
+      "ANTHROPIC_API_KEY",
+      "GEMINI_API_KEY",
+      "GOOGLE_API_KEY",
+      "XAI_API_KEY",
+      "KIMI_API_KEY",
+      "MOONSHOT_API_KEY",
+    ]) {
+      delete env[key];
     }
     delete env.OC_DATA_DIR;
     delete env.OC_PORT;
@@ -97,6 +140,7 @@ export class HarnessManager {
       delete env.OC_COMPOSIO_BROKER_URL;
       delete env.OC_COMPOSIO_BROKER_TOKEN;
     }
+    Object.assign(env, extraEnv);
 
     const child = spawn(process.execPath, [this.config.serverBundle], {
       env,

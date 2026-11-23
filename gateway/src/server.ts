@@ -174,6 +174,29 @@ function adminPassword(): string {
   return `KodBot-${randomBytes(5).toString("hex")}!`;
 }
 
+/** Call the dedicated shared-conversation harness on loopback. The gateway is
+ * the only caller; no member cookie or key crosses this boundary. */
+async function sharedHarnessCall(
+  harnesses: HarnessManager | undefined,
+  path: string,
+  init: RequestInit = {},
+  timeoutMs = 30_000,
+): Promise<{ status: number; body: any }> {
+  if (!harnesses) throw new Error("shared harness is not available");
+  const harness = await harnesses.ensureShared();
+  const response = await fetch(`http://127.0.0.1:${harness.port}${path}`, {
+    ...init,
+    headers: {
+      accept: "application/json",
+      ...(init.body ? { "content-type": "application/json" } : {}),
+      ...(init.headers ?? {}),
+    },
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  const body = await response.json().catch(() => ({}));
+  return { status: response.status, body };
+}
+
 export function createGatewayServer({ config, store, auth, harnesses, serveStatic = true }: GatewayDeps): Server {
   return createServer(async (req, res) => {
     const method = req.method ?? "GET";
@@ -329,6 +352,9 @@ export function createGatewayServer({ config, store, auth, harnesses, serveStati
       // Owner-published shared bot templates. Only the persona and the
       // redacted core memory are stored; turns still run in each member's
       // harness with their own key, so the gateway never executes a bot.
+      if (method === "GET" && path === "/api/admin/shared-bots/settings") {
+        return json(res, 200, { orgKeyConfigured: Boolean(config.orgOpenCodeKey) });
+      }
       if (method === "POST" && path === "/api/admin/shared-bots") {
         const body = bodyObject(req, await readBody(req, 320 * 1024));
         const name = String(body.name ?? "").trim();
@@ -342,12 +368,54 @@ export function createGatewayServer({ config, store, auth, harnesses, serveStati
         if (Buffer.byteLength(memory, "utf8") > 256 * 1024) {
           return json(res, 400, { error: "memory is too large" });
         }
+        const live = String(body.live ?? "") === "true";
+        let botId: string | null = null;
+        let threadId: string | null = null;
+        if (live) {
+          try {
+            const made = await sharedHarnessCall(harnesses, "/api/bots", {
+              method: "POST",
+              body: JSON.stringify({ seedMessages: false }),
+            });
+            if (made.status !== 201 || !made.body?.bot?.id) {
+              return json(res, 502, { error: made.body?.error || "the shared harness could not create a bot" });
+            }
+            botId = String(made.body.bot.id);
+            threadId = String(made.body.bot.threadId);
+            const patched = await sharedHarnessCall(harnesses, `/api/bots/${encodeURIComponent(botId)}`, {
+              method: "PATCH",
+              body: JSON.stringify({ name, title, description }),
+            });
+            if (patched.status !== 200) {
+              throw new Error(patched.body?.error || "the shared harness could not update the bot");
+            }
+            if (memory.trim()) {
+              const saved = await sharedHarnessCall(harnesses, `/api/bots/${encodeURIComponent(botId)}/memory`, {
+                method: "PUT",
+                body: JSON.stringify({ text: memory }),
+              });
+              if (saved.status !== 200) throw new Error(saved.body?.error || "the shared harness could not save memory");
+            }
+          } catch (error) {
+            if (botId) {
+              await sharedHarnessCall(harnesses, `/api/bots/${encodeURIComponent(botId)}`, { method: "DELETE" }).catch(
+                () => undefined,
+              );
+            }
+            return json(res, 502, {
+              error: `could not create the live shared bot: ${error instanceof Error ? error.message : String(error)}`,
+            });
+          }
+        }
         const created = store.createSharedBot({
           id: randomUUID(),
           name,
           title: title || null,
           description: description || null,
           memory,
+          live,
+          botId,
+          threadId,
           createdBy: ownerOf(req, auth)?.id ?? null,
         });
         return json(res, 201, {
@@ -356,6 +424,7 @@ export function createGatewayServer({ config, store, auth, harnesses, serveStati
             name: created.name,
             title: created.title,
             description: created.description,
+            live: created.live,
             createdAt: created.createdAt,
             updatedAt: created.updatedAt,
           },
@@ -364,7 +433,25 @@ export function createGatewayServer({ config, store, auth, harnesses, serveStati
 
       const adminSharedMatch = path.match(/^\/api\/admin\/shared-bots\/([\w-]+)$/);
       if (adminSharedMatch && method === "DELETE") {
-        if (!store.deleteSharedBot(adminSharedMatch[1])) return json(res, 404, { error: "no such shared bot" });
+        const template = store.getSharedBot(adminSharedMatch[1]);
+        if (!template) return json(res, 404, { error: "no such shared bot" });
+        if (template.live && template.botId) {
+          try {
+            const removed = await sharedHarnessCall(
+              harnesses,
+              `/api/bots/${encodeURIComponent(template.botId)}`,
+              { method: "DELETE" },
+            );
+            if (removed.status >= 500) {
+              return json(res, 502, { error: removed.body?.error || "the shared harness could not remove the bot" });
+            }
+          } catch (error) {
+            return json(res, 502, {
+              error: `could not remove the shared bot: ${error instanceof Error ? error.message : String(error)}`,
+            });
+          }
+        }
+        store.deleteSharedBot(adminSharedMatch[1]);
         return json(res, 200, { ok: true });
       }
 
@@ -418,10 +505,82 @@ export function createGatewayServer({ config, store, auth, harnesses, serveStati
             title: bot.title,
             description: bot.description,
             memory: bot.memory,
+            live: bot.live,
             createdAt: bot.createdAt,
             updatedAt: bot.updatedAt,
           },
         });
+      }
+
+      // Live shared conversation. Every signed-in member may read and post;
+      // only the owner may inspect the per-speaker usage totals. The shared
+      // harness holds the transcript and the organization credential.
+      const liveSharedMatch = path.match(/^\/api\/shared-bots\/([\w-]+)\/(messages|usage)$/);
+      if (liveSharedMatch) {
+        const current = auth.session(sessionToken(req));
+        if (!current) return json(res, 401, { error: "not signed in", login: "/login" });
+        const template = store.getSharedBot(liveSharedMatch[1]);
+        if (!template?.live || !template.botId || !template.threadId) {
+          return json(res, 404, { error: "no such live shared bot" });
+        }
+        const action = liveSharedMatch[2];
+        if (action === "usage") {
+          if (current.user.role !== "owner") return json(res, 403, { error: "owner access required" });
+          try {
+            const usage = await sharedHarnessCall(
+              harnesses,
+              `/api/shared-usage?threadId=${encodeURIComponent(template.threadId)}`,
+              {},
+              10_000,
+            );
+            return json(res, usage.status, usage.body);
+          } catch (error) {
+            return json(res, 502, {
+              error: `shared usage unavailable: ${error instanceof Error ? error.message : String(error)}`,
+            });
+          }
+        }
+        if (method === "GET") {
+          const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 80), 1), 200);
+          try {
+            const page = await sharedHarnessCall(
+              harnesses,
+              `/api/threads/${encodeURIComponent(template.threadId)}/messages?limit=${limit}`,
+              {},
+              10_000,
+            );
+            return json(res, page.status, { ...page.body, live: true, name: template.name });
+          } catch (error) {
+            return json(res, 502, {
+              error: `shared conversation unavailable: ${error instanceof Error ? error.message : String(error)}`,
+            });
+          }
+        }
+        if (method === "POST") {
+          const body = bodyObject(req, await readBody(req, 64 * 1024));
+          const text = String(body.text ?? "").trim();
+          if (!text) return json(res, 400, { error: "text required" });
+          try {
+            const sent = await sharedHarnessCall(
+              harnesses,
+              `/api/bots/${encodeURIComponent(template.botId)}/shared-messages`,
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  text,
+                  speakerId: current.user.id,
+                  speakerName: current.user.email,
+                  sharedBotId: template.id,
+                }),
+              },
+            );
+            return json(res, sent.status, sent.body);
+          } catch (error) {
+            return json(res, 502, {
+              error: `shared conversation unavailable: ${error instanceof Error ? error.message : String(error)}`,
+            });
+          }
+        }
       }
 
       if (path.startsWith("/api/admin/")) {

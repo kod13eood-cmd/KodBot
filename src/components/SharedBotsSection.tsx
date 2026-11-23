@@ -3,17 +3,19 @@
 // into their own workspace. Turns run there with that member's key and quota,
 // so the gateway never executes a bot and per-speaker billing stays natural.
 import { useEffect, useState } from "react";
-import { Download, Share2, Trash2, Upload } from "lucide-react";
+import { Download, MessagesSquare, Share2, Trash2, Upload } from "lucide-react";
 
 import { api, useStore } from "@/state/store";
 import { useI18n } from "@/lib/i18n";
 import { Card } from "./SettingsPrimitives";
+import { SharedBotChat } from "./SharedBotChat";
 
 interface SharedBotSummary {
   id: string;
   name: string;
   title: string | null;
   description: string | null;
+  live?: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -35,6 +37,9 @@ export function SharedBotsSection() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedBotId, setSelectedBotId] = useState("");
+  const [livePublish, setLivePublish] = useState(false);
+  const [openChat, setOpenChat] = useState<SharedBotSummary | null>(null);
+  const [orgKeyConfigured, setOrgKeyConfigured] = useState<boolean | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = async () => {
@@ -43,6 +48,10 @@ export function SharedBotsSection() {
     try {
       const body = await api("/api/shared-bots");
       setTemplates(body.bots ?? []);
+      if (isOwner) {
+        const settings = await api("/api/admin/shared-bots/settings");
+        setOrgKeyConfigured(Boolean(settings.orgKeyConfigured));
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -66,13 +75,16 @@ export function SharedBotsSection() {
       const template = await api(`/api/bots/${selectedBotId}/shared-template`);
       await api("/api/admin/shared-bots", {
         method: "POST",
-        body: JSON.stringify(template.bot),
+        body: JSON.stringify({ ...template.bot, live: livePublish }),
       });
       setNotice(
-        t("Published {name}. Every member of the organization can install a copy.", {
-          name: template.bot.name,
-        }),
+        livePublish
+          ? t("Published {name} as a live shared conversation.", { name: template.bot.name })
+          : t("Published {name}. Every member of the organization can install a copy.", {
+              name: template.bot.name,
+            }),
       );
+      setLivePublish(false);
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -84,9 +96,13 @@ export function SharedBotsSection() {
   const remove = async (template: SharedBotSummary) => {
     if (
       !window.confirm(
-        t("Remove {name} from shared bots? Copies already installed stay in their workspaces.", {
-          name: template.name,
-        }),
+        template.live
+          ? t("Remove {name}? Its shared conversation and usage history will be deleted.", {
+              name: template.name,
+            })
+          : t("Remove {name} from shared bots? Copies already installed stay in their workspaces.", {
+              name: template.name,
+            }),
       )
     ) {
       return;
@@ -191,20 +207,48 @@ export function SharedBotsSection() {
                 {t("Only the name, title, description, and MEMORY.md are shared. Common secrets are redacted; review the memory before publishing.")}
               </span>
             </div>
+            <label className="flex items-start gap-2 rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[12px] leading-relaxed text-ink-secondary">
+              <input
+                type="checkbox"
+                checked={livePublish}
+                onChange={(event) => setLivePublish(event.target.checked)}
+                disabled={busy !== null}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-medium text-ink">{t("Live shared conversation")}</span>
+                <span className="block">
+                  {t("Everyone talks to one bot on the organization server. The organization model key is used; usage is attributed to each member.")}
+                </span>
+              </span>
+            </label>
+            {orgKeyConfigured !== null && (
+              <div
+                className={`rounded-lg px-3 py-2 text-[11.5px] leading-relaxed ${
+                  orgKeyConfigured ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
+                }`}
+              >
+                {orgKeyConfigured
+                  ? t("The organization OpenCode key is configured for live shared bots.")
+                  : t(
+                      "No organization OpenCode key is configured yet; live bots use free OpenCode models. Add OC_ORG_OPENCODE_API_KEY to the gateway env file and restart the gateway for paid models.",
+                    )}
+              </div>
+            )}
             <div className="text-[11.5px] leading-relaxed text-ink-secondary">
-              {t("Every member of the organization can see and install a shared bot.")}
+              {t("Every member of the organization can see a shared bot. Install copies stay independent; live conversations are shared.")}
             </div>
           </div>
         ) : (
           <div className="mt-3 text-[12px] leading-relaxed text-ink-secondary">
-            {t("Install a shared bot to get your own copy in this workspace.")}
+            {t("Install a shared bot, or open a live shared conversation with the organization.")}
           </div>
         )}
       </Card>
 
       <Card
         title={t("Published bots")}
-        subtitle={t("A published bot stores the persona and redacted core memory. Installed copies are independent.")}
+        subtitle={t("Templates install a private copy. Live bots keep one shared conversation on the organization server.")}
       >
         {loading ? (
           <div className="text-[13px] text-ink-secondary">{t("Loading…")}</div>
@@ -221,6 +265,11 @@ export function SharedBotsSection() {
                     <div className="flex items-center gap-1.5">
                       <Share2 size={13} className="shrink-0 text-accent" />
                       <span className="truncate text-[13.5px] font-medium text-ink">{template.name}</span>
+                      {template.live && (
+                        <span className="shrink-0 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9.5px] font-medium text-accent">
+                          {t("Live")}
+                        </span>
+                      )}
                     </div>
                     {template.title && (
                       <div className="mt-0.5 text-[11.5px] text-ink-secondary">{template.title}</div>
@@ -235,14 +284,24 @@ export function SharedBotsSection() {
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-1.5">
-                    <button
-                      onClick={() => void install(template)}
-                      disabled={busy !== null}
-                      className="flex items-center gap-1 rounded-md bg-raised px-2 py-1 text-[11.5px] text-ink hover:bg-raised-hover disabled:opacity-50"
-                    >
-                      <Download size={12} />
-                      {busy === `install:${template.id}` ? t("Adding…") : t("Add to my workspace")}
-                    </button>
+                    {template.live ? (
+                      <button
+                        onClick={() => setOpenChat(template)}
+                        className="flex items-center gap-1 rounded-md bg-raised px-2 py-1 text-[11.5px] text-ink hover:bg-raised-hover"
+                      >
+                        <MessagesSquare size={12} />
+                        {t("Open conversation")}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => void install(template)}
+                        disabled={busy !== null}
+                        className="flex items-center gap-1 rounded-md bg-raised px-2 py-1 text-[11.5px] text-ink hover:bg-raised-hover disabled:opacity-50"
+                      >
+                        <Download size={12} />
+                        {busy === `install:${template.id}` ? t("Adding…") : t("Add to my workspace")}
+                      </button>
+                    )}
                     {isOwner && (
                       <button
                         onClick={() => void remove(template)}
@@ -261,6 +320,13 @@ export function SharedBotsSection() {
           </div>
         )}
       </Card>
+      {openChat && (
+        <SharedBotChat
+          bot={openChat}
+          canSeeUsage={isOwner}
+          onClose={() => setOpenChat(null)}
+        />
+      )}
     </div>
   );
 }

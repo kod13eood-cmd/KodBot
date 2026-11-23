@@ -6,6 +6,7 @@ import { DATA_DIR } from "./config.ts";
 import {
   USAGE_LEDGER_FILE,
   dayStart,
+  loadUsage,
   monthStart,
   recordUsage,
   usageCapError,
@@ -44,5 +45,30 @@ describe("usage ledger and hard caps", () => {
   it("does not count another bot's spend against a per-bot cap", () => {
     recordUsage({ at: now, botId: "bot-b", input: 2_000_000, output: 0, costUsd: 10 });
     expect(usageCapError({ botId: "bot-a", caps: { dailyTokenCap: 1_000_000, dailyCostCapUsd: 1 }, now })).toBeNull();
+  });
+
+  it("keeps shared-conversation speaker attribution on disk", () => {
+    recordUsage({
+      at: now,
+      botId: "bot-a",
+      threadId: "shared-thread",
+      speakerId: "user-1",
+      speakerName: "Мария",
+      sharedBotId: "shared-1",
+      input: 120,
+      output: 30,
+      costUsd: 0.02,
+    });
+    expect(loadUsage()).toContainEqual({
+      at: now,
+      botId: "bot-a",
+      threadId: "shared-thread",
+      speakerId: "user-1",
+      speakerName: "Мария",
+      sharedBotId: "shared-1",
+      input: 120,
+      output: 30,
+      costUsd: 0.02,
+    });
   });
 });

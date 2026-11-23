@@ -105,6 +105,8 @@ export interface Message {
   from?: { botId: string; name: string; color: CrewColor };
   /** emoji reactions; by = "user" or a member botId. */
   reactions?: Array<{ emoji: string; by: string }>;
+  /** shared live conversations: the member who sent this user message. */
+  speaker?: { id: string; name: string };
   /** comm chips: "Messaged @X" linking to the bot⇄bot channel. */
   comm?: { groupId: string; withBotId: string; withName: string; withColor: CrewColor };
   /** sent while the bot was mid-turn; auto-sends when the turn settles.

@@ -9,6 +9,10 @@ export interface UsageRecord {
   at: number;
   botId: string;
   threadId?: string;
+  /** shared live conversations: who spoke this turn. */
+  speakerId?: string;
+  speakerName?: string;
+  sharedBotId?: string;
   input: number;
   output: number;
   costUsd: number | null;
@@ -31,6 +35,9 @@ export function recordUsage(record: Omit<UsageRecord, "at"> & { at?: number }): 
     at: record.at ?? Date.now(),
     botId: record.botId,
     ...(record.threadId ? { threadId: record.threadId } : {}),
+    ...(record.speakerId ? { speakerId: record.speakerId } : {}),
+    ...(record.speakerName ? { speakerName: record.speakerName } : {}),
+    ...(record.sharedBotId ? { sharedBotId: record.sharedBotId } : {}),
     input: clean(record.input),
     output: clean(record.output),
     costUsd:
@@ -56,6 +63,9 @@ export function loadUsage(): UsageRecord[] {
             at: parsed.at,
             botId: parsed.botId,
             ...(parsed.threadId ? { threadId: parsed.threadId } : {}),
+            ...(parsed.speakerId ? { speakerId: parsed.speakerId } : {}),
+            ...(parsed.speakerName ? { speakerName: parsed.speakerName } : {}),
+            ...(parsed.sharedBotId ? { sharedBotId: parsed.sharedBotId } : {}),
             input: clean(parsed.input),
             output: clean(parsed.output),
             costUsd:

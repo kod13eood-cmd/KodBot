@@ -20,7 +20,10 @@ function replays(m: Message): m is Message & { text: string } {
 /** A user reply carries the quote in front of its own words, for every
  * driver — transcript replay and the live turn alike. */
 function replayText(m: Message & { text: string }): string {
-  return m.role === "user" && m.replyTo ? `${replyContext(m.replyTo)}\n\n${m.text}` : m.text;
+  const speaker = m.role === "user" && m.speaker ? `${m.speaker.name}: ` : "";
+  return m.role === "user" && m.replyTo
+    ? `${speaker}${replyContext(m.replyTo)}\n\n${m.text}`
+    : `${speaker}${m.text}`;
 }
 
 /** The transcript for an API-backed driver: settled turns on the active

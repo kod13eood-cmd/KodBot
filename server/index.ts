@@ -20,7 +20,7 @@ import { routineOffer } from "./routine-offer.ts";
 import { loadKnowledge, saveBook } from "./knowledge.ts";
 import { knowledgePrompt } from "./knowledge-context.ts";
 import { syncKnowledgeSnapshot } from "./knowledge-files.ts";
-import { recordUsage, usageCapError, usageSummary } from "./usage-ledger.ts";
+import { loadUsage, recordUsage, usageCapError, usageSummary } from "./usage-ledger.ts";
 import { computerScopeId, resolveComputerDestination } from "./computer-selection.ts";
 import {
   isViewerPath,
@@ -836,6 +836,10 @@ const groupSpeakers = new Map<string, { botId: string; name: string; color: stri
 // into the task's tally when the turn settles.
 const turnUsage = new Map<string, { input: number; output: number }>();
 
+/** Shared live conversations: the member whose turn is running on this
+ * thread, folded into the usage ledger when it settles. */
+const turnSpeakers = new Map<string, { speakerId: string; speakerName: string; sharedBotId?: string }>();
+
 // Bounded per active turn. OpenHands uses a bounded recent-event scan for
 // the same class of stuck-loop detection; retaining an unlimited set of
 // unique arguments would let one pathological turn grow the server forever.
@@ -1288,6 +1292,8 @@ bus.subscribe((event: RuntimeEvent) => {
       lastReply.delete(event.threadId);
       const lastReported = turnUsage.get(event.threadId);
       turnUsage.delete(event.threadId);
+      const speakerUsage = turnSpeakers.get(event.threadId);
+      turnSpeakers.delete(event.threadId);
       const facts = turnFacts.get(event.threadId) ?? { tools: 0, denied: false };
       turnFacts.delete(event.threadId);
       // group turns run on the room's thread — the speaking bot's task
@@ -1303,6 +1309,13 @@ bus.subscribe((event: RuntimeEvent) => {
           recordUsage({
             botId: bot.id,
             threadId: event.threadId,
+            ...(speakerUsage
+              ? {
+                  speakerId: speakerUsage.speakerId,
+                  speakerName: speakerUsage.speakerName,
+                  ...(speakerUsage.sharedBotId ? { sharedBotId: speakerUsage.sharedBotId } : {}),
+                }
+              : {}),
             input: tokens?.input ?? 0,
             output: tokens?.output ?? 0,
             costUsd: event.cost ?? null,
@@ -1756,6 +1769,9 @@ async function startTurn(
     /** Extra system-prompt context that never becomes a user message. Used
      * by the delegation collector; peer text stays data, not instructions. */
     systemNote?: string;
+    /** Shared live conversations: attribute this turn's spend to a member. */
+    speaker?: { id: string; name: string };
+    sharedBotId?: string;
     onDispatchError?: (message: string) => void;
   },
 ) {
@@ -1798,11 +1814,21 @@ async function startTurn(
           kind: "text",
           text,
           ...(opts?.replyTo ? { replyTo: opts.replyTo } : {}),
+          ...(opts?.speaker ? { speaker: opts.speaker } : {}),
         });
   }
   store.setActivity(bot.id, "working");
   store.patchBot(bot.id, { unread: false });
   turnUsage.delete(threadId);
+  if (opts?.speaker) {
+    turnSpeakers.set(threadId, {
+      speakerId: opts.speaker.id,
+      speakerName: opts.speaker.name,
+      ...(opts.sharedBotId ? { sharedBotId: opts.sharedBotId } : {}),
+    });
+  } else {
+    turnSpeakers.delete(threadId);
+  }
 
   // Auto mode is a per-turn decision. It persists the routed picker value so
   // the UI and usage receipts show the model that actually ran, then routes
@@ -1903,14 +1929,18 @@ async function startTurn(
       return { instance, instanceId, model, effort };
     } catch (error) {
       store.setActivity(bot.id, "idle");
+      turnSpeakers.delete(threadId);
       throw error;
     }
   })();
   const { instance, instanceId, model, effort } = setup;
 
   // The current reply's quote reaches the driver in the turn text; earlier
-  // replies reach it through the transcript (conversation-context).
-  const driverText = opts?.replyTo ? `${replyContext(opts.replyTo)}\n\n${text}` : text;
+  // replies reach it through the transcript (conversation-context). Shared
+  // live conversations prefix the speaker so a single bot thread with many
+  // members stays legible.
+  const speakerText = opts?.speaker ? `${opts.speaker.name}: ${text}` : text;
+  const driverText = opts?.replyTo ? `${replyContext(opts.replyTo)}\n\n${speakerText}` : speakerText;
 
   // transcript for API-backed drivers: settled text turns and page
   // announcements on the ACTIVE branch only — abandoned forks never reach the
@@ -4017,7 +4047,13 @@ const server = createServer(async (req, res) => {
       // keep the historical English pool rather than becoming a free-form
       // name source.
       const nameLanguage = body?.nameLanguage === "bulgarian" ? "bulgarian" : "english";
-      const bot = store.createBot({}, { nameLanguage });
+      const bot = store.createBot(
+        {},
+        {
+          nameLanguage,
+          ...(body?.seedMessages === false ? { seedMessages: false } : {}),
+        },
+      );
       store.patchBot(bot.id, { modelSelection: await defaultSelection() });
       return json(res, 201, {
         bot: {
@@ -4562,6 +4598,29 @@ const server = createServer(async (req, res) => {
       return json(res, 202, { ok: true });
     }
 
+    // Shared live conversation: the gateway has already authenticated the
+    // member and posts here with their identity. The turn runs on this
+    // harness (and its organization credential); the speaker is carried into
+    // the transcript and the usage ledger so spend is attributable.
+    m = path.match(/^\/api\/bots\/([\w-]+)\/shared-messages$/);
+    if (m && method === "POST") {
+      const body = await readBody(req);
+      const text = String(body.text ?? "").trim();
+      if (!text) return json(res, 400, { error: "text required" });
+      const bot = store.bot(m[1]);
+      if (!bot) return json(res, 404, { error: "no such bot" });
+      const speakerId = String(body.speakerId ?? "").trim().slice(0, 120);
+      const speakerName = String(body.speakerName ?? "").trim().slice(0, 120);
+      if (!speakerId || !speakerName) return json(res, 400, { error: "speaker required" });
+      if (bot.busy) return json(res, 409, { error: "the shared bot is working — try again in a moment" });
+      const sharedBotId = String(body.sharedBotId ?? "").trim().slice(0, 120) || undefined;
+      await startTurn(bot.id, text, {
+        speaker: { id: speakerId, name: speakerName },
+        ...(sharedBotId ? { sharedBotId } : {}),
+      });
+      return json(res, 202, { ok: true });
+    }
+
     // edit a user message → fork the conversation there and rerun the turn.
     // Rewinding a live thread is refused, exactly like switching versions
     // below: interrupting mid-flight and branching under the dying turn is
@@ -4869,6 +4928,39 @@ const server = createServer(async (req, res) => {
           monthlyCostCapUsd: cfg.monthlyCostCapUsd ?? 0,
         },
       });
+    }
+
+    // Shared live conversation spend, grouped by the member who spoke.
+    // The gateway asks for one thread at a time; the owner sees the totals.
+    if (method === "GET" && path === "/api/shared-usage") {
+      const threadId = url.searchParams.get("threadId") ?? "";
+      if (!threadId) return json(res, 400, { error: "threadId is required" });
+      const bySpeaker = new Map<string, {
+        id: string;
+        name: string;
+        input: number;
+        output: number;
+        costUsd: number;
+        turns: number;
+      }>();
+      for (const record of loadUsage()) {
+        if (record.threadId !== threadId || !record.speakerId) continue;
+        const current = bySpeaker.get(record.speakerId) ?? {
+          id: record.speakerId,
+          name: record.speakerName || record.speakerId,
+          input: 0,
+          output: 0,
+          costUsd: 0,
+          turns: 0,
+        };
+        current.name = record.speakerName || current.name;
+        current.input += record.input;
+        current.output += record.output;
+        current.costUsd += record.costUsd ?? 0;
+        current.turns += 1;
+        bySpeaker.set(record.speakerId, current);
+      }
+      return json(res, 200, { threadId, members: [...bySpeaker.values()] });
     }
 
     if (method === "GET" && path === "/api/knowledge") {

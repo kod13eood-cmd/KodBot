@@ -1613,6 +1613,34 @@ const BULGARIAN: Record<string, string> = {
     "Публикуван е {name}. Всеки член на организацията може да инсталира копие.",
   "{name} was added to your workspace. It runs here, with your key and quota.":
     "{name} е добавен в твоето пространство. Работи тук, с твоя ключ и лимити.",
+  "Live shared conversation": "Жив споделен разговор",
+  "The organization OpenCode key is configured for live shared bots.":
+    "Организационният OpenCode ключ е зададен за живите споделени ботове.",
+  "No organization OpenCode key is configured yet; live bots use free OpenCode models. Add OC_ORG_OPENCODE_API_KEY to the gateway env file and restart the gateway for paid models.":
+    "Още няма зададен организационен OpenCode ключ; живите ботове използват безплатните OpenCode модели. Добави OC_ORG_OPENCODE_API_KEY в env файла на gateway-я и го рестартирай за платени модели.",
+  "Live shared": "Споделено на живо",
+  "Everyone talks to one bot on the organization server. The organization model key is used; usage is attributed to each member.":
+    "Всички говорят с един бот на сървъра на организацията. Използва се организационният моделен ключ; разходът се отчита по член.",
+  "Every member of the organization can see a shared bot. Install copies stay independent; live conversations are shared.":
+    "Всеки член на организацията вижда споделените ботове. Инсталираните копия остават независими; живите разговори са споделени.",
+  "Install a shared bot, or open a live shared conversation with the organization.":
+    "Инсталирай споделен бот или отвори жив споделен разговор с организацията.",
+  "Templates install a private copy. Live bots keep one shared conversation on the organization server.":
+    "Шаблоните инсталират частно копие. Живите ботове поддържат един споделен разговор на сървъра на организацията.",
+  "Open conversation": "Отвори разговора",
+  "Remove {name}? Its shared conversation and usage history will be deleted.":
+    "Да се премахне ли {name}? Споделеният разговор и историята на разхода ще бъдат изтрити.",
+  "Published {name} as a live shared conversation.":
+    "Публикуван е {name} като жив споделен разговор.",
+  "Everyone in the organization uses this one conversation.":
+    "Всеки в организацията използва този един разговор.",
+  "Close shared conversation": "Затвори споделения разговор",
+  "Usage by member": "Разход по член",
+  "Loading conversation…": "Зареждане на разговора…",
+  "No messages yet. Say hello to start the shared conversation.":
+    "Още няма съобщения. Поздрави, за да започне споделеният разговор.",
+  "Message everyone in this shared bot…": "Съобщение до всички в този споделен бот…",
+  "Message the shared bot": "Съобщение до споделения бот",
 };
 
 function initialLocale(): Locale {

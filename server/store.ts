@@ -128,6 +128,8 @@ export interface Message {
   from?: { botId: string; name: string; color: string };
   /** emoji reactions; by = "user" or a member botId. */
   reactions?: Array<{ emoji: string; by: string }>;
+  /** shared live conversations: the member who sent this user message. */
+  speaker?: { id: string; name: string };
   /** comm chips: "Messaged @X" in the caller's chat, linking to the
    * bot⇄bot channel where the exchange is mirrored. */
   comm?: { groupId: string; withBotId: string; withName: string; withColor: string };
