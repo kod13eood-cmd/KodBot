@@ -421,7 +421,12 @@ once; after that, releases update in place.
   English keeps the original pool. Existing bots are not renamed.
 - The preference is per client and is sent as `nameLanguage` with the
   `POST /api/bots` request; the server defaults to English for API callers.
+- Live UI and harness deployed to `/opt/kodbot`; `/api/about` reports 0.1.65
+  and the bundled OpenCode still reports 2.3.2.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.65>
+- Assets verified: Windows NSIS 192 MB, Linux AppImage 228 MB, .deb 196 MB,
+  Android 0.1.29 10.1 MB (unchanged checksum), both `latest.yml` feeds.
+  Workflow run 45131137791.
 
 ### Release 0.1.64 (2026-11-23)
 
