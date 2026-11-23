@@ -19,6 +19,7 @@ import type { Routine, RoutineInput, RoutineRun } from "@/lib/routines";
 import type { Job } from "@/lib/jobs";
 import type { WebhookAttempt, WebhookIngressStatus, WebhookTrigger } from "@/lib/webhooks";
 import { currentCall } from "@/lib/call";
+import { requestedBotNameLanguage } from "@/lib/bot-name-style";
 import { showNotification } from "@/lib/notify";
 import { speaker } from "@/lib/tts";
 
@@ -1294,7 +1295,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           break;
         }
         case "newBot":
-          api("/api/bots", { method: "POST" })
+          api("/api/bots", {
+            method: "POST",
+            body: JSON.stringify({ nameLanguage: requestedBotNameLanguage() }),
+          })
             .then(({ bot }) => rawDispatch({ type: "botAdded", bot }))
             .catch(showError);
           break;

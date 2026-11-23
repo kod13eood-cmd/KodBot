@@ -4012,7 +4012,12 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { message: patched });
     }
     if (method === "POST" && path === "/api/bots") {
-      const bot = store.createBot();
+      const body = await readBody(req);
+      // A Bulgarian interface asks for Bulgarian bot names. Unknown values
+      // keep the historical English pool rather than becoming a free-form
+      // name source.
+      const nameLanguage = body?.nameLanguage === "bulgarian" ? "bulgarian" : "english";
+      const bot = store.createBot({}, { nameLanguage });
       store.patchBot(bot.id, { modelSelection: await defaultSelection() });
       return json(res, 201, {
         bot: {

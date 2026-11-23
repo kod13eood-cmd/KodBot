@@ -23,7 +23,7 @@ Last reviewed: **2026-11-12**.
 | GitHub remote | `git@github.com:kod13eood-cmd/KodBot.git` |
 | Gitea remote | `ssh://git@llm1:2222/deso/kodbot.git` |
 | Android release branch | `android-release` (APK-only branch) |
-| App version | `0.1.64` |
+| App version | `0.1.65` |
 | Android version | `0.1.29` / versionCode `30` |
 
 There is also a stale remote checkout at `paperclipi7:~/Developer/OpenBot`;
@@ -409,6 +409,19 @@ once; after that, releases update in place.
   `/api/usage/caps` verified. Release assets include the stable-signed Android
   0.1.28 APK.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.62>
+
+### Release 0.1.65 (2026-11-23)
+
+- Desktop 0.1.65; Android stays **0.1.29 / versionCode 30**. The Android app
+  loads this UI from the paired harness, so no APK change is needed for the
+  naming option.
+- **Settings → General → Language → New bot names** offers **Match the app
+  language** (default), **Bulgarian names**, and **English names**. Bulgarian
+  picks a Cyrillic name from a Bulgarian pool and seeds a Bulgarian greeting;
+  English keeps the original pool. Existing bots are not renamed.
+- The preference is per client and is sent as `nameLanguage` with the
+  `POST /api/bots` request; the server defaults to English for API callers.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.65>
 
 ### Release 0.1.64 (2026-11-23)
 

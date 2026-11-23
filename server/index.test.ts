@@ -293,6 +293,12 @@ describe("harness HTTP API", () => {
     expect(after.body.hits.find((h: { botId?: string }) => h.botId === bot.id)).toBeUndefined();
   });
 
+  it("creates a Bulgarian-named bot when the client asks", async () => {
+    const created = await api("POST", "/api/bots", { nameLanguage: "bulgarian" });
+    expect(created.status).toBe(201);
+    expect(created.body.bot.name).toMatch(/^[А-Яа-яЁё-]+$/);
+  });
+
   it("creates, patches, and deletes a bot", async () => {
     const created = await api("POST", "/api/bots");
     expect(created.status).toBe(201);

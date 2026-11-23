@@ -35,6 +35,13 @@ describe("Store", () => {
     expect(store.messagesFor(bot.threadId)).toHaveLength(0);
   });
 
+  it("createBot can pick a Bulgarian name for a Bulgarian interface", () => {
+    const store = new Store(selection);
+    const bot = store.createBot({}, { nameLanguage: "bulgarian" });
+    expect(bot.name).toMatch(/^[А-Яа-яЁё-]+$/);
+    expect(store.messagesFor(bot.threadId)[0].text).toBe(`Здравей — аз съм ${bot.name}. Приятно ми е.`);
+  });
+
   it("addTaskUsage accumulates settled-turn totals per task and survives a restart", () => {
     const store = new Store(selection);
     const bot = store.createBot();

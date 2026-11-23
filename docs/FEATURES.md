@@ -230,6 +230,15 @@ and errors remain.
 action chip and the extended reasoning, expanded by default while the turn
 runs.
 
+### Bot names — Live
+
+**App Settings → General → Language → New bot names** controls the naming
+style for bots created with **+ → New Bot**. **Match the app language** is the
+default: Bulgarian gives a Cyrillic Bulgarian name (and a Bulgarian greeting),
+English keeps the original friendly pool. **Bulgarian names** and **English
+names** pin the choice independently of the interface. Only new bots are
+affected; existing names never change.
+
 ### Developer mode — Live
 
 **Settings → General → Developer mode** hides the technical surfaces for

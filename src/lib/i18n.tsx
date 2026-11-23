@@ -406,6 +406,14 @@ const BULGARIAN: Record<string, string> = {
   "Choose the language for the app. Changes apply immediately.":
     "Изберете език за приложението. Промените се прилагат веднага.",
   "More languages can be added later.": "Още езици могат да бъдат добавени по-късно.",
+  "New bot names": "Имена на новите ботове",
+  "Choose the naming style for bots created with + → New Bot. Bulgarian names are written in Cyrillic.":
+    "Изберете стил на имената за ботове, създадени с + → Нов бот. Българските имена са на кирилица.",
+  "Match the app language": "Според езика на приложението",
+  "Bulgarian names": "Български имена",
+  "English names": "Английски имена",
+  "New bots will get Bulgarian names.": "Новите ботове ще получават български имена.",
+  "New bots will get English names.": "Новите ботове ще получават английски имена.",
 
   // Per-bot settings
   "Reset": "Нулирай",

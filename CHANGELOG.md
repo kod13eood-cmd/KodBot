@@ -2,6 +2,11 @@
 
 Dated, user-facing changes. Newest first.
 
+## 2026-11-23 — 0.1.65
+
+- App Settings → General → **Language** now has a **New bot names** choice: **Match the app language** (default), **Bulgarian names**, or **English names**. With Bulgarian selected, a new bot gets a Cyrillic Bulgarian name and a Bulgarian greeting; English keeps the original pool. Existing bots are never renamed.
+- The choice is per window, like the interface language, and applies to the next bot created with **+ → New Bot**.
+
 ## 2026-11-23 — 0.1.64
 
 - **User mode** keeps one calm status line through the whole turn, not only before the first sentence. It names what the bot is doing — thinking, searching, reading, writing, editing, running a command, asking the team, using the computer, or writing a reply — with an animated action icon, a soft sheen, and a timer. When a sentence lands and the bot pauses for its next tool, the line changes to that next action instead of leaving only a blinking caret.

@@ -11,7 +11,7 @@ import { DATA_DIR } from "./config.ts";
 import * as mdb from "./message-db.ts";
 import { workspaceDir } from "./workspace.ts";
 import { newId, type ModelSelection, type ThreadId } from "./contracts.ts";
-import { pickBotName } from "./names.ts";
+import { pickBotName, type BotNameLanguage } from "./names.ts";
 import { redactSecretsInText } from "./redact.ts";
 
 export type CrewColor =
@@ -1192,9 +1192,12 @@ export class Store {
       /** false = no greeting/onboarding seed. Imported bots must not open
        * with a first-person greeting the user never asked for. */
       seedMessages?: boolean;
+      /** The client's naming language for this creation. Defaults to the
+       * original English pool so API callers stay stable. */
+      nameLanguage?: BotNameLanguage;
     } = {},
   ): BotRecord {
-    const name = profile.name?.trim() || pickBotName(this.bots.map((b) => b.name));
+    const name = profile.name?.trim() || pickBotName(this.bots.map((b) => b.name), opts.nameLanguage);
     const id = newId();
     const color = profile.color ?? COLORS[this.bots.length % COLORS.length];
     const bot: BotRecord = {
@@ -1223,7 +1226,10 @@ export class Store {
       this.appendMessage(bot.threadId, {
         role: "bot",
         kind: "text",
-        text: `Hey — I'm ${name}. Nice to meet you.`,
+        text:
+          opts.nameLanguage === "bulgarian"
+            ? `Здравей — аз съм ${name}. Приятно ми е.`
+            : `Hey — I'm ${name}. Nice to meet you.`,
       });
       this.appendMessage(bot.threadId, { role: "bot", kind: "options", card: onboardingCard() });
     }

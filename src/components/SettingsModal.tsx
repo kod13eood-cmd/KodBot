@@ -26,6 +26,12 @@ import { editionOf, isLoopbackHost } from "@/lib/edition";
 import { normalizeRemoteAddress } from "@/lib/server-choice";
 import { setDeveloperMode, useDeveloperMode } from "@/lib/dev-mode";
 import { setShowGroupChats, useShowGroupChats } from "@/lib/show-groups";
+import {
+  BOT_NAME_STYLE_OPTIONS,
+  resolveBotNameLanguage,
+  setBotNameStyle,
+  useBotNameStyle,
+} from "@/lib/bot-name-style";
 import { remoteSwitchAvailable } from "@/lib/server-switch";
 import { publicBase } from "@/lib/public-url";
 import type { ServerConnectionState } from "@/types/ogb";
@@ -323,6 +329,8 @@ function UsageModeCard() {
 
 function LanguageCard() {
   const { locale, setLocale, t } = useI18n();
+  const nameStyle = useBotNameStyle();
+  const nameLanguage = resolveBotNameLanguage(nameStyle, locale);
   return (
     <Card title={t("Language")} subtitle={t("Choose the language for the app. Changes apply immediately.")}>
       <div className="grid grid-cols-2 gap-2">
@@ -346,6 +354,39 @@ function LanguageCard() {
         ))}
       </div>
       <div className="mt-2 text-[12px] text-ink-secondary">{t("More languages can be added later.")}</div>
+
+      <div className="mt-4 border-t border-hairline/30 pt-4">
+        <div className="text-[13px] font-medium text-ink">{t("New bot names")}</div>
+        <div className="mt-1 text-[12px] leading-relaxed text-ink-secondary">
+          {t("Choose the naming style for bots created with + → New Bot. Bulgarian names are written in Cyrillic.")}
+        </div>
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {BOT_NAME_STYLE_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => setBotNameStyle(option.id)}
+              aria-pressed={nameStyle === option.id}
+              className={cn(
+                "rounded-lg border px-3 py-2 text-left text-[13px] transition-colors",
+                nameStyle === option.id
+                  ? "border-accent/50 bg-accent/10 text-ink"
+                  : "border-hairline/40 text-ink-secondary hover:bg-raised/60 hover:text-ink",
+              )}
+            >
+              <span className="flex items-center justify-between gap-2">
+                {t(option.label)}
+                {nameStyle === option.id && <span className="text-accent">✓</span>}
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="mt-2 text-[11.5px] text-ink-secondary">
+          {nameLanguage === "bulgarian"
+            ? t("New bots will get Bulgarian names.")
+            : t("New bots will get English names.")}
+        </div>
+      </div>
     </Card>
   );
 }
