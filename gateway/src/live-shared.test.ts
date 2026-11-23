@@ -88,6 +88,8 @@ beforeEach(async () => {
   });
   store = new GatewayStore(config.dataDir);
   auth = new AuthService(store, config);
+  // SAFETY: the gateway only calls ensureShared() for these routes; the fake
+  // HTTP server stands in for the real child harness.
   const harnesses = {
     ensureShared: async () => ({ port: address.port }),
     ensure: async () => ({ port: address.port }),

@@ -568,6 +568,7 @@ sudo systemctl restart kodbot-gateway.service
 | Companion control | `127.0.0.1:8811` (loopback only) |
 | Desktop update feed | `https://github.com/kod13eood-cmd/kodbot-releases/releases` (legacy: `http://paperclipi7.tail89d239.ts.net:8799/updates`) |
 | Data directory | `/home/paperclipi7/.kodbot` |
+| Shared live bots | `/home/paperclipi7/.kodbot-shared` |
 | Companion state | `/home/paperclipi7/.kodbot-companion` |
 | Server files | `/opt/kodbot/server` |
 | Companion files | `/opt/kodbot/companion` |
@@ -709,7 +710,8 @@ A KodBot maintenance pass then restored the missing state:
 - `groups.json` was written at ~20:26 UTC.
 - `/home/paperclipi7/kodbot-backups/RESTORE.md` documents the restore process.
 - `kodbot-state-snapshot.timer` now snapshots `.kodbot`, `.kodbot-companion`,
-  `.kodbot-gateway` (with a consistent SQLite copy) and `.kodbot-tenants`,
+  `.kodbot-gateway` (with a consistent SQLite copy), `.kodbot-tenants`, and
+  `.kodbot-shared` (live shared conversations),
   plus the live API every 15 minutes.
 - `kodbot-offsite-backup.timer` uploads a daily archive to `llm1:/home/llm1/backups/kodbot/`
   at 03:30 Europe/Sofia (60-day retention, sha256-verified). The archive
@@ -728,6 +730,7 @@ Current state:
 | `webhooks.json` | Yes | Current webhooks |
 | `~/.kodbot-gateway` | Yes | Gateway DB (accounts, sessions, invites), mode 600 |
 | `~/.kodbot-tenants` | Yes | Tenant root; 0 members as of 2026-11-11 |
+| `~/.kodbot-shared` | Created on first live bot | Live shared conversations + usage ledger |
 | backups | Yes | `/home/paperclipi7/kodbot-backups` |
 | `~/.config/kodbot.env` | Yes | Managed Composio broker URL/token and companion name |
 
