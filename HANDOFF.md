@@ -429,7 +429,12 @@ once; after that, releases update in place.
   instead of JSON; signed-in users can change their own password in
   **Settings → General → Account** with current-password verification and
   session revocation.
+- Live UI and harness deployed to `/opt/kodbot`; `/api/about` reports 0.1.66
+  and the bundled OpenCode reports 2.3.2.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.66>
+- Assets verified: Windows NSIS 192 MB, Linux AppImage 228 MB, .deb 196 MB,
+  Android 0.1.29 10.1 MB, both `latest.yml` feeds. Workflow run 45179828444.
+  CI verified `resources/opencode/opencode.exe --version` before upload.
 
 ### Release 0.1.65 (2026-11-23)
 
