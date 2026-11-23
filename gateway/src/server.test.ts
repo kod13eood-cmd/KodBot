@@ -118,6 +118,32 @@ describe("gateway HTTP auth", () => {
     expect(login.headers.get("location")).toBe("/");
   });
 
+  it("returns a failed browser form login to the page with an error", async () => {
+    await post("/api/auth/register", {
+      email: "owner@example.com",
+      password: "correct horse battery",
+      confirm: "correct horse battery",
+    });
+    const login = await fetch(`${base}/api/auth/login`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        accept: "text/html,application/xhtml+xml",
+      },
+      body: new URLSearchParams({ email: "owner@example.com", password: "wrong password" }),
+      redirect: "manual",
+    });
+    expect(login.status).toBe(303);
+    const location = login.headers.get("location") ?? "";
+    const target = new URL(location, base);
+    expect(target.pathname).toBe("/login");
+    expect(target.searchParams.get("error")).toBe("Email or password is wrong.");
+    expect(target.searchParams.get("mode")).toBe("login");
+
+    const page = await fetch(`${base}${location}`);
+    expect(await page.text()).toContain("Email or password is wrong.");
+  });
+
   it("lets the owner manage users, invites, passwords, and disabled accounts", async () => {
     const owner = await post("/api/auth/register", {
       email: "owner@example.com",

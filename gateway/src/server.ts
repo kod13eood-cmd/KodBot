@@ -488,6 +488,17 @@ export function createGatewayServer({ config, store, auth, harnesses, serveStati
     } catch (error) {
       const status = error instanceof AuthError ? error.status : Number((error as { status?: number })?.status) || 500;
       const message = error instanceof Error ? error.message : String(error);
+      // The standalone login/register page is a normal browser form, not an
+      // API client. Sending JSON for a bad password left the browser on a
+      // blank page with no way back to the form. Redirect those posts to the
+      // page with the error; JSON callers (mobile, fetch) keep the JSON body.
+      const browserAuthForm =
+        (path === "/api/auth/login" || path === "/api/auth/register") && !wantsJson(req);
+      if (browserAuthForm) {
+        const mode = path === "/api/auth/register" ? "register" : "login";
+        const lang = gatewayLang(req, url);
+        return redirect(res, `/login?error=${encodeURIComponent(message)}&mode=${mode}&lang=${lang}`);
+      }
       if (wantsJson(req) || path.startsWith("/api/")) return json(res, status, { error: message });
       const mode = path === "/api/auth/register" ? "register" : "login";
       const lang = gatewayLang(req, url);
