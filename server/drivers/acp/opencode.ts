@@ -18,6 +18,8 @@ import {
   ensureOpenCodeInjectModel,
   fetchOpenCodeProviderModels,
   hasStoredOpenCodeAuth,
+  openCodeCli,
+  openCodeInstall,
   pickBestFreeModel,
   stripForeignProviderKeys,
 } from "./opencode-shared.ts";
@@ -71,19 +73,10 @@ const support = (fetcher: typeof fetch): AcpSupport => ({
   driverKind: "opencode",
   displayName: "OpenCode",
   models: mergeOpenCodeCatalogs([ZEN_FALLBACK, GO_FALLBACK]),
-  defaultCli: "opencode",
+  defaultCli: openCodeCli(),
   nativeSource: "opencode.acp",
   loginNote: "OpenCode is not configured — add an OPENCODE_API_KEY in KodBot settings",
-  install: {
-    command: {
-      darwin: "npm install -g @opencode/cli@2.3.2",
-      linux: "npm install -g @opencode/cli@2.3.2",
-      win32: "npm install -g @opencode/cli@2.3.2",
-    },
-    docsUrl: "https://opencode.ai/docs/",
-    signInCommand: "opencode auth login",
-    needsNode: true,
-  },
+  install: openCodeInstall(),
   spawnArgs: () => ["acp"],
   credentialEnv: ["OPENCODE_API_KEY"],
   selectModel: { configId: "model" },
@@ -94,6 +87,9 @@ const support = (fetcher: typeof fetch): AcpSupport => ({
   isAuthenticated: (env) =>
     Boolean(env.OPENCODE_API_KEY)
     || hasStoredOpenCodeAuth(env, [OPENCODE_PROVIDER_ID, OPENCODE_GO_PROVIDER_ID]),
+  // Zen's free pool runs without an account/key; sign-in only unlocks the
+  // paid models. Treat a fresh install as usable instead of blocking setup.
+  freeAccess: () => true,
   classifyError: classifyOpenCodeError,
   resolveModels: async (environment) => {
     const [zen, go] = await Promise.all([

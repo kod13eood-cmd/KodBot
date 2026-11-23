@@ -562,8 +562,8 @@ const BULGARIAN: Record<string, string> = {
   "Continue": "Продължи",
   "Maybe later": "Може би по-късно",
   "Your engines": "Вашите двигатели",
-  "Bots run on AI tools installed on this computer — here’s what we found.":
-    "Ботовете работят с AI инструменти, инсталирани на този компютър — ето какво открихме.",
+  "KodBot includes OpenCode. Finish its one-time sign-in, or use another engine already on this computer.":
+    "KodBot включва OpenCode. Завърши еднократния вход или използвай друг двигател, който вече е на този компютър.",
   "Ready engines": "Готови двигатели",
   "Needs setup": "Нужна е настройка",
   "Permissions": "Разрешения",
@@ -1276,12 +1276,17 @@ const BULGARIAN: Record<string, string> = {
   "Drop to attach — the bot gets the file path": "Пусни, за да прикачиш — ботът получава пътя до файла",
   "Undo": "Отмени",
   "Install an AI engine to get started": "Инсталирайте AI engine, за да започнете",
-  "KodBot doesn't ship a model of its own — your bots run on an AI CLI installed on this computer, using your existing login. Set up any one of these and your bots come alive.":
-    "KodBot не включва собствен модел — ботовете работят с AI CLI, инсталиран на този компютър, с вашия съществуващ вход. Настройте един от тези и ботовете оживяват.",
+  "OpenCode is included with KodBot. Finish its one-time sign-in, or use another AI CLI already on this computer.":
+    "OpenCode е включен в KodBot. Завърши еднократния вход или използвай друг AI CLI, който вече е на този компютър.",
   "Check again": "Провери отново",
   "Optional": "Незадължително",
   "Remove the saved key": "Премахни запазения ключ",
   "Terminal opened": "Терминалът е отворен",
+  "Open OpenCode sign-in": "Отвори входа в OpenCode",
+  "Finish the sign-in in the terminal, then reopen this menu.":
+    "Завърши входа в терминала и отвори това меню отново.",
+  "A terminal opens with the bundled OpenCode sign-in.":
+    "Отваря се терминал с вградения OpenCode за вход.",
   "Paste the command and press Enter.": "Поставете командата и натиснете Enter.",
   "The command is copied when Terminal opens.": "Командата се копира при отваряне на Terminal.",
   "Command copied": "Командата е копирана",
@@ -1289,6 +1294,9 @@ const BULGARIAN: Record<string, string> = {
     "Изпълнете тази команда на отдалечения сървър, не на този лаптоп.",
   "Sign in to {name}": "Вход в {name}",
   "Install {name}": "Инсталирай {name}",
+  "Finish OpenCode sign-in to start": "Завърши входа в OpenCode, за да започнеш",
+  "OpenCode is included with KodBot, but it needs your account sign-in once. No separate installation is required.":
+    "OpenCode е включен в KodBot, но е нужен еднократен вход в акаунта. Не е нужна отделна инсталация.",
   "Finish the account sign-in in Terminal. Reopen this menu afterward and we'll check again.":
     "Завършете входа в акаунта в Terminal. Отворете това меню отново и ще проверим пак.",
   "Install the agent once, then you can run it with local models—no cloud sign-in required.":

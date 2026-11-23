@@ -230,6 +230,16 @@ and errors remain.
 action chip and the extended reasoning, expanded by default while the turn
 runs.
 
+### OpenCode on Windows — Live
+
+KodBot installs a pinned OpenCode with the desktop app. On Windows, first
+launch adds the bundled `Resources\opencode` directory to the **user PATH**, so
+`opencode` works in a new cmd/PowerShell as well as inside KodBot; no separate
+npm install is needed. The bundled free models run without an account, so a
+fresh Solo install can chat immediately. Signing in is optional for paid
+models: **Open OpenCode sign-in** opens a terminal already running the bundled
+`auth login`, and a paid-model failure shows the same sign-in card.
+
 ### Bot names — Live
 
 **App Settings → General → Language → New bot names** controls the naming

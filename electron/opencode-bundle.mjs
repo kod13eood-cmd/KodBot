@@ -16,3 +16,9 @@ export function resolveBundledOpenCode({
     : join(appPath, "resources", "opencode");
   return exists(dir) ? dir : null;
 }
+
+/** The executable inside a staged engine directory. */
+export function bundledOpenCodeBinary(dir, platform = process.platform) {
+  if (!dir) return null;
+  return join(dir, platform === "win32" ? "opencode.exe" : "opencode");
+}

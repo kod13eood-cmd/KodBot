@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
 import { describe, expect, it } from "vitest";
 
-import { openBlankTerminal } from "./terminal-launch.mjs";
+import { openBlankTerminal, openTerminalCommand } from "./terminal-launch.mjs";
 
 function launcher(outcomes) {
   const calls = [];
@@ -58,5 +58,41 @@ describe("blank terminal launcher", () => {
       throw new Error("launch failed");
     };
     await expect(openBlankTerminal("darwin", run)).resolves.toBe(false);
+  });
+});
+
+describe("trusted terminal command launcher", () => {
+  it("runs the command in PowerShell on Windows", async () => {
+    const fake = launcher(["spawn"]);
+    await expect(
+      openTerminalCommand('& "C:\\Program Files\\KodBot\\opencode.exe" auth login', "win32", fake.run),
+    ).resolves.toBe(true);
+    expect(fake.calls[0]).toMatchObject({
+      executable: "powershell.exe",
+      args: ["-NoExit", "-Command", '& "C:\\Program Files\\KodBot\\opencode.exe" auth login'],
+    });
+  });
+
+  it("escapes the command for Terminal on macOS", async () => {
+    const fake = launcher(["spawn"]);
+    await expect(openTerminalCommand("'/opt/KodBot/opencode' auth login", "darwin", fake.run)).resolves.toBe(true);
+    expect(fake.calls[0].args[1]).toContain("do script");
+    expect(fake.calls[0].args[1]).toContain("auth login");
+  });
+
+  it("tries Linux terminals and reports failure honestly", async () => {
+    const fake = launcher(["spawn"]);
+    await expect(openTerminalCommand("opencode auth login", "linux", fake.run)).resolves.toBe(true);
+    expect(fake.calls[0].executable).toBe("x-terminal-emulator");
+    expect(fake.calls[0].args).toEqual(["-e", "sh", "-lc", "opencode auth login"]);
+
+    const none = launcher(["throw", "throw", "throw", "throw"]);
+    await expect(openTerminalCommand("opencode auth login", "linux", none.run)).resolves.toBe(false);
+  });
+
+  it("does nothing for an empty command", async () => {
+    const fake = launcher([]);
+    await expect(openTerminalCommand("", "win32", fake.run)).resolves.toBe(false);
+    expect(fake.calls).toHaveLength(0);
   });
 });

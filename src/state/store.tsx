@@ -320,6 +320,8 @@ export interface InstanceInfo {
     state: "available" | "unavailable";
     reason?: string;
     authenticated?: boolean;
+    /** Free models work without a cloud sign-in; sign-in is optional. */
+    freeAccess?: boolean;
     version?: string | null;
     /** a reported cost on a subscription is notional; the UI says so */
     billing?: "metered" | "subscription";

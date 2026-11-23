@@ -15,6 +15,8 @@ import {
   ensureOpenCodeInjectModel,
   hasStoredOpenCodeAuth,
   labelForModel,
+  openCodeCli,
+  openCodeInstall,
   stripForeignProviderKeys,
 } from "./opencode-shared.ts";
 import type { ModelCatalog } from "../../contracts.ts";
@@ -76,19 +78,10 @@ const support = (fetcher: typeof fetch): AcpSupport => ({
   driverKind: "opencodeGo",
   displayName: "OpenCode Go",
   models: STATIC_MODELS,
-  defaultCli: "opencode",
+  defaultCli: openCodeCli(),
   nativeSource: "opencode-go.acp",
   loginNote: "OpenCode Go is not configured — add an OPENCODE_API_KEY in KodBot settings",
-  install: {
-    command: {
-      darwin: "npm install -g @opencode/cli@2.3.2",
-      linux: "npm install -g @opencode/cli@2.3.2",
-      win32: "npm install -g @opencode/cli@2.3.2",
-    },
-    docsUrl: "https://opencode.ai/docs/",
-    signInCommand: "opencode auth login",
-    needsNode: true,
-  },
+  install: openCodeInstall(),
   spawnArgs: () => ["acp"],
   credentialEnv: ["OPENCODE_API_KEY"],
   selectModel: { configId: "model" },

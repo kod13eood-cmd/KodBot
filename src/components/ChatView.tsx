@@ -1079,6 +1079,17 @@ export function ChatView({ bot }: { bot: Bot }) {
     [bot.id, dispatch],
   );
   const lastUserMessage = useMemo(() => latestUserPrompt(messages), [messages]);
+  const activeEngine = useMemo(
+    () => state.instances.find((instance) => instance.instanceId === bot.modelSelection.instanceId),
+    [state.instances, bot.modelSelection.instanceId],
+  );
+  // OpenCode ships with the app, so "installed but not signed in" is the
+  // normal first-run state on a fresh Windows machine. Show the one-time
+  // sign-in next to the conversation instead of letting the first send fail.
+  const engineNeedsSignIn =
+    activeEngine?.snapshot.state === "available" &&
+    activeEngine.snapshot.authenticated === false &&
+    !activeEngine.snapshot.freeAccess;
   // regenerate = fork the last user message with the same text — reuses the
   // existing branch machinery, so the old answer stays reachable via ‹ ›
   const regenerate = useCallback(() => {
@@ -1342,13 +1353,24 @@ export function ChatView({ bot }: { bot: Bot }) {
               </button>
             </div>
           )}
+          {engineNeedsSignIn && activeEngine && (
+            <div className="rounded-xl border border-warning/30 bg-warning/10 p-3.5">
+              <div className="text-[13.5px] font-semibold text-ink">{t("Finish OpenCode sign-in to start")}</div>
+              <p className="mt-1 text-[12.5px] leading-relaxed text-ink-secondary">
+                {t(
+                  "OpenCode is included with KodBot, but it needs your account sign-in once. No separate installation is required.",
+                )}
+              </p>
+              <EngineSetup instance={activeEngine} className="mt-2" />
+            </div>
+          )}
           <MessagesList
             bot={bot}
             messages={windowedMessages}
             editingId={editingId}
             lastBotTextId={lastBotTextId}
             canRetryLast={!bot.busy && Boolean(lastUserMessage)}
-            engine={state.instances.find((i) => i.instanceId === bot.modelSelection.instanceId)}
+            engine={activeEngine}
             devMode={devMode}
             onStartEdit={startEdit}
             onCancelEdit={cancelEdit}

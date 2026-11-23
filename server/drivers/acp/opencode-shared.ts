@@ -12,12 +12,47 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 import { decodeInjectId, hostApiKey, localHost } from "../local-inject.ts";
-import type { ModelCatalog, ProviderErrorCode } from "../../contracts.ts";
+import type { EngineInstall, ModelCatalog, ProviderErrorCode } from "../../contracts.ts";
 
 /** Zen provider id — models are addressed as `opencode/<id>`. */
 export const OPENCODE_PROVIDER_ID = "opencode";
 /** Go provider id — models are addressed as `opencode-go/<id>`. */
 export const OPENCODE_GO_PROVIDER_ID = "opencode-go";
+
+/** The packaged desktop sets this to Resources/opencode/opencode.exe before
+ * forking the harness. Running that absolute path means a fresh Windows
+ * install works even before the user's PATH is refreshed. */
+export function openCodeCli(env: Record<string, string | undefined> = process.env): string {
+  return env.OC_OPENCODE_BIN?.trim() || "opencode";
+}
+
+/** Quote a path for the terminal that will run the sign-in command. The
+ * Windows installer path is under AppData\Local\Programs\KodBot, which often
+ * contains spaces. */
+export function quoteOpenCodePath(value: string, platform = process.platform): string {
+  if (!/[\s"'&()^]/.test(value)) return value;
+  return platform === "win32" ? `"${value.replaceAll('"', '\\"')}"` : `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+/** The OpenCode setup card. A packaged app ships the CLI, so its sign-in
+ * command must point at that binary; a source checkout keeps the npm install
+ * route. */
+export function openCodeInstall(
+  env: Record<string, string | undefined> = process.env,
+  platform = process.platform,
+): EngineInstall {
+  const cli = openCodeCli(env);
+  return {
+    command: {
+      darwin: "npm install -g @opencode/cli@2.3.2",
+      linux: "npm install -g @opencode/cli@2.3.2",
+      win32: "npm install -g @opencode/cli@2.3.2",
+    },
+    docsUrl: "https://opencode.ai/docs/",
+    signInCommand: `${quoteOpenCodePath(cli, platform)} auth login`,
+    needsNode: true,
+  };
+}
 
 export type OpenCodeGroup = "Zen" | "Go";
 

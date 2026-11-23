@@ -5,11 +5,12 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { startCua, stopCua, registerCuaIpc } from "./cua.mjs";
 import { finishSpeech, startSpeech, stopSpeech } from "./speech.mjs";
-import { openBlankTerminal } from "./terminal-launch.mjs";
+import { openBlankTerminal, openTerminalCommand } from "./terminal-launch.mjs";
 import { startUpdater, registerUpdaterIpc } from "./updater.mjs";
 import { relaunchCommand } from "./relaunch.mjs";
 import { probeErrorMessage, probeHarness } from "./probe.mjs";
-import { resolveBundledOpenCode } from "./opencode-bundle.mjs";
+import { resolveBundledOpenCode, bundledOpenCodeBinary } from "./opencode-bundle.mjs";
+import { registerWindowsUserPath } from "./windows-path.mjs";
 import { connectionChoiceSaved, connectionRecord } from "./server-connection.mjs";
 import capabilitiesModule from "./capabilities.cjs";
 
@@ -289,6 +290,7 @@ async function startServerOn(port) {
     resourcesPath: process.resourcesPath,
     appPath: app.getAppPath(),
   });
+  const bundledOpenCodeBin = bundledOpenCodeBinary(bundledOpenCode);
   // The bundled engine is first on the harness PATH; a user-installed
   // OpenCode remains available only when no bundled copy was staged.
   const extraPath = [bundledOpenCode, process.env.OC_EXTRA_PATH].filter(Boolean).join(path.delimiter);
@@ -300,6 +302,7 @@ async function startServerOn(port) {
       OC_PORT: String(port),
       OC_USER_DATA: app.getPath("userData"),
       ...(extraPath ? { OC_EXTRA_PATH: extraPath } : {}),
+      ...(bundledOpenCodeBin ? { OC_OPENCODE_BIN: bundledOpenCodeBin } : {}),
       ...(secureCredentials.composioApiKey
         ? { COMPOSIO_API_KEY: secureCredentials.composioApiKey }
         : {}),
@@ -687,6 +690,25 @@ ipcMain.handle("engine:open-terminal", async (_event, command) => {
   return openBlankTerminal();
 });
 
+/** One-click sign-in for the engine that ships inside the app. The command
+ * is built here from the bundled path; the renderer cannot inject argv. */
+ipcMain.handle("engine:opencode-login", async () => {
+  const dir = resolveBundledOpenCode({
+    isPackaged: app.isPackaged,
+    resourcesPath: process.resourcesPath,
+    appPath: app.getAppPath(),
+  });
+  const bin = bundledOpenCodeBinary(dir);
+  if (!bin) return false;
+  const quoted = /[\s"'&()^]/.test(bin)
+    ? process.platform === "win32"
+      ? `"${bin.replaceAll('"', '\\"')}"`
+      : `'${bin.replaceAll("'", "'\\''")}'`
+    : bin;
+  const command = process.platform === "win32" ? `& ${quoted} auth login` : `${quoted} auth login`;
+  return openTerminalCommand(command);
+});
+
 // OAuth/connect links are returned asynchronously, after Chromium's direct
 // click gesture has ended. Opening them through window.open can therefore be
 // rejected as a popup before setWindowOpenHandler ever sees the URL. Keep the
@@ -977,6 +999,22 @@ app.whenReady().then(async () => {
     secureCredentials = await loadSecureCredentials();
     await secureComposioConfig();
     await ensureManagedComposioCredentials();
+    // The installer ships OpenCode inside Resources. Add that directory to
+    // the user's PATH so `opencode` also works in a new cmd/PowerShell —
+    // not only inside KodBot's own child processes.
+    if (process.platform === "win32") {
+      const bundled = resolveBundledOpenCode({
+        isPackaged: true,
+        resourcesPath: process.resourcesPath,
+        appPath: app.getAppPath(),
+      });
+      if (bundled) {
+        void registerWindowsUserPath(bundled).then((result) => {
+          if (result.error) slog(`opencode PATH: ${result.error}`);
+          else slog(`opencode PATH: ${result.changed ? "added" : "already present"} (${bundled})`);
+        });
+      }
+    }
   }
   // getDisplayMedia in the renderer → this handler → ScreenCaptureKit, all
   // inside the app's own processes — the one capture path macOS reliably

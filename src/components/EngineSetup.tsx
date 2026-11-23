@@ -26,9 +26,14 @@ export function installCommandFor(install: EngineInstall | undefined): string | 
   return install?.command?.[hostPlatform()] ?? null;
 }
 
-/** Installed but missing the cloud account session. */
+/** Installed but missing the cloud account session. Free-access engines
+ * (OpenCode's free pool) run without one, so they are not blocked. */
 export function needsSignIn(instance: InstanceInfo | undefined): boolean {
-  return instance?.snapshot.state === "available" && instance.snapshot.authenticated === false;
+  return (
+    instance?.snapshot.state === "available" &&
+    instance.snapshot.authenticated === false &&
+    !instance.snapshot.freeAccess
+  );
 }
 
 /** The agent CLI itself is absent. Local-model injection needs the CLI but
@@ -123,11 +128,23 @@ export function EngineSetup({
   const { capabilities } = useDesktopCapabilities();
   const { t } = useI18n();
   const remote = Boolean(capabilities.remoteMode);
+  const [directState, setDirectState] = useState<"idle" | "opened" | "failed">("idle");
   const install = instance.install;
   const installCommand = installCommandFor(install);
   const signInCommand = install?.signInCommand;
-  const signInOnly = intent === "cloud" && needsSignIn(instance);
+  const signInOnly =
+    intent === "cloud" && instance.snapshot.state === "available" && instance.snapshot.authenticated === false;
   const command = signInOnly ? signInCommand : installCommand;
+  const directSignIn =
+    signInOnly &&
+    instance.driverKind === "opencode" &&
+    !remote &&
+    Boolean(window.ogb?.openOpencodeLogin) &&
+    directState !== "failed";
+  const openDirectSignIn = async () => {
+    const opened = await window.ogb?.openOpencodeLogin?.();
+    setDirectState(opened ? "opened" : "failed");
+  };
   const title = signInOnly
     ? t("Sign in to {name}", { name: instance.displayName })
     : t("Install {name}", { name: instance.displayName });
@@ -162,7 +179,23 @@ export function EngineSetup({
         </div>
       </div>
 
-      {command ? (
+      {directSignIn ? (
+        <>
+          <button
+            type="button"
+            onClick={() => void openDirectSignIn()}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-[12.5px] font-semibold text-white hover:brightness-110"
+          >
+            {directState === "opened" ? <Check size={14} /> : <LogIn size={14} />}
+            {directState === "opened" ? t("Terminal opened") : t("Open OpenCode sign-in")}
+          </button>
+          <p aria-live="polite" className="mt-1.5 text-center text-[11px] leading-relaxed text-ink-secondary/70">
+            {directState === "opened"
+              ? t("Finish the sign-in in the terminal, then reopen this menu.")
+              : t("A terminal opens with the bundled OpenCode sign-in.")}
+          </p>
+        </>
+      ) : command ? (
         <CommandRow command={command} remote={remote} actionLabel={signInOnly ? "Open sign-in in Terminal" : "Open install in Terminal"} />
       ) : (
         <p className="mt-3 rounded-lg bg-inset px-2.5 py-2 text-[12px] leading-relaxed text-ink-secondary">

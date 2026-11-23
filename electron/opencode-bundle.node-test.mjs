@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { resolveBundledOpenCode } from "./opencode-bundle.mjs";
+import { bundledOpenCodeBinary, resolveBundledOpenCode } from "./opencode-bundle.mjs";
 
 test("finds the packaged engine under Resources/opencode", () => {
   const seen = [];
@@ -40,4 +40,10 @@ test("returns null when this build did not stage an engine", () => {
     }),
     null,
   );
+});
+
+test("names the platform binary inside the staged directory", () => {
+  assert.equal(bundledOpenCodeBinary("/app/resources/opencode", "win32"), "/app/resources/opencode/opencode.exe");
+  assert.equal(bundledOpenCodeBinary("/app/resources/opencode", "linux"), "/app/resources/opencode/opencode");
+  assert.equal(bundledOpenCodeBinary(null, "win32"), null);
 });

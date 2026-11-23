@@ -47,7 +47,9 @@ export function NoEngines() {
       <div className="mx-auto w-full max-w-[560px] px-6 py-12">
         <h1 className="text-[20px] font-semibold text-ink">{t("Install an AI engine to get started")}</h1>
         <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-secondary">
-          {t("KodBot doesn't ship a model of its own — your bots run on an AI CLI installed on this computer, using your existing login. Set up any one of these and your bots come alive.")}
+          {t(
+            "OpenCode is included with KodBot. Finish its one-time sign-in, or use another AI CLI already on this computer.",
+          )}
         </p>
 
         <div className="mt-6 flex flex-col gap-2.5">

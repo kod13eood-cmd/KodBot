@@ -95,6 +95,9 @@ export interface AcpSupport {
   /** snapshot(): can this harness actually run a turn? (env already carries the
    *  merged config). May be async for harnesses that have to ask the CLI. */
   isAuthenticated(env: Record<string, string | undefined>, config: AcpConfig): boolean | Promise<boolean>;
+  /** True when the engine can run usefully without a cloud login, e.g. a
+   * free model pool. The UI treats it as ready and keeps sign-in optional. */
+  freeAccess?(env: Record<string, string | undefined>, config: AcpConfig): boolean;
   /** Classify provider-native failures without coupling the core to messages. */
   classifyError?(error: unknown): ProviderErrorCode | undefined;
   /** Compose the session/prompt text. Default prepends the persona. */
@@ -1010,7 +1013,12 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
           );
         });
         if (!version) return { state: "unavailable", reason: `\`${config.cli}\` CLI not found` };
-        return { state: "available", version, authenticated: await support.isAuthenticated(env, config) };
+        return {
+          state: "available",
+          version,
+          authenticated: await support.isAuthenticated(env, config),
+          ...(support.freeAccess?.(env, config) ? { freeAccess: true } : {}),
+        };
       };
 
       return {

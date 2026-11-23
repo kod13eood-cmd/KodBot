@@ -11,7 +11,10 @@ import {
 } from "./opencode.ts";
 import {
   isFreeModelId,
+  openCodeCli,
+  openCodeInstall,
   pickBestFreeModel,
+  quoteOpenCodePath,
   resetOpenCodeCatalogCache,
 } from "./opencode-shared.ts";
 import type { ModelCatalog } from "../../contracts.ts";
@@ -34,6 +37,26 @@ function endpointFetcher(byUrl: { zen?: unknown; go?: unknown }): typeof fetch {
     return new Response("[]", { status: 200 });
   }) as typeof fetch;
 }
+
+describe("bundled OpenCode paths", () => {
+  it("uses the packaged binary before PATH", () => {
+    expect(openCodeCli({ OC_OPENCODE_BIN: "C:\\KodBot\\opencode.exe" })).toBe("C:\\KodBot\\opencode.exe");
+    expect(openCodeCli({})).toBe("opencode");
+  });
+
+  it("quotes Windows paths with spaces for the sign-in terminal", () => {
+    expect(quoteOpenCodePath("C:\\KodBot\\opencode.exe", "win32")).toBe("C:\\KodBot\\opencode.exe");
+    expect(quoteOpenCodePath("C:\\Program Files\\KodBot\\opencode.exe", "win32")).toBe(
+      '"C:\\Program Files\\KodBot\\opencode.exe"',
+    );
+    expect(quoteOpenCodePath("/opt/KodBot/opencode", "linux")).toBe("/opt/KodBot/opencode");
+  });
+
+  it("builds a sign-in command that works without PATH", () => {
+    const install = openCodeInstall({ OC_OPENCODE_BIN: "C:\\Program Files\\KodBot\\opencode.exe" }, "win32");
+    expect(install.signInCommand).toBe('"C:\\Program Files\\KodBot\\opencode.exe" auth login');
+  });
+});
 
 describe("OpenCode free model helpers", () => {
   it("flags -free ids and known stealth models", () => {
@@ -159,6 +182,28 @@ describe("unified OpenCode driver", () => {
     expect(driver.driverKind).toBe("opencode");
     expect(driver.decodeConfig(undefined)).toEqual({ cli: "opencode", fullAuto: false, workspace: undefined });
     expect(driver.install?.docsUrl).toContain("opencode.ai");
+  });
+
+  it("marks free models as usable without a cloud login", async () => {
+    const scratch = mkdtempSync(join(tmpdir(), "omb-opencode-free-"));
+    const driver = createOpenCodeDriver(async () => new Response("[]", { status: 200 }));
+    const instance = await driver.create({
+      instanceId: "opencode-free",
+      displayName: "OpenCode",
+      environment: { XDG_DATA_HOME: scratch, OPENCODE_API_KEY: "" },
+      enabled: true,
+      config: { cli: FAKE_CLI, fullAuto: false },
+    });
+    try {
+      expect(await instance.snapshot()).toMatchObject({
+        state: "available",
+        authenticated: false,
+        freeAccess: true,
+      });
+    } finally {
+      await instance.dispose();
+      await removeTempDir(scratch);
+    }
   });
 
   it("recognizes a Zen login stored by the CLI", async () => {

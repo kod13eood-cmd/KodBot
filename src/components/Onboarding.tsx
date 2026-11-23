@@ -63,7 +63,7 @@ interface EngineEntry {
 function engineReady(instance: InstanceRow): boolean {
   return (
     instance.snapshot.state === "available" &&
-    (instance.access === "custom" || instance.snapshot.authenticated !== false)
+    (instance.access === "custom" || instance.snapshot.authenticated !== false || instance.snapshot.freeAccess === true)
   );
 }
 
@@ -238,7 +238,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
           <div className="flex min-h-0 flex-col">
             <h1 className="text-[18px] font-semibold text-ink">{t("Your engines")}</h1>
             <p className="mt-1 text-[13.5px] text-ink-secondary">
-              {t("Bots run on AI tools installed on this computer — here’s what we found.")}
+              {t("KodBot includes OpenCode. Finish its one-time sign-in, or use another engine already on this computer.")}
             </p>
             <div className="mt-4 flex min-h-0 flex-col gap-2.5 overflow-y-auto pr-1 [scrollbar-width:thin]">
               {!instances ? (

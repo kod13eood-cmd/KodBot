@@ -70,6 +70,10 @@ declare global {
       /** Copies an engine install command and opens a blank terminal. False
        * when no terminal could be launched; the clipboard still has it. */
       openInstallTerminal?(command: string): Promise<boolean>;
+      /** Open a visible terminal already running the bundled OpenCode
+       * sign-in. False when the desktop shell has no bundled engine or could
+       * not open a terminal. */
+      openOpencodeLogin?(): Promise<boolean>;
       /** Opens an http(s) link in the user's default browser. */
       openExternal?(url: string): Promise<boolean>;
       /** Native folder picker; resolves null when the user cancels. */

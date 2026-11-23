@@ -31,4 +31,10 @@ describe("needsCli / needsSignIn", () => {
     expect(needsCli(ready)).toBe(false);
     expect(needsSignIn(ready)).toBe(false);
   });
+
+  it("does not block an engine whose free models work without sign-in", () => {
+    const free = instance({ state: "available", authenticated: false, freeAccess: true, version: "2.3.2" });
+    expect(needsCli(free)).toBe(false);
+    expect(needsSignIn(free)).toBe(false);
+  });
 });

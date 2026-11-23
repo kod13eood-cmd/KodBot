@@ -2,6 +2,12 @@
 
 Dated, user-facing changes. Newest first.
 
+## 2026-11-23 — 0.1.66
+
+- **Windows Solo first start:** the bundled OpenCode is added to the user PATH, so `opencode` works in a new cmd/PowerShell without a separate install. KodBot's sign-in command also points at the bundled executable, so it no longer depends on npm or PATH.
+- Free OpenCode models work without an account, so a fresh install is ready to chat. Signing in is optional and only unlocks paid models; the in-app **Open OpenCode sign-in** button runs the bundled login, and paid-model failures show the sign-in card.
+- **Gateway:** a wrong browser password now returns to the login form with a translated error instead of a black JSON screen. Signed-in Business users get **Settings → General → Account → Change password** with current-password verification; all sessions are signed out after a successful change.
+
 ## 2026-11-23 — 0.1.65
 
 - App Settings → General → **Language** now has a **New bot names** choice: **Match the app language** (default), **Bulgarian names**, or **English names**. With Bulgarian selected, a new bot gets a Cyrillic Bulgarian name and a Bulgarian greeting; English keeps the original pool. Existing bots are never renamed.

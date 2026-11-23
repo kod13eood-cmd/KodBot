@@ -244,6 +244,9 @@ export interface ProviderSnapshot {
   state: "available" | "unavailable";
   reason?: string;
   authenticated?: boolean;
+  /** The engine can run without a cloud login (for example OpenCode's free
+   * models). Sign-in is optional until a paid model is selected. */
+  freeAccess?: boolean;
   version?: string | null;
   /** How this instance is paid for, when the driver can tell: a reported
    * cost on a subscription is notional and the UI labels it as such. */

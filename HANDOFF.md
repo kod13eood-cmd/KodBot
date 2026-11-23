@@ -23,7 +23,7 @@ Last reviewed: **2026-11-12**.
 | GitHub remote | `git@github.com:kod13eood-cmd/KodBot.git` |
 | Gitea remote | `ssh://git@llm1:2222/deso/kodbot.git` |
 | Android release branch | `android-release` (APK-only branch) |
-| App version | `0.1.65` |
+| App version | `0.1.66` |
 | Android version | `0.1.29` / versionCode `30` |
 
 There is also a stale remote checkout at `paperclipi7:~/Developer/OpenBot`;
@@ -409,6 +409,27 @@ once; after that, releases update in place.
   `/api/usage/caps` verified. Release assets include the stable-signed Android
   0.1.28 APK.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.62>
+
+### Release 0.1.66 (2026-11-23)
+
+- Desktop 0.1.66; Android stays **0.1.29 / versionCode 30** (it loads the
+  hosted UI from the paired harness).
+- Windows Solo now registers the bundled OpenCode directory in the user PATH
+  at first launch, so `opencode` works in a new cmd/PowerShell. The harness
+  gets `OC_OPENCODE_BIN` pointing at `Resources/opencode/opencode.exe`; the
+  driver's default CLI and the sign-in command use that absolute path, not a
+  global npm install.
+- OpenCode free models run without an account, so a fresh install is usable
+  immediately. `freeAccess` in the engine snapshot keeps onboarding and the
+  chat from treating an unsigned-in free engine as blocked; sign-in is only
+  needed for paid models, and paid-model failures show the sign-in card. The
+  desktop's **Open OpenCode sign-in** button opens a terminal already running
+  the bundled `auth login`.
+- Gateway fixes: failed browser form logins return to `/login` with the error
+  instead of JSON; signed-in users can change their own password in
+  **Settings → General → Account** with current-password verification and
+  session revocation.
+- Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.66>
 
 ### Release 0.1.65 (2026-11-23)
 
