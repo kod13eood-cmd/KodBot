@@ -434,8 +434,11 @@ once; after that, releases update in place.
   fresh install asks KodBot Solo vs Business again. Updates keep the choice.
   A pre-0.1.64 local file without the new `onboarding` marker asks once.
 - UI deployed to `/opt/kodbot/ui`; the server bundle deployment waits for an
-  idle harness.
+  idle harness (live harness still reports 0.1.62).
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.64>
+- Assets verified: Windows NSIS 192 MB, Linux AppImage 228 MB, .deb 196 MB,
+  Android 0.1.29 10.1 MB, both `latest.yml` feeds. Workflow run 45128830290.
+  macOS remains the separate signed/notarized Mac flow.
 
 ### Release 0.1.63 (2026-11-22)
 

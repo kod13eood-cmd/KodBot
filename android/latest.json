@@ -1,7 +1,7 @@
 {
-  "versionCode": 29,
-  "versionName": "0.1.28",
+  "versionCode": 30,
+  "versionName": "0.1.29",
   "apkUrl": "https://github.com/kod13eood-cmd/kodbot-releases/releases/latest/download/KodBot-android.apk",
-  "notes": "Send now за чакащи съобщения и пълен редактор на Shared knowledge (global + екипи) на телефона.",
-  "publishedAt": "2026-11-20T00:00:00Z"
+  "notes": "Нова икона като на Linux, по-ясен статус на процеса и по-подредена опашка от съобщения.",
+  "publishedAt": "2026-11-23T00:00:00Z"
 }
