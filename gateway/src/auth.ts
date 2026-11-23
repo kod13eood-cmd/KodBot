@@ -243,6 +243,34 @@ export class AuthService {
     this.store.deleteUserSessions(user.id);
   }
 
+  /** Self-service password change. The caller must already hold a valid
+   * session; possession of that session is not enough, so the current
+   * password is verified again. Every session is then revoked and the person
+   * signs in fresh with the new password. */
+  async changePassword(input: {
+    userId: string;
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<void> {
+    const key = `password|${input.userId}`;
+    if (!this.loginLimiter.allow(key, this.clock())) {
+      throw new AuthError(429, "Too many password attempts. Try again later.");
+    }
+    const user = this.store.findUserById(input.userId);
+    if (!user || user.disabledAt !== null) throw new AuthError(401, "Not signed in.");
+    if (!(await verifyPassword(input.currentPassword, user.passwordHash))) {
+      throw new AuthError(401, "Current password is wrong.");
+    }
+    const problem = passwordProblem(input.newPassword);
+    if (problem) throw new AuthError(400, problem);
+    if (await verifyPassword(input.newPassword, user.passwordHash)) {
+      throw new AuthError(400, "Choose a password different from the current one.");
+    }
+    this.loginLimiter.reset(key);
+    this.store.setPassword(user.id, await hashPassword(input.newPassword));
+    this.store.deleteUserSessions(user.id);
+  }
+
   createInvite(input: {
     email?: string;
     createdBy?: string;

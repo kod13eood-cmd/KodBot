@@ -261,6 +261,21 @@ export function createGatewayServer({ config, store, auth, harnesses, serveStati
         return json(res, 200, { user: current.user });
       }
 
+      // Self-service password change for any signed-in account. The current
+      // password is re-verified here, not just the session cookie. Success
+      // revokes every session, so the client returns to the login page.
+      if (method === "POST" && path === "/api/auth/password") {
+        const current = auth.session(sessionToken(req));
+        if (!current) return json(res, 401, { error: "not signed in", login: "/login" });
+        const body = bodyObject(req, await readBody(req));
+        await auth.changePassword({
+          userId: current.user.id,
+          currentPassword: body.currentPassword ?? "",
+          newPassword: body.newPassword ?? "",
+        });
+        return json(res, 200, { ok: true, signedOut: true });
+      }
+
       // Owner-only control plane. The owner is the gateway administrator;
       // members cannot list users, mint invites, reset passwords, or disable
       // accounts. These routes never reach a tenant harness.

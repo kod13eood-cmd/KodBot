@@ -2,9 +2,9 @@
 // Per-bot settings (persona, model, computer) stay in SettingsPanel — this
 // is the stuff shared by every bot: who you are, your keys, and the
 // machine your bots can borrow.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { BookOpen, Coins, Info, KeyRound, Monitor, Share2, ShieldCheck, Smartphone, Terminal, User, Volume2, X } from "lucide-react";
-import { useStore, type AppSettingsSection } from "@/state/store";
+import { api, useStore, type AppSettingsSection } from "@/state/store";
 import { ApiKeyRow } from "./ApiKeys";
 import { useUpdaterState } from "@/lib/updater";
 import { windowsTitlebarInset } from "@/lib/window-chrome";
@@ -496,11 +496,53 @@ function DeveloperCard() {
 function AccountCard() {
   const { state } = useStore();
   const { t } = useI18n();
+  const [changing, setChanging] = useState(false);
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   if (!state.authUser) return null;
   const signOut = async () => {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     window.location.assign("/login");
   };
+  const changePassword = async (event: FormEvent) => {
+    event.preventDefault();
+    if (busy) return;
+    setError(null);
+    setNotice(null);
+    if (next.length < 10) {
+      setError(t("The new password must be at least 10 characters."));
+      return;
+    }
+    if (next !== confirm) {
+      setError(t("The new passwords do not match."));
+      return;
+    }
+    setBusy(true);
+    try {
+      await api("/api/auth/password", {
+        method: "POST",
+        body: JSON.stringify({ currentPassword: current, newPassword: next }),
+      });
+      setChanging(false);
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+      setNotice(t("Password changed. Sign in with your new password."));
+      // The server revoked this session too, so the next request would 401.
+      window.setTimeout(() => window.location.assign("/login"), 1400);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause);
+      setError(t(message));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const inputClass =
+    "w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none disabled:opacity-50";
   return (
     <Card
       title={t("Account")}
@@ -509,12 +551,75 @@ function AccountCard() {
         role: state.authUser.role === "owner" ? t("Owner") : t("Member"),
       })}
     >
-      <button
-        onClick={() => void signOut()}
-        className="rounded-lg border border-hairline/40 px-3 py-1.5 text-[13px] text-ink hover:bg-raised"
-      >
-        {t("Sign out")}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => void signOut()}
+          className="rounded-lg border border-hairline/40 px-3 py-1.5 text-[13px] text-ink hover:bg-raised"
+        >
+          {t("Sign out")}
+        </button>
+        <button
+          onClick={() => {
+            setChanging((open) => !open);
+            setError(null);
+          }}
+          className="rounded-lg border border-hairline/40 px-3 py-1.5 text-[13px] text-ink hover:bg-raised"
+        >
+          {changing ? t("Cancel") : t("Change password")}
+        </button>
+      </div>
+      {notice && (
+        <div className="mt-3 rounded-lg border border-success/25 bg-success/10 px-3 py-2 text-[12.5px] text-success">
+          {notice}
+        </div>
+      )}
+      {changing && (
+        <form onSubmit={(event) => void changePassword(event)} className="mt-3 flex flex-col gap-2">
+          <input
+            type="password"
+            value={current}
+            onChange={(event) => setCurrent(event.target.value)}
+            placeholder={t("Current password")}
+            autoComplete="current-password"
+            required
+            disabled={busy}
+            className={inputClass}
+          />
+          <input
+            type="password"
+            value={next}
+            onChange={(event) => setNext(event.target.value)}
+            placeholder={t("New password")}
+            autoComplete="new-password"
+            minLength={10}
+            required
+            disabled={busy}
+            className={inputClass}
+          />
+          <input
+            type="password"
+            value={confirm}
+            onChange={(event) => setConfirm(event.target.value)}
+            placeholder={t("Confirm new password")}
+            autoComplete="new-password"
+            minLength={10}
+            required
+            disabled={busy}
+            className={inputClass}
+          />
+          {error && <div className="text-[12px] text-danger">{error}</div>}
+          <div className="text-[11.5px] leading-relaxed text-ink-secondary">
+            {t("Changing the password signs out every session, including this one.")}
+          </div>
+          <button
+            type="submit"
+            disabled={busy}
+            className="self-start rounded-lg bg-accent px-3 py-1.5 text-[12.5px] font-semibold text-white hover:brightness-110 disabled:opacity-50"
+          >
+            {busy ? t("Saving…") : t("Update password")}
+          </button>
+        </form>
+      )}
     </Card>
   );
 }

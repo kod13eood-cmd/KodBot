@@ -144,6 +144,41 @@ describe("gateway HTTP auth", () => {
     expect(await page.text()).toContain("Email or password is wrong.");
   });
 
+  it("changes the signed-in account password and revokes old sessions", async () => {
+    const owner = await post("/api/auth/register", {
+      email: "owner@example.com",
+      password: "correct horse battery",
+      confirm: "correct horse battery",
+    });
+    const token = (await owner.json()).token as string;
+
+    const wrong = await post(
+      "/api/auth/password",
+      { currentPassword: "not my password", newPassword: "new horse battery" },
+      { authorization: `Bearer ${token}` },
+    );
+    expect(wrong.status).toBe(401);
+    expect((await wrong.json()).error).toBe("Current password is wrong.");
+
+    const changed = await post(
+      "/api/auth/password",
+      { currentPassword: "correct horse battery", newPassword: "new horse battery" },
+      { authorization: `Bearer ${token}` },
+    );
+    expect(changed.status).toBe(200);
+    expect((await changed.json()).signedOut).toBe(true);
+
+    expect(
+      (await fetch(`${base}/api/auth/me`, { headers: { authorization: `Bearer ${token}` } })).status,
+    ).toBe(401);
+    expect(
+      (await post("/api/auth/login", { email: "owner@example.com", password: "correct horse battery" })).status,
+    ).toBe(401);
+    expect(
+      (await post("/api/auth/login", { email: "owner@example.com", password: "new horse battery" })).status,
+    ).toBe(200);
+  });
+
   it("lets the owner manage users, invites, passwords, and disabled accounts", async () => {
     const owner = await post("/api/auth/register", {
       email: "owner@example.com",

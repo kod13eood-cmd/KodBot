@@ -632,6 +632,23 @@ const BULGARIAN: Record<string, string> = {
   "Member": "Член",
   "Signed in as {email} ({role}).": "Влязъл си като {email} ({role}).",
   "Sign out": "Изход",
+  "Change password": "Смяна на парола",
+  "Current password": "Текуща парола",
+  "New password": "Нова парола",
+  "Confirm new password": "Потвърди новата парола",
+  "Update password": "Обнови паролата",
+  "Changing the password signs out every session, including this one.":
+    "Смяната на паролата изключва всички сесии, включително тази.",
+  "The new password must be at least 10 characters.":
+    "Новата парола трябва да е поне 10 символа.",
+  "The new passwords do not match.": "Новите пароли не съвпадат.",
+  "Password changed. Sign in with your new password.":
+    "Паролата е сменена. Влез с новата парола.",
+  "Current password is wrong.": "Текущата парола е грешна.",
+  "Choose a password different from the current one.":
+    "Избери парола, различна от текущата.",
+  "Too many password attempts. Try again later.":
+    "Твърде много опити за смяна на паролата. Опитай по-късно.",
   "Manual code": "Ръчен код",
   "Expires in {seconds}s": "Изтича след {seconds} сек.",
   "Or open the mobile app and choose “{name}” under On this network.":

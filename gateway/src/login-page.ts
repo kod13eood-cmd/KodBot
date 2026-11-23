@@ -75,6 +75,9 @@ const ERROR_BG: Record<string, string> = {
   "The owner account already exists.": "Акаунтът на собственика вече съществува.",
   "Email or password is wrong.": "Имейлът или паролата са грешни.",
   "Too many sign-in attempts. Try again later.": "Твърде много опити за вход. Опитай по-късно.",
+  "Too many password attempts. Try again later.": "Твърде много опити за смяна на паролата. Опитай по-късно.",
+  "Current password is wrong.": "Текущата парола е грешна.",
+  "Choose a password different from the current one.": "Избери парола, различна от текущата.",
   "Passwords do not match.": "Паролите не съвпадат.",
   "No account with that email.": "Няма акаунт с този имейл.",
 };
