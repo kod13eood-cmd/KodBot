@@ -417,7 +417,11 @@ once; after that, releases update in place.
   statuses and notes, computer-panel states, engine settings, search,
   team-library import, Inspector, group routing hints and room instructions,
   attachment chips, and routine labels now use `t()` and have Bulgarian copy.
+- Live UI and harness deployed to `/opt/kodbot`; `/api/about` reports 0.1.68.
 - Release: <https://github.com/kod13eood-cmd/kodbot-releases/releases/tag/v0.1.68>
+- Assets verified: Windows NSIS 192 MB, Linux AppImage 228 MB, .deb 196 MB,
+  Android 0.1.29 10.1 MB, both `latest.yml` feeds. Workflow run 45571930233
+  (the first Android upload attempt failed; the retry succeeded).
 
 ### Release 0.1.67 (2026-11-23)
 
