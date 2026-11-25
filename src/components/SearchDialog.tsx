@@ -127,6 +127,7 @@ function BotResult({ bot, onPick }: { bot: Bot; onPick: () => void }) {
 }
 
 function RoomResult({ group, onPick }: { group: Group; onPick: () => void }) {
+  const { t } = useI18n();
   return (
     <button
       type="button"
@@ -139,7 +140,7 @@ function RoomResult({ group, onPick }: { group: Group; onPick: () => void }) {
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[14px] font-medium text-ink">{group.name}</span>
         <span className="block truncate text-[12px] text-ink-secondary">
-          {group.memberIds.length} bots
+          {t("{count} bots", { count: group.memberIds.length })}
         </span>
       </span>
     </button>

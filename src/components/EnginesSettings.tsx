@@ -246,7 +246,7 @@ function EngineRow({ instance }: { instance: InstanceInfo }) {
           </span>
         ) : (
           instance.cliDefault && (
-            <span className="truncate text-[11px] text-ink-secondary">{instance.cliDefault} · default</span>
+            <span className="truncate text-[11px] text-ink-secondary">{instance.cliDefault} · {t("default")}</span>
           )
         )}
         <span className="flex-1" />
@@ -312,8 +312,9 @@ export function EnginesSettings() {
         );
       })()}
       <div className="text-[12px] leading-relaxed text-ink-secondary">
-        Set CLI points an engine at a specific binary — a versioned build, a wrapper script, or an
-        absolute path. Saving reloads providers and interrupts any running turns.
+        {t(
+          "Set CLI points an engine at a specific binary — a versioned build, a wrapper script, or an absolute path. Saving reloads providers and interrupts any running turns.",
+        )}
       </div>
     </div>
   );

@@ -64,6 +64,7 @@ const CREDENTIALS: Record<
 };
 
 function CredentialHelp({ section }: { section: ConfigSection }) {
+  const { t } = useI18n();
   const credential = CREDENTIALS[section];
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -95,7 +96,7 @@ function CredentialHelp({ section }: { section: ConfigSection }) {
       <button
         ref={buttonRef}
         type="button"
-        aria-label={`About ${credential.label}`}
+        aria-label={t("About {name}", { name: t(credential.label) })}
         aria-expanded={open}
         aria-controls={popoverId}
         onClick={() => setOpen((current) => !current)}
@@ -107,14 +108,14 @@ function CredentialHelp({ section }: { section: ConfigSection }) {
         <div
           id={popoverId}
           role="group"
-          aria-label={`${credential.label} help`}
+          aria-label={t("{name} help", { name: t(credential.label) })}
           className="animate-pop-in absolute right-0 z-30 mt-1.5 w-[270px] rounded-xl border border-hairline bg-panel p-3 text-left shadow-2xl"
         >
-          <div className="text-[12px] leading-[1.45] text-ink-secondary">{credential.description}</div>
+          <div className="text-[12px] leading-[1.45] text-ink-secondary">{t(credential.description)}</div>
           {credential.warning && (
             <div className="mt-2 flex gap-1.5 rounded-lg border border-warning/25 bg-warning/10 px-2 py-1.5 text-[11px] leading-[1.4] text-warning">
               <TriangleAlert size={13} className="mt-px shrink-0" aria-hidden="true" />
-              <span>{credential.warning}</span>
+              <span>{t(credential.warning)}</span>
             </div>
           )}
           <a
@@ -124,7 +125,7 @@ function CredentialHelp({ section }: { section: ConfigSection }) {
             onClick={() => setOpen(false)}
             className="mt-2.5 flex items-center gap-1.5 text-[12px] font-medium text-accent hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
           >
-            {credential.linkLabel}
+            {t(credential.linkLabel)}
             <ExternalLink size={12} aria-hidden="true" />
           </a>
         </div>
@@ -175,7 +176,7 @@ export function ApiKeyRow({
     <div>
       <div className="mb-1.5 flex items-center gap-2 text-[13px] text-ink-secondary">
         <span className={cn("size-1.5 rounded-full", configured ? "bg-success" : "bg-raised-hover")} />
-        <span>{credential.label}</span>
+        <span>{t(credential.label)}</span>
         {credential.optional && (
           <span className="rounded bg-raised px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-secondary">
             {t("Optional")}
@@ -190,8 +191,8 @@ export function ApiKeyRow({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && save()}
-          placeholder={configured ? "••••••••  (paste to replace)" : credential.placeholder}
-          aria-label={credential.label}
+          placeholder={configured ? t("Paste to replace") : t(credential.placeholder)}
+          aria-label={t(credential.label)}
           autoComplete="off"
           className="w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] text-ink placeholder:text-ink-secondary focus:border-hairline focus:outline-none"
         />

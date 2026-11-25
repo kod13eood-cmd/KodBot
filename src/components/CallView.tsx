@@ -81,27 +81,27 @@ export function CallTargetButton({
   const label = active
     ? t("Hang up on {name}", { name: targetName })
     : !capabilitiesReady
-      ? "Checking call availability"
+      ? t("Checking call availability")
       : !supported
-        ? "Calls currently need the macOS desktop app"
+        ? t("Calls currently need the macOS desktop app")
         : !configured
-          ? "Add an ElevenLabs key in App Settings to make calls"
+          ? t("Add an ElevenLabs key in App Settings to make calls")
           : !voiceReady
-            ? "Pick a voice in App Settings to make calls"
-            : `Call ${targetName}`;
+            ? t("Pick a voice in App Settings to make calls")
+            : t("Call {name}", { name: targetName });
 
   const reason = !capabilitiesReady
-    ? "Checking whether this device can make calls."
+    ? t("Checking whether this device can make calls.")
     : !capabilities.dictation.available
-      ? "Calls require KodBot for macOS because speech recognition runs on-device."
+      ? t("Calls require KodBot for macOS because speech recognition runs on-device.")
       : !window.ogb?.speechStart
-        ? "The speech service is unavailable in this app build. Restart or update KodBot."
+        ? t("The speech service is unavailable in this app build. Restart or update KodBot.")
         : !configured
-          ? "Add an ElevenLabs API key so the bot can speak during calls."
+          ? t("Add an ElevenLabs API key so the bot can speak during calls.")
           : !voiceReady
             ? voices.length > 1
-              ? "Choose an app voice, or give every room member their own ElevenLabs voice."
-              : "Choose an ElevenLabs voice before starting a call."
+              ? t("Choose an app voice, or give every room member their own ElevenLabs voice.")
+              : t("Choose an ElevenLabs voice before starting a call.")
             : "";
 
   useEffect(() => {
@@ -196,7 +196,7 @@ function Call({ bot }: { bot: Bot }) {
   const [heard, setHeard] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const pushToTalk = usePushToTalk(bot.id, phase === "listening", () => {
-    setNote("Push to talk couldn't start. Check Microphone and Speech Recognition access.");
+    setNote(t("Push to talk couldn't start. Check Microphone and Speech Recognition access."));
   });
 
   const messages = visibleMessages(bot);
@@ -246,7 +246,7 @@ function Call({ bot }: { bot: Bot }) {
     setNote(null);
     void window.ogb?.speechStart({ endpointMs: CALL_ENDPOINT_MS }).catch(() => {
       if (alive.current && currentCall() === bot.id) {
-        setNote("The microphone couldn't start. Check Microphone and Speech Recognition access.");
+        setNote(t("The microphone couldn't start. Check Microphone and Speech Recognition access."));
       }
     });
   }, [bot.id, move]);
@@ -297,7 +297,7 @@ function Call({ bot }: { bot: Bot }) {
     const offTranscript = bridge.onSpeechTranscript((line) => {
       if (!alive.current || currentCall() !== bot.id || phaseRef.current !== "listening") return;
       if (line.error) {
-        setNote("Dictation stopped unexpectedly. Check Microphone and Speech Recognition access.");
+        setNote(t("Dictation stopped unexpectedly. Check Microphone and Speech Recognition access."));
         return;
       }
       if (typeof line.text !== "string") return;
@@ -317,14 +317,14 @@ function Call({ bot }: { bot: Bot }) {
             threadId: bot.threadId,
             requestId: open,
             behavior: allow ? "allow" : "deny",
-            message: allow ? undefined : "Denied by the user, on a call.",
+            message: allow ? undefined : t("Denied by the user, on a call."),
           });
           move("working");
           return;
         }
         // not a decision — leave the card up and say so rather than
         // guessing consent from an ambiguous sentence
-        void sayThenListen("Sorry — is that a yes or a no?");
+        void sayThenListen(t("Sorry — is that a yes or a no?"));
         return;
       }
 
@@ -342,14 +342,14 @@ function Call({ bot }: { bot: Bot }) {
     const offEnd = bridge.onSpeechEnd(({ code, reason }) => {
       if (!alive.current || currentCall() !== bot.id) return;
       if (code === 2) {
-        setNote("Calls need macOS dictation, which isn't available here yet.");
+        setNote(t("Calls need macOS dictation, which isn't available here yet."));
         return;
       }
       if (code === 1) {
         setNote(
           reason === "helper-build-failed"
-            ? "The dictation helper couldn't be built. Install Apple's Command Line Tools and try again."
-            : "Dictation needs Microphone + Speech Recognition access in System Settings.",
+            ? t("The dictation helper couldn't be built. Install Apple's Command Line Tools and try again.")
+            : t("Dictation needs Microphone + Speech Recognition access in System Settings."),
         );
         return;
       }
@@ -399,9 +399,16 @@ function Call({ bot }: { bot: Bot }) {
       spokenIds.current.add(question.id);
       const detail = question.card.subtitle.trim();
       const choices = question.card.options.length
-        ? ` The options are ${question.card.options.join(", ")}.`
+        ? t(" The options are {options}.", { options: question.card.options.join(", ") })
         : "";
-      void sayThenListen(`${bot.name} asks: ${detail}${/[.!?]$/.test(detail) ? "" : "."}${choices}`);
+      void sayThenListen(
+        t("{name} asks: {detail}{period}{choices}", {
+          name: bot.name,
+          detail,
+          period: /[.!?]$/.test(detail) ? "" : ".",
+          choices,
+        }),
+      );
       return;
     }
     const fresh = messages.filter((m) => !spokenIds.current.has(m.id));
@@ -464,19 +471,19 @@ function Call({ bot }: { bot: Bot }) {
   const status =
     phase === "listening"
       ? pushToTalk
-        ? "Push to talk"
-        : "Listening"
+        ? t("Push to talk")
+        : t("Listening")
       : phase === "sending"
-        ? "One moment"
+        ? t("One moment")
         : phase === "speaking"
           ? bot.name
-          : "Working";
+          : t("Working");
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-app/95 backdrop-blur-sm">
       <button
         onClick={() => endCall(bot.id)}
-        aria-label="Hang up"
+        aria-label={t("Hang up")}
         className="absolute right-5 top-5 rounded-md p-2 text-ink-secondary hover:bg-raised hover:text-ink"
       >
         <X size={18} />
@@ -497,7 +504,7 @@ function Call({ bot }: { bot: Bot }) {
         {phase === "listening" ? (
           heard || (
             <span className="text-ink-secondary">
-              {pushToTalk ? "Release Control + Option to send…" : "Say something…"}
+              {pushToTalk ? t("Release Control + Option to send…") : t("Say something…")}
             </span>
           )
         ) : (

@@ -168,12 +168,12 @@ export function TeamLibraryPanel({
   };
 
   const readFile = async (file: File) => {
-    if (file.size > MAX_TEAM_FILE_BYTES) throw new Error("That team file is too large.");
+    if (file.size > MAX_TEAM_FILE_BYTES) throw new Error(t("That team file is too large."));
     let manifest: unknown;
     try {
       manifest = JSON.parse(await file.text());
     } catch (cause) {
-      if (cause instanceof SyntaxError) throw new Error("That team file is not valid JSON.");
+      if (cause instanceof SyntaxError) throw new Error(t("That team file is not valid JSON."));
       throw cause;
     }
     previewManifest(teamImportPreview(manifest), "file");
@@ -319,7 +319,7 @@ export function TeamLibraryPanel({
                     </div>
                     <div className="min-w-0">
                       <div className="truncate text-[14px] font-medium text-ink">{member.name}</div>
-                      <div className="mt-0.5 truncate text-[12.5px] text-ink-secondary">{member.title || "General assistant"}</div>
+                      <div className="mt-0.5 truncate text-[12.5px] text-ink-secondary">{member.title || t("General assistant")}</div>
                     </div>
                   </div>
                 ))}
@@ -327,8 +327,11 @@ export function TeamLibraryPanel({
               <div className="mt-6 flex items-start gap-2.5 rounded-xl bg-raised/45 px-4 py-3 text-[12.5px] leading-relaxed text-ink-secondary">
                 <Check size={15} className="mt-0.5 shrink-0 text-success" />
                 <p>
-                  Only roles and appearance are loaded. Your conversations, account connections, permissions, and computer access stay private.
-                  {source === "library" && " Playbooks remain available in the community repo for review."}
+                  {t(
+                    "Only roles and appearance are loaded. Your conversations, account connections, permissions, and computer access stay private.",
+                  )}
+                  {source === "library" &&
+                    " " + t("Playbooks remain available in the community repo for review.")}
                 </p>
               </div>
               {error && <div role="alert" className="mt-4 rounded-lg bg-danger/10 px-3 py-2 text-[12.5px] text-danger">{error}</div>}
@@ -359,19 +362,19 @@ export function TeamLibraryPanel({
               >
                 {importing && <Loader2 size={15} className="animate-spin" />}
                 {importing
-                  ? "Loading…"
+                  ? t("Loading…")
                   : currentBotCount === 0
-                    ? "Load team"
+                    ? t("Load team")
                     : importMode === "replace"
-                      ? "Replace team"
-                      : "Add team"}
+                      ? t("Replace team")
+                      : t("Add team")}
               </button>
             </footer>
           </>
         ) : (
           <>
             <div className="flex flex-col gap-3 px-6 pb-4 pt-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-              <div className="flex w-fit rounded-xl bg-raised/70 p-1" role="tablist" aria-label="Team source">
+              <div className="flex w-fit rounded-xl bg-raised/70 p-1" role="tablist" aria-label={t("Team source")}>
                 <button
                   role="tab"
                   aria-selected={tab === "explore"}
@@ -522,7 +525,7 @@ export function TeamLibraryPanel({
                           className="flex items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-[13px] font-medium text-white hover:bg-accent/90 disabled:opacity-40"
                         >
                           {githubLoading && <Loader2 size={13} className="animate-spin" />}
-                          Load
+                          {t("Load")}
                         </button>
                       </div>
                     </div>

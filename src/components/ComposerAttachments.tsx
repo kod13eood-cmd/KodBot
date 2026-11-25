@@ -101,7 +101,7 @@ export function ComposerAttachments({
           <span className="min-w-0 flex-1">{notice}</span>
           <button
             onClick={() => setNotice(null)}
-            aria-label="Dismiss"
+            aria-label={t("Dismiss")}
             className="shrink-0 rounded p-0.5"
           >
             <X size={12} />
@@ -160,6 +160,8 @@ function Chip({
   title: string;
   onRemove: () => void;
 }) {
+  const { t } = useI18n();
+  const visibleLabel = label === "PASTED" ? t("Pasted") : label === "VOICE" ? t("Voice") : t("File");
   const Icon = label === "PASTED" ? ClipboardPaste : label === "VOICE" ? AudioLines : FileIcon;
   return (
     <div
@@ -173,14 +175,14 @@ function Chip({
       <div className="mt-1 flex items-center gap-1">
         <Icon size={11} className="text-ink-secondary/70" />
         <span className="rounded border border-hairline/60 px-1 py-px text-[9.5px] font-medium tracking-wide text-ink-secondary">
-          {label}
+          {visibleLabel}
         </span>
       </div>
       {/* hover reveals it, but so must focus: `hidden` would take the only
           way to drop a chip out of reach of the keyboard */}
       <button
         onClick={onRemove}
-        aria-label={`Remove ${label === "PASTED" ? "pasted text" : label === "VOICE" ? "voice note" : "file"}`}
+        aria-label={t(label === "PASTED" ? "Remove pasted text" : label === "VOICE" ? "Remove voice note" : "Remove file")}
         className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full border border-hairline/60 bg-panel text-ink-secondary opacity-0 transition-opacity hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
       >
         <X size={11} />

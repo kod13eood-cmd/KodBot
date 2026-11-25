@@ -245,7 +245,7 @@ export function LocalVmViewer({ url, onClose }: { url: string; onClose: () => vo
         )}
         <iframe
           src={url}
-          title="Local VM desktop"
+          title={t("Local VM desktop")}
           className="min-h-0 w-full flex-1 border-0 bg-black"
           allow="clipboard-read; clipboard-write; fullscreen"
         />

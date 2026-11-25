@@ -202,7 +202,7 @@ export function LocalComputerSection() {
   return (
     <>
       <Card
-        title="Local VM"
+        title={t("Local VM")}
         subtitle={`A shared Cua Linux sandbox on this ${host} for bots to browse and work in — isolated, backed by one durable workspace, and automatically recycled after 8 hours without activity.`}
       >
         <div className="flex flex-wrap items-center gap-2">
@@ -238,7 +238,7 @@ export function LocalComputerSection() {
         {error && <div className="mt-3 rounded-lg bg-danger/10 px-3 py-2 text-[12px] text-danger">{error}</div>}
       </Card>
 
-      <Card title="Setup" subtitle="Once a container runtime is open, KodBot prepares Cua and the VM for you.">
+      <Card title={t("Setup")} subtitle={t("Once a container runtime is open, KodBot prepares Cua and the VM for you.")}>
         <div className="flex flex-col gap-4">
           <Step n={1} title={t("Install a container runtime")} done={Boolean(status?.runtime)}>
             <div className="text-[13px] leading-relaxed text-ink-secondary">
@@ -309,7 +309,7 @@ export function LocalComputerSection() {
       )}
 
       <Card
-        title="Safety and storage"
+        title={t("Safety and storage")}
         subtitle={`Cua Driver operates only the VM's desktop. Exactly one private host folder is mounted at ${status?.workspace_guest_path ?? "/home/cua/workspace"}; files and browser profiles there survive VM replacement, while everything elsewhere in the VM remains disposable. The password-protected viewer is available only on this machine. Docker and Podman runs are limited to 4 GB memory, 2 CPUs and 512 processes; all Linux capabilities are dropped except the two the desktop supervisor needs to switch to its unprivileged user. The VM can still reach the internet. Bots run in parallel; their desktop actions take turns, and a bot that needs the screen waits for the current user of it.`}
       >
         {existing && (
@@ -327,7 +327,7 @@ export function LocalComputerSection() {
         <div className="mt-3 break-all text-[11px] text-ink-secondary">
           {t("Durable workspace:")} {status?.workspace_path ?? t("not created")} ·{" "}
           {t("Cua Driver:")} {status?.driver_version ?? "0.20.0"} · {t("Local image:")} {status?.image_ref ?? t("not prepared")}
-          {status?.base_image_ref ? <> · Base: {status.base_image_ref}</> : null}
+          {status?.base_image_ref ? <> · {t("Base:")} {status.base_image_ref}</> : null}
         </div>
       </Card>
 

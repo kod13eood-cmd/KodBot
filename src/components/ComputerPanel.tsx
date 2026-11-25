@@ -46,7 +46,7 @@ type Phase =
   | "off"
   | "error";
 
-function routineScheduleLabel(routine: Routine) {
+function routineScheduleLabel(routine: Routine, t: (source: string, vars?: Record<string, string | number>) => string) {
   if (routine.schedule.type === "once") {
     return new Date(routine.schedule.at).toLocaleString([], {
       month: "short",
@@ -58,14 +58,20 @@ function routineScheduleLabel(routine: Routine) {
   const days = routine.schedule.weekdays;
   const daysLabel =
     days.length === 7
-      ? "Every day"
+      ? t("Every day")
       : days.join(",") === "1,2,3,4,5"
-        ? "Weekdays"
-        : days.map((day) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][day]).join(", ");
+        ? t("Weekdays")
+        : days
+            .map((day) => new Date(2024, 0, 7 + day).toLocaleDateString(undefined, { weekday: "short" }))
+            .join(", ");
   if (routine.schedule.type === "interval") {
     const every = routine.schedule.everyMinutes;
     const cadence =
-      every === 60 ? "Every hour" : every > 60 && every % 60 === 0 ? `Every ${every / 60} hours` : `Every ${every} min`;
+      every === 60
+        ? t("Every hour")
+        : every > 60 && every % 60 === 0
+          ? t("Every {count} hours", { count: every / 60 })
+          : t("Every {count} min", { count: every });
     const window =
       routine.schedule.startTime && routine.schedule.endTime
         ? ` · ${routine.schedule.startTime}–${routine.schedule.endTime}`
@@ -76,12 +82,12 @@ function routineScheduleLabel(routine: Routine) {
   return `${daysLabel} · ${new Date(2000, 0, 1, hour, minute).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
 }
 
-function nextRunLabel(at: number | null) {
-  if (at == null) return "Paused";
+function nextRunLabel(at: number | null, t: (source: string, vars?: Record<string, string | number>) => string) {
+  if (at == null) return t("Paused");
   const date = new Date(at);
   const today = new Date();
   const sameDay = date.toDateString() === today.toDateString();
-  return `${sameDay ? "Today" : date.toLocaleDateString([], { month: "short", day: "numeric" })}, ${date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+  return `${sameDay ? t("Today") : date.toLocaleDateString([], { month: "short", day: "numeric" })}, ${date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
 }
 
 export function ComputerPanel({ bot }: { bot: Bot }) {
@@ -151,13 +157,13 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
       return;
     }
     if (bot.computer === "local") {
-      if (!computerToolSupported) setError("This model engine cannot control this computer. Choose Claude or an ACP engine.");
+      if (!computerToolSupported) setError(t("This model engine cannot control this computer. Choose Claude or an ACP engine."));
       setPhase(capabilitiesReady && localAvailable && computerToolSupported ? "local" : "local-unavailable");
       return;
     }
     if (bot.computer === "vm") {
       if (!vmSupported) {
-        setError("This model engine cannot use the Local VM. Choose Claude or an ACP engine.");
+        setError(t("This model engine cannot use the Local VM. Choose Claude or an ACP engine."));
         setPhase("vm-unavailable");
         return;
       }
@@ -166,7 +172,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
           if (!alive) return;
           if (status.ready) setPhase("vm");
           else {
-            setError(`${status.problem ?? "The Local VM is not ready"}. Open App Settings → Local VM.`);
+            setError(`${status.problem ?? t("The Local VM is not ready")}. ${t("Open App Settings → Local VM.")}`);
             setPhase("vm-unavailable");
           }
         })
@@ -202,7 +208,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
               if (vm.ready) {
                 setPhase("vm");
               } else {
-                setError(`${vm.problem ?? "The Local VM is not ready"}. Open App Settings → Local VM.`);
+                setError(`${vm.problem ?? t("The Local VM is not ready")}. ${t("Open App Settings → Local VM.")}`);
                 setPhase("vm-unavailable");
               }
             });
@@ -219,7 +225,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
       };
     }
     if (bot.computer === "cloud" && !cloudSupported) {
-      setError("This model engine cannot use cloud computer tools. Choose Claude, an ACP engine, or the Computer engine.");
+      setError(t("This model engine cannot use cloud computer tools. Choose Claude, an ACP engine, or the Computer engine."));
       setPhase("error");
       return;
     }
@@ -365,7 +371,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
     api("/api/local-computer")
       .then((status) => {
         if (status.viewer_url) setViewerUrl(status.viewer_url);
-        else setError("The Local VM viewer is not ready.");
+        else setError(t("The Local VM viewer is not ready."));
       })
       .catch((e) => setError(e.message));
   };
@@ -542,17 +548,17 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
                 (mode === "local" && (!localAvailable || !computerToolSupported));
               const unavailableTitle =
                 mode === "vm" && !vmSupported
-                  ? "This model engine cannot use the Local VM"
+                  ? t("This model engine cannot use the Local VM")
                   : mode === "cloud" && !cloudSupported
-                    ? "This model engine cannot use cloud computer tools"
+                    ? t("This model engine cannot use cloud computer tools")
                     : mode === "local" && !computerToolSupported
-                      ? "This model engine cannot control this computer"
+                      ? t("This model engine cannot control this computer")
                       : mode === "local" && !localAvailable
                         ? capabilities.host.platform === "linux"
-                          ? "Local computer control isn't available on Linux yet"
+                          ? t("Local computer control isn't available on Linux yet")
                           : capabilities.host.label === "Browser"
-                            ? "Local computer control requires the desktop app"
-                            : "CUA Driver isn't ready"
+                            ? t("Local computer control requires the desktop app")
+                            : t("CUA Driver isn't ready")
                         : undefined;
               return (
                 <button
@@ -605,7 +611,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
             >
               <Loader2 size={13} className={activeRoutineRun.status === "queued" ? "" : "animate-spin"} />
               <span className="min-w-0 flex-1 truncate">
-                {activeRoutineRun.routineName} · {activeRoutineRun.status === "waiting" ? "needs you" : activeRoutineRun.status}
+                {activeRoutineRun.routineName} · {activeRoutineRun.status === "waiting" ? t("needs you") : activeRoutineRun.status}
               </span>
             </button>
           )}
@@ -621,10 +627,10 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[12.5px] font-medium text-ink">{routine.name}</span>
                     <span className="block truncate text-[10.5px] text-ink-secondary">
-                      {routineScheduleLabel(routine)}{routine.runOn === "cloud" ? " · runs on VM" : ""}
+                      {routineScheduleLabel(routine, t)}{routine.runOn === "cloud" ? " " + t("· runs on VM") : ""}
                     </span>
                   </span>
-                  <span className="shrink-0 text-[10px] text-ink-secondary">{nextRunLabel(routine.nextRunAt)}</span>
+                  <span className="shrink-0 text-[10px] text-ink-secondary">{nextRunLabel(routine.nextRunAt, t)}</span>
                 </button>
               ))}
             </div>

@@ -15,19 +15,21 @@ export function defaultResponderName(group: Group, members: Bot[]): string | nul
   return members.find((member) => member.id === value.botId)?.name ?? null;
 }
 
-export function groupResponseHint(group: Group, members: Bot[]): string {
-  if (group.dm) return "Reply here to continue the bot-to-bot conversation.";
+type Translate = (source: string, vars?: Record<string, string | number>) => string;
+
+export function groupResponseHint(group: Group, members: Bot[], t: Translate): string {
+  if (group.dm) return t("Reply here to continue the bot-to-bot conversation.");
   const value = effectiveDefaultResponder(group, members);
-  if (value.kind === "everyone") return "Everyone responds unless you @mention specific bots.";
-  if (value.kind === "mentions") return "Mention a bot with @ to bring them in.";
-  const name = defaultResponderName(group, members) ?? "The lead bot";
-  return `${name} responds by default — @mention someone else to choose them instead.`;
+  if (value.kind === "everyone") return t("Everyone responds unless you @mention specific bots.");
+  if (value.kind === "mentions") return t("Mention a bot with @ to bring them in.");
+  const name = defaultResponderName(group, members) ?? t("The lead bot");
+  return t("{name} responds by default — @mention someone else to choose them instead.", { name });
 }
 
-export function groupComposerHint(group: Group, members: Bot[]): string {
-  if (group.dm) return "continue the conversation";
+export function groupComposerHint(group: Group, members: Bot[], t: Translate): string {
+  if (group.dm) return t("continue the conversation");
   const value = effectiveDefaultResponder(group, members);
-  if (value.kind === "everyone") return "everyone responds";
-  if (value.kind === "mentions") return "@ to bring a bot in";
-  return `${defaultResponderName(group, members) ?? "Lead"} responds`;
+  if (value.kind === "everyone") return t("everyone responds");
+  if (value.kind === "mentions") return t("@ to bring a bot in");
+  return t("{name} responds", { name: defaultResponderName(group, members) ?? t("Lead") });
 }

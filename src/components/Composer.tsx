@@ -591,7 +591,7 @@ export function Composer({
           <Loader2 size={14} className="shrink-0 animate-spin text-accent" />
           <span>{t("Transcribing your voice…")}</span>
           {transcribeSeconds > 0 && (
-            <span className="shrink-0 tabular-nums text-ink-secondary/70">{transcribeSeconds}s</span>
+            <span className="shrink-0 tabular-nums text-ink-secondary/70">{t("{seconds}s", { seconds: transcribeSeconds })}</span>
           )}
           <span className="text-ink-secondary/70">{t("This can take a minute on CPU.")}</span>
         </div>
@@ -898,7 +898,7 @@ export function Composer({
                 : group
                   ? t("Message {name} — {hint}", {
                       name: group.name,
-                      hint: groupComposerHint(group, members ?? []),
+                      hint: groupComposerHint(group, members ?? [], t),
                     })
                   : t("Message {name}", { name: bot?.name ?? "" })
           }

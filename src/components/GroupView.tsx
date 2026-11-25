@@ -314,7 +314,7 @@ function RoomWorkingFolderChip({ group, onToggle }: { group: Group; onToggle: ()
       <button
         onClick={onToggle}
         className="rounded-md p-1.5 text-ink-secondary hover:bg-raised hover:text-ink"
-        title="Room working folder"
+        title={t("Room working folder")}
       >
         <Folder size={14} />
       </button>
@@ -480,7 +480,7 @@ export function GroupView({ group }: { group: Group }) {
           {members.map((b) => (
             <span
               key={b.id}
-              title={`${b.name}${group.busyBotId === b.id ? " — working…" : ""}`}
+              title={`${b.name}${group.busyBotId === b.id ? t(" — working…") : ""}`}
               className={cn(
                 "relative inline-flex rounded-full",
                 group.busyBotId === b.id && "ring-2 ring-accent/50 ring-offset-1 ring-offset-app",
@@ -518,7 +518,7 @@ export function GroupView({ group }: { group: Group }) {
                   setBulletinOpen(false);
                 }
               }}
-              placeholder="Room instructions — every bot in this room follows them (who does what, tone, goals, a task checklist…)"
+              placeholder={t("Room instructions — every bot in this room follows them (who does what, tone, goals, a task checklist…)")}
               rows={4}
               className="w-full resize-none bg-transparent text-[13px] leading-relaxed text-ink placeholder:text-ink-secondary focus:outline-none"
             />
@@ -527,11 +527,11 @@ export function GroupView({ group }: { group: Group }) {
           <button
             onClick={() => setBulletinOpen(true)}
             className="mb-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-raised/40"
-            title="Room bulletin — shared instructions for every bot here"
+            title={t("Room bulletin — shared instructions for every bot here")}
           >
             <Pin size={12} className="shrink-0 text-ink-secondary" />
             <span className={cn("truncate text-[12.5px]", group.bulletin ? "text-ink-secondary" : "text-ink-secondary/60")}>
-              {group.bulletin.split("\n")[0] || "Add room instructions…"}
+              {group.bulletin.split("\n")[0] || t("Add room instructions…")}
             </span>
           </button>
         )}
@@ -599,7 +599,7 @@ export function GroupView({ group }: { group: Group }) {
               </div>
               <div className="text-[17px] font-semibold text-ink">{group.name}</div>
               <div className="max-w-[380px] text-[14px] text-ink-secondary">
-                {groupResponseHint(group, members)}
+                {groupResponseHint(group, members, t)}
               </div>
             </div>
           )}
@@ -609,7 +609,7 @@ export function GroupView({ group }: { group: Group }) {
                 onClick={showEarlier}
                 className="rounded-full border border-hairline/40 bg-panel px-3 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink"
               >
-                Show earlier messages ({hiddenCount} more)
+                {t("Show earlier messages ({count} more)", { count: hiddenCount })}
               </button>
             </div>
           )}
@@ -620,7 +620,7 @@ export function GroupView({ group }: { group: Group }) {
                 onClick={showLater}
                 className="rounded-full border border-hairline/40 bg-panel px-3 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink"
               >
-                Show later messages ({laterCount} more)
+                {t("Show later messages ({count} more)", { count: laterCount })}
               </button>
             </div>
           )}

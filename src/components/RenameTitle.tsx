@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { nextRename } from "@/lib/rename";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 
 export function RenameTitle({
@@ -18,6 +19,7 @@ export function RenameTitle({
   className?: string;
   inputClassName?: string;
 }) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
 
@@ -42,7 +44,7 @@ export function RenameTitle({
       <input
         autoFocus
         value={draft}
-        aria-label="Rename"
+        aria-label={t("Rename")}
         onFocus={(event) => event.currentTarget.select()}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => finish(true)}
@@ -74,7 +76,7 @@ export function RenameTitle({
   return (
     <span
       className={cn("cursor-text", className)}
-      title="Double-click to rename"
+      title={t("Double-click to rename")}
       tabIndex={0}
       role="button"
       aria-label={`Rename ${value}`}

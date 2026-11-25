@@ -128,6 +128,7 @@ const BULGARIAN: Record<string, string> = {
   "Test microphone": "Тествай микрофона",
   "Stop and transcribe": "Спри и транскрибирай",
   "Transcribing…": "Транскрибиране…",
+  "{seconds}s": "{seconds}с",
   "Transcribing your voice…": "Транскрибиране на гласа…",
   "This can take a minute on CPU.": "Това може да отнеме до минута на CPU.",
   "Starting…": "Стартиране…",
@@ -399,6 +400,27 @@ const BULGARIAN: Record<string, string> = {
     "Свързаните приложения работят автоматично в инсталираното приложение. Останалите ключове за услуги остават на този компютър.",
   "Connected apps service is ready": "Услугата за свързани приложения е готова",
   "Self-host connected apps": "Свързани приложения със собствен сървър",
+  "Composio project key": "Проектен ключ на Composio",
+  "Connect Gmail, GitHub, Slack, Notion, and other apps through your own Composio project.":
+    "Свържи Gmail, GitHub, Slack, Notion и други приложения през собствения си Composio проект.",
+  "Create or copy a project key": "Създай или копирай проектен ключ",
+  "Box API key": "API ключ за Box",
+  "Paste your Box API key": "Постави своя API ключ за Box",
+  "Give bots an isolated remote Linux computer with a desktop and terminal.":
+    "Дай на ботовете изолиран отдалечен Linux компютър с десктоп и терминал.",
+  "Open Box API key guide": "Отвори ръководството за Box API ключ",
+  "Box is a paid service after its trial. Usage may incur charges.":
+    "Box е платена услуга след пробния период. Използването може да носи такси.",
+  "OpenCode API key": "API ключ за OpenCode",
+  "Paste your OpenCode API key": "Постави своя API ключ за OpenCode",
+  "Runs OpenCode models through the maintained OpenCode CLI and ACP. One key covers OpenCode Go and OpenCode Zen, including the free models.":
+    "Използва OpenCode модели през поддържания OpenCode CLI и ACP. Един ключ покрива OpenCode Go и OpenCode Zen, включително безплатните модели.",
+  "Open OpenCode plan & key guide": "Отвори ръководството за OpenCode план и ключ",
+  "Free models still require an OpenCode account. Some free/stealth models may use your prompts to improve the model — check the live privacy terms.":
+    "Безплатните модели пак изискват OpenCode акаунт. Някои безплатни/stealth модели може да използват подсказките ти за подобряване на модела — провери актуалните условия за поверителност.",
+  "Paste to replace": "Постави, за да замениш",
+  "About {name}": "Относно {name}",
+  "{name} help": "Помощ за {name}",
   "Engine CLIs": "CLI на двигателите",
   "Which binary each engine runs. Saved as you go.":
     "Кой изпълним файл използва всеки двигател. Запазва се автоматично.",
@@ -1320,6 +1342,60 @@ const BULGARIAN: Record<string, string> = {
   "Hold Control + Option to talk · Space interrupts · Esc hangs up":
     "Задръжте Control + Option, за да говорите · Space прекъсва · Esc затваря",
   "Hang up on {name}": "Затвори разговора с {name}",
+  "Checking call availability": "Проверка дали разговорите са налични",
+  "Calls currently need the macOS desktop app": "Разговорите засега изискват приложението за macOS",
+  "Add an ElevenLabs key in App Settings to make calls":
+    "Добави ElevenLabs ключ в настройките, за да правиш разговори",
+  "Pick a voice in App Settings to make calls":
+    "Избери глас в настройките, за да правиш разговори",
+  "Call {name}": "Обади се на {name}",
+  "Checking whether this device can make calls.":
+    "Проверява се дали това устройство може да прави разговори.",
+  "Calls require KodBot for macOS because speech recognition runs on-device.":
+    "Разговорите изискват KodBot за macOS, защото разпознаването на реч работи на устройството.",
+  "The speech service is unavailable in this app build. Restart or update KodBot.":
+    "Гласовата услуга не е налична в тази версия. Рестартирай или обнови KodBot.",
+  "Add an ElevenLabs API key so the bot can speak during calls.":
+    "Добави ElevenLabs API ключ, за да може ботът да говори по време на разговор.",
+  "Choose an app voice, or give every room member their own ElevenLabs voice.":
+    "Избери глас за приложението или дай на всеки член в стаята собствен ElevenLabs глас.",
+  "Choose an ElevenLabs voice before starting a call.":
+    "Избери ElevenLabs глас преди да започнеш разговор.",
+  "Push to talk": "Натисни, за да говориш",
+  "Listening": "Слуша",
+  "One moment": "Един момент",
+  "Release Control + Option to send…": "Отпусни Control + Option, за да изпратиш…",
+  "Say something…": "Кажи нещо…",
+  "Push to talk couldn't start. Check Microphone and Speech Recognition access.":
+    "Push-to-talk не можа да стартира. Провери достъпа до микрофон и разпознаване на реч.",
+  "The microphone couldn't start. Check Microphone and Speech Recognition access.":
+    "Микрофонът не можа да стартира. Провери достъпа до микрофон и разпознаване на реч.",
+  "Dictation stopped unexpectedly. Check Microphone and Speech Recognition access.":
+    "Диктовката спря неочаквано. Провери достъпа до микрофон и разпознаване на реч.",
+  "Denied by the user, on a group call.": "Отказано от потребителя по време на групов разговор.",
+  "Sorry — is that a yes or a no?": "Извинявай — това „да“ или „не“ е?",
+  "Say a member's name — {names} — or say everyone.":
+    "Кажи името на член — {names} — или кажи „всеки“.",
+  "Calls need macOS dictation, which isn't available here yet.":
+    "Разговорите изискват macOS диктовка, която още не е налична тук.",
+  "The dictation helper couldn't be built. Install Apple's Command Line Tools and try again.":
+    "Помощникът за диктовка не можа да се компилира. Инсталирай Apple Command Line Tools и опитай отново.",
+  "Dictation needs Microphone + Speech Recognition access in System Settings.":
+    "Диктовката изисква достъп до микрофон и разпознаване на реч в System Settings.",
+  "A room member": "Член на стаята",
+  "Room member": "Член на стаята",
+  "Bringing the room in": "Включва стаята",
+  " is speaking": " говори",
+  " is working": " работи",
+  "Say a name, say “everyone,” or just talk to the room…":
+    "Кажи име, кажи „всеки“ или просто говори в стаята…",
+  "You’ll hear each response in turn.": "Ще чуеш всеки отговор поред.",
+  "Hold Control + Option to talk · Say a member’s name to direct the turn · Space interrupts · Esc hangs up":
+    "Задръж Control + Option, за да говориш · Кажи име на член, за да насочиш хода · Space прекъсва · Esc затваря",
+  "{name} wants to {tool}. {detail}. Should I allow it?":
+    "{name} иска да {tool}. {detail}. Да разреша ли?",
+  " The options are {options}.": " Опциите са {options}.",
+  "{name} asks: {detail}{period}{choices}": "{name} пита: {detail}{period}{choices}",
   "Save this as a routine?": "Да се запази ли това като рутина?",
   "Edit the prompt and the time. It stays paused until you turn it on.":
     "Редактирайте текста и часа. Остава на пауза, докато не я включите.",
@@ -1362,6 +1438,9 @@ const BULGARIAN: Record<string, string> = {
   "Save anyway": "Запази въпреки това",
   "Edit path": "Редактирай пътя",
   "Set CLI…": "Задай CLI…",
+  "default": "по подразбиране",
+  "Set CLI points an engine at a specific binary — a versioned build, a wrapper script, or an absolute path. Saving reloads providers and interrupts any running turns.":
+    "Set CLI насочва двигателя към конкретен binary — versioned build, wrapper script или абсолютен път. Запазването презарежда доставчиците и прекъсва текущите ходове.",
   "No CLI engines detected yet.": "Още не са открити CLI engine-и.",
   "Delete the Local VM? Files and browser sign-ins in its durable workspace will remain.":
     "Да се изтрие ли Local VM? Файловете и входовете в браузъра в трайния workspace ще останат.",
@@ -1584,6 +1663,109 @@ const BULGARIAN: Record<string, string> = {
   "Connecting moves this window to that server. An organization gateway shows its sign-in page; a personal server stays Solo.":
     "Свързването премества този прозорец на онзи сървър. Организационният gateway показва своята страница за вход; личният сървър остава Solo.",
 
+  "Reply here to continue the bot-to-bot conversation.":
+    "Отговори тук, за да продължи разговорът между ботовете.",
+  "Everyone responds unless you @mention specific bots.":
+    "Всички отговарят, освен ако не споменеш конкретни ботове с @.",
+  "Mention a bot with @ to bring them in.": "Спомени бот с @, за да го включиш.",
+  "{name} responds by default — @mention someone else to choose them instead.":
+    "{name} отговаря по подразбиране — спомени някого другиго с @, за да избереш него.",
+  "The lead bot": "Водещият бот",
+  "continue the conversation": "продължи разговора",
+  "everyone responds": "всички отговарят",
+  "@ to bring a bot in": "@, за да включиш бот",
+  "{name} responds": "{name} отговаря",
+  "Lead": "Водещ",
+  " — working…": " — работи…",
+  "Room instructions — every bot in this room follows them (who does what, tone, goals, a task checklist…)":
+    "Инструкции за стаята — всеки бот тук ги следва (кой какво прави, тон, цели, чеклист…).",
+  "Room bulletin — shared instructions for every bot here":
+    "Бюлетин на стаята — общи инструкции за всеки бот тук",
+  "Add room instructions…": "Добави инструкции за стаята…",
+
+  "{count} bots": "{count} бота",
+  "Couldn't search: {error}": "Търсенето не успя: {error}",
+  "No messages match “{query}”": "Няма съобщения, съвпадащи с „{query}“",
+  "other version": "друга версия",
+
+  "General assistant": "Общ асистент",
+  "Only roles and appearance are loaded. Your conversations, account connections, permissions, and computer access stay private.":
+    "Зареждат се само роли и външен вид. Разговорите, връзките с акаунти, разрешенията и достъпът до компютър остават лични.",
+  "Playbooks remain available in the community repo for review.":
+    "Playbooks остават налични в общностното репо за преглед.",
+
+  "Once a container runtime is open, KodBot prepares Cua and the VM for you.":
+    "Щом има отворен container runtime, KodBot подготвя Cua и VM вместо теб.",
+  "Base:": "База:",
+
+  "Events": "Събития",
+  "Raw": "Суров протокол",
+  "Reload from disk": "Презареди от диска",
+  "No native protocol messages recorded for this thread yet.":
+    "Все още няма записани native protocol съобщения за този разговор.",
+  "No runtime events for this thread yet.": "Все още няма runtime събития за този разговор.",
+  "last {shown} of {total}": "последни {shown} от {total}",
+  "{shown} entries": "{shown} записа",
+  "loading…": "зареждане…",
+  "Couldn't load: {error}": "Зареждането не успя: {error}",
+
+  "Cloud box": "Облачна кутия",
+  "Starting your bot's computer…": "Стартиране на компютъра на бота…",
+  "No cloud computer configured": "Няма конфигуриран облачен компютър",
+  "Local computer control isn't available on Linux yet. Use a cloud box instead.":
+    "Локалният контрол на компютър още не е наличен на Linux. Използвай облачна кутия.",
+  "Local computer control requires the desktop app.":
+    "Локалният контрол на компютър изисква desktop приложението.",
+  "CUA Driver isn't ready for local computer control.":
+    "CUA Driver не е готов за локален контрол на компютър.",
+  "The Local VM isn't available for this bot": "Local VM не е налична за този бот",
+  "This bot's computer is off": "Компютърът на този бот е изключен",
+  "Couldn't reach the computer": "Компютърът не е достъпен",
+  "This model engine cannot control this computer. Choose Claude or an ACP engine.":
+    "Този модел не може да управлява този компютър. Избери Claude или ACP двигател.",
+  "This model engine cannot use the Local VM. Choose Claude or an ACP engine.":
+    "Този модел не може да използва Local VM. Избери Claude или ACP двигател.",
+  "This model engine cannot use cloud computer tools. Choose Claude, an ACP engine, or the Computer engine.":
+    "Този модел не може да използва облачен компютър. Избери Claude, ACP двигател или Computer двигателя.",
+  "The Local VM is not ready": "Local VM не е готова",
+  "Open App Settings → Local VM.": "Отвори App Settings → Local VM.",
+  "The Local VM viewer is not ready.": "Прегледът на Local VM не е готов.",
+
+  "Pasted": "Поставено",
+  "File": "Файл",
+  "Remove pasted text": "Премахни поставения текст",
+  "Remove file": "Премахни файла",
+
+  "Every day": "Всеки ден",
+  "Weekdays": "Делнични дни",
+  "· runs on VM": "· работи във VM",
+
+  "Denied by the user, on a call.":
+    "Отказано от потребителя по време на разговор.",
+  "· VM": "· VM",
+  "Previous team restored": "Предишният екип е възстановен",
+  "That team file is too large.": "Този файл с екип е твърде голям.",
+  "That team file is not valid JSON.": "Този файл с екип не е валиден JSON.",
+  "Load team": "Зареди екип",
+  "Replace team": "Замени екипа",
+  "Add team": "Добави екип",
+  "Team source": "Източник на екипа",
+  "needs you": "изисква теб",
+  "This model engine cannot use the Local VM": "Този модел не може да използва Local VM",
+  "This model engine cannot use cloud computer tools": "Този модел не може да използва облачен компютър",
+  "This model engine cannot control this computer": "Този модел не може да управлява този компютър",
+  "Local computer control isn't available on Linux yet": "Локалният контрол на компютър още не е наличен на Linux",
+  "Local computer control requires the desktop app": "Локалният контрол на компютър изисква desktop приложението",
+  "CUA Driver isn't ready": "CUA Driver не е готов",
+  "Safety and storage": "Безопасност и съхранение",
+  "Local VM desktop": "Десктоп на Local VM",
+  "Type your own answer": "Напиши своя отговор",
+  "Double-click to rename": "Двоен клик за преименуване",
+  "{count} bots exported": "{count} бота експортирани",
+  "{name} archived": "{name} е архивиран",
+  "{name} restored": "{name} е възстановен",
+  "{count} bots restored": "{count} бота възстановени",
+  "{name} loaded · {count} bots": "{name} е зареден · {count} бота",
   // Shared bots (KodBot Business)
   "Shared bots": "Споделени ботове",
   "Publish a bot for the organization. Each member who installs it gets their own copy; turns run in their workspace with their own key.":

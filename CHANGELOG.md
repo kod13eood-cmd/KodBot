@@ -2,6 +2,11 @@
 
 Dated, user-facing changes. Newest first.
 
+## 2026-11-23 — 0.1.68
+
+- **Bulgarian interface cleanup.** Fixed remaining English copy in Settings → Connections key help, call and group-call statuses, the computer panel, engine settings, search results, team imports, the developer Inspector, group routing hints and room instructions, attachment chips, and routine schedule labels.
+- Group hints and room text now translate member names through the same dictionary as the rest of the app, so switching language does not leave a mixed Bulgarian/English sentence.
+
 ## 2026-11-23 — 0.1.67
 
 - **KodBot Business — live shared conversations.** The owner can publish a bot as a **live shared conversation**. Every signed-in member sees and can use the same thread from **Settings → Shared bots → Open conversation**; messages are attributed by member and the bot keeps one history. Existing template copies stay independent.

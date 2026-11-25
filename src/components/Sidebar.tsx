@@ -713,7 +713,7 @@ function ArchivedBotsPanel({
       });
       dispatch({ type: "botPatched", bot: response.bot });
       dispatch({ type: "select", id: bot.id });
-      onRestored(`${bot.name} restored`);
+      onRestored(t("{name} restored", { name: bot.name }));
       if (bots.length === 1) onClose();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -737,7 +737,7 @@ function ArchivedBotsPanel({
       for (const response of responses) dispatch({ type: "botPatched", bot: response.bot });
       const first = bots[0];
       if (first) dispatch({ type: "select", id: first.id });
-      onRestored(`${bots.length} ${bots.length === 1 ? "bot" : "bots"} restored`);
+      onRestored(t("{count} bots restored", { count: bots.length }));
       onClose();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -874,7 +874,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     try {
       const exported = await downloadAllBots();
       track("team_exported", { members: exported.members, scope: "all_visible" });
-      setTeamFeedback({ error: false, text: `${exported.members} bots exported` });
+      setTeamFeedback({ error: false, text: t("{count} bots exported", { count: exported.members }) });
     } catch (cause) {
       setTeamFeedback({
         error: true,
@@ -919,7 +919,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       }
       const first = result.archived[0];
       if (first) dispatch({ type: "select", id: first.id });
-      setTeamFeedback({ error: false, text: "Previous team restored" });
+      setTeamFeedback({ error: false, text: t("Previous team restored") });
     } catch (cause) {
       setTeamFeedback({ error: true, text: cause instanceof Error ? cause.message : String(cause) });
     }
@@ -941,7 +941,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       }
       setTeamFeedback({
         error: false,
-        text: `${bot.name} archived`,
+        text: t("{name} archived", { name: bot.name }),
         restoreBot: { id: bot.id, name: bot.name },
       });
     } catch (cause) {
@@ -958,7 +958,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       });
       dispatch({ type: "botPatched", bot: response.bot });
       dispatch({ type: "select", id: bot.id });
-      setTeamFeedback({ error: false, text: `${bot.name} restored` });
+      setTeamFeedback({ error: false, text: t("{name} restored", { name: bot.name }) });
     } catch (cause) {
       setTeamFeedback({ error: true, text: cause instanceof Error ? cause.message : String(cause) });
     }
@@ -1408,12 +1408,12 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               result.archived.length > 0
                 ? {
                     error: false,
-                    text: `${result.name} loaded · ${result.members} ${result.members === 1 ? "bot" : "bots"}`,
+                    text: t("{name} loaded · {count} bots", { name: result.name, count: result.members }),
                     undo: result,
                   }
                 : {
                     error: false,
-                    text: `${result.name} loaded · ${result.members} ${result.members === 1 ? "bot" : "bots"}`,
+                    text: t("{name} loaded · {count} bots", { name: result.name, count: result.members }),
                   },
             );
           }}

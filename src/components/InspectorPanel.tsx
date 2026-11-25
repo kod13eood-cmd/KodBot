@@ -147,23 +147,23 @@ export function InspectorPanel({ bot }: { bot: Bot }) {
                 lens === l ? "bg-raised text-ink" : "text-ink-secondary hover:text-ink",
               )}
             >
-              {l}
+              {t(l === "events" ? "Events" : "Raw")}
             </button>
           ))}
         </div>
         <span className="ml-auto text-[11px] text-ink-secondary">
-          {page ? (shown < total ? `last ${shown} of ${total}` : `${shown} entries`) : "loading…"}
+          {page ? (shown < total ? t("last {shown} of {total}", { shown, total }) : t("{shown} entries", { shown })) : t("loading…")}
         </span>
-        <button onClick={() => void load()} className="rounded-md p-1 text-ink-secondary hover:bg-raised hover:text-ink" title="Reload from disk">
+        <button onClick={() => void load()} className="rounded-md p-1 text-ink-secondary hover:bg-raised hover:text-ink" title={t("Reload from disk")}>
           <RefreshCw size={14} />
         </button>
       </div>
 
       <div ref={listRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto font-mono text-[11.5px]">
-        {error && <div className="px-4 py-3 text-danger">couldn't load: {error}</div>}
+        {error && <div className="px-4 py-3 text-danger">{t("Couldn't load: {error}", { error })}</div>}
         {page && rows.length === 0 && !error && (
           <div className="px-4 py-6 text-ink-secondary">
-            {lens === "raw" ? "No native protocol messages recorded for this thread yet." : "No runtime events for this thread yet."}
+            {lens === "raw" ? t("No native protocol messages recorded for this thread yet.") : t("No runtime events for this thread yet.")}
           </div>
         )}
         {rows.map((row) => (

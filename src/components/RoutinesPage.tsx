@@ -303,7 +303,7 @@ function RoutineCard({ item, bot, compact, onOpen }: { item: CalendarItem; bot: 
             {item.run?.triggerSource === "webhook" && <><Webhook size={10} /><span>{t("Webhook")}</span><span>·</span></>}
             <span className="truncate">
               {status ? t(statusSource(status)) : bot.name}
-              {(item.routine?.runOn ?? item.run?.runOn) === "cloud" ? " · VM" : ""}
+              {(item.routine?.runOn ?? item.run?.runOn) === "cloud" ? " " + t("· VM") : ""}
             </span>
           </div>
         </div>

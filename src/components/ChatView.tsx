@@ -1232,7 +1232,7 @@ export function ChatView({ bot }: { bot: Bot }) {
           <button
             onClick={() => dispatch({ type: "toggleSettings" })}
             className="flex shrink-0 items-center rounded-lg p-0.5 hover:bg-raised/50"
-            title="Bot settings"
+            title={t("Bot settings")}
           >
             <CrewAvatar
               color={bot.color}
@@ -1286,13 +1286,13 @@ export function ChatView({ bot }: { bot: Bot }) {
           {devMode && (
             <button
               onClick={() => dispatch({ type: "toggleInspector" })}
-              aria-label="Inspector"
+              aria-label={t("Inspector")}
               aria-pressed={state.inspectorOpen}
               className={cn(
                 "rounded-md p-1.5 hover:bg-raised",
                 state.inspectorOpen ? "text-accent" : "text-ink-secondary hover:text-ink",
               )}
-              title="Inspector — runtime events and raw protocol for this thread"
+              title={t("Inspector — runtime events and raw protocol for this thread")}
             >
               <Bug size={18} />
             </button>

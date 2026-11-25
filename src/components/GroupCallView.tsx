@@ -65,7 +65,7 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
   const [note, setNote] = useState<string | null>(null);
   const [speakingMemberId, setSpeakingMemberId] = useState<string | null>(null);
   const pushToTalk = usePushToTalk(group.id, phase === "listening", () => {
-    setNote("Push to talk couldn't start. Check Microphone and Speech Recognition access.");
+    setNote(t("Push to talk couldn't start. Check Microphone and Speech Recognition access."));
   });
 
   const messages = group.messages;
@@ -115,7 +115,7 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
     setNote(null);
     void window.ogb?.speechStart({ endpointMs: CALL_ENDPOINT_MS }).catch(() => {
       if (alive.current && currentCall() === group.id) {
-        setNote("The microphone couldn't start. Check Microphone and Speech Recognition access.");
+        setNote(t("The microphone couldn't start. Check Microphone and Speech Recognition access."));
       }
     });
   }, [group.id, move]);
@@ -201,7 +201,7 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
     const offTranscript = bridge.onSpeechTranscript((line) => {
       if (!alive.current || currentCall() !== group.id || phaseRef.current !== "listening") return;
       if (line.error) {
-        setNote("Dictation stopped unexpectedly. Check Microphone and Speech Recognition access.");
+        setNote(t("Dictation stopped unexpectedly. Check Microphone and Speech Recognition access."));
         return;
       }
       if (typeof line.text !== "string") return;
@@ -221,12 +221,12 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
             threadId: group.threadId,
             requestId: openApproval.requestId,
             behavior: allow ? "allow" : "deny",
-            message: allow ? undefined : "Denied by the user, on a group call.",
+            message: allow ? undefined : t("Denied by the user, on a group call."),
           });
           move("working");
           return;
         }
-        enqueueSpeech("Sorry — is that a yes or a no?", openApproval.member, true);
+        enqueueSpeech(t("Sorry — is that a yes or a no?"), openApproval.member, true);
         return;
       }
 
@@ -249,7 +249,7 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
       if (defaultResponderRef.current.kind === "mentions" && !routed.addressed) {
         listen();
         const names = membersRef.current.map((member) => member.name).join(", ");
-        setNote("Say a member's name" + (names ? " — " + names : "") + " — or say everyone.");
+        setNote(t("Say a member's name — {names} — or say everyone.", { names }));
         return;
       }
 
@@ -261,14 +261,14 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
     const offEnd = bridge.onSpeechEnd(({ code, reason }) => {
       if (!alive.current || currentCall() !== group.id) return;
       if (code === 2) {
-        setNote("Calls need macOS dictation, which isn't available here yet.");
+        setNote(t("Calls need macOS dictation, which isn't available here yet."));
         return;
       }
       if (code === 1) {
         setNote(
           reason === "helper-build-failed"
-            ? "The dictation helper couldn't be built. Install Apple's Command Line Tools and try again."
-            : "Dictation needs Microphone + Speech Recognition access in System Settings.",
+            ? t("The dictation helper couldn't be built. Install Apple's Command Line Tools and try again.")
+            : t("Dictation needs Microphone + Speech Recognition access in System Settings."),
         );
         return;
       }
@@ -297,9 +297,13 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
       const member = members.find((candidate) => candidate.id === approval.message.from?.botId);
       askedApproval.current = { requestId: approval.requestId, member };
       spokenIds.current.add(approval.message.id);
-      const name = member?.name ?? approval.message.from?.name ?? "A room member";
+      const name = member?.name ?? approval.message.from?.name ?? t("A room member");
       enqueueSpeech(
-        name + " wants to " + approval.tool + ". " + approval.detail + ". Should I allow it?",
+        t("{name} wants to {tool}. {detail}. Should I allow it?", {
+          name,
+          tool: approval.tool,
+          detail: approval.detail,
+        }),
         member,
         true,
       );
@@ -309,13 +313,18 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
       const member = members.find((candidate) => candidate.id === question.from?.botId);
       askedQuestion.current = { requestId: question.card.requestId, member };
       spokenIds.current.add(question.id);
-      const name = member?.name ?? question.from?.name ?? "A room member";
+      const name = member?.name ?? question.from?.name ?? t("A room member");
       const detail = question.card.subtitle.trim();
       const choices = question.card.options.length
-        ? " The options are " + question.card.options.join(", ") + "."
+        ? t(" The options are {options}.", { options: question.card.options.join(", ") })
         : "";
       enqueueSpeech(
-        name + " asks: " + detail + (/[.!?]$/.test(detail) ? "" : ".") + choices,
+        t("{name} asks: {detail}{period}{choices}", {
+          name,
+          detail,
+          period: /[.!?]$/.test(detail) ? "" : ".",
+          choices,
+        }),
         member,
         true,
       );
@@ -386,21 +395,21 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
   const status =
     phase === "listening"
       ? pushToTalk
-        ? "Push to talk"
-        : "Listening"
+        ? t("Push to talk")
+        : t("Listening")
       : phase === "sending"
-        ? "Bringing the room in"
+        ? t("Bringing the room in")
         : phase === "speaking"
-          ? (speakingMember?.name ?? "Room member") + " is speaking"
+          ? (speakingMember?.name ?? t("Room member")) + t(" is speaking")
           : workingMember
-            ? workingMember.name + " is working"
-            : "Working";
+            ? workingMember.name + t(" is working")
+            : t("Working");
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-app/95 px-8 backdrop-blur-sm">
       <button
         onClick={() => endCall(group.id)}
-        aria-label="Hang up"
+        aria-label={t("Hang up")}
         className="absolute right-5 top-5 rounded-md p-2 text-ink-secondary hover:bg-raised hover:text-ink"
       >
         <X size={18} />
@@ -458,14 +467,14 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
           heard || (
             <span className="text-ink-secondary">
               {pushToTalk
-                ? "Release Control + Option to send…"
-                : "Say a name, say “everyone,” or just talk to the room…"}
+                ? t("Release Control + Option to send…")
+                : t("Say a name, say “everyone,” or just talk to the room…")}
             </span>
           )
         ) : phase === "speaking" ? (
           speech.caption
         ) : (
-          <span className="text-ink-secondary">{workingMember ? "You’ll hear each response in turn." : ""}</span>
+          <span className="text-ink-secondary">{workingMember ? t("You’ll hear each response in turn.") : ""}</span>
         )}
       </div>
 
@@ -500,7 +509,7 @@ function GroupCall({ group, members }: { group: Group; members: Bot[] }) {
       </div>
 
       <div className="text-[11.5px] text-ink-secondary/70">
-        Hold Control + Option to talk · Say a member’s name to direct the turn · Space interrupts · Esc hangs up
+        {t("Hold Control + Option to talk · Say a member’s name to direct the turn · Space interrupts · Esc hangs up")}
       </div>
     </div>
   );
